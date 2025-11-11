@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Reajuste de Preços</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🍔 Calculadora de Reajuste de Preços</h1>
+            <p>Selecione os itens e defina o tipo de reajuste</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Formulário de Reajuste -->
+            <section class="reajuste-form">
+                <h2>Configuração do Reajuste</h2>
+                <div class="form-group">
+                    <label for="tipo-reajuste">Tipo de Reajuste:</label>
+                    <select id="tipo-reajuste">
+                        <option value="percentual">Percentual (%)</option>
+                        <option value="fixo">Valor Fixo (R$)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="valor-reajuste" id="label-valor">Valor do Reajuste:</label>
+                    <input type="number" id="valor-reajuste" step="0.01" min="0" placeholder="0.00">
+                </div>
+                <div class="form-actions">
+                    <button id="btn-selecionar-todos" class="btn-secondary">Selecionar Todos</button>
+                    <button id="btn-deselecionar-todos" class="btn-secondary">Deselecionar Todos</button>
+                    <button id="btn-aplicar-reajuste" class="btn-primary">Aplicar Reajuste</button>
+                </div>
+            </section>
+
+            <!-- Lista de Itens por Categoria -->
+            <section class="itens-section">
+                <h2>Itens Disponíveis</h2>
+                <div id="categorias-container"></div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmação -->
+    <div id="modal-confirmacao" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Confirmar Reajuste</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p class="modal-info">
+                    <strong>Tipo:</strong> <span id="modal-tipo"></span><br>
+                    <strong>Valor:</strong> <span id="modal-valor"></span>
+                </p>
+                <p class="modal-subtitle">Itens que serão reajustados:</p>
+                <div id="modal-itens-lista" class="modal-itens"></div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-cancelar" class="btn-secondary">Cancelar</button>
+                <button id="btn-confirmar" class="btn-primary">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
+
