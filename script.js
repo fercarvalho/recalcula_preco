@@ -61,11 +61,13 @@ const dadosPadrao = {
     ]
 };
 
-// Chave para armazenamento no LocalStorage
-const STORAGE_KEY = 'viraLatasItens';
+// URL base da API
+const API_BASE = window.location.origin;
 
-// Dados dos itens por categoria (será carregado do LocalStorage ou usar padrão)
+// Dados dos itens por categoria (será carregado da API)
 let itensPorCategoria = {};
+// Mapa de IDs dos itens: { "categoria-index": id }
+let itensIds = {};
 
 // Estado da aplicação
 let itensSelecionados = new Set();
@@ -244,85 +246,183 @@ function mostrarSelecaoCategoria() {
     });
 }
 
-// Funções de persistência (LocalStorage)
-function salvarDados() {
+// Funções de API
+async function carregarDados() {
     try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(itensPorCategoria));
-        console.log('Dados salvos com sucesso!');
+        const response = await fetch(`${API_BASE}/api/itens`);
+        if (!response.ok) {
+            throw new Error('Erro ao carregar dados da API');
+        }
+        const dados = await response.json();
+        
+        // Organizar dados e criar mapa de IDs
+        itensPorCategoria = {};
+        itensIds = {};
+        
+        Object.keys(dados).forEach(categoria => {
+            itensPorCategoria[categoria] = [];
+            dados[categoria].forEach((item, index) => {
+                itensPorCategoria[categoria].push({
+                    nome: item.nome,
+                    valor: item.valor,
+                    valorNovo: item.valorNovo
+                });
+                // Criar mapa de IDs
+                const key = `${categoria}-${index}`;
+                itensIds[key] = item.id;
+            });
+        });
     } catch (error) {
-        console.error('Erro ao salvar dados:', error);
-        mostrarAlert('Erro', 'Erro ao salvar os dados. Verifique se o navegador suporta LocalStorage.');
+        console.error('Erro ao carregar dados:', error);
+        await mostrarAlert('Erro', 'Erro ao carregar dados do servidor. Verifique se o servidor está rodando.');
     }
 }
 
-function carregarDados() {
+async function atualizarItemAPI(id, nome, valor) {
     try {
-        const dadosSalvos = localStorage.getItem(STORAGE_KEY);
-        if (dadosSalvos) {
-            itensPorCategoria = JSON.parse(dadosSalvos);
-            console.log('Dados carregados do LocalStorage');
-        } else {
-            // Se não houver dados salvos, usar os dados padrão
-            itensPorCategoria = JSON.parse(JSON.stringify(dadosPadrao));
-            salvarDados(); // Salvar os dados padrão pela primeira vez
-            console.log('Usando dados padrão e salvando no LocalStorage');
+        const response = await fetch(`${API_BASE}/api/itens/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ nome, valor })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Erro ao atualizar item');
         }
+        
+        return await response.json();
     } catch (error) {
-        console.error('Erro ao carregar dados:', error);
-        // Em caso de erro, usar dados padrão
-        itensPorCategoria = JSON.parse(JSON.stringify(dadosPadrao));
-        mostrarAlert('Erro', 'Erro ao carregar dados salvos. Usando valores padrão.');
+        console.error('Erro ao atualizar item:', error);
+        throw error;
+    }
+}
+
+async function criarItemAPI(categoria, nome, valor) {
+    try {
+        const response = await fetch(`${API_BASE}/api/itens`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ categoria, nome, valor })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Erro ao criar item');
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Erro ao criar item:', error);
+        throw error;
+    }
+}
+
+async function deletarItemAPI(id) {
+    try {
+        const response = await fetch(`${API_BASE}/api/itens/${id}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+            throw new Error('Erro ao deletar item');
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('Erro ao deletar item:', error);
+        throw error;
+    }
+}
+
+async function atualizarValorNovoAPI(id, valorNovo) {
+    try {
+        const response = await fetch(`${API_BASE}/api/itens/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ valorNovo })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Erro ao atualizar valor novo');
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Erro ao atualizar valor novo:', error);
+        throw error;
     }
 }
 
 async function resetarDados() {
     const confirmado = await mostrarConfirm('Confirmar Reset', 'Tem certeza que deseja resetar todos os valores para os padrões? Esta ação não pode ser desfeita.');
     if (confirmado) {
-        itensPorCategoria = JSON.parse(JSON.stringify(dadosPadrao));
-        salvarDados();
-        // Recarregar a interface
+        await mostrarAlert('Aviso', 'A funcionalidade de reset ainda não está implementada na API. Por favor, recarregue a página para usar os valores padrão.');
+        // Recarregar dados
+        await carregarDados();
         inicializarInterface();
         selecionarTodosItens();
-        await mostrarAlert('Sucesso', 'Valores resetados para os padrões com sucesso!');
     }
 }
 
 // Editar item
 async function editarItem(categoria, index) {
     const item = itensPorCategoria[categoria][index];
+    const key = `${categoria}-${index}`;
+    const id = itensIds[key];
+    
+    if (!id) {
+        await mostrarAlert('Erro', 'Erro ao identificar o item. Por favor, recarregue a página.');
+        return;
+    }
+    
     const novoNome = await mostrarPrompt('Editar Nome', 'Digite o novo nome do item:', item.nome);
     
     if (novoNome && novoNome.trim() !== '' && novoNome.trim() !== item.nome) {
-        // Atualizar o nome
-        item.nome = novoNome.trim();
-        
-        // Salvar dados
-        salvarDados();
-        
-        // Recarregar interface
-        inicializarInterface();
-        selecionarTodosItens();
-        
-        await mostrarAlert('Sucesso', 'Nome do item atualizado com sucesso!');
+        try {
+            await atualizarItemAPI(id, novoNome.trim(), item.valor);
+            
+            // Recarregar dados e interface
+            await carregarDados();
+            inicializarInterface();
+            selecionarTodosItens();
+            
+            await mostrarAlert('Sucesso', 'Nome do item atualizado com sucesso!');
+        } catch (error) {
+            await mostrarAlert('Erro', 'Erro ao atualizar o item. Tente novamente.');
+        }
     }
 }
 
 // Excluir item
 async function excluirItem(categoria, index) {
     const item = itensPorCategoria[categoria][index];
+    const key = `${categoria}-${index}`;
+    const id = itensIds[key];
+    
+    if (!id) {
+        await mostrarAlert('Erro', 'Erro ao identificar o item. Por favor, recarregue a página.');
+        return;
+    }
+    
     const confirmado = await mostrarConfirm('Confirmar Exclusão', `Tem certeza que deseja excluir "${item.nome}"?`);
     if (confirmado) {
-        // Remover do array
-        itensPorCategoria[categoria].splice(index, 1);
-        
-        // Salvar dados
-        salvarDados();
-        
-        // Recarregar interface
-        inicializarInterface();
-        selecionarTodosItens();
-        
-        await mostrarAlert('Sucesso', 'Item excluído com sucesso!');
+        try {
+            await deletarItemAPI(id);
+            
+            // Recarregar dados e interface
+            await carregarDados();
+            inicializarInterface();
+            selecionarTodosItens();
+            
+            await mostrarAlert('Sucesso', 'Item excluído com sucesso!');
+        } catch (error) {
+            await mostrarAlert('Erro', 'Erro ao excluir o item. Tente novamente.');
+        }
     }
 }
 
@@ -345,22 +445,18 @@ async function adicionarItem(categoria) {
         return;
     }
     
-    // Adicionar o novo item
-    const novoItem = {
-        nome: nome.trim(),
-        valor: valor
-    };
-    
-    itensPorCategoria[categoria].push(novoItem);
-    
-    // Salvar dados
-    salvarDados();
-    
-    // Recarregar interface
-    inicializarInterface();
-    selecionarTodosItens();
-    
-    await mostrarAlert('Sucesso', 'Item adicionado com sucesso!');
+    try {
+        await criarItemAPI(categoria, nome.trim(), valor);
+        
+        // Recarregar dados e interface
+        await carregarDados();
+        inicializarInterface();
+        selecionarTodosItens();
+        
+        await mostrarAlert('Sucesso', 'Item adicionado com sucesso!');
+    } catch (error) {
+        await mostrarAlert('Erro', 'Erro ao adicionar o item. Tente novamente.');
+    }
 }
 
 // Adicionar novo produto (escolhendo categoria)
@@ -391,27 +487,23 @@ async function adicionarNovoProduto() {
         return;
     }
     
-    // Adicionar o novo produto
-    const novoItem = {
-        nome: nome.trim(),
-        valor: valor
-    };
-    
-    itensPorCategoria[categoria].push(novoItem);
-    
-    // Salvar dados
-    salvarDados();
-    
-    // Recarregar interface
-    inicializarInterface();
-    selecionarTodosItens();
-    
-    await mostrarAlert('Sucesso', `Produto "${nome.trim()}" adicionado com sucesso na categoria "${categoria}"!`);
+    try {
+        await criarItemAPI(categoria, nome.trim(), valor);
+        
+        // Recarregar dados e interface
+        await carregarDados();
+        inicializarInterface();
+        selecionarTodosItens();
+        
+        await mostrarAlert('Sucesso', `Produto "${nome.trim()}" adicionado com sucesso na categoria "${categoria}"!`);
+    } catch (error) {
+        await mostrarAlert('Erro', 'Erro ao adicionar o produto. Tente novamente.');
+    }
 }
 
 // Inicialização
-document.addEventListener('DOMContentLoaded', () => {
-    carregarDados(); // Carregar dados do LocalStorage primeiro
+document.addEventListener('DOMContentLoaded', async () => {
+    await carregarDados(); // Carregar dados da API primeiro
     inicializarInterface();
     inicializarEventos();
     selecionarTodosItens();
@@ -594,35 +686,55 @@ function criarItem(categoria, index, item) {
 
     // Event listener para edição do preço antigo
     const inputValorAntigo = valorAntigoDiv.querySelector('.item-valor-antigo');
+    const key = `${categoria}-${index}`;
+    const id = itensIds[key];
     
     // Salvar quando o campo perder o foco (change)
-    inputValorAntigo.addEventListener('change', (e) => {
+    inputValorAntigo.addEventListener('change', async (e) => {
         const novoValor = parseFloat(e.target.value);
         if (!isNaN(novoValor) && novoValor >= 0) {
-            // Atualizar o valor do item (sobrescreve o preço antigo)
-            item.valor = novoValor;
-            
-            // Limpar preço novo quando o antigo for alterado manualmente
-            if (item.valorNovo !== undefined) {
-                delete item.valorNovo;
+            if (!id) {
+                await mostrarAlert('Erro', 'Erro ao identificar o item. Por favor, recarregue a página.');
+                e.target.value = item.valor.toFixed(2);
+                return;
             }
             
-            // Recalcular preço ajustado com percentual padrão de 12%
-            const valorAjustado = calcularNovoValor(novoValor, 0, 12);
-            
-            // Atualizar interface
-            const valorNovoElement = itemDiv.querySelector('.item-valor-novo');
-            valorNovoElement.textContent = `R$ ${valorAjustado.toFixed(2)}`;
-            valorNovoElement.classList.add('visible');
-            
-            // Salvar dados após edição (sobrescreve o valor antigo no LocalStorage)
-            salvarDados();
-            
-            // Feedback visual
-            inputValorAntigo.style.borderColor = '#28a745';
-            setTimeout(() => {
-                inputValorAntigo.style.borderColor = '#ddd';
-            }, 1000);
+            try {
+                // Atualizar o valor do item no banco
+                await atualizarItemAPI(id, item.nome, novoValor);
+                
+                // Atualizar o valor do item localmente
+                item.valor = novoValor;
+                
+                // Limpar preço novo quando o antigo for alterado manualmente
+                if (item.valorNovo !== undefined) {
+                    delete item.valorNovo;
+                    // Limpar no banco também
+                    await atualizarValorNovoAPI(id, null);
+                }
+                
+                // Recalcular preço ajustado com percentual padrão de 12%
+                const valorAjustado = calcularNovoValor(novoValor, 0, 12);
+                
+                // Atualizar interface
+                const valorNovoElement = itemDiv.querySelector('.item-valor-novo');
+                valorNovoElement.textContent = `R$ ${valorAjustado.toFixed(2)}`;
+                valorNovoElement.classList.add('visible');
+                
+                // Feedback visual
+                inputValorAntigo.style.borderColor = '#28a745';
+                setTimeout(() => {
+                    inputValorAntigo.style.borderColor = '#ddd';
+                }, 1000);
+            } catch (error) {
+                // Erro ao salvar, restaurar valor
+                e.target.value = item.valor.toFixed(2);
+                inputValorAntigo.style.borderColor = '#dc3545';
+                setTimeout(() => {
+                    inputValorAntigo.style.borderColor = '#ddd';
+                }, 1000);
+                await mostrarAlert('Erro', 'Erro ao salvar o valor. Tente novamente.');
+            }
         } else {
             // Valor inválido, restaurar o valor anterior
             e.target.value = item.valor.toFixed(2);
@@ -744,9 +856,9 @@ function inicializarEventos() {
 
     closeModal.addEventListener('click', fecharModal);
     btnCancelar.addEventListener('click', fecharModal);
-    btnConfirmar.addEventListener('click', () => {
-        aplicarReajuste();
+    btnConfirmar.addEventListener('click', async () => {
         fecharModal();
+        await aplicarReajuste();
     });
 
     // Fechar modal ao clicar fora
@@ -838,19 +950,27 @@ function fecharModal() {
 }
 
 // Aplicar reajuste
-function aplicarReajuste() {
+async function aplicarReajuste() {
     const valorFixo = parseFloat(document.getElementById('valor-fixo').value) || 0;
     const valorPercentual = parseFloat(document.getElementById('valor-percentual').value) || 0;
 
     if (itensSelecionados.size === 0) {
-        mostrarAlert('Atenção', 'Nenhum item selecionado para reajustar.');
+        await mostrarAlert('Atenção', 'Nenhum item selecionado para reajustar.');
         return;
     }
 
     // Atualizar valores dos itens selecionados
+    const promessas = [];
+    
     itensSelecionados.forEach(key => {
         const [categoria, index] = key.split('-');
         const item = obterItem(categoria, parseInt(index));
+        const id = itensIds[key];
+        
+        if (!id) {
+            console.error(`ID não encontrado para item ${key}`);
+            return;
+        }
         
         // Obter o valor atual do input (pode ter sido editado)
         const itemElement = document.querySelector(`[data-categoria="${categoria}"][data-index="${index}"]`);
@@ -858,22 +978,29 @@ function aplicarReajuste() {
         const valorAntigo = valorAntigoInput ? parseFloat(valorAntigoInput.value) : item.valor;
         
         // Se houver valor fixo, atualizar o preço (item.valor) primeiro
+        let valorAposFixo = valorAntigo;
         if (valorFixo > 0) {
-            // Somar o valor fixo ao preço atual
-            item.valor = valorAntigo + valorFixo;
+            valorAposFixo = valorAntigo + valorFixo;
+            // Atualizar o valor no banco
+            promessas.push(atualizarItemAPI(id, item.nome, valorAposFixo));
+            // Atualizar localmente
+            item.valor = valorAposFixo;
             // Atualizar o input do preço na interface
             if (valorAntigoInput) {
-                valorAntigoInput.value = item.valor.toFixed(2);
+                valorAntigoInput.value = valorAposFixo.toFixed(2);
             }
         }
         
         // Calcular preço ajustado aplicando o percentual sobre o novo valor
         // Se houver valor fixo, usar o novo valor (preço + fixo); senão, usar o valor atual
-        const valorBaseParaPercentual = valorFixo > 0 ? item.valor : valorAntigo;
+        const valorBaseParaPercentual = valorFixo > 0 ? valorAposFixo : valorAntigo;
         // Aplicar apenas o percentual sobre esse valor (sem somar valor fixo novamente)
         const valorAjustado = valorBaseParaPercentual * (1 + valorPercentual / 100);
         
-        // Salvar o valor ajustado (apenas para exibição, não substitui o preço)
+        // Atualizar o valor novo (preço ajustado) no banco
+        promessas.push(atualizarValorNovoAPI(id, valorAjustado));
+        
+        // Salvar o valor ajustado localmente
         item.valorNovo = valorAjustado;
 
         // Atualizar na interface
@@ -886,13 +1013,18 @@ function aplicarReajuste() {
         }
     });
 
-    // Salvar os dados atualizados no LocalStorage (com valorNovo)
-    salvarDados();
+    try {
+        // Aguardar todas as atualizações
+        await Promise.all(promessas);
+        
+        // Limpar campos de reajuste (manter 12% como padrão no percentual)
+        document.getElementById('valor-fixo').value = '0.00';
+        document.getElementById('valor-percentual').value = '12.00';
 
-    // Limpar campos de reajuste (manter 12% como padrão no percentual)
-    document.getElementById('valor-fixo').value = '0.00';
-    document.getElementById('valor-percentual').value = '12.00';
-
-    mostrarAlert('Sucesso', `Reajuste aplicado com sucesso em ${itensSelecionados.size} item(ns)!`);
+        await mostrarAlert('Sucesso', `Reajuste aplicado com sucesso em ${itensSelecionados.size} item(ns)!`);
+    } catch (error) {
+        console.error('Erro ao aplicar reajuste:', error);
+        await mostrarAlert('Erro', 'Erro ao salvar alguns valores. Verifique o console para mais detalhes.');
+    }
 }
 

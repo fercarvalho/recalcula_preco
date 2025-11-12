@@ -1,60 +1,109 @@
-# 🍔 Calculadora de Reajuste de Preços
+# Calculadora de Reajuste de Preços - Vira-Latas
 
-Aplicativo web simples para calcular novos valores de produtos a partir de valores antigos, aplicando reajustes percentuais ou valores fixos.
+Sistema de cálculo de reajuste de preços para o estabelecimento Vira-Latas Hotdogs e Lanches.
 
-## 📋 Funcionalidades
+## Tecnologias
 
-- ✅ Seleção de itens por categoria (HotDogs, Lanches, Bebidas, Sucos, Complementos, Outros)
-- ✅ Seleção/deseleção de todos os itens
-- ✅ Reajuste por percentual ou valor fixo
-- ✅ Modal de confirmação com preview dos novos valores
-- ✅ Possibilidade de deselecionar itens no modal antes de confirmar
-- ✅ Interface moderna e responsiva
-- ✅ Categorias expansíveis/colapsáveis
+- **Frontend**: HTML, CSS, JavaScript (Vanilla)
+- **Backend**: Node.js + Express
+- **Banco de Dados**: SQLite
 
-## 🚀 Como Usar
+## Instalação
 
-1. Abra o arquivo `index.html` em seu navegador
-2. Selecione o tipo de reajuste (Percentual ou Valor Fixo)
-3. Informe o valor do reajuste
-4. Selecione os itens que deseja reajustar (por padrão, todos estão selecionados)
-5. Clique em "Aplicar Reajuste"
-6. No modal de confirmação, revise os itens e valores
-7. Deselecione qualquer item que não deseja reajustar
-8. Clique em "Confirmar" para aplicar o reajuste
+### 1. Instalar dependências
 
-## 📁 Estrutura do Projeto
-
-```
-calculadora-reajuste/
-├── index.html      # Estrutura HTML
-├── styles.css      # Estilos CSS
-├── script.js       # Lógica JavaScript
-└── README.md       # Documentação
+```bash
+npm install
 ```
 
-## 🎨 Tecnologias Utilizadas
+### 2. Iniciar o servidor
 
-- HTML5
-- CSS3 (com gradientes e animações)
-- JavaScript (Vanilla)
+```bash
+npm start
+```
 
-## 💡 Exemplos de Uso
+Para desenvolvimento com auto-reload:
 
-### Reajuste Percentual
-- Valor antigo: R$ 10,00
-- Percentual: 10%
-- Novo valor: R$ 11,00
+```bash
+npm run dev
+```
 
-### Reajuste Valor Fixo
-- Valor antigo: R$ 10,00
-- Valor fixo: R$ 2,00
-- Novo valor: R$ 12,00
+O servidor estará rodando em `http://localhost:3000`
 
-## 📝 Notas
+## Deploy no VPS (Hostinger - Ubuntu)
 
-- Todos os itens começam selecionados por padrão
-- Você pode deselecionar itens antes de aplicar o reajuste
-- No modal de confirmação, você pode deselecionar itens antes de confirmar
-- Os valores são atualizados imediatamente após a confirmação
+### 1. Instalar Node.js
 
+```bash
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt-get install -y nodejs
+```
+
+### 2. Instalar PM2 (gerenciador de processos)
+
+```bash
+sudo npm install -g pm2
+```
+
+### 3. Fazer upload dos arquivos
+
+Use SCP, SFTP ou Git para fazer upload dos arquivos para o VPS.
+
+### 4. Instalar dependências no servidor
+
+```bash
+cd /caminho/do/projeto
+npm install --production
+```
+
+### 5. Iniciar com PM2
+
+```bash
+pm2 start server.js --name calculadora-reajuste
+pm2 save
+pm2 startup
+```
+
+### 6. Configurar Nginx (opcional, para usar porta 80)
+
+Crie um arquivo de configuração do Nginx:
+
+```nginx
+server {
+    listen 80;
+    server_name seu-dominio.com;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+## Estrutura do Banco de Dados
+
+A tabela `itens` possui:
+- `id`: ID único do item
+- `categoria`: Categoria do item
+- `nome`: Nome do item
+- `valor`: Preço atual
+- `valor_novo`: Preço ajustado (opcional)
+- `created_at`: Data de criação
+- `updated_at`: Data de atualização
+
+## API Endpoints
+
+- `GET /api/itens` - Obter todos os itens organizados por categoria
+- `GET /api/itens/categoria/:categoria` - Obter itens de uma categoria
+- `POST /api/itens` - Criar novo item
+- `PUT /api/itens/:id` - Atualizar item
+- `DELETE /api/itens/:id` - Deletar item
+- `GET /api/categorias` - Obter lista de categorias
+
+## Migração de SQLite para PostgreSQL (opcional)
+
+Se preferir usar PostgreSQL no futuro, você pode modificar o arquivo `database.js` para usar `pg` em vez de `sqlite3`.
