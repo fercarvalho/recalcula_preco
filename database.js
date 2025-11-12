@@ -110,6 +110,16 @@ function inicializar() {
                     }
                 });
                 
+                // Adicionar coluna ordem se não existir (para ordenação de itens dentro da categoria)
+                db.run(`
+                    ALTER TABLE itens ADD COLUMN ordem INTEGER
+                `, (err) => {
+                    // Ignorar erro se a coluna já existir
+                    if (err && !err.message.includes('duplicate column name')) {
+                        console.error('Erro ao adicionar coluna ordem:', err);
+                    }
+                });
+                
                 // Criar tabela de categorias para gerenciar ordem
                 db.run(`
                     CREATE TABLE IF NOT EXISTS categorias (
@@ -253,7 +263,7 @@ function obterTodosItens() {
             console.log('Categorias ordenadas do banco:', categoriasOrdenadas.map(c => `${c.nome}:${c.ordem}`));
             console.log('Mapa de ordem criado:', ordemMap);
             
-            // Obter todos os itens
+            // Obter todos os itens (ordenar por categoria e nome)
             db.all('SELECT * FROM itens ORDER BY categoria, nome', (err, rows) => {
                 if (err) {
                     reject(err);

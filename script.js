@@ -975,6 +975,13 @@ function criarItem(categoria, index, item) {
     itemDiv.className = 'item';
     itemDiv.dataset.categoria = categoria;
     itemDiv.dataset.index = index;
+    
+    // Armazenar o ID diretamente no elemento para facilitar o acesso
+    const itemKey = `${categoria}-${index}`;
+    const itemId = itensIds[itemKey];
+    if (itemId) {
+        itemDiv.dataset.itemId = itemId;
+    }
 
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
