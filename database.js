@@ -88,11 +88,30 @@ function inicializar() {
                     nome TEXT NOT NULL,
                     valor REAL NOT NULL,
                     valor_novo REAL,
+                    valor_backup REAL,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(categoria, nome)
                 )
             `, (err) => {
+                if (err) {
+                    console.error('Erro ao criar tabela:', err);
+                    reject(err);
+                    return;
+                }
+                
+                // Adicionar coluna valor_backup se não existir (para bancos já criados)
+                db.run(`
+                    ALTER TABLE itens ADD COLUMN valor_backup REAL
+                `, (err) => {
+                    // Ignorar erro se a coluna já existir
+                    if (err && !err.message.includes('duplicate column name')) {
+                        console.error('Erro ao adicionar coluna valor_backup:', err);
+                    }
+                });
+                
+                // Verificar se há dados
+                db.get('SELECT COUNT(*) as count FROM itens', (err, row) => {
                 if (err) {
                     console.error('Erro ao criar tabela:', err);
                     reject(err);
@@ -124,7 +143,7 @@ function inicializar() {
 // Inserir dados padrão
 function inserirDadosPadrao() {
     return new Promise((resolve, reject) => {
-        const stmt = db.prepare('INSERT INTO itens (categoria, nome, valor) VALUES (?, ?, ?)');
+        const stmt = db.prepare('INSERT INTO itens (categoria, nome, valor, valor_backup) VALUES (?, ?, ?, ?)');
         
         let inseridos = 0;
         let total = 0;
@@ -132,7 +151,8 @@ function inserirDadosPadrao() {
         Object.keys(dadosPadrao).forEach(categoria => {
             dadosPadrao[categoria].forEach(item => {
                 total++;
-                stmt.run([categoria, item.nome, item.valor], (err) => {
+                // valor_backup inicia com o mesmo valor
+                stmt.run([categoria, item.nome, item.valor, item.valor], (err) => {
                     if (err) {
                         console.error('Erro ao inserir item:', err);
                     }
@@ -156,7 +176,7 @@ function obterTodosItens() {
                 return;
             }
             
-            // Organizar por categoria e processar valores
+            // Organizar por categoria e atualizar valor_backup se necessário
             const itensPorCategoria = {};
             const promessasAtualizacao = [];
             
@@ -165,24 +185,16 @@ function obterTodosItens() {
                     itensPorCategoria[row.categoria] = [];
                 }
                 
-                // Se houver valor_novo, ele vira o valor (preço ajustado vira preço antigo)
-                let valor = row.valor;
-                let valorNovo = row.valor_novo;
-                
-                if (row.valor_novo !== null && row.valor_novo !== undefined) {
-                    // O valor novo vira o valor antigo
-                    valor = row.valor_novo;
-                    valorNovo = null;
-                    
-                    // Atualizar no banco (assíncrono, não bloqueia a resposta)
+                // Se não houver valor_backup, criar com o valor atual
+                if (row.valor_backup === null || row.valor_backup === undefined) {
                     promessasAtualizacao.push(
-                        new Promise((resolveUpdate, rejectUpdate) => {
+                        new Promise((resolveUpdate) => {
                             db.run(
-                                'UPDATE itens SET valor = ?, valor_novo = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-                                [row.valor_novo, row.id],
+                                'UPDATE itens SET valor_backup = ? WHERE id = ?',
+                                [row.valor, row.id],
                                 (err) => {
                                     if (err) {
-                                        console.error(`Erro ao atualizar item ${row.id}:`, err);
+                                        console.error(`Erro ao atualizar valor_backup do item ${row.id}:`, err);
                                     }
                                     resolveUpdate();
                                 }
@@ -194,16 +206,16 @@ function obterTodosItens() {
                 itensPorCategoria[row.categoria].push({
                     id: row.id,
                     nome: row.nome,
-                    valor: valor,
-                    valorNovo: valorNovo
+                    valor: row.valor,
+                    valorNovo: row.valor_novo,
+                    valorBackup: row.valor_backup !== null && row.valor_backup !== undefined ? row.valor_backup : row.valor
                 });
             });
             
-            // Aguardar todas as atualizações (mas não bloquear a resposta)
+            // Aguardar atualizações de backup (mas não bloquear a resposta)
             Promise.all(promessasAtualizacao).then(() => {
                 resolve(itensPorCategoria);
             }).catch(() => {
-                // Mesmo com erro, retornar os dados
                 resolve(itensPorCategoria);
             });
         });
@@ -257,8 +269,8 @@ function obterItensPorCategoria(categoria) {
 function criarItem(categoria, nome, valor) {
     return new Promise((resolve, reject) => {
         db.run(
-            'INSERT INTO itens (categoria, nome, valor) VALUES (?, ?, ?)',
-            [categoria, nome, valor],
+            'INSERT INTO itens (categoria, nome, valor, valor_backup) VALUES (?, ?, ?, ?)',
+            [categoria, nome, valor, valor], // valor_backup inicia com o mesmo valor
             function(err) {
                 if (err) {
                     reject(err);
@@ -366,6 +378,46 @@ function atualizarValorNovo(id, valorNovo) {
     });
 }
 
+// Salvar backup do valor antes de aplicar reajuste fixo
+function salvarBackupValor(id, valorBackup) {
+    return new Promise((resolve, reject) => {
+        db.run(
+            'UPDATE itens SET valor_backup = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+            [valorBackup, id],
+            function(err) {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                
+                resolve(this.changes > 0);
+            }
+        );
+    });
+}
+
+// Resetar valores (restaurar valor a partir do backup)
+function resetarValores() {
+    return new Promise((resolve, reject) => {
+        db.run(
+            `UPDATE itens 
+             SET valor = valor_backup, 
+                 valor_novo = NULL, 
+                 updated_at = CURRENT_TIMESTAMP 
+             WHERE valor_backup IS NOT NULL`,
+            [],
+            function(err) {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                
+                resolve(this.changes);
+            }
+        );
+    });
+}
+
 // Fechar conexão
 function fechar() {
     return new Promise((resolve, reject) => {
@@ -394,6 +446,8 @@ module.exports = {
     deletarItem,
     obterCategorias,
     atualizarValorNovo,
+    salvarBackupValor,
+    resetarValores,
     fechar
 };
 

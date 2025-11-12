@@ -84,6 +84,28 @@ app.put('/api/itens/:id', async (req, res) => {
     }
 });
 
+// Salvar backup do valor antes de aplicar reajuste fixo
+app.post('/api/itens/:id/backup', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { valorBackup } = req.body;
+        
+        if (valorBackup === undefined) {
+            return res.status(400).json({ error: 'valorBackup é obrigatório' });
+        }
+        
+        const sucesso = await db.salvarBackupValor(id, valorBackup);
+        if (!sucesso) {
+            return res.status(404).json({ error: 'Item não encontrado' });
+        }
+        
+        res.json({ message: 'Backup salvo com sucesso' });
+    } catch (error) {
+        console.error('Erro ao salvar backup:', error);
+        res.status(500).json({ error: 'Erro ao salvar backup' });
+    }
+});
+
 // Deletar item
 app.delete('/api/itens/:id', async (req, res) => {
     try {
@@ -109,6 +131,17 @@ app.get('/api/categorias', async (req, res) => {
     } catch (error) {
         console.error('Erro ao obter categorias:', error);
         res.status(500).json({ error: 'Erro ao obter categorias' });
+    }
+});
+
+// Resetar valores (restaurar a partir do backup)
+app.post('/api/resetar-valores', async (req, res) => {
+    try {
+        const itensAtualizados = await db.resetarValores();
+        res.json({ message: 'Valores resetados com sucesso', itensAtualizados });
+    } catch (error) {
+        console.error('Erro ao resetar valores:', error);
+        res.status(500).json({ error: 'Erro ao resetar valores' });
     }
 });
 

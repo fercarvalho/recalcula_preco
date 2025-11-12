@@ -358,14 +358,54 @@ async function atualizarValorNovoAPI(id, valorNovo) {
     }
 }
 
+async function salvarBackupValorAPI(id, valorBackup) {
+    try {
+        const response = await fetch(`${API_BASE}/api/itens/${id}/backup`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ valorBackup })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Erro ao salvar backup do valor');
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Erro ao salvar backup do valor:', error);
+        throw error;
+    }
+}
+
 async function resetarDados() {
-    const confirmado = await mostrarConfirm('Confirmar Reset', 'Tem certeza que deseja resetar todos os valores para os padrões? Esta ação não pode ser desfeita.');
+    const confirmado = await mostrarConfirm('Confirmar Reset', 'Tem certeza que deseja resetar todos os valores para os valores antes do reajuste fixo? Esta ação irá restaurar os preços originais.');
     if (confirmado) {
-        await mostrarAlert('Aviso', 'A funcionalidade de reset ainda não está implementada na API. Por favor, recarregue a página para usar os valores padrão.');
-        // Recarregar dados
-        await carregarDados();
-        inicializarInterface();
-        selecionarTodosItens();
+        try {
+            const response = await fetch(`${API_BASE}/api/resetar-valores`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Erro ao resetar valores');
+            }
+            
+            const resultado = await response.json();
+            
+            // Recarregar dados e interface
+            await carregarDados();
+            inicializarInterface();
+            selecionarTodosItens();
+            
+            await mostrarAlert('Sucesso', `Valores resetados com sucesso! ${resultado.itensAtualizados} item(ns) foram restaurados.`);
+        } catch (error) {
+            console.error('Erro ao resetar valores:', error);
+            await mostrarAlert('Erro', 'Erro ao resetar os valores. Tente novamente.');
+        }
     }
 }
 
@@ -975,40 +1015,44 @@ async function aplicarReajuste() {
         // Obter o valor atual do input (pode ter sido editado)
         const itemElement = document.querySelector(`[data-categoria="${categoria}"][data-index="${index}"]`);
         const valorAntigoInput = itemElement ? itemElement.querySelector('.item-valor-antigo') : null;
-        const valorAntigo = valorAntigoInput ? parseFloat(valorAntigoInput.value) : item.valor;
+        const valorAtual = valorAntigoInput ? parseFloat(valorAntigoInput.value) : item.valor;
         
-        // Se houver valor fixo, atualizar o preço (item.valor) primeiro
-        let valorAposFixo = valorAntigo;
+        // Se houver valor fixo, salvar backup ANTES de atualizar o preço
         if (valorFixo > 0) {
-            valorAposFixo = valorAntigo + valorFixo;
-            // Atualizar o valor no banco
-            promessas.push(atualizarItemAPI(id, item.nome, valorAposFixo));
+            // Salvar o valor atual como backup antes de aplicar o reajuste fixo
+            promessas.push(salvarBackupValorAPI(id, valorAtual));
+        }
+        
+        // Se houver valor fixo, atualizar o PREÇO (item.valor) primeiro
+        let novoPreco = valorAtual;
+        if (valorFixo > 0) {
+            novoPreco = valorAtual + valorFixo;
+            // Atualizar o preço no banco
+            promessas.push(atualizarItemAPI(id, item.nome, novoPreco));
             // Atualizar localmente
-            item.valor = valorAposFixo;
+            item.valor = novoPreco;
             // Atualizar o input do preço na interface
             if (valorAntigoInput) {
-                valorAntigoInput.value = valorAposFixo.toFixed(2);
+                valorAntigoInput.value = novoPreco.toFixed(2);
             }
         }
         
-        // Calcular preço ajustado aplicando o percentual sobre o novo valor
-        // Se houver valor fixo, usar o novo valor (preço + fixo); senão, usar o valor atual
-        const valorBaseParaPercentual = valorFixo > 0 ? valorAposFixo : valorAntigo;
-        // Aplicar apenas o percentual sobre esse valor (sem somar valor fixo novamente)
-        const valorAjustado = valorBaseParaPercentual * (1 + valorPercentual / 100);
+        // Calcular PREÇO AJUSTADO: aplicar percentual sobre o novo preço (após fixo, se houver)
+        const precoAposFixo = valorFixo > 0 ? novoPreco : valorAtual;
+        const precoAjustado = precoAposFixo * (1 + valorPercentual / 100);
         
-        // Atualizar o valor novo (preço ajustado) no banco
-        promessas.push(atualizarValorNovoAPI(id, valorAjustado));
+        // Atualizar o PREÇO AJUSTADO (valorNovo) no banco - campo separado
+        promessas.push(atualizarValorNovoAPI(id, precoAjustado));
         
-        // Salvar o valor ajustado localmente
-        item.valorNovo = valorAjustado;
+        // Salvar o preço ajustado localmente
+        item.valorNovo = precoAjustado;
 
         // Atualizar na interface
         if (itemElement) {
             const valorNovoElement = itemElement.querySelector('.item-valor-novo');
             
             // Atualizar o preço ajustado
-            valorNovoElement.textContent = `R$ ${valorAjustado.toFixed(2)}`;
+            valorNovoElement.textContent = `R$ ${precoAjustado.toFixed(2)}`;
             valorNovoElement.classList.add('visible');
         }
     });
