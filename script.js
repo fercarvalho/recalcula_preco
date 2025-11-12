@@ -74,6 +74,21 @@ let itensSelecionados = new Set();
 let categoriasColapsadas = {};
 let ultimoReajuste = { tipo: null, valor: null };
 
+// Função utilitária para fechar qualquer modal aberto
+function fecharModalAberto() {
+    const modais = document.querySelectorAll('.modal.show');
+    modais.forEach(modal => {
+        modal.classList.remove('show');
+    });
+}
+
+// Listener global para ESC - fecha qualquer modal aberto
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        fecharModalAberto();
+    }
+});
+
 // Funções de modal customizadas
 function mostrarAlert(titulo, mensagem) {
     return new Promise((resolve) => {
@@ -95,6 +110,15 @@ function mostrarAlert(titulo, mensagem) {
         modal.onclick = (e) => {
             if (e.target === modal) fechar();
         };
+        
+        // Listener para ESC
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                fechar();
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
         
         modal.classList.add('show');
         btnOk.focus();
@@ -123,6 +147,15 @@ function mostrarConfirm(titulo, mensagem) {
         modal.onclick = (e) => {
             if (e.target === modal) fechar(false);
         };
+        
+        // Listener para ESC
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                fechar(false);
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
         
         modal.classList.add('show');
         btnOk.focus();
@@ -162,6 +195,15 @@ function mostrarPrompt(titulo, mensagem, valorPadrao = '') {
         input.onkeypress = (e) => {
             if (e.key === 'Enter') confirmar();
         };
+        
+        // Listener para ESC
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                fechar(null);
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
         
         modal.classList.add('show');
         input.focus();
@@ -205,6 +247,15 @@ function mostrarPromptNumber(titulo, mensagem, valorPadrao = '') {
             if (e.key === 'Enter') confirmar();
         };
         
+        // Listener para ESC
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                fechar(null);
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+        
         modal.classList.add('show');
         input.focus();
         input.select();
@@ -241,6 +292,15 @@ function mostrarSelecaoCategoria() {
         modal.onclick = (e) => {
             if (e.target === modal) fechar();
         };
+        
+        // Listener para ESC
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                fechar();
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
         
         modal.classList.add('show');
     });
@@ -969,26 +1029,9 @@ function criarItem(categoria, index, item) {
         <input type="number" class="item-valor-antigo" value="${item.valor.toFixed(2)}" step="0.01" min="0">
     `;
     
-    const valorNovoDiv = document.createElement('div');
-    valorNovoDiv.className = 'item-valor-novo-container';
-    
-    // Calcular preço ajustado: se houver valorNovo salvo, usar ele; senão, calcular com 12% padrão
-    let valorAjustado;
-    if (item.valorNovo !== undefined && item.valorNovo !== null) {
-        valorAjustado = item.valorNovo;
-    } else {
-        // Calcular com percentual padrão de 12% (valor fixo = 0)
-        valorAjustado = calcularNovoValor(item.valor, 0, 12);
-    }
-    
-    const valorNovoTexto = `R$ ${valorAjustado.toFixed(2)}`;
-    valorNovoDiv.innerHTML = `
-        <label>Preço Ajustado:</label>
-        <span class="item-valor-novo visible">${valorNovoTexto}</span>
-    `;
+    // Removido: exibição do preço ajustado (será usado no futuro)
     
     valoresDiv.appendChild(valorAntigoDiv);
-    valoresDiv.appendChild(valorNovoDiv);
     
     info.appendChild(nomeContainer);
     info.appendChild(valoresDiv);
@@ -1032,20 +1075,12 @@ function criarItem(categoria, index, item) {
                 // Atualizar o valor do item localmente
                 item.valor = novoValor;
                 
-                // Limpar preço novo quando o antigo for alterado manualmente
+                // Limpar preço novo quando o antigo for alterado manualmente (se existir)
                 if (item.valorNovo !== undefined) {
                     delete item.valorNovo;
                     // Limpar no banco também
                     await atualizarValorNovoAPI(id, null);
                 }
-                
-                // Recalcular preço ajustado com percentual padrão de 12%
-                const valorAjustado = calcularNovoValor(novoValor, 0, 12);
-                
-                // Atualizar interface
-                const valorNovoElement = itemDiv.querySelector('.item-valor-novo');
-                valorNovoElement.textContent = `R$ ${valorAjustado.toFixed(2)}`;
-                valorNovoElement.classList.add('visible');
                 
                 // Feedback visual
                 inputValorAntigo.style.borderColor = '#28a745';
@@ -1195,15 +1230,28 @@ function deselecionarTodosItens() {
     });
 }
 
-// Calcular novo valor (primeiro aplica valor fixo, depois percentual)
-function calcularNovoValor(valorAntigo, valorFixo, valorPercentual) {
-    // Primeiro: soma o valor fixo
-    let valorAposFixo = valorAntigo + valorFixo;
+// Calcular novo valor baseado no tipo de reajuste
+function calcularNovoValor(valorAntigo, tipoReajuste, valor) {
+    if (!valorAntigo || isNaN(valorAntigo)) {
+        console.error('Valor antigo inválido:', valorAntigo);
+        return valorAntigo || 0;
+    }
     
-    // Depois: aplica o percentual sobre o resultado
-    let valorFinal = valorAposFixo * (1 + valorPercentual / 100);
+    if (!valor || isNaN(valor)) {
+        console.error('Valor de reajuste inválido:', valor);
+        return valorAntigo;
+    }
     
-    return valorFinal;
+    if (tipoReajuste === 'fixo') {
+        // Valor fixo: soma ao valor atual
+        return valorAntigo + valor;
+    } else if (tipoReajuste === 'percentual') {
+        // Percentual: aplica sobre o valor atual
+        return valorAntigo * (1 + valor / 100);
+    } else {
+        console.error('Tipo de reajuste inválido:', tipoReajuste);
+        return valorAntigo;
+    }
 }
 
 // Obter item selecionado
@@ -1228,15 +1276,14 @@ function inicializarEventos() {
 
     // Botão aplicar reajuste
     document.getElementById('btn-aplicar-reajuste').addEventListener('click', () => {
-        const valorFixoInput = document.getElementById('valor-fixo');
-        const valorPercentualInput = document.getElementById('valor-percentual');
-        
-        const valorFixo = parseFloat(valorFixoInput.value) || 0;
-        const valorPercentual = parseFloat(valorPercentualInput.value) || 0;
+        const tipoReajuste = document.querySelector('input[name="tipo-reajuste"]:checked').value;
+        const valorInputId = tipoReajuste === 'fixo' ? 'valor-reajuste-fixo' : 'valor-reajuste-percentual';
+        const valorInput = document.getElementById(valorInputId);
+        const valor = parseFloat(valorInput.value.replace(',', '.')) || 0;
 
-        // Verificar se pelo menos um dos valores foi informado
-        if (valorFixo === 0 && valorPercentual === 0) {
-            mostrarAlert('Atenção', 'Por favor, informe pelo menos um valor (fixo ou percentual) para o reajuste.');
+        // Verificar se o valor foi informado
+        if (valor === 0) {
+            mostrarAlert('Atenção', 'Por favor, informe um valor para o reajuste.');
             return;
         }
 
@@ -1245,7 +1292,50 @@ function inicializarEventos() {
             return;
         }
 
-        mostrarModalConfirmacao(valorFixo, valorPercentual);
+        mostrarModalConfirmacao(tipoReajuste, valor);
+    });
+    
+    // Alternar entre valor fixo e percentual
+    document.querySelectorAll('input[name="tipo-reajuste"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            const tipo = e.target.value;
+            const grupoFixo = document.getElementById('grupo-valor-fixo');
+            const grupoPercentual = document.getElementById('grupo-valor-percentual');
+            const valorInputFixo = document.getElementById('valor-reajuste-fixo');
+            const valorInputPercentual = document.getElementById('valor-reajuste-percentual');
+            
+            if (tipo === 'fixo') {
+                grupoFixo.style.display = 'block';
+                grupoPercentual.style.display = 'none';
+                valorInputFixo.focus();
+            } else {
+                grupoFixo.style.display = 'none';
+                grupoPercentual.style.display = 'block';
+                valorInputPercentual.focus();
+            }
+        });
+    });
+    
+    // Configurar placeholders para os campos de reajuste
+    const valorInputFixo = document.getElementById('valor-reajuste-fixo');
+    const valorInputPercentual = document.getElementById('valor-reajuste-percentual');
+    
+    [valorInputFixo, valorInputPercentual].forEach(input => {
+        if (!input) return;
+        
+        // Ao focar, limpar se for apenas o placeholder
+        input.addEventListener('focus', () => {
+            if (input.value === '' || input.value === '0' || input.value === '0,00' || input.value === '0.00') {
+                input.value = '';
+            }
+        });
+        
+        // Ao perder o foco, restaurar placeholder se vazio
+        input.addEventListener('blur', () => {
+            if (input.value === '' || input.value === '0' || input.value === '0,00' || input.value === '0.00') {
+                input.value = '';
+            }
+        });
     });
 
     // Modal
@@ -1267,10 +1357,12 @@ function inicializarEventos() {
             fecharModal();
         }
     });
+    
+    // Fechar modal ao pressionar ESC (já está coberto pelo listener global, mas adicionando aqui também para garantir)
 }
 
 // Mostrar modal de confirmação
-function mostrarModalConfirmacao(valorFixo, valorPercentual) {
+function mostrarModalConfirmacao(tipoReajuste, valor) {
     const modal = document.getElementById('modal-confirmacao');
     const modalValorFixo = document.getElementById('modal-valor-fixo');
     const modalValorPercentual = document.getElementById('modal-valor-percentual');
@@ -1282,9 +1374,21 @@ function mostrarModalConfirmacao(valorFixo, valorPercentual) {
         return;
     }
 
-    // Atualizar informações do modal
-    modalValorFixo.textContent = `R$ ${valorFixo.toFixed(2)}`;
-    modalValorPercentual.textContent = `${valorPercentual.toFixed(2)}%`;
+    // Atualizar informações do modal baseado no tipo
+    const modalValorFixoContainer = document.getElementById('modal-valor-fixo-container');
+    const modalValorPercentualContainer = document.getElementById('modal-valor-percentual-container');
+    
+    if (tipoReajuste === 'fixo') {
+        modalValorFixo.textContent = `R$ ${valor.toFixed(2)}`;
+        // Mostrar apenas valor fixo
+        modalValorFixoContainer.style.display = '';
+        modalValorPercentualContainer.style.display = 'none';
+    } else {
+        // Esconder completamente o valor fixo quando for percentual
+        modalValorFixoContainer.style.display = 'none';
+        modalValorPercentual.textContent = `${valor.toFixed(2)}%`;
+        modalValorPercentualContainer.style.display = '';
+    }
 
     // Criar lista de itens no modal
     modalItensLista.innerHTML = '';
@@ -1297,9 +1401,21 @@ function mostrarModalConfirmacao(valorFixo, valorPercentual) {
         // Obter o valor atual do input (pode ter sido editado)
         const itemElement = document.querySelector(`[data-categoria="${categoria}"][data-index="${index}"]`);
         const valorAntigoInput = itemElement ? itemElement.querySelector('.item-valor-antigo') : null;
-        const valorAntigo = valorAntigoInput ? parseFloat(valorAntigoInput.value) : item.valor;
+        const valorAntigo = valorAntigoInput ? parseFloat(valorAntigoInput.value) : (item.valor || 0);
         
-        const novoValor = calcularNovoValor(valorAntigo, valorFixo, valorPercentual);
+        // Validar valor antigo
+        if (isNaN(valorAntigo) || valorAntigo < 0) {
+            console.error(`Valor antigo inválido para item ${key}:`, valorAntigo);
+            return;
+        }
+        
+        const novoValor = calcularNovoValor(valorAntigo, tipoReajuste, valor);
+        
+        // Validar novo valor
+        if (isNaN(novoValor)) {
+            console.error(`Erro ao calcular novo valor para item ${key}. Valor antigo: ${valorAntigo}, Tipo: ${tipoReajuste}, Valor: ${valor}`);
+            return;
+        }
 
         const itemDiv = document.createElement('div');
         itemDiv.className = 'modal-item';
@@ -1321,8 +1437,8 @@ function mostrarModalConfirmacao(valorFixo, valorPercentual) {
         info.innerHTML = `
             <div class="modal-item-nome">${item.nome}</div>
             <div class="modal-item-valores">
-                <span class="modal-item-valor-antigo">Preço: R$ ${valorAntigo.toFixed(2)}</span>
-                <span class="modal-item-valor-novo">Ajustado: R$ ${novoValor.toFixed(2)}</span>
+                <span class="modal-item-valor-antigo">Preço Atual: R$ ${valorAntigo.toFixed(2)}</span>
+                <span class="modal-item-valor-novo">Novo Preço: R$ ${novoValor.toFixed(2)}</span>
             </div>
         `;
 
@@ -1340,6 +1456,16 @@ function mostrarModalConfirmacao(valorFixo, valorPercentual) {
         modalItensLista.appendChild(itemDiv);
     });
 
+    // Fechar modal ao clicar fora (se ainda não tiver)
+    if (!modal.hasAttribute('data-click-listener')) {
+        modal.setAttribute('data-click-listener', 'true');
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                fecharModal();
+            }
+        });
+    }
+
     modal.classList.add('show');
 }
 
@@ -1351,17 +1477,19 @@ function fecharModal() {
 
 // Aplicar reajuste
 async function aplicarReajuste() {
-    const valorFixo = parseFloat(document.getElementById('valor-fixo').value) || 0;
-    const valorPercentual = parseFloat(document.getElementById('valor-percentual').value) || 0;
+    const tipoReajuste = document.querySelector('input[name="tipo-reajuste"]:checked').value;
+    const valorInputId = tipoReajuste === 'fixo' ? 'valor-reajuste-fixo' : 'valor-reajuste-percentual';
+    const valorInput = document.getElementById(valorInputId);
+    const valor = parseFloat(valorInput.value.replace(',', '.')) || 0;
 
     if (itensSelecionados.size === 0) {
         await mostrarAlert('Atenção', 'Nenhum item selecionado para reajustar.');
         return;
     }
 
-    // Atualizar valores dos itens selecionados
     const promessas = [];
     
+    // Atualizar valores dos itens selecionados
     itensSelecionados.forEach(key => {
         const [categoria, index] = key.split('-');
         const item = obterItem(categoria, parseInt(index));
@@ -1375,45 +1503,38 @@ async function aplicarReajuste() {
         // Obter o valor atual do input (pode ter sido editado)
         const itemElement = document.querySelector(`[data-categoria="${categoria}"][data-index="${index}"]`);
         const valorAntigoInput = itemElement ? itemElement.querySelector('.item-valor-antigo') : null;
-        const valorAtual = valorAntigoInput ? parseFloat(valorAntigoInput.value) : item.valor;
+        const valorAtual = valorAntigoInput ? parseFloat(valorAntigoInput.value) : (item.valor || 0);
         
-        // Se houver valor fixo, salvar backup ANTES de atualizar o preço
-        if (valorFixo > 0) {
-            // Salvar o valor atual como backup antes de aplicar o reajuste fixo
-            promessas.push(salvarBackupValorAPI(id, valorAtual));
+        // Validar valor atual
+        if (isNaN(valorAtual) || valorAtual < 0) {
+            console.error(`Valor atual inválido para item ${key}:`, valorAtual);
+            return;
         }
         
-        // Se houver valor fixo, atualizar o PREÇO (item.valor) primeiro
-        let novoPreco = valorAtual;
-        if (valorFixo > 0) {
-            novoPreco = valorAtual + valorFixo;
-            // Atualizar o preço no banco
-            promessas.push(atualizarItemAPI(id, item.nome, novoPreco));
-            // Atualizar localmente
-            item.valor = novoPreco;
-            // Atualizar o input do preço na interface
-            if (valorAntigoInput) {
-                valorAntigoInput.value = novoPreco.toFixed(2);
-            }
+        // Calcular novo valor baseado no tipo de reajuste
+        const novoValor = calcularNovoValor(valorAtual, tipoReajuste, valor);
+        
+        // Validar novo valor
+        if (isNaN(novoValor) || novoValor < 0) {
+            console.error(`Erro ao calcular novo valor para item ${key}. Valor atual: ${valorAtual}, Tipo: ${tipoReajuste}, Valor: ${valor}`);
+            return;
         }
         
-        // Calcular PREÇO AJUSTADO: aplicar percentual sobre o novo preço (após fixo, se houver)
-        const precoAposFixo = valorFixo > 0 ? novoPreco : valorAtual;
-        const precoAjustado = precoAposFixo * (1 + valorPercentual / 100);
+        // Atualizar o preço no banco de dados
+        promessas.push(atualizarItemAPI(id, item.nome, novoValor));
         
-        // Atualizar o PREÇO AJUSTADO (valorNovo) no banco - campo separado
-        promessas.push(atualizarValorNovoAPI(id, precoAjustado));
-        
-        // Salvar o preço ajustado localmente
-        item.valorNovo = precoAjustado;
+        // Atualizar localmente
+        item.valor = novoValor;
 
         // Atualizar na interface
-        if (itemElement) {
-            const valorNovoElement = itemElement.querySelector('.item-valor-novo');
+        if (itemElement && valorAntigoInput) {
+            valorAntigoInput.value = novoValor.toFixed(2);
             
-            // Atualizar o preço ajustado
-            valorNovoElement.textContent = `R$ ${precoAjustado.toFixed(2)}`;
-            valorNovoElement.classList.add('visible');
+            // Feedback visual
+            valorAntigoInput.style.borderColor = '#28a745';
+            setTimeout(() => {
+                valorAntigoInput.style.borderColor = '#ddd';
+            }, 1000);
         }
     });
 
@@ -1421,9 +1542,12 @@ async function aplicarReajuste() {
         // Aguardar todas as atualizações
         await Promise.all(promessas);
         
-        // Limpar campos de reajuste (manter 12% como padrão no percentual)
-        document.getElementById('valor-fixo').value = '0.00';
-        document.getElementById('valor-percentual').value = '12.00';
+        // Limpar campo de reajuste
+        const valorInputId = tipoReajuste === 'fixo' ? 'valor-reajuste-fixo' : 'valor-reajuste-percentual';
+        const valorInput = document.getElementById(valorInputId);
+        if (valorInput) {
+            valorInput.value = '';
+        }
 
         await mostrarAlert('Sucesso', `Reajuste aplicado com sucesso em ${itensSelecionados.size} item(ns)!`);
     } catch (error) {

@@ -55,14 +55,27 @@
             <section class="reajuste-form">
                 <h2>Configuração do Reajuste</h2>
                 <div class="form-group">
-                    <label for="valor-fixo">Valor Fixo (R$):</label>
-                    <input type="number" id="valor-fixo" step="0.01" min="0" placeholder="0.00" value="0.00">
-                    <small class="form-help">Será somado ao valor atual primeiro</small>
+                    <label>Tipo de Reajuste:</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="tipo-reajuste" value="fixo" checked>
+                            <span>Valor Fixo (R$)</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="tipo-reajuste" value="percentual">
+                            <span>Percentual (%)</span>
+                        </label>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="valor-percentual">Percentual (%):</label>
-                    <input type="number" id="valor-percentual" step="0.01" min="0" placeholder="0.00" value="12.00">
-                    <small class="form-help">Será aplicado após o valor fixo</small>
+                <div class="form-group" id="grupo-valor-fixo">
+                    <label for="valor-reajuste-fixo">Valor Fixo (R$):</label>
+                    <input type="number" id="valor-reajuste-fixo" step="0.01" min="0" placeholder="0,00" value="">
+                    <small class="form-help">Será somado ao valor atual</small>
+                </div>
+                <div class="form-group" id="grupo-valor-percentual" style="display: none;">
+                    <label for="valor-reajuste-percentual">Percentual (%):</label>
+                    <input type="number" id="valor-reajuste-percentual" step="0.01" min="0" placeholder="0,00" value="">
+                    <small class="form-help">Será aplicado sobre o valor atual</small>
                 </div>
                 <div class="form-actions">
                     <button id="btn-selecionar-todos" class="btn-secondary">Selecionar Todos</button>
@@ -101,8 +114,12 @@
             </div>
             <div class="modal-body">
                 <p class="modal-info">
-                    <strong>Valor Fixo:</strong> <span id="modal-valor-fixo"></span><br>
-                    <strong>Percentual:</strong> <span id="modal-valor-percentual"></span>
+                    <span id="modal-valor-fixo-container" style="display: none;">
+                        <strong>Valor Fixo:</strong> <span id="modal-valor-fixo"></span>
+                    </span>
+                    <span id="modal-valor-percentual-container" style="display: none;">
+                        <strong>Percentual:</strong> <span id="modal-valor-percentual"></span>
+                    </span>
                 </p>
                 <p class="modal-subtitle">Itens que serão reajustados:</p>
                 <div id="modal-itens-lista" class="modal-itens"></div>
