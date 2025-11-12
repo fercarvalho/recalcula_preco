@@ -250,7 +250,8 @@ function obterTodosItens() {
                 ordemMap[cat.nome] = cat.ordem !== null && cat.ordem !== undefined ? cat.ordem : 999;
             });
             
-            console.log('Ordem das categorias carregada:', ordemMap);
+            console.log('Categorias ordenadas do banco:', categoriasOrdenadas.map(c => `${c.nome}:${c.ordem}`));
+            console.log('Mapa de ordem criado:', ordemMap);
             
             // Obter todos os itens
             db.all('SELECT * FROM itens ORDER BY categoria, nome', (err, rows) => {
@@ -315,11 +316,21 @@ function obterTodosItens() {
                     return ordemA - ordemB;
                 });
                 
-                // Criar objeto ordenado
+                console.log('Categorias ordenadas para retornar:', categoriasOrdenadasArray);
+                
+                // Criar objeto ordenado garantindo que a ordem seja preservada
+                // Em JavaScript moderno, a ordem das chaves é preservada quando inserimos na ordem correta
                 const itensPorCategoriaOrdenado = {};
+                
+                // IMPORTANTE: Inserir na ordem correta para garantir que Object.keys() retorne na ordem certa
                 categoriasOrdenadasArray.forEach(categoria => {
-                    itensPorCategoriaOrdenado[categoria] = itensPorCategoria[categoria];
+                    itensPorCategoriaOrdenado[categoria] = itensPorCategoria[categoria] || [];
                 });
+                
+                // Verificar a ordem final
+                const chavesFinais = Object.keys(itensPorCategoriaOrdenado);
+                console.log('Objeto final ordenado (chaves):', chavesFinais);
+                console.log('Ordem está correta?', JSON.stringify(chavesFinais) === JSON.stringify(categoriasOrdenadasArray));
                 
                 // Aguardar atualizações de backup (mas não bloquear a resposta)
                 Promise.all(promessasAtualizacao).then(() => {
@@ -536,35 +547,100 @@ function atualizarOrdemCategorias(categorias) {
             return;
         }
         
-        // Primeiro, garantir que todas as categorias existem na tabela
-        const stmtInsert = db.prepare('INSERT OR IGNORE INTO categorias (nome, ordem) VALUES (?, ?)');
-        const stmtUpdate = db.prepare('UPDATE categorias SET ordem = ?, updated_at = CURRENT_TIMESTAMP WHERE nome = ?');
+        console.log('=== INICIANDO ATUALIZAÇÃO DE ORDEM ===');
+        console.log('Categorias recebidas:', categorias);
         
-        let processadas = 0;
-        const total = categorias.length;
-        
-        categorias.forEach((categoria, index) => {
-            // Primeiro tentar inserir (se não existir)
-            stmtInsert.run([categoria, index], (err) => {
-                if (err && !err.message.includes('UNIQUE constraint') && !err.message.includes('SQLITE_CONSTRAINT')) {
-                    console.error(`Erro ao inserir categoria ${categoria}:`, err);
-                }
-                
-                // Depois atualizar a ordem (sempre, mesmo se foi inserida agora)
-                stmtUpdate.run([index, categoria], (err) => {
+        // Usar db.serialize para garantir execução sequencial
+        db.serialize(() => {
+            // Primeiro, deletar todas as ordens existentes (opcional, mas garante limpeza)
+            // Não vamos deletar, vamos apenas atualizar
+            
+            // Preparar statement
+            const stmt = db.prepare('INSERT OR REPLACE INTO categorias (nome, ordem, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)');
+            
+            let processadas = 0;
+            const total = categorias.length;
+            let erroOcorrido = false;
+            
+            // Atualizar cada categoria
+            categorias.forEach((categoria, index) => {
+                stmt.run([categoria, index], function(err) {
                     if (err) {
-                        console.error(`Erro ao atualizar ordem da categoria ${categoria}:`, err);
-                        reject(err);
+                        console.error(`ERRO ao atualizar ordem da categoria ${categoria}:`, err);
+                        if (!erroOcorrido) {
+                            erroOcorrido = true;
+                            stmt.finalize();
+                            reject(err);
+                        }
                         return;
                     }
+                    
                     processadas++;
-                    if (processadas === total) {
-                        stmtInsert.finalize();
-                        stmtUpdate.finalize();
-                        console.log(`Ordem das categorias atualizada: ${categorias.join(', ')}`);
-                        resolve();
+                    console.log(`✓ Categoria "${categoria}" -> ordem ${index} (${processadas}/${total})`);
+                    
+                    // Quando todas forem processadas
+                    if (processadas === total && !erroOcorrido) {
+                        stmt.finalize((err) => {
+                            if (err) {
+                                console.error('ERRO ao finalizar statement:', err);
+                                reject(err);
+                            } else {
+                                console.log('=== ORDEM ATUALIZADA COM SUCESSO ===');
+                                console.log('Ordem final:', categorias.join(' -> '));
+                                
+                                // Verificar se foi salvo corretamente
+                                db.all('SELECT nome, ordem FROM categorias ORDER BY ordem', (err, rows) => {
+                                    if (!err) {
+                                        console.log('Verificação no banco:', rows.map(r => `${r.nome}:${r.ordem}`).join(', '));
+                                    }
+                                });
+                                
+                                resolve();
+                            }
+                        });
                     }
                 });
+            });
+        });
+    });
+}
+
+// Deletar categoria e todos os seus itens
+function deletarCategoria(nome) {
+    return new Promise((resolve, reject) => {
+        console.log(`[DB] Iniciando deleção da categoria: "${nome}"`);
+        
+        // Primeiro deletar todos os itens da categoria
+        db.run('DELETE FROM itens WHERE categoria = ?', [nome], function(err) {
+            if (err) {
+                console.error(`[DB] Erro ao deletar itens da categoria "${nome}":`, err);
+                reject(err);
+                return;
+            }
+            
+            const itensDeletados = this.changes;
+            console.log(`[DB] ${itensDeletados} item(ns) deletado(s) da categoria "${nome}"`);
+            
+            // Depois deletar a categoria (se existir na tabela categorias)
+            db.run('DELETE FROM categorias WHERE nome = ?', [nome], function(err) {
+                if (err) {
+                    console.error(`[DB] Erro ao deletar categoria "${nome}":`, err);
+                    reject(err);
+                    return;
+                }
+                
+                // Mesmo que a categoria não exista na tabela categorias,
+                // se deletamos os itens, consideramos sucesso
+                const categoriaDeletada = this.changes > 0;
+                if (categoriaDeletada) {
+                    console.log(`[DB] Categoria "${nome}" deletada com sucesso da tabela categorias`);
+                } else {
+                    console.log(`[DB] Categoria "${nome}" não existia na tabela categorias, mas itens foram deletados`);
+                }
+                
+                // Retornar true se deletamos pelo menos os itens
+                console.log(`[DB] Deleção da categoria "${nome}" concluída com sucesso`);
+                resolve(true);
             });
         });
     });
@@ -635,6 +711,7 @@ module.exports = {
     resetarValores,
     atualizarOrdemCategorias,
     criarCategoria,
+    deletarCategoria,
     fechar
 };
 

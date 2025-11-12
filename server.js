@@ -11,9 +11,8 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static(__dirname));
 
-// Rotas da API
+// Rotas da API (ANTES do express.static para evitar conflitos)
 
 // Obter todos os itens
 app.get('/api/itens', async (req, res) => {
@@ -178,6 +177,26 @@ app.post('/api/categorias', async (req, res) => {
         res.status(500).json({ error: 'Erro ao criar categoria' });
     }
 });
+
+// Deletar categoria
+app.delete('/api/categorias/:nome', async (req, res) => {
+    try {
+        const { nome } = req.params;
+        const categoriaNome = decodeURIComponent(nome);
+        
+        console.log(`Tentando deletar categoria: "${categoriaNome}"`);
+        
+        await db.deletarCategoria(categoriaNome);
+        
+        res.json({ message: 'Categoria e seus itens deletados com sucesso' });
+    } catch (error) {
+        console.error('Erro ao deletar categoria:', error);
+        res.status(500).json({ error: error.message || 'Erro ao deletar categoria' });
+    }
+});
+
+// Servir arquivos estáticos (DEPOIS das rotas da API)
+app.use(express.static(__dirname));
 
 // Servir o arquivo HTML
 app.get('/', (req, res) => {

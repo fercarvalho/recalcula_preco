@@ -505,7 +505,8 @@ header p {
     gap: 10px;
 }
 
-.btn-adicionar-item {
+.btn-adicionar-item,
+.btn-deletar-categoria {
     background: rgba(255, 255, 255, 0.2);
     border: none;
     color: white;
@@ -521,6 +522,15 @@ header p {
 
 .btn-adicionar-item:hover {
     background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
+}
+
+.btn-deletar-categoria {
+    background: rgba(255, 0, 0, 0.3);
+}
+
+.btn-deletar-categoria:hover {
+    background: rgba(255, 0, 0, 0.5);
     transform: scale(1.1);
 }
 

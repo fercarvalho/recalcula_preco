@@ -256,10 +256,15 @@ async function carregarDados() {
         const dados = await response.json();
         
         // Organizar dados e criar mapa de IDs
+        // IMPORTANTE: Preservar a ordem das chaves do objeto retornado
         itensPorCategoria = {};
         itensIds = {};
         
-        Object.keys(dados).forEach(categoria => {
+        // Usar Object.keys() que preserva a ordem de inserção em JavaScript moderno
+        const categoriasOrdenadas = Object.keys(dados);
+        console.log('Categorias recebidas da API (ordem):', categoriasOrdenadas);
+        
+        categoriasOrdenadas.forEach(categoria => {
             // Garantir que a categoria existe no objeto, mesmo se estiver vazia
             if (!itensPorCategoria[categoria]) {
                 itensPorCategoria[categoria] = [];
@@ -276,6 +281,8 @@ async function carregarDados() {
                 itensIds[key] = item.id;
             });
         });
+        
+        console.log('Categorias após processamento (ordem):', Object.keys(itensPorCategoria));
     } catch (error) {
         console.error('Erro ao carregar dados:', error);
         await mostrarAlert('Erro', 'Erro ao carregar dados do servidor. Verifique se o servidor está rodando.');
@@ -601,6 +608,67 @@ async function adicionarNovaCategoria() {
     }
 }
 
+// Deletar categoria
+async function deletarCategoria(categoria) {
+    // Contar quantos itens a categoria tem
+    const itensDaCategoria = itensPorCategoria[categoria] || [];
+    const quantidadeItens = itensDaCategoria.length;
+    
+    // Mensagem de confirmação
+    const mensagem = quantidadeItens > 0
+        ? `Tem certeza que deseja deletar a categoria "${categoria}"?\n\nEsta ação irá deletar a categoria e todos os ${quantidadeItens} item(ns) contidos nela.\n\n⚠️ Esta ação NÃO pode ser desfeita!`
+        : `Tem certeza que deseja deletar a categoria "${categoria}"?\n\n⚠️ Esta ação NÃO pode ser desfeita!`;
+    
+    const confirmado = await mostrarConfirm('Confirmar Exclusão de Categoria', mensagem);
+    
+    if (!confirmado) {
+        return;
+    }
+    
+    try {
+        const url = `${API_BASE}/api/categorias/${encodeURIComponent(categoria)}`;
+        console.log('Tentando deletar categoria:', categoria);
+        console.log('URL da requisição:', url);
+        
+        const response = await fetch(url, {
+            method: 'DELETE'
+        });
+        
+        console.log('Status da resposta:', response.status);
+        console.log('Response OK?', response.ok);
+        
+        if (!response.ok) {
+            let errorData;
+            try {
+                errorData = await response.json();
+            } catch (e) {
+                errorData = { error: `Erro HTTP ${response.status}: ${response.statusText}` };
+            }
+            console.error('Erro na resposta:', errorData);
+            throw new Error(errorData.error || `Erro ao deletar categoria (${response.status})`);
+        }
+        
+        const result = await response.json();
+        console.log('Resposta do servidor:', result);
+        
+        // Remover a categoria do objeto local
+        delete itensPorCategoria[categoria];
+        
+        // Remover o elemento do DOM
+        const categoriaDiv = document.querySelector(`.categoria[data-categoria="${categoria}"]`);
+        if (categoriaDiv) {
+            categoriaDiv.remove();
+        }
+        
+        await mostrarAlert('Sucesso', `Categoria "${categoria}" e todos os seus itens foram deletados com sucesso!`);
+    } catch (error) {
+        console.error('Erro ao deletar categoria:', error);
+        console.error('Stack trace:', error.stack);
+        const mensagemErro = error.message || 'Erro ao deletar a categoria. Tente novamente.';
+        await mostrarAlert('Erro', mensagemErro);
+    }
+}
+
 // Inicialização
 document.addEventListener('DOMContentLoaded', async () => {
     await carregarDados(); // Carregar dados da API primeiro
@@ -617,7 +685,12 @@ function inicializarInterface() {
     // Limpar itens selecionados ao recarregar (para evitar problemas com índices)
     itensSelecionados.clear();
 
-    Object.keys(itensPorCategoria).forEach(categoria => {
+    // Garantir que iteramos na ordem correta das chaves do objeto
+    // Object.keys() preserva a ordem de inserção em JavaScript moderno
+    const categoriasOrdenadas = Object.keys(itensPorCategoria);
+    console.log('Categorias para renderizar (ordem):', categoriasOrdenadas);
+    
+    categoriasOrdenadas.forEach(categoria => {
         const categoriaDiv = criarCategoria(categoria);
         container.appendChild(categoriaDiv);
     });
@@ -654,6 +727,9 @@ function criarCategoria(categoria) {
         <div class="categoria-actions">
             <button class="btn-adicionar-item" title="Adicionar item" data-categoria="${categoria}">
                 <i class="fas fa-plus"></i>
+            </button>
+            <button class="btn-deletar-categoria" title="Deletar categoria" data-categoria="${categoria}">
+                <i class="fas fa-trash"></i>
             </button>
             <span class="toggle-icon">▼</span>
         </div>
@@ -804,6 +880,13 @@ function criarCategoria(categoria) {
     btnAdicionar.addEventListener('click', (e) => {
         e.stopPropagation();
         adicionarItem(categoria);
+    });
+    
+    // Event listener para o botão deletar categoria
+    const btnDeletar = header.querySelector('.btn-deletar-categoria');
+    btnDeletar.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deletarCategoria(categoria);
     });
 
     const body = document.createElement('div');
@@ -1041,11 +1124,20 @@ function getDragAfterElement(container, y) {
 // Salvar ordem das categorias
 async function salvarOrdemCategorias() {
     const container = document.getElementById('categorias-container');
-    if (!container) return;
+    if (!container) {
+        console.error('Container de categorias não encontrado!');
+        return;
+    }
     
     const categorias = Array.from(container.querySelectorAll('.categoria')).map(cat => cat.dataset.categoria);
     
-    if (categorias.length === 0) return;
+    if (categorias.length === 0) {
+        console.warn('Nenhuma categoria encontrada para salvar');
+        return;
+    }
+    
+    console.log('=== SALVANDO ORDEM DAS CATEGORIAS ===');
+    console.log('Ordem atual no DOM:', categorias);
     
     try {
         const response = await fetch(`${API_BASE}/api/categorias/ordem`, {
@@ -1061,9 +1153,12 @@ async function salvarOrdemCategorias() {
             throw new Error(errorData.error || 'Erro ao salvar ordem das categorias');
         }
         
-        console.log('Ordem das categorias salva com sucesso:', categorias);
+        const result = await response.json();
+        console.log('✓ Ordem das categorias salva com sucesso!');
+        console.log('Resposta do servidor:', result);
+        console.log('Ordem salva:', categorias);
     } catch (error) {
-        console.error('Erro ao salvar ordem das categorias:', error);
+        console.error('✗ ERRO ao salvar ordem das categorias:', error);
     }
 }
 
