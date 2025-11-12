@@ -1,54 +1,417 @@
-// Dados dos itens por categoria
-const itensPorCategoria = {
+// Dados padrão dos itens por categoria
+const dadosPadrao = {
     'HotDogs': [
-        { nome: 'Hot Dog Simples', valor: 8.00 },
-        { nome: 'Hot Dog Completo', valor: 12.00 },
-        { nome: 'Hot Dog Especial', valor: 15.00 },
-        { nome: 'Hot Dog Premium', valor: 18.00 }
+        { nome: 'Simples', valor: 14.00 },
+        { nome: 'Simples picles', valor: 16.00 },
+        { nome: 'Calabresa', valor: 20.00 },
+        { nome: 'Frango', valor: 20.00 },
+        { nome: 'Misto', valor: 22.00 },
+        { nome: 'Calabresa acebolada', valor: 22.00 },
+        { nome: 'Bacon', valor: 22.00 },
+        { nome: 'Queijos', valor: 22.00 },
+        { nome: 'Da casa', valor: 23.00 },
+        { nome: 'Calabresa com bacon', valor: 23.00 },
+        { nome: 'Frango com bacon', valor: 23.00 },
+        { nome: 'Brutus', valor: 25.00 },
+        { nome: 'Brutus com catupiry', valor: 27.00 },
+        { nome: 'Super Brutus', valor: 30.00 }
     ],
     'Lanches': [
-        { nome: 'X-Burger', valor: 15.00 },
-        { nome: 'X-Bacon', valor: 18.00 },
-        { nome: 'X-Salada', valor: 16.00 },
-        { nome: 'X-Tudo', valor: 22.00 },
-        { nome: 'X-Frango', valor: 17.00 }
+        { nome: 'Misto quente', valor: 19.00 },
+        { nome: 'X-Burger', valor: 21.00 },
+        { nome: 'X-Salada', valor: 22.00 },
+        { nome: 'X-Frango', valor: 22.00 },
+        { nome: 'X-Calabresa', valor: 24.00 },
+        { nome: 'X-Burger duplo', valor: 26.00 },
+        { nome: 'X-Egg', valor: 24.00 },
+        { nome: 'X-Bacon', valor: 26.00 },
+        { nome: 'X-Frango com Bacon', valor: 25.00 },
+        { nome: 'X-Tudo', valor: 35.00 }
     ],
     'Bebidas': [
-        { nome: 'Coca-Cola 350ml', valor: 5.00 },
-        { nome: 'Coca-Cola 600ml', valor: 7.00 },
-        { nome: 'Guaraná 350ml', valor: 4.50 },
-        { nome: 'Guaraná 600ml', valor: 6.50 },
-        { nome: 'Água Mineral', valor: 3.00 }
+        { nome: 'Água', valor: 3.00 },
+        { nome: 'Água com gás', valor: 3.50 },
+        { nome: 'Refrigerante lata', valor: 5.00 },
+        { nome: 'H20', valor: 6.00 },
+        { nome: 'Refrigerante 600Ml', valor: 8.00 },
+        { nome: 'Refrigerante 1L vidro', valor: 9.00 },
+        { nome: 'Refrigerante 1L descartável', valor: 10.00 },
+        { nome: 'Refrigerante 2L descartável', valor: 13.00 },
+        { nome: 'Cerveja lata', valor: 5.00 }
     ],
     'Sucos': [
-        { nome: 'Suco de Laranja', valor: 6.00 },
-        { nome: 'Suco de Maracujá', valor: 6.50 },
-        { nome: 'Suco de Abacaxi', valor: 6.00 },
-        { nome: 'Vitamina de Banana', valor: 7.00 },
-        { nome: 'Açaí', valor: 10.00 }
+        { nome: 'Laranja', valor: 12.00 },
+        { nome: 'Maracujá', valor: 8.00 },
+        { nome: 'Acerola', valor: 8.00 },
+        { nome: 'Caju', valor: 8.00 },
+        { nome: 'Abacaxi', valor: 8.00 },
+        { nome: 'Abacaxi com Hortelã', valor: 8.00 },
+        { nome: 'Morango', valor: 8.00 }
     ],
     'Complementos': [
-        { nome: 'Batata Frita P', valor: 8.00 },
-        { nome: 'Batata Frita M', valor: 12.00 },
-        { nome: 'Batata Frita G', valor: 16.00 },
-        { nome: 'Anel de Cebola', valor: 10.00 },
-        { nome: 'Nuggets (6 un)', valor: 12.00 }
+        { nome: 'Cebola / Ovo / Salsicha / Picles', valor: 2.00 },
+        { nome: 'Purê de Batata / Presunto / Mussarela', valor: 4.00 },
+        { nome: 'Catupiry / Cheddar / Calabresa / Frango', valor: 6.00 },
+        { nome: 'Bacon / Blend de Queijos', valor: 8.00 },
+        { nome: 'Hambúrguer Artesanal', valor: 10.00 }
     ],
-    'Outros': [
-        { nome: 'Salgado Assado', valor: 4.50 },
-        { nome: 'Salgado Frito', valor: 5.00 },
-        { nome: 'Pastel', valor: 6.00 },
-        { nome: 'Coxinha', valor: 5.50 }
+    'Personalize seu suco': [
+        { nome: 'Adicionar um segundo sabor', valor: 2.00 },
+        { nome: 'Substituir a água por leite', valor: 1.50 }
     ]
 };
+
+// Chave para armazenamento no LocalStorage
+const STORAGE_KEY = 'viraLatasItens';
+
+// Dados dos itens por categoria (será carregado do LocalStorage ou usar padrão)
+let itensPorCategoria = {};
 
 // Estado da aplicação
 let itensSelecionados = new Set();
 let categoriasColapsadas = {};
 let ultimoReajuste = { tipo: null, valor: null };
 
+// Funções de modal customizadas
+function mostrarAlert(titulo, mensagem) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('modal-alert');
+        const tituloEl = document.getElementById('modal-alert-titulo');
+        const mensagemEl = document.getElementById('modal-alert-mensagem');
+        const btnOk = document.getElementById('btn-alert-ok');
+        
+        tituloEl.textContent = titulo || 'Aviso';
+        mensagemEl.textContent = mensagem;
+        
+        const fechar = () => {
+            modal.classList.remove('show');
+            resolve();
+        };
+        
+        btnOk.onclick = fechar;
+        modal.querySelector('.close-modal').onclick = fechar;
+        modal.onclick = (e) => {
+            if (e.target === modal) fechar();
+        };
+        
+        modal.classList.add('show');
+        btnOk.focus();
+    });
+}
+
+function mostrarConfirm(titulo, mensagem) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('modal-confirm');
+        const tituloEl = document.getElementById('modal-confirm-titulo');
+        const mensagemEl = document.getElementById('modal-confirm-mensagem');
+        const btnOk = document.getElementById('btn-confirm-ok');
+        const btnCancel = document.getElementById('btn-confirm-cancel');
+        
+        tituloEl.textContent = titulo || 'Confirmar';
+        mensagemEl.textContent = mensagem;
+        
+        const fechar = (resultado) => {
+            modal.classList.remove('show');
+            resolve(resultado);
+        };
+        
+        btnOk.onclick = () => fechar(true);
+        btnCancel.onclick = () => fechar(false);
+        modal.querySelector('.close-modal').onclick = () => fechar(false);
+        modal.onclick = (e) => {
+            if (e.target === modal) fechar(false);
+        };
+        
+        modal.classList.add('show');
+        btnOk.focus();
+    });
+}
+
+function mostrarPrompt(titulo, mensagem, valorPadrao = '') {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('modal-prompt');
+        const tituloEl = document.getElementById('modal-prompt-titulo');
+        const mensagemEl = document.getElementById('modal-prompt-mensagem');
+        const input = document.getElementById('modal-prompt-input');
+        const btnOk = document.getElementById('btn-prompt-ok');
+        const btnCancel = document.getElementById('btn-prompt-cancel');
+        
+        tituloEl.textContent = titulo || 'Informe';
+        mensagemEl.textContent = mensagem;
+        input.value = valorPadrao;
+        input.type = 'text';
+        
+        const fechar = (resultado) => {
+            modal.classList.remove('show');
+            resolve(resultado);
+        };
+        
+        const confirmar = () => {
+            fechar(input.value);
+        };
+        
+        btnOk.onclick = confirmar;
+        btnCancel.onclick = () => fechar(null);
+        modal.querySelector('.close-modal').onclick = () => fechar(null);
+        modal.onclick = (e) => {
+            if (e.target === modal) fechar(null);
+        };
+        
+        input.onkeypress = (e) => {
+            if (e.key === 'Enter') confirmar();
+        };
+        
+        modal.classList.add('show');
+        input.focus();
+        input.select();
+    });
+}
+
+function mostrarPromptNumber(titulo, mensagem, valorPadrao = '') {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('modal-prompt');
+        const tituloEl = document.getElementById('modal-prompt-titulo');
+        const mensagemEl = document.getElementById('modal-prompt-mensagem');
+        const input = document.getElementById('modal-prompt-input');
+        const btnOk = document.getElementById('btn-prompt-ok');
+        const btnCancel = document.getElementById('btn-prompt-cancel');
+        
+        tituloEl.textContent = titulo || 'Informe';
+        mensagemEl.textContent = mensagem;
+        input.value = valorPadrao;
+        input.type = 'number';
+        input.step = '0.01';
+        input.min = '0';
+        
+        const fechar = (resultado) => {
+            modal.classList.remove('show');
+            resolve(resultado);
+        };
+        
+        const confirmar = () => {
+            fechar(input.value);
+        };
+        
+        btnOk.onclick = confirmar;
+        btnCancel.onclick = () => fechar(null);
+        modal.querySelector('.close-modal').onclick = () => fechar(null);
+        modal.onclick = (e) => {
+            if (e.target === modal) fechar(null);
+        };
+        
+        input.onkeypress = (e) => {
+            if (e.key === 'Enter') confirmar();
+        };
+        
+        modal.classList.add('show');
+        input.focus();
+        input.select();
+    });
+}
+
+function mostrarSelecaoCategoria() {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('modal-selecao-categoria');
+        const lista = document.getElementById('modal-categorias-lista');
+        const btnCancel = document.getElementById('btn-selecao-cancel');
+        
+        lista.innerHTML = '';
+        const categorias = Object.keys(itensPorCategoria);
+        
+        categorias.forEach((categoria, index) => {
+            const btnCategoria = document.createElement('button');
+            btnCategoria.className = 'btn-categoria-opcao';
+            btnCategoria.textContent = categoria;
+            btnCategoria.onclick = () => {
+                modal.classList.remove('show');
+                resolve(categoria);
+            };
+            lista.appendChild(btnCategoria);
+        });
+        
+        const fechar = () => {
+            modal.classList.remove('show');
+            resolve(null);
+        };
+        
+        btnCancel.onclick = fechar;
+        modal.querySelector('.close-modal').onclick = fechar;
+        modal.onclick = (e) => {
+            if (e.target === modal) fechar();
+        };
+        
+        modal.classList.add('show');
+    });
+}
+
+// Funções de persistência (LocalStorage)
+function salvarDados() {
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(itensPorCategoria));
+        console.log('Dados salvos com sucesso!');
+    } catch (error) {
+        console.error('Erro ao salvar dados:', error);
+        mostrarAlert('Erro', 'Erro ao salvar os dados. Verifique se o navegador suporta LocalStorage.');
+    }
+}
+
+function carregarDados() {
+    try {
+        const dadosSalvos = localStorage.getItem(STORAGE_KEY);
+        if (dadosSalvos) {
+            itensPorCategoria = JSON.parse(dadosSalvos);
+            console.log('Dados carregados do LocalStorage');
+        } else {
+            // Se não houver dados salvos, usar os dados padrão
+            itensPorCategoria = JSON.parse(JSON.stringify(dadosPadrao));
+            salvarDados(); // Salvar os dados padrão pela primeira vez
+            console.log('Usando dados padrão e salvando no LocalStorage');
+        }
+    } catch (error) {
+        console.error('Erro ao carregar dados:', error);
+        // Em caso de erro, usar dados padrão
+        itensPorCategoria = JSON.parse(JSON.stringify(dadosPadrao));
+        mostrarAlert('Erro', 'Erro ao carregar dados salvos. Usando valores padrão.');
+    }
+}
+
+async function resetarDados() {
+    const confirmado = await mostrarConfirm('Confirmar Reset', 'Tem certeza que deseja resetar todos os valores para os padrões? Esta ação não pode ser desfeita.');
+    if (confirmado) {
+        itensPorCategoria = JSON.parse(JSON.stringify(dadosPadrao));
+        salvarDados();
+        // Recarregar a interface
+        inicializarInterface();
+        selecionarTodosItens();
+        await mostrarAlert('Sucesso', 'Valores resetados para os padrões com sucesso!');
+    }
+}
+
+// Editar item
+async function editarItem(categoria, index) {
+    const item = itensPorCategoria[categoria][index];
+    const novoNome = await mostrarPrompt('Editar Nome', 'Digite o novo nome do item:', item.nome);
+    
+    if (novoNome && novoNome.trim() !== '' && novoNome.trim() !== item.nome) {
+        // Atualizar o nome
+        item.nome = novoNome.trim();
+        
+        // Salvar dados
+        salvarDados();
+        
+        // Recarregar interface
+        inicializarInterface();
+        selecionarTodosItens();
+        
+        await mostrarAlert('Sucesso', 'Nome do item atualizado com sucesso!');
+    }
+}
+
+// Excluir item
+async function excluirItem(categoria, index) {
+    const item = itensPorCategoria[categoria][index];
+    const confirmado = await mostrarConfirm('Confirmar Exclusão', `Tem certeza que deseja excluir "${item.nome}"?`);
+    if (confirmado) {
+        // Remover do array
+        itensPorCategoria[categoria].splice(index, 1);
+        
+        // Salvar dados
+        salvarDados();
+        
+        // Recarregar interface
+        inicializarInterface();
+        selecionarTodosItens();
+        
+        await mostrarAlert('Sucesso', 'Item excluído com sucesso!');
+    }
+}
+
+// Adicionar item (com categoria já definida)
+async function adicionarItem(categoria) {
+    const nome = await mostrarPrompt('Adicionar Item', 'Digite o nome do novo item:');
+    if (!nome || nome.trim() === '') {
+        return; // Cancelado ou vazio
+    }
+    
+    const valorStr = await mostrarPromptNumber('Adicionar Item', 'Digite o preço do item (ex: 10.50):');
+    if (!valorStr) {
+        return; // Cancelado
+    }
+    
+    const valor = parseFloat(valorStr);
+    
+    if (isNaN(valor) || valor < 0) {
+        await mostrarAlert('Erro', 'Valor inválido! O item não foi adicionado.');
+        return;
+    }
+    
+    // Adicionar o novo item
+    const novoItem = {
+        nome: nome.trim(),
+        valor: valor
+    };
+    
+    itensPorCategoria[categoria].push(novoItem);
+    
+    // Salvar dados
+    salvarDados();
+    
+    // Recarregar interface
+    inicializarInterface();
+    selecionarTodosItens();
+    
+    await mostrarAlert('Sucesso', 'Item adicionado com sucesso!');
+}
+
+// Adicionar novo produto (escolhendo categoria)
+async function adicionarNovoProduto() {
+    // Escolher categoria
+    const categoria = await mostrarSelecaoCategoria();
+    if (!categoria) {
+        return; // Cancelado
+    }
+    
+    // Pedir nome do produto
+    const nome = await mostrarPrompt('Adicionar Produto', 'Digite o nome do novo produto:');
+    if (!nome || nome.trim() === '') {
+        await mostrarAlert('Erro', 'Nome não pode estar vazio! Operação cancelada.');
+        return;
+    }
+    
+    // Pedir valor do produto
+    const valorStr = await mostrarPromptNumber('Adicionar Produto', 'Digite o preço do produto (ex: 10.50):');
+    if (!valorStr) {
+        return; // Cancelado
+    }
+    
+    const valor = parseFloat(valorStr);
+    
+    if (isNaN(valor) || valor < 0) {
+        await mostrarAlert('Erro', 'Valor inválido! O produto não foi adicionado.');
+        return;
+    }
+    
+    // Adicionar o novo produto
+    const novoItem = {
+        nome: nome.trim(),
+        valor: valor
+    };
+    
+    itensPorCategoria[categoria].push(novoItem);
+    
+    // Salvar dados
+    salvarDados();
+    
+    // Recarregar interface
+    inicializarInterface();
+    selecionarTodosItens();
+    
+    await mostrarAlert('Sucesso', `Produto "${nome.trim()}" adicionado com sucesso na categoria "${categoria}"!`);
+}
+
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
+    carregarDados(); // Carregar dados do LocalStorage primeiro
     inicializarInterface();
     inicializarEventos();
     selecionarTodosItens();
@@ -58,15 +421,26 @@ document.addEventListener('DOMContentLoaded', () => {
 function inicializarInterface() {
     const container = document.getElementById('categorias-container');
     container.innerHTML = '';
+    
+    // Limpar itens selecionados ao recarregar (para evitar problemas com índices)
+    itensSelecionados.clear();
 
     Object.keys(itensPorCategoria).forEach(categoria => {
         const categoriaDiv = criarCategoria(categoria);
         container.appendChild(categoriaDiv);
     });
 
-    // Atualizar label do input baseado no tipo de reajuste
-    atualizarLabelValor();
 }
+
+// Mapeamento de ícones para categorias
+const iconesCategorias = {
+    'HotDogs': '<i class="fas fa-hotdog"></i>',
+    'Lanches': '<i class="fas fa-hamburger"></i>',
+    'Bebidas': '<i class="fas fa-glass-water"></i>',
+    'Sucos': '<i class="fas fa-wine-glass"></i>',
+    'Complementos': '<i class="fas fa-utensils"></i>',
+    'Personalize seu suco': '<i class="fas fa-cog"></i>'
+};
 
 // Criar elemento de categoria
 function criarCategoria(categoria) {
@@ -76,11 +450,37 @@ function criarCategoria(categoria) {
 
     const header = document.createElement('div');
     header.className = 'categoria-header';
+    const icone = iconesCategorias[categoria] || '<i class="fas fa-tag"></i>';
     header.innerHTML = `
-        <span>${categoria}</span>
-        <span class="toggle-icon">▼</span>
+        <span class="categoria-titulo">${icone} ${categoria}</span>
+        <div class="categoria-actions">
+            <button class="btn-adicionar-item" title="Adicionar item" data-categoria="${categoria}">
+                <i class="fas fa-plus"></i>
+            </button>
+            <span class="toggle-icon">▼</span>
+        </div>
     `;
-    header.addEventListener('click', () => toggleCategoria(categoria));
+    
+    // Event listener para o toggle (não acionar quando clicar no botão)
+    const toggleIcon = header.querySelector('.toggle-icon');
+    toggleIcon.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleCategoria(categoria);
+    });
+    
+    // Event listener para o header (exceto botões)
+    header.addEventListener('click', (e) => {
+        if (!e.target.closest('.categoria-actions')) {
+            toggleCategoria(categoria);
+        }
+    });
+    
+    // Event listener para o botão adicionar
+    const btnAdicionar = header.querySelector('.btn-adicionar-item');
+    btnAdicionar.addEventListener('click', (e) => {
+        e.stopPropagation();
+        adicionarItem(categoria);
+    });
 
     const body = document.createElement('div');
     body.className = 'categoria-body';
@@ -119,21 +519,130 @@ function criarItem(categoria, index, item) {
 
     const info = document.createElement('div');
     info.className = 'item-info';
-    info.innerHTML = `
-        <div class="item-nome">${item.nome}</div>
-        <div class="item-valor">R$ ${item.valor.toFixed(2)}</div>
-        <div class="item-valor-novo"></div>
+    
+    // Container do nome com botão de editar
+    const nomeContainer = document.createElement('div');
+    nomeContainer.className = 'item-nome-container';
+    
+    const nomeDiv = document.createElement('div');
+    nomeDiv.className = 'item-nome';
+    nomeDiv.textContent = item.nome;
+    
+    // Botão de editar item (ao lado do nome)
+    const btnEditar = document.createElement('button');
+    btnEditar.className = 'btn-editar-item';
+    btnEditar.innerHTML = '<i class="fas fa-edit"></i>';
+    btnEditar.title = 'Editar nome do item';
+    btnEditar.addEventListener('click', (e) => {
+        e.stopPropagation(); // Impedir que o clique no item seja acionado
+        editarItem(categoria, index);
+    });
+    
+    nomeContainer.appendChild(nomeDiv);
+    nomeContainer.appendChild(btnEditar);
+    
+    const valoresDiv = document.createElement('div');
+    valoresDiv.className = 'item-valores';
+    
+    const valorAntigoDiv = document.createElement('div');
+    valorAntigoDiv.className = 'item-valor-antigo-container';
+    valorAntigoDiv.innerHTML = `
+        <label>Preço:</label>
+        <input type="number" class="item-valor-antigo" value="${item.valor.toFixed(2)}" step="0.01" min="0">
     `;
+    
+    const valorNovoDiv = document.createElement('div');
+    valorNovoDiv.className = 'item-valor-novo-container';
+    
+    // Calcular preço ajustado: se houver valorNovo salvo, usar ele; senão, calcular com 12% padrão
+    let valorAjustado;
+    if (item.valorNovo !== undefined && item.valorNovo !== null) {
+        valorAjustado = item.valorNovo;
+    } else {
+        // Calcular com percentual padrão de 12% (valor fixo = 0)
+        valorAjustado = calcularNovoValor(item.valor, 0, 12);
+    }
+    
+    const valorNovoTexto = `R$ ${valorAjustado.toFixed(2)}`;
+    valorNovoDiv.innerHTML = `
+        <label>Preço Ajustado:</label>
+        <span class="item-valor-novo visible">${valorNovoTexto}</span>
+    `;
+    
+    valoresDiv.appendChild(valorAntigoDiv);
+    valoresDiv.appendChild(valorNovoDiv);
+    
+    info.appendChild(nomeContainer);
+    info.appendChild(valoresDiv);
+
+    // Botão de excluir item
+    const btnExcluir = document.createElement('button');
+    btnExcluir.className = 'btn-excluir-item';
+    btnExcluir.innerHTML = '<i class="fas fa-trash"></i>';
+    btnExcluir.title = 'Excluir item';
+    btnExcluir.addEventListener('click', (e) => {
+        e.stopPropagation(); // Impedir que o clique no item seja acionado
+        excluirItem(categoria, index);
+    });
 
     itemDiv.appendChild(checkbox);
     itemDiv.appendChild(info);
+    itemDiv.appendChild(btnExcluir);
 
     // Adicionar ao conjunto de selecionados
     itensSelecionados.add(`${categoria}-${index}`);
 
-    // Permitir clicar no item inteiro para marcar/desmarcar
+    // Event listener para edição do preço antigo
+    const inputValorAntigo = valorAntigoDiv.querySelector('.item-valor-antigo');
+    
+    // Salvar quando o campo perder o foco (change)
+    inputValorAntigo.addEventListener('change', (e) => {
+        const novoValor = parseFloat(e.target.value);
+        if (!isNaN(novoValor) && novoValor >= 0) {
+            // Atualizar o valor do item (sobrescreve o preço antigo)
+            item.valor = novoValor;
+            
+            // Limpar preço novo quando o antigo for alterado manualmente
+            if (item.valorNovo !== undefined) {
+                delete item.valorNovo;
+            }
+            
+            // Recalcular preço ajustado com percentual padrão de 12%
+            const valorAjustado = calcularNovoValor(novoValor, 0, 12);
+            
+            // Atualizar interface
+            const valorNovoElement = itemDiv.querySelector('.item-valor-novo');
+            valorNovoElement.textContent = `R$ ${valorAjustado.toFixed(2)}`;
+            valorNovoElement.classList.add('visible');
+            
+            // Salvar dados após edição (sobrescreve o valor antigo no LocalStorage)
+            salvarDados();
+            
+            // Feedback visual
+            inputValorAntigo.style.borderColor = '#28a745';
+            setTimeout(() => {
+                inputValorAntigo.style.borderColor = '#ddd';
+            }, 1000);
+        } else {
+            // Valor inválido, restaurar o valor anterior
+            e.target.value = item.valor.toFixed(2);
+            inputValorAntigo.style.borderColor = '#dc3545';
+            setTimeout(() => {
+                inputValorAntigo.style.borderColor = '#ddd';
+            }, 1000);
+        }
+    });
+    
+    // Também salvar quando pressionar Enter
+    inputValorAntigo.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.target.blur(); // Força o evento change
+        }
+    });
+
+    // Permitir clicar no item inteiro para marcar/desmarcar (exceto inputs)
     itemDiv.addEventListener('click', (e) => {
-        if (e.target.type !== 'checkbox') {
+        if (e.target.type !== 'checkbox' && e.target.type !== 'number') {
             checkbox.checked = !checkbox.checked;
             checkbox.dispatchEvent(new Event('change'));
         }
@@ -177,28 +686,15 @@ function deselecionarTodosItens() {
     });
 }
 
-// Atualizar label do valor baseado no tipo
-function atualizarLabelValor() {
-    const tipo = document.getElementById('tipo-reajuste').value;
-    const label = document.getElementById('label-valor');
-    const input = document.getElementById('valor-reajuste');
+// Calcular novo valor (primeiro aplica valor fixo, depois percentual)
+function calcularNovoValor(valorAntigo, valorFixo, valorPercentual) {
+    // Primeiro: soma o valor fixo
+    let valorAposFixo = valorAntigo + valorFixo;
     
-    if (tipo === 'percentual') {
-        label.textContent = 'Percentual de Reajuste (%):';
-        input.placeholder = 'Ex: 10.5';
-    } else {
-        label.textContent = 'Valor Fixo de Reajuste (R$):';
-        input.placeholder = 'Ex: 2.50';
-    }
-}
-
-// Calcular novo valor
-function calcularNovoValor(valorAntigo, tipoReajuste, valorReajuste) {
-    if (tipoReajuste === 'percentual') {
-        return valorAntigo * (1 + valorReajuste / 100);
-    } else {
-        return valorAntigo + valorReajuste;
-    }
+    // Depois: aplica o percentual sobre o resultado
+    let valorFinal = valorAposFixo * (1 + valorPercentual / 100);
+    
+    return valorFinal;
 }
 
 // Obter item selecionado
@@ -208,29 +704,36 @@ function obterItem(categoria, index) {
 
 // Inicializar eventos
 function inicializarEventos() {
-    // Mudança no tipo de reajuste
-    document.getElementById('tipo-reajuste').addEventListener('change', atualizarLabelValor);
-
     // Botões de seleção
     document.getElementById('btn-selecionar-todos').addEventListener('click', selecionarTodosItens);
     document.getElementById('btn-deselecionar-todos').addEventListener('click', deselecionarTodosItens);
+    
+    // Botão resetar dados
+    document.getElementById('btn-resetar-dados').addEventListener('click', resetarDados);
+    
+    // Botão adicionar novo produto
+    document.getElementById('btn-adicionar-produto').addEventListener('click', adicionarNovoProduto);
 
     // Botão aplicar reajuste
     document.getElementById('btn-aplicar-reajuste').addEventListener('click', () => {
-        const tipoReajuste = document.getElementById('tipo-reajuste').value;
-        const valorReajuste = parseFloat(document.getElementById('valor-reajuste').value);
+        const valorFixoInput = document.getElementById('valor-fixo');
+        const valorPercentualInput = document.getElementById('valor-percentual');
+        
+        const valorFixo = parseFloat(valorFixoInput.value) || 0;
+        const valorPercentual = parseFloat(valorPercentualInput.value) || 0;
 
-        if (!valorReajuste || valorReajuste <= 0) {
-            alert('Por favor, informe um valor válido para o reajuste.');
+        // Verificar se pelo menos um dos valores foi informado
+        if (valorFixo === 0 && valorPercentual === 0) {
+            mostrarAlert('Atenção', 'Por favor, informe pelo menos um valor (fixo ou percentual) para o reajuste.');
             return;
         }
 
         if (itensSelecionados.size === 0) {
-            alert('Por favor, selecione pelo menos um item para reajustar.');
+            mostrarAlert('Atenção', 'Por favor, selecione pelo menos um item para reajustar.');
             return;
         }
 
-        mostrarModalConfirmacao(tipoReajuste, valorReajuste);
+        mostrarModalConfirmacao(valorFixo, valorPercentual);
     });
 
     // Modal
@@ -255,17 +758,21 @@ function inicializarEventos() {
 }
 
 // Mostrar modal de confirmação
-function mostrarModalConfirmacao(tipoReajuste, valorReajuste) {
+function mostrarModalConfirmacao(valorFixo, valorPercentual) {
     const modal = document.getElementById('modal-confirmacao');
-    const modalTipo = document.getElementById('modal-tipo');
-    const modalValor = document.getElementById('modal-valor');
+    const modalValorFixo = document.getElementById('modal-valor-fixo');
+    const modalValorPercentual = document.getElementById('modal-valor-percentual');
     const modalItensLista = document.getElementById('modal-itens-lista');
 
+    if (!modal || !modalValorFixo || !modalValorPercentual || !modalItensLista) {
+        console.error('Elementos do modal não encontrados!');
+        mostrarAlert('Erro', 'Erro ao abrir o modal. Verifique o console para mais detalhes.');
+        return;
+    }
+
     // Atualizar informações do modal
-    modalTipo.textContent = tipoReajuste === 'percentual' ? 'Percentual' : 'Valor Fixo';
-    modalValor.textContent = tipoReajuste === 'percentual' 
-        ? `${valorReajuste}%` 
-        : `R$ ${valorReajuste.toFixed(2)}`;
+    modalValorFixo.textContent = `R$ ${valorFixo.toFixed(2)}`;
+    modalValorPercentual.textContent = `${valorPercentual.toFixed(2)}%`;
 
     // Criar lista de itens no modal
     modalItensLista.innerHTML = '';
@@ -274,7 +781,13 @@ function mostrarModalConfirmacao(tipoReajuste, valorReajuste) {
     itensArray.forEach(key => {
         const [categoria, index] = key.split('-');
         const item = obterItem(categoria, parseInt(index));
-        const novoValor = calcularNovoValor(item.valor, tipoReajuste, valorReajuste);
+        
+        // Obter o valor atual do input (pode ter sido editado)
+        const itemElement = document.querySelector(`[data-categoria="${categoria}"][data-index="${index}"]`);
+        const valorAntigoInput = itemElement ? itemElement.querySelector('.item-valor-antigo') : null;
+        const valorAntigo = valorAntigoInput ? parseFloat(valorAntigoInput.value) : item.valor;
+        
+        const novoValor = calcularNovoValor(valorAntigo, valorFixo, valorPercentual);
 
         const itemDiv = document.createElement('div');
         itemDiv.className = 'modal-item';
@@ -296,8 +809,8 @@ function mostrarModalConfirmacao(tipoReajuste, valorReajuste) {
         info.innerHTML = `
             <div class="modal-item-nome">${item.nome}</div>
             <div class="modal-item-valores">
-                <span class="modal-item-valor-antigo">Antigo: R$ ${item.valor.toFixed(2)}</span>
-                <span class="modal-item-valor-novo">Novo: R$ ${novoValor.toFixed(2)}</span>
+                <span class="modal-item-valor-antigo">Preço: R$ ${valorAntigo.toFixed(2)}</span>
+                <span class="modal-item-valor-novo">Ajustado: R$ ${novoValor.toFixed(2)}</span>
             </div>
         `;
 
@@ -326,11 +839,11 @@ function fecharModal() {
 
 // Aplicar reajuste
 function aplicarReajuste() {
-    const tipoReajuste = document.getElementById('tipo-reajuste').value;
-    const valorReajuste = parseFloat(document.getElementById('valor-reajuste').value);
+    const valorFixo = parseFloat(document.getElementById('valor-fixo').value) || 0;
+    const valorPercentual = parseFloat(document.getElementById('valor-percentual').value) || 0;
 
     if (itensSelecionados.size === 0) {
-        alert('Nenhum item selecionado para reajustar.');
+        mostrarAlert('Atenção', 'Nenhum item selecionado para reajustar.');
         return;
     }
 
@@ -338,26 +851,48 @@ function aplicarReajuste() {
     itensSelecionados.forEach(key => {
         const [categoria, index] = key.split('-');
         const item = obterItem(categoria, parseInt(index));
-        const novoValor = calcularNovoValor(item.valor, tipoReajuste, valorReajuste);
-
-        // Atualizar no objeto
-        item.valor = novoValor;
+        
+        // Obter o valor atual do input (pode ter sido editado)
+        const itemElement = document.querySelector(`[data-categoria="${categoria}"][data-index="${index}"]`);
+        const valorAntigoInput = itemElement ? itemElement.querySelector('.item-valor-antigo') : null;
+        const valorAntigo = valorAntigoInput ? parseFloat(valorAntigoInput.value) : item.valor;
+        
+        // Se houver valor fixo, atualizar o preço (item.valor) primeiro
+        if (valorFixo > 0) {
+            // Somar o valor fixo ao preço atual
+            item.valor = valorAntigo + valorFixo;
+            // Atualizar o input do preço na interface
+            if (valorAntigoInput) {
+                valorAntigoInput.value = item.valor.toFixed(2);
+            }
+        }
+        
+        // Calcular preço ajustado aplicando o percentual sobre o novo valor
+        // Se houver valor fixo, usar o novo valor (preço + fixo); senão, usar o valor atual
+        const valorBaseParaPercentual = valorFixo > 0 ? item.valor : valorAntigo;
+        // Aplicar apenas o percentual sobre esse valor (sem somar valor fixo novamente)
+        const valorAjustado = valorBaseParaPercentual * (1 + valorPercentual / 100);
+        
+        // Salvar o valor ajustado (apenas para exibição, não substitui o preço)
+        item.valorNovo = valorAjustado;
 
         // Atualizar na interface
-        const itemElement = document.querySelector(`[data-categoria="${categoria}"][data-index="${index}"]`);
         if (itemElement) {
-            const valorElement = itemElement.querySelector('.item-valor');
             const valorNovoElement = itemElement.querySelector('.item-valor-novo');
             
-            valorElement.textContent = `R$ ${novoValor.toFixed(2)}`;
-            valorNovoElement.textContent = `Novo: R$ ${novoValor.toFixed(2)}`;
+            // Atualizar o preço ajustado
+            valorNovoElement.textContent = `R$ ${valorAjustado.toFixed(2)}`;
             valorNovoElement.classList.add('visible');
         }
     });
 
-    // Limpar campo de reajuste
-    document.getElementById('valor-reajuste').value = '';
+    // Salvar os dados atualizados no LocalStorage (com valorNovo)
+    salvarDados();
 
-    alert(`Reajuste aplicado com sucesso em ${itensSelecionados.size} item(ns)!`);
+    // Limpar campos de reajuste (manter 12% como padrão no percentual)
+    document.getElementById('valor-fixo').value = '0.00';
+    document.getElementById('valor-percentual').value = '12.00';
+
+    mostrarAlert('Sucesso', `Reajuste aplicado com sucesso em ${itensSelecionados.size} item(ns)!`);
 }
 

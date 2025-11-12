@@ -4,12 +4,49 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calculadora de Reajuste de Preços</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <!-- Patinhas decorativas -->
+    <div class="patinha patinha-top-left">
+        <img src="patinha.png" alt="Patinha">
+    </div>
+    <div class="patinha patinha-top-right">
+        <img src="patinha.png" alt="Patinha">
+    </div>
+    <div class="patinha patinha-bottom-left">
+        <img src="patinha.png" alt="Patinha">
+    </div>
+    <div class="patinha patinha-bottom-right">
+        <img src="patinha.png" alt="Patinha">
+    </div>
+    
     <div class="container">
         <header>
-            <h1>🍔 Calculadora de Reajuste de Preços</h1>
+            <div class="logo-container">
+                <img src="logo.png" alt="Vira-Latas Logo" class="logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="logo-fallback" style="display: none;">
+                    <div class="logo-circle">
+                        <div class="logo-dog">
+                            <div class="dog-head">
+                                <div class="dog-ear dog-ear-left"></div>
+                                <div class="dog-ear dog-ear-right"></div>
+                                <div class="dog-face">
+                                    <div class="dog-eye dog-eye-left"></div>
+                                    <div class="dog-eye dog-eye-right"></div>
+                                    <div class="dog-nose"></div>
+                                    <div class="dog-mouth"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="logo-text-top">Vira-Latas</div>
+                        <div class="logo-text-bottom">Hotdogs e Lanches</div>
+                    </div>
+                </div>
+            </div>
+            <h1>Calculadora de Reajuste de Preços</h1>
             <p>Selecione os itens e defina o tipo de reajuste</p>
         </header>
 
@@ -18,22 +55,31 @@
             <section class="reajuste-form">
                 <h2>Configuração do Reajuste</h2>
                 <div class="form-group">
-                    <label for="tipo-reajuste">Tipo de Reajuste:</label>
-                    <select id="tipo-reajuste">
-                        <option value="percentual">Percentual (%)</option>
-                        <option value="fixo">Valor Fixo (R$)</option>
-                    </select>
+                    <label for="valor-fixo">Valor Fixo (R$):</label>
+                    <input type="number" id="valor-fixo" step="0.01" min="0" placeholder="0.00" value="0.00">
+                    <small class="form-help">Será somado ao valor atual primeiro</small>
                 </div>
                 <div class="form-group">
-                    <label for="valor-reajuste" id="label-valor">Valor do Reajuste:</label>
-                    <input type="number" id="valor-reajuste" step="0.01" min="0" placeholder="0.00">
+                    <label for="valor-percentual">Percentual (%):</label>
+                    <input type="number" id="valor-percentual" step="0.01" min="0" placeholder="0.00" value="12.00">
+                    <small class="form-help">Será aplicado após o valor fixo</small>
                 </div>
                 <div class="form-actions">
                     <button id="btn-selecionar-todos" class="btn-secondary">Selecionar Todos</button>
                     <button id="btn-deselecionar-todos" class="btn-secondary">Deselecionar Todos</button>
                     <button id="btn-aplicar-reajuste" class="btn-primary">Aplicar Reajuste</button>
+                    <button id="btn-resetar-dados" class="btn-secondary" title="Resetar todos os valores para os padrões">
+                        <i class="fas fa-undo"></i> Resetar Valores
+                    </button>
                 </div>
             </section>
+
+            <!-- Botão Adicionar Novo Produto -->
+            <div class="adicionar-produto-section">
+                <button id="btn-adicionar-produto" class="btn-adicionar-produto">
+                    <i class="fas fa-plus-circle"></i> Adicionar Novo Produto
+                </button>
+            </div>
 
             <!-- Lista de Itens por Categoria -->
             <section class="itens-section">
@@ -43,7 +89,7 @@
         </div>
     </div>
 
-    <!-- Modal de Confirmação -->
+    <!-- Modal de Confirmação de Reajuste -->
     <div id="modal-confirmacao" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -52,8 +98,8 @@
             </div>
             <div class="modal-body">
                 <p class="modal-info">
-                    <strong>Tipo:</strong> <span id="modal-tipo"></span><br>
-                    <strong>Valor:</strong> <span id="modal-valor"></span>
+                    <strong>Valor Fixo:</strong> <span id="modal-valor-fixo"></span><br>
+                    <strong>Percentual:</strong> <span id="modal-valor-percentual"></span>
                 </p>
                 <p class="modal-subtitle">Itens que serão reajustados:</p>
                 <div id="modal-itens-lista" class="modal-itens"></div>
@@ -61,6 +107,76 @@
             <div class="modal-footer">
                 <button id="btn-cancelar" class="btn-secondary">Cancelar</button>
                 <button id="btn-confirmar" class="btn-primary">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Alert -->
+    <div id="modal-alert" class="modal">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h2 id="modal-alert-titulo">Aviso</h2>
+                <span class="close-modal" data-modal="alert">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p id="modal-alert-mensagem"></p>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-alert-ok" class="btn-primary">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirm -->
+    <div id="modal-confirm" class="modal">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h2 id="modal-confirm-titulo">Confirmar</h2>
+                <span class="close-modal" data-modal="confirm">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p id="modal-confirm-mensagem"></p>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-confirm-cancel" class="btn-secondary">Cancelar</button>
+                <button id="btn-confirm-ok" class="btn-primary">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Prompt -->
+    <div id="modal-prompt" class="modal">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h2 id="modal-prompt-titulo">Informe</h2>
+                <span class="close-modal" data-modal="prompt">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p id="modal-prompt-mensagem"></p>
+                <div class="form-group">
+                    <input type="text" id="modal-prompt-input" class="form-input" placeholder="">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-prompt-cancel" class="btn-secondary">Cancelar</button>
+                <button id="btn-prompt-ok" class="btn-primary">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Seleção de Categoria -->
+    <div id="modal-selecao-categoria" class="modal">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h2>Escolher Categoria</h2>
+                <span class="close-modal" data-modal="selecao-categoria">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Selecione a categoria:</p>
+                <div id="modal-categorias-lista" class="modal-categorias"></div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-selecao-cancel" class="btn-secondary">Cancelar</button>
             </div>
         </div>
     </div>
