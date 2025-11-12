@@ -260,7 +260,11 @@ async function carregarDados() {
         itensIds = {};
         
         Object.keys(dados).forEach(categoria => {
-            itensPorCategoria[categoria] = [];
+            // Garantir que a categoria existe no objeto, mesmo se estiver vazia
+            if (!itensPorCategoria[categoria]) {
+                itensPorCategoria[categoria] = [];
+            }
+            
             dados[categoria].forEach((item, index) => {
                 itensPorCategoria[categoria].push({
                     nome: item.nome,
@@ -375,6 +379,28 @@ async function salvarBackupValorAPI(id, valorBackup) {
         return await response.json();
     } catch (error) {
         console.error('Erro ao salvar backup do valor:', error);
+        throw error;
+    }
+}
+
+async function criarCategoriaAPI(nome) {
+    try {
+        const response = await fetch(`${API_BASE}/api/categorias`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ nome })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Erro ao criar categoria');
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Erro ao criar categoria:', error);
         throw error;
     }
 }
@@ -541,6 +567,40 @@ async function adicionarNovoProduto() {
     }
 }
 
+// Adicionar nova categoria
+async function adicionarNovaCategoria() {
+    // Pedir nome da categoria
+    const nome = await mostrarPrompt('Adicionar Categoria', 'Digite o nome da nova categoria:');
+    if (!nome || nome.trim() === '') {
+        return; // Cancelado ou vazio
+    }
+    
+    // Verificar se a categoria já existe
+    if (itensPorCategoria[nome.trim()]) {
+        await mostrarAlert('Erro', 'Esta categoria já existe!');
+        return;
+    }
+    
+    try {
+        await criarCategoriaAPI(nome.trim());
+        
+        // Inicializar a categoria vazia localmente
+        itensPorCategoria[nome.trim()] = [];
+        
+        // Recarregar dados e interface para garantir sincronização
+        await carregarDados();
+        inicializarInterface();
+        selecionarTodosItens();
+        
+        await mostrarAlert('Sucesso', `Categoria "${nome.trim()}" criada com sucesso!`);
+    } catch (error) {
+        const mensagemErro = error.message.includes('UNIQUE') 
+            ? 'Esta categoria já existe!' 
+            : 'Erro ao criar a categoria. Tente novamente.';
+        await mostrarAlert('Erro', mensagemErro);
+    }
+}
+
 // Inicialização
 document.addEventListener('DOMContentLoaded', async () => {
     await carregarDados(); // Carregar dados da API primeiro
@@ -584,6 +644,12 @@ function criarCategoria(categoria) {
     header.className = 'categoria-header';
     const icone = iconesCategorias[categoria] || '<i class="fas fa-tag"></i>';
     header.innerHTML = `
+        <div class="categoria-header-left">
+            <input type="checkbox" class="categoria-checkbox" id="categoria-checkbox-${categoria}" title="Selecionar/Deselecionar todos os itens desta categoria">
+            <span class="drag-handle" title="Arrastar para reordenar" draggable="true">
+                <i class="fas fa-grip-vertical"></i>
+            </span>
+        </div>
         <span class="categoria-titulo">${icone} ${categoria}</span>
         <div class="categoria-actions">
             <button class="btn-adicionar-item" title="Adicionar item" data-categoria="${categoria}">
@@ -593,6 +659,127 @@ function criarCategoria(categoria) {
         </div>
     `;
     
+    // Checkbox da categoria para selecionar/deselecionar todos os itens
+    const categoriaCheckbox = header.querySelector('.categoria-checkbox');
+    
+    // Função para atualizar o estado do checkbox da categoria
+    const atualizarCheckboxCategoria = () => {
+        const itensDaCategoria = itensPorCategoria[categoria] || [];
+        if (itensDaCategoria.length === 0) {
+            categoriaCheckbox.checked = false;
+            categoriaCheckbox.disabled = true;
+            return;
+        }
+        categoriaCheckbox.disabled = false;
+        
+        // Verificar quantos itens estão selecionados
+        let selecionados = 0;
+        itensDaCategoria.forEach((item, index) => {
+            const key = `${categoria}-${index}`;
+            if (itensSelecionados.has(key)) {
+                selecionados++;
+            }
+        });
+        
+        // Se todos estão selecionados, marcar como checked
+        // Se nenhum está selecionado, marcar como unchecked
+        // Se alguns estão selecionados, marcar como indeterminate (estado parcial)
+        if (selecionados === itensDaCategoria.length) {
+            categoriaCheckbox.checked = true;
+            categoriaCheckbox.indeterminate = false;
+        } else if (selecionados === 0) {
+            categoriaCheckbox.checked = false;
+            categoriaCheckbox.indeterminate = false;
+        } else {
+            categoriaCheckbox.checked = false;
+            categoriaCheckbox.indeterminate = true;
+        }
+    };
+    
+    // Event listener para o checkbox da categoria
+    categoriaCheckbox.addEventListener('change', (e) => {
+        e.stopPropagation();
+        const isChecked = e.target.checked;
+        const itensDaCategoria = itensPorCategoria[categoria] || [];
+        
+        itensDaCategoria.forEach((item, index) => {
+            const key = `${categoria}-${index}`;
+            const itemCheckbox = document.getElementById(`item-${categoria}-${index}`);
+            
+            if (itemCheckbox) {
+                itemCheckbox.checked = isChecked;
+                if (isChecked) {
+                    itensSelecionados.add(key);
+                } else {
+                    itensSelecionados.delete(key);
+                }
+            }
+        });
+        
+        categoriaCheckbox.indeterminate = false;
+    });
+    
+    // Armazenar referência para atualizar quando itens forem selecionados/deselecionados
+    categoriaDiv._atualizarCheckbox = atualizarCheckboxCategoria;
+    
+    // Event listeners para drag and drop
+    const dragHandle = header.querySelector('.drag-handle');
+    
+    dragHandle.addEventListener('dragstart', (e) => {
+        // Marcar a categoria como sendo arrastada
+        categoriaDiv.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', categoria);
+        // Armazenar referência à categoria no elemento
+        e.dataTransfer.setData('application/categoria-element', categoriaDiv.outerHTML);
+    });
+    
+    dragHandle.addEventListener('dragend', () => {
+        categoriaDiv.classList.remove('dragging');
+        document.querySelectorAll('.categoria').forEach(cat => {
+            cat.classList.remove('drag-over');
+        });
+        salvarOrdemCategorias();
+    });
+    
+    // Permitir drop na categoria inteira
+    categoriaDiv.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        
+        const dragging = document.querySelector('.dragging');
+        if (!dragging || dragging === categoriaDiv) return;
+        
+        const container = categoriaDiv.parentElement;
+        const afterElement = getDragAfterElement(container, e.clientY);
+        
+        if (afterElement == null) {
+            container.appendChild(dragging);
+        } else {
+            container.insertBefore(dragging, afterElement);
+        }
+    });
+    
+    categoriaDiv.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        const dragging = document.querySelector('.dragging');
+        if (dragging && dragging !== categoriaDiv) {
+            categoriaDiv.classList.add('drag-over');
+        }
+    });
+    
+    categoriaDiv.addEventListener('dragleave', (e) => {
+        // Só remover se realmente saiu da categoria
+        if (!categoriaDiv.contains(e.relatedTarget)) {
+            categoriaDiv.classList.remove('drag-over');
+        }
+    });
+    
+    categoriaDiv.addEventListener('drop', (e) => {
+        e.preventDefault();
+        categoriaDiv.classList.remove('drag-over');
+    });
+    
     // Event listener para o toggle (não acionar quando clicar no botão)
     const toggleIcon = header.querySelector('.toggle-icon');
     toggleIcon.addEventListener('click', (e) => {
@@ -600,9 +787,14 @@ function criarCategoria(categoria) {
         toggleCategoria(categoria);
     });
     
-    // Event listener para o header (exceto botões)
+    // Event listener para o header (exceto botões, drag handle e checkbox)
     header.addEventListener('click', (e) => {
-        if (!e.target.closest('.categoria-actions')) {
+        if (!e.target.closest('.categoria-actions') && 
+            !e.target.closest('.drag-handle') && 
+            !e.target.closest('.categoria-header-left') &&
+            !e.target.closest('.categoria-checkbox') &&
+            e.target !== categoriaCheckbox &&
+            e.target.type !== 'checkbox') {
             toggleCategoria(categoria);
         }
     });
@@ -625,6 +817,11 @@ function criarCategoria(categoria) {
 
     categoriaDiv.appendChild(header);
     categoriaDiv.appendChild(body);
+    
+    // Atualizar estado inicial do checkbox da categoria
+    setTimeout(() => {
+        atualizarCheckboxCategoria();
+    }, 0);
 
     return categoriaDiv;
 }
@@ -646,6 +843,12 @@ function criarItem(categoria, index, item) {
             itensSelecionados.add(key);
         } else {
             itensSelecionados.delete(key);
+        }
+        
+        // Atualizar checkbox da categoria
+        const categoriaDiv = itemDiv.closest('.categoria');
+        if (categoriaDiv && categoriaDiv._atualizarCheckbox) {
+            categoriaDiv._atualizarCheckbox();
         }
     });
 
@@ -819,6 +1022,51 @@ function toggleCategoria(categoria) {
     }
 }
 
+// Função auxiliar para drag and drop
+function getDragAfterElement(container, y) {
+    const draggableElements = [...container.querySelectorAll('.categoria:not(.dragging)')];
+    
+    return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        
+        if (offset < 0 && offset > closest.offset) {
+            return { offset: offset, element: child };
+        } else {
+            return closest;
+        }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+// Salvar ordem das categorias
+async function salvarOrdemCategorias() {
+    const container = document.getElementById('categorias-container');
+    if (!container) return;
+    
+    const categorias = Array.from(container.querySelectorAll('.categoria')).map(cat => cat.dataset.categoria);
+    
+    if (categorias.length === 0) return;
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/categorias/ordem`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ categorias })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Erro ao salvar ordem das categorias');
+        }
+        
+        console.log('Ordem das categorias salva com sucesso:', categorias);
+    } catch (error) {
+        console.error('Erro ao salvar ordem das categorias:', error);
+    }
+}
+
 // Selecionar todos os itens
 function selecionarTodosItens() {
     itensSelecionados.clear();
@@ -828,6 +1076,13 @@ function selecionarTodosItens() {
         const index = checkbox.closest('.item').dataset.index;
         itensSelecionados.add(`${categoria}-${index}`);
     });
+    
+    // Atualizar checkboxes das categorias
+    document.querySelectorAll('.categoria').forEach(catDiv => {
+        if (catDiv._atualizarCheckbox) {
+            catDiv._atualizarCheckbox();
+        }
+    });
 }
 
 // Deselecionar todos os itens
@@ -835,6 +1090,13 @@ function deselecionarTodosItens() {
     itensSelecionados.clear();
     document.querySelectorAll('.item input[type="checkbox"]').forEach(checkbox => {
         checkbox.checked = false;
+    });
+    
+    // Atualizar checkboxes das categorias
+    document.querySelectorAll('.categoria').forEach(catDiv => {
+        if (catDiv._atualizarCheckbox) {
+            catDiv._atualizarCheckbox();
+        }
     });
 }
 
@@ -865,6 +1127,9 @@ function inicializarEventos() {
     
     // Botão adicionar novo produto
     document.getElementById('btn-adicionar-produto').addEventListener('click', adicionarNovoProduto);
+    
+    // Botão adicionar categoria
+    document.getElementById('btn-adicionar-categoria').addEventListener('click', adicionarNovaCategoria);
 
     // Botão aplicar reajuste
     document.getElementById('btn-aplicar-reajuste').addEventListener('click', () => {

@@ -145,6 +145,40 @@ app.post('/api/resetar-valores', async (req, res) => {
     }
 });
 
+// Atualizar ordem das categorias
+app.put('/api/categorias/ordem', async (req, res) => {
+    try {
+        const { categorias } = req.body;
+        
+        if (!Array.isArray(categorias)) {
+            return res.status(400).json({ error: 'categorias deve ser um array' });
+        }
+        
+        await db.atualizarOrdemCategorias(categorias);
+        res.json({ message: 'Ordem das categorias atualizada com sucesso' });
+    } catch (error) {
+        console.error('Erro ao atualizar ordem das categorias:', error);
+        res.status(500).json({ error: 'Erro ao atualizar ordem das categorias' });
+    }
+});
+
+// Criar nova categoria
+app.post('/api/categorias', async (req, res) => {
+    try {
+        const { nome } = req.body;
+        
+        if (!nome || nome.trim() === '') {
+            return res.status(400).json({ error: 'Nome da categoria é obrigatório' });
+        }
+        
+        const categoria = await db.criarCategoria(nome.trim());
+        res.status(201).json(categoria);
+    } catch (error) {
+        console.error('Erro ao criar categoria:', error);
+        res.status(500).json({ error: 'Erro ao criar categoria' });
+    }
+});
+
 // Servir o arquivo HTML
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
