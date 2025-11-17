@@ -161,6 +161,24 @@ app.put('/api/categorias/ordem', async (req, res) => {
     }
 });
 
+// Atualizar ordem dos itens dentro de uma categoria
+app.put('/api/itens/categoria/:categoria/ordem', async (req, res) => {
+    try {
+        const { categoria } = req.params;
+        const { itensIds } = req.body;
+        
+        if (!Array.isArray(itensIds)) {
+            return res.status(400).json({ error: 'itensIds deve ser um array' });
+        }
+        
+        await db.atualizarOrdemItens(categoria, itensIds);
+        res.json({ message: 'Ordem dos itens atualizada com sucesso' });
+    } catch (error) {
+        console.error('Erro ao atualizar ordem dos itens:', error);
+        res.status(500).json({ error: 'Erro ao atualizar ordem dos itens' });
+    }
+});
+
 // Criar nova categoria
 app.post('/api/categorias', async (req, res) => {
     try {

@@ -600,6 +600,49 @@ header p {
     border-color: #FF6B35;
 }
 
+.item.dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+    transform: scale(0.95);
+}
+
+.item.drag-over {
+    border-color: #FF6B35;
+    background: #fff3f0;
+    transition: all 0.2s ease;
+}
+
+.item.drag-over-top {
+    border-top: 3px solid #FF6B35;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
+
+.item.drag-over-bottom {
+    border-bottom: 3px solid #FF6B35;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.item-drag-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px;
+    margin-right: 8px;
+    color: #999;
+    cursor: grab;
+    transition: color 0.3s;
+}
+
+.item-drag-handle:hover {
+    color: #FF6B35;
+}
+
+.item-drag-handle:active {
+    cursor: grabbing;
+}
+
 .item input[type="checkbox"] {
     width: 20px;
     height: 20px;

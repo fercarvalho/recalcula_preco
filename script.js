@@ -73,6 +73,11 @@ let itensIds = {};
 let itensSelecionados = new Set();
 let categoriasColapsadas = {};
 let ultimoReajuste = { tipo: null, valor: null };
+// Estado do drag and drop
+let dragState = {
+    lastDragOverElement: null,
+    lastDragOverPosition: null
+};
 
 // Função utilitária para fechar qualquer modal aberto
 function fecharModalAberto() {
@@ -983,6 +988,13 @@ function criarItem(categoria, index, item) {
         itemDiv.dataset.itemId = itemId;
     }
 
+    // Handle de drag para reordenar itens
+    const dragHandle = document.createElement('span');
+    dragHandle.className = 'item-drag-handle';
+    dragHandle.innerHTML = '<i class="fas fa-grip-vertical"></i>';
+    dragHandle.title = 'Arrastar para reordenar';
+    dragHandle.draggable = true;
+    
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.id = `item-${categoria}-${index}`;
@@ -1053,9 +1065,135 @@ function criarItem(categoria, index, item) {
         excluirItem(categoria, index);
     });
 
+    itemDiv.appendChild(dragHandle);
     itemDiv.appendChild(checkbox);
     itemDiv.appendChild(info);
     itemDiv.appendChild(btnExcluir);
+    
+    // Event listeners para drag and drop
+    dragHandle.addEventListener('dragstart', (e) => {
+        e.stopPropagation(); // Evitar conflito com drag de categoria
+        itemDiv.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', itemId || '');
+        e.dataTransfer.setData('application/item-categoria', categoria);
+        
+        // Armazenar referência ao item sendo arrastado
+        itemDiv._isDragging = true;
+        
+        // Resetar estado do drag
+        dragState.lastDragOverElement = null;
+        dragState.lastDragOverPosition = null;
+    });
+    
+    dragHandle.addEventListener('dragend', () => {
+        itemDiv.classList.remove('dragging');
+        itemDiv._isDragging = false;
+        
+        // Resetar estado do drag
+        dragState.lastDragOverElement = null;
+        dragState.lastDragOverPosition = null;
+        
+        // Limpar todas as classes de drag-over
+        document.querySelectorAll('.item').forEach(item => {
+            item.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
+        });
+        
+        // Salvar ordem após o drag
+        salvarOrdemItens(categoria);
+    });
+    
+    // Permitir drop no item - versão melhorada com throttling
+    itemDiv.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = 'move';
+        
+        const dragging = document.querySelector('.item.dragging');
+        if (!dragging || dragging === itemDiv || !dragging._isDragging) return;
+        
+        // Verificar se é da mesma categoria
+        const draggingCategoria = dragging.dataset.categoria;
+        if (draggingCategoria !== categoria) return;
+        
+        const categoriaBody = itemDiv.closest('.categoria-body');
+        if (!categoriaBody) return;
+        
+        // Calcular a posição relativa ao item atual
+        const rect = itemDiv.getBoundingClientRect();
+        const y = e.clientY;
+        const midpoint = rect.top + rect.height / 2;
+        const position = y < midpoint ? 'top' : 'bottom';
+        
+        // Só mover se mudou de elemento ou de posição
+        if (dragState.lastDragOverElement === itemDiv && dragState.lastDragOverPosition === position) {
+            return; // Já está na posição correta
+        }
+        
+        dragState.lastDragOverElement = itemDiv;
+        dragState.lastDragOverPosition = position;
+        
+        // Remover classes de drag-over de todos os itens
+        categoriaBody.querySelectorAll('.item').forEach(item => {
+            if (item !== dragging) {
+                item.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
+            }
+        });
+        
+        // Adicionar classe visual apropriada
+        itemDiv.classList.add('drag-over', position === 'top' ? 'drag-over-top' : 'drag-over-bottom');
+        
+        // Obter todos os itens na ordem atual (sem o item sendo arrastado)
+        const todosItens = Array.from(categoriaBody.querySelectorAll('.item:not(.dragging)'));
+        const indexTarget = todosItens.indexOf(itemDiv);
+        
+        // Mover o item arrastado para a posição correta
+        // Usar requestAnimationFrame para suavizar a animação
+        requestAnimationFrame(() => {
+            if (position === 'top') {
+                // Inserir antes do item alvo - o item arrastado toma o lugar deste item
+                if (dragging !== itemDiv && dragging.nextSibling !== itemDiv) {
+                    categoriaBody.insertBefore(dragging, itemDiv);
+                }
+            } else {
+                // Inserir depois do item alvo
+                const nextSibling = itemDiv.nextSibling;
+                if (nextSibling && nextSibling !== dragging) {
+                    if (dragging.nextSibling !== nextSibling) {
+                        categoriaBody.insertBefore(dragging, nextSibling);
+                    }
+                } else if (!nextSibling && dragging !== categoriaBody.lastElementChild) {
+                    categoriaBody.appendChild(dragging);
+                }
+            }
+        });
+    });
+    
+    itemDiv.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const dragging = document.querySelector('.item.dragging');
+        if (dragging && dragging !== itemDiv && dragging.dataset.categoria === categoria) {
+            // A classe drag-over será adicionada no dragover
+        }
+    });
+    
+    itemDiv.addEventListener('dragleave', (e) => {
+        // Só remover se realmente saiu do item (não apenas passou para um filho)
+        if (!itemDiv.contains(e.relatedTarget)) {
+            itemDiv.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
+            if (dragState.lastDragOverElement === itemDiv) {
+                dragState.lastDragOverElement = null;
+                dragState.lastDragOverPosition = null;
+            }
+        }
+    });
+    
+    itemDiv.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        itemDiv.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
+    });
 
     // Adicionar ao conjunto de selecionados
     itensSelecionados.add(`${categoria}-${index}`);
@@ -1147,7 +1285,7 @@ function toggleCategoria(categoria) {
     }
 }
 
-// Função auxiliar para drag and drop
+// Função auxiliar para drag and drop de categorias
 function getDragAfterElement(container, y) {
     const draggableElements = [...container.querySelectorAll('.categoria:not(.dragging)')];
     
@@ -1161,6 +1299,127 @@ function getDragAfterElement(container, y) {
             return closest;
         }
     }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+// Função auxiliar para drag and drop de itens (mantida para compatibilidade, mas não mais usada)
+function getDragAfterItem(container, y) {
+    const draggableElements = [...container.querySelectorAll('.item:not(.dragging)')];
+    
+    return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        
+        if (offset < 0 && offset > closest.offset) {
+            return { offset: offset, element: child };
+        } else {
+            return closest;
+        }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+// Salvar ordem dos itens dentro de uma categoria
+async function salvarOrdemItens(categoria) {
+    const categoriaBody = document.querySelector(`#categoria-${categoria}`);
+    if (!categoriaBody) {
+        console.error('Corpo da categoria não encontrado!');
+        return;
+    }
+    
+    // Obter todos os itens na ordem atual (incluindo o que estava sendo arrastado)
+    const itens = Array.from(categoriaBody.querySelectorAll('.item'));
+    const itensIds = itens
+        .map(item => {
+            const itemId = item.dataset.itemId;
+            return itemId ? parseInt(itemId) : null;
+        })
+        .filter(id => id !== null);
+    
+    if (itensIds.length === 0) {
+        console.warn('Nenhum item encontrado para salvar');
+        return;
+    }
+    
+    console.log(`=== SALVANDO ORDEM DOS ITENS DA CATEGORIA: ${categoria} ===`);
+    console.log('IDs dos itens na ordem:', itensIds);
+    console.log('Quantidade de itens:', itensIds.length);
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/itens/categoria/${encodeURIComponent(categoria)}/ordem`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ itensIds })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Erro ao salvar ordem dos itens');
+        }
+        
+        const result = await response.json();
+        console.log('✓ Ordem dos itens salva com sucesso!');
+        console.log('Resposta do servidor:', result);
+        
+        // Atualizar os índices locais sem recarregar tudo
+        atualizarIndicesLocaisAposDrag(categoria);
+    } catch (error) {
+        console.error('✗ ERRO ao salvar ordem dos itens:', error);
+    }
+}
+
+// Atualizar índices locais após reordenar (sem recarregar tudo)
+function atualizarIndicesLocaisAposDrag(categoria) {
+    const categoriaBody = document.querySelector(`#categoria-${categoria}`);
+    if (!categoriaBody) return;
+    
+    const itens = Array.from(categoriaBody.querySelectorAll('.item'));
+    
+    // Atualizar os índices e IDs locais baseado na nova ordem
+    itens.forEach((itemDiv, novoIndex) => {
+        const itemId = itemDiv.dataset.itemId;
+        if (!itemId) return;
+        
+        // Atualizar o índice no dataset
+        itemDiv.dataset.index = novoIndex;
+        
+        // Atualizar o ID do checkbox
+        const checkbox = itemDiv.querySelector('input[type="checkbox"]');
+        if (checkbox) {
+            checkbox.id = `item-${categoria}-${novoIndex}`;
+        }
+        
+        // Atualizar o mapa de IDs
+        const key = `${categoria}-${novoIndex}`;
+        itensIds[key] = parseInt(itemId);
+        
+        // Atualizar o item selecionado se estava selecionado
+        // Procurar pela chave antiga que apontava para este itemId
+        const oldKeys = Array.from(itensSelecionados).filter(k => {
+            const [cat, idx] = k.split('-');
+            const oldId = itensIds[k];
+            return cat === categoria && oldId === parseInt(itemId);
+        });
+        
+        // Remover as chaves antigas e adicionar a nova
+        oldKeys.forEach(oldKey => {
+            itensSelecionados.delete(oldKey);
+        });
+        
+        // Verificar se o item estava selecionado antes (pela presença de oldKeys)
+        if (oldKeys.length > 0 || checkbox.checked) {
+            itensSelecionados.add(key);
+            if (checkbox) {
+                checkbox.checked = true;
+            }
+        }
+    });
+    
+    // Atualizar checkbox da categoria
+    const categoriaDiv = document.querySelector(`.categoria[data-categoria="${categoria}"]`);
+    if (categoriaDiv && categoriaDiv._atualizarCheckbox) {
+        categoriaDiv._atualizarCheckbox();
+    }
 }
 
 // Salvar ordem das categorias

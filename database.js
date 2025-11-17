@@ -146,13 +146,17 @@ function inicializar() {
                         inserirDadosPadrao().then(() => {
                             console.log('Dados padrão inseridos');
                             inicializarOrdemCategorias().then(() => {
-                                resolve();
+                                inicializarOrdemItens().then(() => {
+                                    resolve();
+                                }).catch(reject);
                             }).catch(reject);
                         }).catch(reject);
                     } else {
-                        // Inicializar ordem de categorias se necessário
+                        // Inicializar ordem de categorias e itens se necessário
                         inicializarOrdemCategorias().then(() => {
-                            resolve();
+                            inicializarOrdemItens().then(() => {
+                                resolve();
+                            }).catch(reject);
                         }).catch(reject);
                     }
                 });
@@ -164,16 +168,20 @@ function inicializar() {
 // Inserir dados padrão
 function inserirDadosPadrao() {
     return new Promise((resolve, reject) => {
-        const stmt = db.prepare('INSERT INTO itens (categoria, nome, valor, valor_backup) VALUES (?, ?, ?, ?)');
+        const stmt = db.prepare('INSERT INTO itens (categoria, nome, valor, valor_backup, ordem) VALUES (?, ?, ?, ?, ?)');
         
         let inseridos = 0;
         let total = 0;
+        let ordemPorCategoria = {}; // Rastrear ordem por categoria
         
         Object.keys(dadosPadrao).forEach(categoria => {
+            ordemPorCategoria[categoria] = 0; // Inicializar ordem para cada categoria
+            
             dadosPadrao[categoria].forEach(item => {
                 total++;
-                // valor_backup inicia com o mesmo valor
-                stmt.run([categoria, item.nome, item.valor, item.valor], (err) => {
+                const ordem = ordemPorCategoria[categoria]++;
+                // valor_backup inicia com o mesmo valor, ordem começa em 0
+                stmt.run([categoria, item.nome, item.valor, item.valor, ordem], (err) => {
                     if (err) {
                         console.error('Erro ao inserir item:', err);
                     }
@@ -182,6 +190,82 @@ function inserirDadosPadrao() {
                         stmt.finalize();
                         resolve();
                     }
+                });
+            });
+        });
+    });
+}
+
+// Inicializar ordem dos itens (para itens que não têm ordem definida)
+function inicializarOrdemItens() {
+    return new Promise((resolve, reject) => {
+        // Obter todas as categorias
+        db.all('SELECT DISTINCT categoria FROM itens', (err, categorias) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            
+            let processadas = 0;
+            const total = categorias.length;
+            
+            if (total === 0) {
+                resolve();
+                return;
+            }
+            
+            categorias.forEach(categoriaRow => {
+                const categoria = categoriaRow.categoria;
+                
+                // Obter todos os itens desta categoria que não têm ordem definida, ordenados por nome
+                db.all('SELECT id FROM itens WHERE categoria = ? AND (ordem IS NULL OR ordem = 999) ORDER BY nome', [categoria], (err, itens) => {
+                    if (err) {
+                        console.error(`Erro ao obter itens da categoria ${categoria}:`, err);
+                        processadas++;
+                        if (processadas === total) resolve();
+                        return;
+                    }
+                    
+                    // Obter a maior ordem atual para esta categoria
+                    db.get('SELECT MAX(ordem) as maxOrdem FROM itens WHERE categoria = ? AND ordem IS NOT NULL AND ordem != 999', [categoria], (err, result) => {
+                        if (err) {
+                            console.error(`Erro ao obter ordem máxima da categoria ${categoria}:`, err);
+                            processadas++;
+                            if (processadas === total) resolve();
+                            return;
+                        }
+                        
+                        let ordemInicial = (result && result.maxOrdem !== null && result.maxOrdem !== undefined) ? result.maxOrdem + 1 : 0;
+                        
+                        // Se não há itens para inicializar, apenas marcar como processada
+                        if (itens.length === 0) {
+                            processadas++;
+                            if (processadas === total) resolve();
+                            return;
+                        }
+                        
+                        // Atualizar a ordem de cada item
+                        const stmt = db.prepare('UPDATE itens SET ordem = ? WHERE id = ?');
+                        let atualizados = 0;
+                        
+                        itens.forEach((item, index) => {
+                            stmt.run([ordemInicial + index, item.id], (err) => {
+                                if (err) {
+                                    console.error(`Erro ao atualizar ordem do item ${item.id}:`, err);
+                                }
+                                atualizados++;
+                                
+                                if (atualizados === itens.length) {
+                                    stmt.finalize();
+                                    processadas++;
+                                    if (processadas === total) {
+                                        console.log('Ordem dos itens inicializada com sucesso');
+                                        resolve();
+                                    }
+                                }
+                            });
+                        });
+                    });
                 });
             });
         });
@@ -263,8 +347,8 @@ function obterTodosItens() {
             console.log('Categorias ordenadas do banco:', categoriasOrdenadas.map(c => `${c.nome}:${c.ordem}`));
             console.log('Mapa de ordem criado:', ordemMap);
             
-            // Obter todos os itens (ordenar por categoria e nome)
-            db.all('SELECT * FROM itens ORDER BY categoria, nome', (err, rows) => {
+            // Obter todos os itens (ordenar por categoria e ordem, depois por nome se ordem for NULL)
+            db.all('SELECT * FROM itens ORDER BY categoria, CASE WHEN ordem IS NULL THEN 1 ELSE 0 END, ordem, nome', (err, rows) => {
                 if (err) {
                     reject(err);
                     return;
@@ -302,7 +386,8 @@ function obterTodosItens() {
                         nome: row.nome,
                         valor: row.valor,
                         valorNovo: row.valor_novo,
-                        valorBackup: row.valor_backup !== null && row.valor_backup !== undefined ? row.valor_backup : row.valor
+                        valorBackup: row.valor_backup !== null && row.valor_backup !== undefined ? row.valor_backup : row.valor,
+                        ordem: row.ordem !== null && row.ordem !== undefined ? row.ordem : 999
                     });
                 });
                 
@@ -380,7 +465,7 @@ function obterItemPorId(id) {
 // Obter itens por categoria
 function obterItensPorCategoria(categoria) {
     return new Promise((resolve, reject) => {
-        db.all('SELECT * FROM itens WHERE categoria = ? ORDER BY nome', [categoria], (err, rows) => {
+        db.all('SELECT * FROM itens WHERE categoria = ? ORDER BY CASE WHEN ordem IS NULL THEN 1 ELSE 0 END, ordem, nome', [categoria], (err, rows) => {
             if (err) {
                 reject(err);
                 return;
@@ -390,7 +475,8 @@ function obterItensPorCategoria(categoria) {
                 id: row.id,
                 nome: row.nome,
                 valor: row.valor,
-                valorNovo: row.valor_novo
+                valorNovo: row.valor_novo,
+                ordem: row.ordem !== null && row.ordem !== undefined ? row.ordem : 999
             })));
         });
     });
@@ -399,31 +485,42 @@ function obterItensPorCategoria(categoria) {
 // Criar novo item
 function criarItem(categoria, nome, valor) {
     return new Promise((resolve, reject) => {
-        db.run(
-            'INSERT INTO itens (categoria, nome, valor, valor_backup) VALUES (?, ?, ?, ?)',
-            [categoria, nome, valor, valor], // valor_backup inicia com o mesmo valor
-            function(err) {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-                
-                // Retornar o item criado
-                db.get('SELECT * FROM itens WHERE id = ?', [this.lastID], (err, row) => {
+        // Primeiro, obter a maior ordem atual para esta categoria
+        db.get('SELECT MAX(ordem) as maxOrdem FROM itens WHERE categoria = ?', [categoria], (err, result) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            
+            const novaOrdem = (result && result.maxOrdem !== null) ? result.maxOrdem + 1 : 0;
+            
+            db.run(
+                'INSERT INTO itens (categoria, nome, valor, valor_backup, ordem) VALUES (?, ?, ?, ?, ?)',
+                [categoria, nome, valor, valor, novaOrdem], // valor_backup inicia com o mesmo valor, ordem é a próxima disponível
+                function(err) {
                     if (err) {
                         reject(err);
                         return;
                     }
                     
-                    resolve({
-                        id: row.id,
-                        nome: row.nome,
-                        valor: row.valor,
-                        valorNovo: row.valor_novo
+                    // Retornar o item criado
+                    db.get('SELECT * FROM itens WHERE id = ?', [this.lastID], (err, row) => {
+                        if (err) {
+                            reject(err);
+                            return;
+                        }
+                        
+                        resolve({
+                            id: row.id,
+                            nome: row.nome,
+                            valor: row.valor,
+                            valorNovo: row.valor_novo,
+                            ordem: row.ordem
+                        });
                     });
-                });
-            }
-        );
+                }
+            );
+        });
     });
 }
 
@@ -656,6 +753,56 @@ function deletarCategoria(nome) {
     });
 }
 
+// Atualizar ordem dos itens dentro de uma categoria
+function atualizarOrdemItens(categoria, itensIds) {
+    return new Promise((resolve, reject) => {
+        if (!Array.isArray(itensIds) || itensIds.length === 0) {
+            resolve();
+            return;
+        }
+        
+        console.log(`=== ATUALIZANDO ORDEM DOS ITENS DA CATEGORIA: ${categoria} ===`);
+        console.log('IDs dos itens na ordem:', itensIds);
+        
+        db.serialize(() => {
+            const stmt = db.prepare('UPDATE itens SET ordem = ? WHERE id = ? AND categoria = ?');
+            
+            let processados = 0;
+            const total = itensIds.length;
+            let erroOcorrido = false;
+            
+            itensIds.forEach((itemId, index) => {
+                stmt.run([index, itemId, categoria], function(err) {
+                    if (err) {
+                        console.error(`ERRO ao atualizar ordem do item ${itemId}:`, err);
+                        if (!erroOcorrido) {
+                            erroOcorrido = true;
+                            stmt.finalize();
+                            reject(err);
+                        }
+                        return;
+                    }
+                    
+                    processados++;
+                    console.log(`✓ Item ID ${itemId} -> ordem ${index} (${processados}/${total})`);
+                    
+                    if (processados === total && !erroOcorrido) {
+                        stmt.finalize((err) => {
+                            if (err) {
+                                console.error('ERRO ao finalizar statement:', err);
+                                reject(err);
+                            } else {
+                                console.log('=== ORDEM DOS ITENS ATUALIZADA COM SUCESSO ===');
+                                resolve();
+                            }
+                        });
+                    }
+                });
+            });
+        });
+    });
+}
+
 // Criar nova categoria
 function criarCategoria(nome) {
     return new Promise((resolve, reject) => {
@@ -720,6 +867,7 @@ module.exports = {
     salvarBackupValor,
     resetarValores,
     atualizarOrdemCategorias,
+    atualizarOrdemItens,
     criarCategoria,
     deletarCategoria,
     fechar
