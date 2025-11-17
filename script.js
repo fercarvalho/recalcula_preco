@@ -562,8 +562,12 @@ function criarLinhaItem(container, categorias, categoriaPadrao = null, podeRemov
     grupoCategoria.className = 'form-group categoria';
     const labelCategoria = document.createElement('label');
     labelCategoria.textContent = 'Categoria';
+    labelCategoria.style.cursor = 'default';
+    labelCategoria.style.userSelect = 'none';
+    labelCategoria.draggable = false;
     const selectCategoria = document.createElement('select');
     selectCategoria.className = 'form-input';
+    selectCategoria.draggable = false;
     
     categorias.forEach((categoria) => {
         const option = document.createElement('option');
@@ -704,61 +708,66 @@ function mostrarModalEditarItem(nomeAtual = '', categoriaAtual = null, valorAtua
                 const linhas = containerLinhas.querySelectorAll('.item-linha');
                 const itens = [];
                 
-                linhas.forEach((linha) => {
-                    const inputNomeLinha = linha.querySelector('.form-group.nome input');
-                    const inputValorLinha = linha.querySelector('.form-group.valor input');
-                    const selectCategoriaLinha = linha.querySelector('.form-group.categoria select');
-                    
-                    const nome = inputNomeLinha.value.trim();
-                    const valorStr = inputValorLinha.value.trim();
-                    const categoria = selectCategoriaLinha.value.trim();
-                    
-                    // Validar linha (pular linhas vazias)
-                    if (!nome && !valorStr && !categoria) {
-                        return; // Linha vazia, pular
-                    }
-                    
-                    // Validar campos obrigatórios
-                    if (!nome) {
-                        mostrarAlert('Atenção', 'O nome do item não pode estar vazio!');
-                        inputNomeLinha.focus();
-                        throw new Error('Nome vazio');
-                    }
-                    
-                    if (!valorStr) {
-                        mostrarAlert('Atenção', 'O preço do item não pode estar vazio!');
-                        inputValorLinha.focus();
-                        throw new Error('Valor vazio');
-                    }
-                    
-                    if (!categoria) {
-                        mostrarAlert('Atenção', 'Por favor, selecione uma categoria!');
-                        selectCategoriaLinha.focus();
-                        throw new Error('Categoria vazia');
-                    }
-                    
-                    const valor = parseFloat(valorStr.replace(',', '.'));
-                    if (isNaN(valor) || valor < 0) {
-                        mostrarAlert('Atenção', 'O preço deve ser um número válido maior ou igual a zero!');
-                        inputValorLinha.focus();
-                        throw new Error('Valor inválido');
-                    }
-                    
-                    itens.push({
-                        nome: nome,
-                        categoria: categoria,
-                        valor: valor
+                try {
+                    linhas.forEach((linha) => {
+                        const inputNomeLinha = linha.querySelector('.form-group.nome input');
+                        const inputValorLinha = linha.querySelector('.form-group.valor input');
+                        const selectCategoriaLinha = linha.querySelector('.form-group.categoria select');
+                        
+                        const nome = inputNomeLinha.value.trim();
+                        const valorStr = inputValorLinha.value.trim();
+                        const categoria = selectCategoriaLinha.value.trim();
+                        
+                        // Validar linha (pular linhas vazias)
+                        if (!nome && !valorStr && !categoria) {
+                            return; // Linha vazia, pular
+                        }
+                        
+                        // Validar campos obrigatórios
+                        if (!nome) {
+                            mostrarAlert('Atenção', 'O nome do item não pode estar vazio!');
+                            inputNomeLinha.focus();
+                            throw new Error('Nome vazio');
+                        }
+                        
+                        if (!valorStr) {
+                            mostrarAlert('Atenção', 'O preço do item não pode estar vazio!');
+                            inputValorLinha.focus();
+                            throw new Error('Valor vazio');
+                        }
+                        
+                        if (!categoria) {
+                            mostrarAlert('Atenção', 'Por favor, selecione uma categoria!');
+                            selectCategoriaLinha.focus();
+                            throw new Error('Categoria vazia');
+                        }
+                        
+                        const valor = parseFloat(valorStr.replace(',', '.'));
+                        if (isNaN(valor) || valor < 0) {
+                            mostrarAlert('Atenção', 'O preço deve ser um número válido maior ou igual a zero!');
+                            inputValorLinha.focus();
+                            throw new Error('Valor inválido');
+                        }
+                        
+                        itens.push({
+                            nome: nome,
+                            categoria: categoria,
+                            valor: valor
+                        });
                     });
-                });
-                
-                if (itens.length === 0) {
-                    mostrarAlert('Atenção', 'Por favor, preencha pelo menos um item!');
+                    
+                    if (itens.length === 0) {
+                        mostrarAlert('Atenção', 'Por favor, preencha pelo menos um item!');
+                        return;
+                    }
+                    
+                    fechar({
+                        itens: itens
+                    });
+                } catch (error) {
+                    // Erro já foi tratado com alert
                     return;
                 }
-                
-                fechar({
-                    itens: itens
-                });
             } else {
                 // Modo edição simples
                 const novoNome = inputNome.value.trim();
@@ -971,7 +980,7 @@ async function adicionarNovoProduto() {
             await mostrarAlert('Erro', 'Erro ao adicionar os produtos. Tente novamente.');
         }
     } else {
-        // Modo simples (compatibilidade com código antigo)
+        // Modo simples (compatibilidade)
         const { nome, categoria, valor } = resultado;
         
         try {

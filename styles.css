@@ -1123,10 +1123,26 @@ select.form-input:disabled {
 .item-linha .form-group.categoria {
     flex: 1.5;
     min-width: 180px;
+    cursor: default !important;
+}
+
+.item-linha .form-group.categoria label {
+    cursor: default !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    pointer-events: auto !important;
+}
+
+.item-linha .form-group.categoria select {
+    cursor: pointer !important;
+    user-select: auto !important;
+    -webkit-user-select: auto !important;
+    -moz-user-select: auto !important;
 }
 
 .item-linha .form-group select {
-    cursor: pointer;
+    cursor: pointer !important;
     appearance: none;
     -webkit-appearance: none;
     -moz-appearance: none;
@@ -1134,6 +1150,10 @@ select.form-input:disabled {
     background-repeat: no-repeat;
     background-position: right 12px center;
     padding-right: 40px;
+    user-select: auto !important;
+    -webkit-user-select: auto !important;
+    -moz-user-select: auto !important;
+    pointer-events: auto !important;
 }
 
 .item-linha .btn-adicionar-linha {
