@@ -1075,7 +1075,7 @@ select.form-input:disabled {
 .item-linha {
     display: flex;
     gap: 10px;
-    align-items: flex-end;
+    align-items: flex-start;
     padding: 15px;
     background: #f9f9f9;
     border-radius: 8px;
@@ -1085,6 +1085,8 @@ select.form-input:disabled {
 .item-linha .form-group {
     flex: 1;
     margin: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 .item-linha .form-group label {
@@ -1092,7 +1094,14 @@ select.form-input:disabled {
     margin-bottom: 5px;
     font-size: 0.9em;
     color: #666;
-    font-weight: 500;
+    font-weight: normal;
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    outline: none !important;
 }
 
 .item-linha .form-group input,
@@ -1120,10 +1129,30 @@ select.form-input:disabled {
     max-width: 150px;
 }
 
-.item-linha .form-group.categoria {
+.categoria-container {
     flex: 1.5;
     min-width: 180px;
+    display: flex;
+    flex-direction: column;
+}
+
+.label-categoria-externo {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 0.9em;
+    color: #666;
+    font-weight: normal !important;
     cursor: default !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+}
+
+.item-linha .form-group.categoria {
+    flex: 1;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 .item-linha .form-group.categoria label {
@@ -1139,6 +1168,10 @@ select.form-input:disabled {
     user-select: auto !important;
     -webkit-user-select: auto !important;
     -moz-user-select: auto !important;
+    position: relative !important;
+    z-index: 0 !important;
+    display: block !important;
+    width: 100% !important;
 }
 
 .item-linha .form-group select {

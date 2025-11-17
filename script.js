@@ -557,18 +557,19 @@ function criarLinhaItem(container, categorias, categoriaPadrao = null, podeRemov
     grupoValor.appendChild(labelValor);
     grupoValor.appendChild(inputValor);
     
-    // Campo Categoria
-    const grupoCategoria = document.createElement('div');
-    grupoCategoria.className = 'form-group categoria';
+    // Campo Categoria - Label fora do grupo
     const labelCategoria = document.createElement('label');
     labelCategoria.textContent = 'Categoria';
-    labelCategoria.style.cursor = 'default';
-    labelCategoria.style.userSelect = 'none';
+    labelCategoria.className = 'label-categoria-externo';
     labelCategoria.draggable = false;
+    
+    const grupoCategoria = document.createElement('div');
+    grupoCategoria.className = 'form-group categoria';
     const selectCategoria = document.createElement('select');
     selectCategoria.className = 'form-input';
     selectCategoria.draggable = false;
     
+    // Adicionar opções de categoria
     categorias.forEach((categoria) => {
         const option = document.createElement('option');
         option.value = categoria;
@@ -581,7 +582,6 @@ function criarLinhaItem(container, categorias, categoriaPadrao = null, podeRemov
         selectCategoria.appendChild(option);
     });
     
-    grupoCategoria.appendChild(labelCategoria);
     grupoCategoria.appendChild(selectCategoria);
     
     // Botão Adicionar Linha
@@ -606,7 +606,12 @@ function criarLinhaItem(container, categorias, categoriaPadrao = null, podeRemov
     
     linha.appendChild(grupoNome);
     linha.appendChild(grupoValor);
-    linha.appendChild(grupoCategoria);
+    // Criar container para categoria com label externo
+    const containerCategoria = document.createElement('div');
+    containerCategoria.className = 'categoria-container';
+    containerCategoria.appendChild(labelCategoria);
+    containerCategoria.appendChild(grupoCategoria);
+    linha.appendChild(containerCategoria);
     linha.appendChild(btnAdicionar);
     if (btnRemover) {
         linha.appendChild(btnRemover);
