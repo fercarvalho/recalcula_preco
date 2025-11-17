@@ -525,38 +525,155 @@ function criarItem(categoria, nome, valor) {
 }
 
 // Atualizar item
-function atualizarItem(id, nome, valor) {
+function atualizarItem(id, nome, valor, categoria) {
     return new Promise((resolve, reject) => {
-        db.run(
-            'UPDATE itens SET nome = ?, valor = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-            [nome, valor, id],
-            function(err) {
+        console.log(`[DB] Atualizando item ${id}: nome="${nome}", valor=${valor}, categoria="${categoria}"`);
+        
+        // Se categoria foi fornecida, precisamos atualizar a categoria e a ordem
+        if (categoria !== undefined && categoria !== null) {
+            // Primeiro obter o item atual para verificar se a categoria mudou
+            db.get('SELECT categoria FROM itens WHERE id = ?', [id], (err, row) => {
                 if (err) {
+                    console.error('[DB] Erro ao obter categoria atual:', err);
                     reject(err);
                     return;
                 }
                 
-                if (this.changes === 0) {
+                if (!row) {
+                    console.error('[DB] Item não encontrado:', id);
                     resolve(null);
                     return;
                 }
                 
-                // Retornar o item atualizado
-                db.get('SELECT * FROM itens WHERE id = ?', [id], (err, row) => {
+                const categoriaAtual = row.categoria;
+                const categoriaMudou = categoria.trim() !== categoriaAtual.trim();
+                
+                console.log(`[DB] Categoria atual: "${categoriaAtual}", nova: "${categoria}", mudou: ${categoriaMudou}`);
+                
+                if (categoriaMudou) {
+                    // Se a categoria mudou, obter a maior ordem da nova categoria
+                    db.get('SELECT MAX(ordem) as maxOrdem FROM itens WHERE categoria = ?', [categoria], (err, result) => {
+                        if (err) {
+                            console.error('[DB] Erro ao obter max ordem:', err);
+                            reject(err);
+                            return;
+                        }
+                        
+                        const novaOrdem = (result && result.maxOrdem !== null && result.maxOrdem !== undefined) ? result.maxOrdem + 1 : 0;
+                        console.log(`[DB] Nova ordem na categoria "${categoria}": ${novaOrdem}`);
+                        
+                        // Atualizar categoria e ordem
+                        db.run(
+                            'UPDATE itens SET nome = ?, valor = ?, categoria = ?, ordem = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                            [nome, valor, categoria, novaOrdem, id],
+                            function(err) {
+                                if (err) {
+                                    console.error('[DB] Erro ao atualizar item:', err);
+                                    reject(err);
+                                    return;
+                                }
+                                
+                                console.log(`[DB] Item atualizado: ${this.changes} linha(s) afetada(s)`);
+                                
+                                if (this.changes === 0) {
+                                    resolve(null);
+                                    return;
+                                }
+                                
+                                // Retornar o item atualizado
+                                db.get('SELECT * FROM itens WHERE id = ?', [id], (err, row) => {
+                                    if (err) {
+                                        reject(err);
+                                        return;
+                                    }
+                                    
+                                    console.log(`[DB] Item retornado: categoria="${row.categoria}"`);
+                                    resolve({
+                                        id: row.id,
+                                        nome: row.nome,
+                                        valor: row.valor,
+                                        valorNovo: row.valor_novo,
+                                        categoria: row.categoria
+                                    });
+                                });
+                            }
+                        );
+                    });
+                } else {
+                    // Categoria não mudou, mas vamos atualizar mesmo assim para garantir consistência
+                    // Atualizar nome, valor e categoria (mesmo que seja a mesma)
+                    console.log(`[DB] Categoria não mudou, atualizando mesmo assim`);
+                    db.run(
+                        'UPDATE itens SET nome = ?, valor = ?, categoria = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                        [nome, valor, categoria, id],
+                        function(err) {
+                            if (err) {
+                                console.error('[DB] Erro ao atualizar item:', err);
+                                reject(err);
+                                return;
+                            }
+                            
+                            console.log(`[DB] Item atualizado: ${this.changes} linha(s) afetada(s)`);
+                            
+                            if (this.changes === 0) {
+                                resolve(null);
+                                return;
+                            }
+                            
+                            // Retornar o item atualizado
+                            db.get('SELECT * FROM itens WHERE id = ?', [id], (err, row) => {
+                                if (err) {
+                                    reject(err);
+                                    return;
+                                }
+                                
+                                console.log(`[DB] Item retornado: categoria="${row.categoria}"`);
+                                resolve({
+                                    id: row.id,
+                                    nome: row.nome,
+                                    valor: row.valor,
+                                    valorNovo: row.valor_novo,
+                                    categoria: row.categoria
+                                });
+                            });
+                        }
+                    );
+                }
+            });
+        } else {
+            // Categoria não foi fornecida, atualizar normalmente
+            db.run(
+                'UPDATE itens SET nome = ?, valor = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                [nome, valor, id],
+                function(err) {
                     if (err) {
                         reject(err);
                         return;
                     }
                     
-                    resolve({
-                        id: row.id,
-                        nome: row.nome,
-                        valor: row.valor,
-                        valorNovo: row.valor_novo
+                    if (this.changes === 0) {
+                        resolve(null);
+                        return;
+                    }
+                    
+                    // Retornar o item atualizado
+                    db.get('SELECT * FROM itens WHERE id = ?', [id], (err, row) => {
+                        if (err) {
+                            reject(err);
+                            return;
+                        }
+                        
+                        resolve({
+                            id: row.id,
+                            nome: row.nome,
+                            valor: row.valor,
+                            valorNovo: row.valor_novo,
+                            categoria: row.categoria
+                        });
                     });
-                });
-            }
-        );
+                }
+            );
+        }
     });
 }
 

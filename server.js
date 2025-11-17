@@ -58,10 +58,12 @@ app.post('/api/itens', async (req, res) => {
 app.put('/api/itens/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { nome, valor, valorNovo } = req.body;
+        const { nome, valor, valorNovo, categoria } = req.body;
+        
+        console.log(`[SERVER] PUT /api/itens/${id}`, { nome, valor, valorNovo, categoria });
         
         // Se valorNovo foi enviado, atualizar apenas ele
-        if (valorNovo !== undefined && nome === undefined && valor === undefined) {
+        if (valorNovo !== undefined && nome === undefined && valor === undefined && categoria === undefined) {
             const sucesso = await db.atualizarValorNovo(id, valorNovo);
             if (!sucesso) {
                 return res.status(404).json({ error: 'Item não encontrado' });
@@ -70,15 +72,18 @@ app.put('/api/itens/:id', async (req, res) => {
             return res.json(item);
         }
         
-        // Caso contrário, atualizar nome e/ou valor
-        const item = await db.atualizarItem(id, nome, valor);
+        // Caso contrário, atualizar nome, valor e/ou categoria
+        console.log(`[SERVER] Chamando db.atualizarItem(${id}, "${nome}", ${valor}, "${categoria}")`);
+        const item = await db.atualizarItem(id, nome, valor, categoria);
         if (!item) {
+            console.log(`[SERVER] Item não encontrado: ${id}`);
             return res.status(404).json({ error: 'Item não encontrado' });
         }
         
+        console.log(`[SERVER] Item atualizado com sucesso:`, item);
         res.json(item);
     } catch (error) {
-        console.error('Erro ao atualizar item:', error);
+        console.error('[SERVER] Erro ao atualizar item:', error);
         res.status(500).json({ error: 'Erro ao atualizar item' });
     }
 });

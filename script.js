@@ -268,7 +268,7 @@ function mostrarPromptNumber(titulo, mensagem, valorPadrao = '') {
     });
 }
 
-function mostrarSelecaoCategoria() {
+function mostrarSelecaoCategoria(categoriaAtual = null) {
     return new Promise((resolve) => {
         const modal = document.getElementById('modal-selecao-categoria');
         const lista = document.getElementById('modal-categorias-lista');
@@ -281,6 +281,13 @@ function mostrarSelecaoCategoria() {
             const btnCategoria = document.createElement('button');
             btnCategoria.className = 'btn-categoria-opcao';
             btnCategoria.textContent = categoria;
+            
+            // Destacar a categoria atual se fornecida
+            if (categoriaAtual && categoria === categoriaAtual) {
+                btnCategoria.classList.add('categoria-atual');
+                btnCategoria.innerHTML = `${categoria} <span style="color: #999; font-size: 0.9em;">(atual)</span>`;
+            }
+            
             btnCategoria.onclick = () => {
                 modal.classList.remove('show');
                 resolve(categoria);
@@ -355,23 +362,34 @@ async function carregarDados() {
     }
 }
 
-async function atualizarItemAPI(id, nome, valor) {
+async function atualizarItemAPI(id, nome, valor, categoria) {
     try {
+        const body = { nome, valor };
+        if (categoria !== undefined && categoria !== null) {
+            body.categoria = categoria.trim();
+        }
+        
+        console.log('[API] Atualizando item:', { id, nome, valor, categoria: body.categoria });
+        
         const response = await fetch(`${API_BASE}/api/itens/${id}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ nome, valor })
+            body: JSON.stringify(body)
         });
         
         if (!response.ok) {
+            const errorText = await response.text();
+            console.error('[API] Erro na resposta:', response.status, errorText);
             throw new Error('Erro ao atualizar item');
         }
         
-        return await response.json();
+        const result = await response.json();
+        console.log('[API] Item atualizado com sucesso:', result);
+        return result;
     } catch (error) {
-        console.error('Erro ao atualizar item:', error);
+        console.error('[API] Erro ao atualizar item:', error);
         throw error;
     }
 }
@@ -508,6 +526,147 @@ async function resetarDados() {
     }
 }
 
+// Mostrar modal de edição/adição de item
+function mostrarModalEditarItem(nomeAtual = '', categoriaAtual = null, valorAtual = null, modoAdicionar = false) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('modal-editar-item');
+        const titulo = document.getElementById('modal-editar-item-titulo');
+        const inputNome = document.getElementById('modal-editar-item-nome');
+        const inputValor = document.getElementById('modal-editar-item-valor');
+        const grupoValor = document.getElementById('modal-editar-item-valor-group');
+        const selectCategoria = document.getElementById('modal-editar-item-categoria');
+        const btnOk = document.getElementById('btn-editar-item-ok');
+        const btnCancel = document.getElementById('btn-editar-item-cancel');
+        
+        // Configurar título e campo de valor
+        if (modoAdicionar) {
+            titulo.textContent = 'Adicionar Novo Produto';
+            grupoValor.style.display = 'block';
+            inputValor.value = valorAtual || '';
+            btnOk.textContent = 'Adicionar';
+        } else {
+            titulo.textContent = 'Editar Item';
+            grupoValor.style.display = 'none';
+            inputValor.value = '';
+            btnOk.textContent = 'Salvar';
+        }
+        
+        // Preencher o nome atual
+        inputNome.value = nomeAtual;
+        
+        // Limpar e preencher dropdown de categorias
+        selectCategoria.innerHTML = '<option value="">Selecione uma categoria...</option>';
+        const categorias = Object.keys(itensPorCategoria);
+        
+        if (categorias.length === 0) {
+            selectCategoria.innerHTML = '<option value="">Nenhuma categoria disponível</option>';
+            selectCategoria.disabled = true;
+        } else {
+            selectCategoria.disabled = false;
+            categorias.forEach((categoria) => {
+                const option = document.createElement('option');
+                option.value = categoria;
+                option.textContent = categoria;
+                
+                // Marcar a categoria atual como selecionada
+                if (categoriaAtual && categoria === categoriaAtual) {
+                    option.selected = true;
+                } else if (!categoriaAtual && categorias.indexOf(categoria) === 0) {
+                    // Se não há categoria atual (modo adicionar), selecionar a primeira
+                    option.selected = true;
+                }
+                
+                selectCategoria.appendChild(option);
+            });
+        }
+        
+        const fechar = (resultado) => {
+            modal.classList.remove('show');
+            resolve(resultado);
+        };
+        
+        const salvar = () => {
+            const novoNome = inputNome.value.trim();
+            if (!novoNome) {
+                mostrarAlert('Atenção', 'O nome do item não pode estar vazio!');
+                return;
+            }
+            
+            const categoriaSelecionada = selectCategoria.value.trim();
+            if (!categoriaSelecionada) {
+                mostrarAlert('Atenção', 'Por favor, selecione uma categoria!');
+                return;
+            }
+            
+            if (modoAdicionar) {
+                const valorStr = inputValor.value.trim();
+                if (!valorStr) {
+                    mostrarAlert('Atenção', 'O preço do item não pode estar vazio!');
+                    return;
+                }
+                
+                const valor = parseFloat(valorStr.replace(',', '.'));
+                if (isNaN(valor) || valor < 0) {
+                    mostrarAlert('Atenção', 'O preço deve ser um número válido maior ou igual a zero!');
+                    return;
+                }
+                
+                fechar({
+                    nome: novoNome,
+                    categoria: categoriaSelecionada,
+                    valor: valor
+                });
+            } else {
+                fechar({
+                    nome: novoNome,
+                    categoria: categoriaSelecionada
+                });
+            }
+        };
+        
+        btnOk.onclick = salvar;
+        btnCancel.onclick = () => fechar(null);
+        modal.querySelector('.close-modal').onclick = () => fechar(null);
+        modal.onclick = (e) => {
+            if (e.target === modal) fechar(null);
+        };
+        
+        // Permitir salvar com Enter no campo de nome ou valor
+        inputNome.onkeypress = (e) => {
+            if (e.key === 'Enter') {
+                if (modoAdicionar) {
+                    inputValor.focus();
+                } else {
+                    salvar();
+                }
+            }
+        };
+        
+        if (modoAdicionar) {
+            inputValor.onkeypress = (e) => {
+                if (e.key === 'Enter') {
+                    salvar();
+                }
+            };
+        }
+        
+        // Listener para ESC
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                fechar(null);
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+        
+        modal.classList.add('show');
+        inputNome.focus();
+        if (nomeAtual) {
+            inputNome.select();
+        }
+    });
+}
+
 // Editar item
 async function editarItem(categoria, index) {
     const item = itensPorCategoria[categoria][index];
@@ -519,21 +678,40 @@ async function editarItem(categoria, index) {
         return;
     }
     
-    const novoNome = await mostrarPrompt('Editar Nome', 'Digite o novo nome do item:', item.nome);
+    // Mostrar modal de edição
+    const resultado = await mostrarModalEditarItem(item.nome, categoria);
     
-    if (novoNome && novoNome.trim() !== '' && novoNome.trim() !== item.nome) {
-        try {
-            await atualizarItemAPI(id, novoNome.trim(), item.valor);
-            
-            // Recarregar dados e interface
-            await carregarDados();
-            inicializarInterface();
-            selecionarTodosItens();
-            
-            await mostrarAlert('Sucesso', 'Nome do item atualizado com sucesso!');
-        } catch (error) {
-            await mostrarAlert('Erro', 'Erro ao atualizar o item. Tente novamente.');
+    if (!resultado) {
+        return; // Cancelado
+    }
+    
+    const { nome: novoNome, categoria: novaCategoria } = resultado;
+    
+    // Verificar se houve mudanças
+    const nomeMudou = novoNome !== item.nome;
+    const categoriaMudou = novaCategoria !== categoria;
+    
+    if (!nomeMudou && !categoriaMudou) {
+        return; // Nenhuma mudança
+    }
+    
+    try {
+        // Atualizar item com nome e categoria
+        await atualizarItemAPI(id, novoNome, item.valor, novaCategoria);
+        
+        // Recarregar dados e interface
+        await carregarDados();
+        inicializarInterface();
+        selecionarTodosItens();
+        
+        let mensagem = 'Item atualizado com sucesso!';
+        if (categoriaMudou) {
+            mensagem += `\nItem movido da categoria "${categoria}" para "${novaCategoria}".`;
         }
+        
+        await mostrarAlert('Sucesso', mensagem);
+    } catch (error) {
+        await mostrarAlert('Erro', 'Erro ao atualizar o item. Tente novamente.');
     }
 }
 
@@ -600,41 +778,31 @@ async function adicionarItem(categoria) {
 
 // Adicionar novo produto (escolhendo categoria)
 async function adicionarNovoProduto() {
-    // Escolher categoria
-    const categoria = await mostrarSelecaoCategoria();
-    if (!categoria) {
-        return; // Cancelado
-    }
-    
-    // Pedir nome do produto
-    const nome = await mostrarPrompt('Adicionar Produto', 'Digite o nome do novo produto:');
-    if (!nome || nome.trim() === '') {
-        await mostrarAlert('Erro', 'Nome não pode estar vazio! Operação cancelada.');
+    // Verificar se há categorias disponíveis
+    const categorias = Object.keys(itensPorCategoria);
+    if (categorias.length === 0) {
+        await mostrarAlert('Atenção', 'Não há categorias disponíveis. Por favor, crie uma categoria primeiro.');
         return;
     }
     
-    // Pedir valor do produto
-    const valorStr = await mostrarPromptNumber('Adicionar Produto', 'Digite o preço do produto (ex: 10.50):');
-    if (!valorStr) {
+    // Mostrar modal de adição
+    const resultado = await mostrarModalEditarItem('', null, '', true);
+    
+    if (!resultado) {
         return; // Cancelado
     }
     
-    const valor = parseFloat(valorStr);
-    
-    if (isNaN(valor) || valor < 0) {
-        await mostrarAlert('Erro', 'Valor inválido! O produto não foi adicionado.');
-        return;
-    }
+    const { nome, categoria, valor } = resultado;
     
     try {
-        await criarItemAPI(categoria, nome.trim(), valor);
+        await criarItemAPI(categoria, nome, valor);
         
         // Recarregar dados e interface
         await carregarDados();
         inicializarInterface();
         selecionarTodosItens();
         
-        await mostrarAlert('Sucesso', `Produto "${nome.trim()}" adicionado com sucesso na categoria "${categoria}"!`);
+        await mostrarAlert('Sucesso', `Produto "${nome}" adicionado com sucesso na categoria "${categoria}"!`);
     } catch (error) {
         await mostrarAlert('Erro', 'Erro ao adicionar o produto. Tente novamente.');
     }

@@ -201,6 +201,36 @@
         </div>
     </div>
 
+    <!-- Modal de Edição/Adição de Item -->
+    <div id="modal-editar-item" class="modal">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h2 id="modal-editar-item-titulo">Editar Item</h2>
+                <span class="close-modal" data-modal="editar-item">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="modal-editar-item-nome">Nome do Item:</label>
+                    <input type="text" id="modal-editar-item-nome" class="form-input" placeholder="Digite o nome do item">
+                </div>
+                <div class="form-group" id="modal-editar-item-valor-group" style="display: none;">
+                    <label for="modal-editar-item-valor">Preço (R$):</label>
+                    <input type="number" id="modal-editar-item-valor" class="form-input" step="0.01" min="0" placeholder="0,00">
+                </div>
+                <div class="form-group">
+                    <label for="modal-editar-item-categoria">Categoria:</label>
+                    <select id="modal-editar-item-categoria" class="form-input">
+                        <option value="">Selecione uma categoria...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-editar-item-cancel" class="btn-secondary">Cancelar</button>
+                <button id="btn-editar-item-ok" class="btn-primary">Salvar</button>
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>
