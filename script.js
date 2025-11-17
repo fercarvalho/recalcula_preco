@@ -526,11 +526,116 @@ async function resetarDados() {
     }
 }
 
+// Criar uma linha de item no modo múltiplo
+function criarLinhaItem(container, categorias, categoriaPadrao = null, podeRemover = false) {
+    const linha = document.createElement('div');
+    linha.className = 'item-linha';
+    
+    // Campo Nome
+    const grupoNome = document.createElement('div');
+    grupoNome.className = 'form-group nome';
+    const labelNome = document.createElement('label');
+    labelNome.textContent = 'Nome';
+    const inputNome = document.createElement('input');
+    inputNome.type = 'text';
+    inputNome.className = 'form-input';
+    inputNome.placeholder = 'Digite o nome do item';
+    grupoNome.appendChild(labelNome);
+    grupoNome.appendChild(inputNome);
+    
+    // Campo Valor
+    const grupoValor = document.createElement('div');
+    grupoValor.className = 'form-group valor';
+    const labelValor = document.createElement('label');
+    labelValor.textContent = 'Preço (R$)';
+    const inputValor = document.createElement('input');
+    inputValor.type = 'number';
+    inputValor.className = 'form-input';
+    inputValor.step = '0.01';
+    inputValor.min = '0';
+    inputValor.placeholder = '0,00';
+    grupoValor.appendChild(labelValor);
+    grupoValor.appendChild(inputValor);
+    
+    // Campo Categoria
+    const grupoCategoria = document.createElement('div');
+    grupoCategoria.className = 'form-group categoria';
+    const labelCategoria = document.createElement('label');
+    labelCategoria.textContent = 'Categoria';
+    const selectCategoria = document.createElement('select');
+    selectCategoria.className = 'form-input';
+    
+    categorias.forEach((categoria) => {
+        const option = document.createElement('option');
+        option.value = categoria;
+        option.textContent = categoria;
+        if (categoriaPadrao && categoria === categoriaPadrao) {
+            option.selected = true;
+        } else if (!categoriaPadrao && categorias.indexOf(categoria) === 0) {
+            option.selected = true;
+        }
+        selectCategoria.appendChild(option);
+    });
+    
+    grupoCategoria.appendChild(labelCategoria);
+    grupoCategoria.appendChild(selectCategoria);
+    
+    // Botão Adicionar Linha
+    const btnAdicionar = document.createElement('button');
+    btnAdicionar.type = 'button';
+    btnAdicionar.className = 'btn-adicionar-linha';
+    btnAdicionar.innerHTML = '<i class="fas fa-plus"></i>';
+    btnAdicionar.title = 'Adicionar outra linha';
+    
+    // Botão Remover Linha (se pode remover)
+    let btnRemover = null;
+    if (podeRemover) {
+        btnRemover = document.createElement('button');
+        btnRemover.type = 'button';
+        btnRemover.className = 'btn-remover-linha';
+        btnRemover.innerHTML = '<i class="fas fa-times"></i>';
+        btnRemover.title = 'Remover esta linha';
+        btnRemover.onclick = () => {
+            linha.remove();
+        };
+    }
+    
+    linha.appendChild(grupoNome);
+    linha.appendChild(grupoValor);
+    linha.appendChild(grupoCategoria);
+    linha.appendChild(btnAdicionar);
+    if (btnRemover) {
+        linha.appendChild(btnRemover);
+    }
+    
+    // Adicionar nova linha ao clicar no botão +
+    btnAdicionar.onclick = () => {
+        const novaLinha = criarLinhaItem(container, categorias, null, true);
+        container.appendChild(novaLinha);
+        // Focar no campo nome da nova linha
+        const novoInputNome = novaLinha.querySelector('.form-group.nome input');
+        if (novoInputNome) {
+            novoInputNome.focus();
+        }
+    };
+    
+    container.appendChild(linha);
+    
+    // Focar no campo nome ao criar
+    inputNome.focus();
+    
+    return linha;
+}
+
 // Mostrar modal de edição/adição de item
 function mostrarModalEditarItem(nomeAtual = '', categoriaAtual = null, valorAtual = null, modoAdicionar = false) {
     return new Promise((resolve) => {
         const modal = document.getElementById('modal-editar-item');
+        const modalContent = document.getElementById('modal-editar-item-content');
         const titulo = document.getElementById('modal-editar-item-titulo');
+        const formSimples = document.getElementById('modal-editar-item-form-simples');
+        const formMultiplos = document.getElementById('modal-editar-item-form-multiplos');
+        const containerLinhas = document.getElementById('modal-itens-linhas');
         const inputNome = document.getElementById('modal-editar-item-nome');
         const inputValor = document.getElementById('modal-editar-item-valor');
         const grupoValor = document.getElementById('modal-editar-item-valor-group');
@@ -538,41 +643,49 @@ function mostrarModalEditarItem(nomeAtual = '', categoriaAtual = null, valorAtua
         const btnOk = document.getElementById('btn-editar-item-ok');
         const btnCancel = document.getElementById('btn-editar-item-cancel');
         
-        // Configurar título e campo de valor
-        if (modoAdicionar) {
-            titulo.textContent = 'Adicionar Novo Produto';
-            grupoValor.style.display = 'block';
-            inputValor.value = valorAtual || '';
-            btnOk.textContent = 'Adicionar';
-        } else {
-            titulo.textContent = 'Editar Item';
-            grupoValor.style.display = 'none';
-            inputValor.value = '';
-            btnOk.textContent = 'Salvar';
-        }
-        
-        // Preencher o nome atual
-        inputNome.value = nomeAtual;
-        
-        // Limpar e preencher dropdown de categorias
-        selectCategoria.innerHTML = '<option value="">Selecione uma categoria...</option>';
+        // Obter categorias disponíveis
         const categorias = Object.keys(itensPorCategoria);
         
         if (categorias.length === 0) {
-            selectCategoria.innerHTML = '<option value="">Nenhuma categoria disponível</option>';
-            selectCategoria.disabled = true;
+            mostrarAlert('Atenção', 'Não há categorias disponíveis. Por favor, crie uma categoria primeiro.');
+            resolve(null);
+            return;
+        }
+        
+        // Configurar modal baseado no modo
+        if (modoAdicionar) {
+            // Modo adicionar múltiplos
+            titulo.textContent = 'Adicionar Novos Produtos';
+            btnOk.textContent = 'Adicionar Todos';
+            formSimples.style.display = 'none';
+            formMultiplos.style.display = 'block';
+            modalContent.classList.add('modal-content-large');
+            
+            // Limpar container de linhas
+            containerLinhas.innerHTML = '';
+            
+            // Criar primeira linha
+            criarLinhaItem(containerLinhas, categorias, categoriaAtual, false);
         } else {
-            selectCategoria.disabled = false;
+            // Modo edição simples
+            titulo.textContent = 'Editar Item';
+            btnOk.textContent = 'Salvar';
+            formSimples.style.display = 'block';
+            formMultiplos.style.display = 'none';
+            modalContent.classList.remove('modal-content-large');
+            
+            grupoValor.style.display = 'none';
+            inputValor.value = '';
+            inputNome.value = nomeAtual;
+            
+            // Limpar e preencher dropdown de categorias
+            selectCategoria.innerHTML = '<option value="">Selecione uma categoria...</option>';
             categorias.forEach((categoria) => {
                 const option = document.createElement('option');
                 option.value = categoria;
                 option.textContent = categoria;
                 
-                // Marcar a categoria atual como selecionada
                 if (categoriaAtual && categoria === categoriaAtual) {
-                    option.selected = true;
-                } else if (!categoriaAtual && categorias.indexOf(categoria) === 0) {
-                    // Se não há categoria atual (modo adicionar), selecionar a primeira
                     option.selected = true;
                 }
                 
@@ -586,37 +699,80 @@ function mostrarModalEditarItem(nomeAtual = '', categoriaAtual = null, valorAtua
         };
         
         const salvar = () => {
-            const novoNome = inputNome.value.trim();
-            if (!novoNome) {
-                mostrarAlert('Atenção', 'O nome do item não pode estar vazio!');
-                return;
-            }
-            
-            const categoriaSelecionada = selectCategoria.value.trim();
-            if (!categoriaSelecionada) {
-                mostrarAlert('Atenção', 'Por favor, selecione uma categoria!');
-                return;
-            }
-            
             if (modoAdicionar) {
-                const valorStr = inputValor.value.trim();
-                if (!valorStr) {
-                    mostrarAlert('Atenção', 'O preço do item não pode estar vazio!');
-                    return;
-                }
+                // Modo múltiplo: coletar todas as linhas
+                const linhas = containerLinhas.querySelectorAll('.item-linha');
+                const itens = [];
                 
-                const valor = parseFloat(valorStr.replace(',', '.'));
-                if (isNaN(valor) || valor < 0) {
-                    mostrarAlert('Atenção', 'O preço deve ser um número válido maior ou igual a zero!');
+                linhas.forEach((linha) => {
+                    const inputNomeLinha = linha.querySelector('.form-group.nome input');
+                    const inputValorLinha = linha.querySelector('.form-group.valor input');
+                    const selectCategoriaLinha = linha.querySelector('.form-group.categoria select');
+                    
+                    const nome = inputNomeLinha.value.trim();
+                    const valorStr = inputValorLinha.value.trim();
+                    const categoria = selectCategoriaLinha.value.trim();
+                    
+                    // Validar linha (pular linhas vazias)
+                    if (!nome && !valorStr && !categoria) {
+                        return; // Linha vazia, pular
+                    }
+                    
+                    // Validar campos obrigatórios
+                    if (!nome) {
+                        mostrarAlert('Atenção', 'O nome do item não pode estar vazio!');
+                        inputNomeLinha.focus();
+                        throw new Error('Nome vazio');
+                    }
+                    
+                    if (!valorStr) {
+                        mostrarAlert('Atenção', 'O preço do item não pode estar vazio!');
+                        inputValorLinha.focus();
+                        throw new Error('Valor vazio');
+                    }
+                    
+                    if (!categoria) {
+                        mostrarAlert('Atenção', 'Por favor, selecione uma categoria!');
+                        selectCategoriaLinha.focus();
+                        throw new Error('Categoria vazia');
+                    }
+                    
+                    const valor = parseFloat(valorStr.replace(',', '.'));
+                    if (isNaN(valor) || valor < 0) {
+                        mostrarAlert('Atenção', 'O preço deve ser um número válido maior ou igual a zero!');
+                        inputValorLinha.focus();
+                        throw new Error('Valor inválido');
+                    }
+                    
+                    itens.push({
+                        nome: nome,
+                        categoria: categoria,
+                        valor: valor
+                    });
+                });
+                
+                if (itens.length === 0) {
+                    mostrarAlert('Atenção', 'Por favor, preencha pelo menos um item!');
                     return;
                 }
                 
                 fechar({
-                    nome: novoNome,
-                    categoria: categoriaSelecionada,
-                    valor: valor
+                    itens: itens
                 });
             } else {
+                // Modo edição simples
+                const novoNome = inputNome.value.trim();
+                if (!novoNome) {
+                    mostrarAlert('Atenção', 'O nome do item não pode estar vazio!');
+                    return;
+                }
+                
+                const categoriaSelecionada = selectCategoria.value.trim();
+                if (!categoriaSelecionada) {
+                    mostrarAlert('Atenção', 'Por favor, selecione uma categoria!');
+                    return;
+                }
+                
                 fechar({
                     nome: novoNome,
                     categoria: categoriaSelecionada
@@ -631,19 +787,9 @@ function mostrarModalEditarItem(nomeAtual = '', categoriaAtual = null, valorAtua
             if (e.target === modal) fechar(null);
         };
         
-        // Permitir salvar com Enter no campo de nome ou valor
-        inputNome.onkeypress = (e) => {
-            if (e.key === 'Enter') {
-                if (modoAdicionar) {
-                    inputValor.focus();
-                } else {
-                    salvar();
-                }
-            }
-        };
-        
-        if (modoAdicionar) {
-            inputValor.onkeypress = (e) => {
+        // Permitir salvar com Enter no campo de nome ou valor (modo simples)
+        if (!modoAdicionar) {
+            inputNome.onkeypress = (e) => {
                 if (e.key === 'Enter') {
                     salvar();
                 }
@@ -660,9 +806,11 @@ function mostrarModalEditarItem(nomeAtual = '', categoriaAtual = null, valorAtua
         document.addEventListener('keydown', escHandler);
         
         modal.classList.add('show');
-        inputNome.focus();
-        if (nomeAtual) {
-            inputNome.select();
+        if (!modoAdicionar) {
+            inputNome.focus();
+            if (nomeAtual) {
+                inputNome.select();
+            }
         }
     });
 }
@@ -792,19 +940,52 @@ async function adicionarNovoProduto() {
         return; // Cancelado
     }
     
-    const { nome, categoria, valor } = resultado;
-    
-    try {
-        await criarItemAPI(categoria, nome, valor);
+    // Verificar se é modo múltiplo (array de itens) ou modo simples (objeto único)
+    if (resultado.itens && Array.isArray(resultado.itens)) {
+        // Modo múltiplo: adicionar todos os itens
+        try {
+            let sucessos = 0;
+            let erros = 0;
+            
+            for (const item of resultado.itens) {
+                try {
+                    await criarItemAPI(item.categoria, item.nome, item.valor);
+                    sucessos++;
+                } catch (error) {
+                    console.error('Erro ao adicionar item:', item, error);
+                    erros++;
+                }
+            }
+            
+            // Recarregar dados e interface
+            await carregarDados();
+            inicializarInterface();
+            selecionarTodosItens();
+            
+            if (erros === 0) {
+                await mostrarAlert('Sucesso', `${sucessos} produto(s) adicionado(s) com sucesso!`);
+            } else {
+                await mostrarAlert('Atenção', `${sucessos} produto(s) adicionado(s) com sucesso, mas ${erros} falharam.`);
+            }
+        } catch (error) {
+            await mostrarAlert('Erro', 'Erro ao adicionar os produtos. Tente novamente.');
+        }
+    } else {
+        // Modo simples (compatibilidade com código antigo)
+        const { nome, categoria, valor } = resultado;
         
-        // Recarregar dados e interface
-        await carregarDados();
-        inicializarInterface();
-        selecionarTodosItens();
-        
-        await mostrarAlert('Sucesso', `Produto "${nome}" adicionado com sucesso na categoria "${categoria}"!`);
-    } catch (error) {
-        await mostrarAlert('Erro', 'Erro ao adicionar o produto. Tente novamente.');
+        try {
+            await criarItemAPI(categoria, nome, valor);
+            
+            // Recarregar dados e interface
+            await carregarDados();
+            inicializarInterface();
+            selecionarTodosItens();
+            
+            await mostrarAlert('Sucesso', `Produto "${nome}" adicionado com sucesso na categoria "${categoria}"!`);
+        } catch (error) {
+            await mostrarAlert('Erro', 'Erro ao adicionar o produto. Tente novamente.');
+        }
     }
 }
 
