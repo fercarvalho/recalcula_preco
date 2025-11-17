@@ -76,7 +76,8 @@ let ultimoReajuste = { tipo: null, valor: null };
 // Estado do drag and drop
 let dragState = {
     lastDragOverElement: null,
-    lastDragOverPosition: null
+    lastDragOverPosition: null,
+    draggingItem: null
 };
 
 // Função utilitária para fechar qualquer modal aberto
@@ -957,6 +958,57 @@ function criarCategoria(categoria) {
     const body = document.createElement('div');
     body.className = 'categoria-body';
     body.id = `categoria-${categoria}`;
+    
+    // Adicionar event listeners no categoriaBody uma única vez (não por item)
+    // Isso garante que o item nunca saia da categoria durante o drag
+    body.addEventListener('dragover', (e) => {
+        const dragging = dragState.draggingItem || document.querySelector('.item.dragging');
+        if (dragging && dragging._isDragging) {
+            const draggingCategoria = dragging._originalCategoria || dragging.dataset.categoria;
+            if (draggingCategoria === categoria) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Garantir que o item está dentro do body
+                if (!body.contains(dragging)) {
+                    body.appendChild(dragging);
+                }
+            }
+        }
+    });
+    
+    body.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const dragging = dragState.draggingItem || document.querySelector('.item.dragging');
+        if (dragging && dragging._isDragging) {
+            const draggingCategoria = dragging._originalCategoria || dragging.dataset.categoria;
+            if (draggingCategoria === categoria) {
+                // Garantir que o item está dentro do body
+                if (!body.contains(dragging)) {
+                    body.appendChild(dragging);
+                }
+            }
+        }
+    });
+    
+    body.addEventListener('dragleave', (e) => {
+        const relatedTarget = e.relatedTarget;
+        // Se saiu completamente do categoriaBody
+        if (relatedTarget && !body.contains(relatedTarget)) {
+            const dragging = dragState.draggingItem || document.querySelector('.item.dragging');
+            if (dragging && dragging._isDragging) {
+                const draggingCategoria = dragging._originalCategoria || dragging.dataset.categoria;
+                if (draggingCategoria === categoria) {
+                    // Garantir que o item volta para dentro do body
+                    if (!body.contains(dragging)) {
+                        body.appendChild(dragging);
+                    }
+                }
+            }
+        }
+    });
 
     itensPorCategoria[categoria].forEach((item, index) => {
         const itemDiv = criarItem(categoria, index, item);
@@ -1070,54 +1122,96 @@ function criarItem(categoria, index, item) {
     itemDiv.appendChild(info);
     itemDiv.appendChild(btnExcluir);
     
-    // Event listeners para drag and drop
+    // Event listeners para drag and drop - versão melhorada e robusta
     dragHandle.addEventListener('dragstart', (e) => {
         e.stopPropagation(); // Evitar conflito com drag de categoria
+        
+        // Obter categoriaBody no momento do drag (já está no DOM)
+        const categoriaBody = itemDiv.closest('.categoria-body');
+        
+        // Armazenar informações do item sendo arrastado
         itemDiv.classList.add('dragging');
+        itemDiv._isDragging = true;
+        itemDiv._originalCategoria = categoria;
+        itemDiv._originalCategoriaBody = categoriaBody;
+        
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', itemId || '');
         e.dataTransfer.setData('application/item-categoria', categoria);
         
-        // Armazenar referência ao item sendo arrastado
-        itemDiv._isDragging = true;
-        
         // Resetar estado do drag
         dragState.lastDragOverElement = null;
         dragState.lastDragOverPosition = null;
+        dragState.draggingItem = itemDiv;
+        
+        // Garantir que o item sempre fique visível dentro da categoria
+        if (categoriaBody) {
+            categoriaBody.classList.add('dragging-active');
+        }
     });
     
-    dragHandle.addEventListener('dragend', () => {
-        itemDiv.classList.remove('dragging');
-        itemDiv._isDragging = false;
+    dragHandle.addEventListener('dragend', (e) => {
+        const dragging = dragState.draggingItem || document.querySelector('.item.dragging');
+        
+        if (dragging) {
+            dragging.classList.remove('dragging');
+            dragging._isDragging = false;
+            
+            // Garantir que o item está dentro do categoriaBody correto
+            const originalBody = dragging._originalCategoriaBody;
+            if (originalBody && !originalBody.contains(dragging)) {
+                // Se o item saiu da categoria, colocá-lo de volta no final
+                originalBody.appendChild(dragging);
+            }
+            
+            // Remover classe do body
+            if (originalBody) {
+                originalBody.classList.remove('dragging-active');
+            }
+        }
         
         // Resetar estado do drag
         dragState.lastDragOverElement = null;
         dragState.lastDragOverPosition = null;
+        dragState.draggingItem = null;
         
         // Limpar todas as classes de drag-over
         document.querySelectorAll('.item').forEach(item => {
             item.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
         });
         
+        // Limpar classe de dragging-active de todos os bodies
+        document.querySelectorAll('.categoria-body').forEach(body => {
+            body.classList.remove('dragging-active');
+        });
+        
         // Salvar ordem após o drag
-        salvarOrdemItens(categoria);
+        if (dragging && dragging._originalCategoria) {
+            salvarOrdemItens(dragging._originalCategoria);
+        }
     });
     
-    // Permitir drop no item - versão melhorada com throttling
+    // Permitir drop no item - versão melhorada e robusta
     itemDiv.addEventListener('dragover', (e) => {
         e.preventDefault();
         e.stopPropagation();
         e.dataTransfer.dropEffect = 'move';
         
-        const dragging = document.querySelector('.item.dragging');
+        const dragging = dragState.draggingItem || document.querySelector('.item.dragging');
         if (!dragging || dragging === itemDiv || !dragging._isDragging) return;
         
         // Verificar se é da mesma categoria
-        const draggingCategoria = dragging.dataset.categoria;
+        const draggingCategoria = dragging._originalCategoria || dragging.dataset.categoria;
         if (draggingCategoria !== categoria) return;
         
+        // Obter categoriaBody no momento do dragover
         const categoriaBody = itemDiv.closest('.categoria-body');
         if (!categoriaBody) return;
+        
+        // Garantir que o item arrastado está dentro do categoriaBody
+        if (!categoriaBody.contains(dragging)) {
+            categoriaBody.appendChild(dragging);
+        }
         
         // Calcular a posição relativa ao item atual
         const rect = itemDiv.getBoundingClientRect();
@@ -1133,7 +1227,7 @@ function criarItem(categoria, index, item) {
         dragState.lastDragOverElement = itemDiv;
         dragState.lastDragOverPosition = position;
         
-        // Remover classes de drag-over de todos os itens
+        // Remover classes de drag-over de todos os itens nesta categoria
         categoriaBody.querySelectorAll('.item').forEach(item => {
             if (item !== dragging) {
                 item.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
@@ -1143,27 +1237,39 @@ function criarItem(categoria, index, item) {
         // Adicionar classe visual apropriada
         itemDiv.classList.add('drag-over', position === 'top' ? 'drag-over-top' : 'drag-over-bottom');
         
-        // Obter todos os itens na ordem atual (sem o item sendo arrastado)
-        const todosItens = Array.from(categoriaBody.querySelectorAll('.item:not(.dragging)'));
-        const indexTarget = todosItens.indexOf(itemDiv);
-        
         // Mover o item arrastado para a posição correta
         // Usar requestAnimationFrame para suavizar a animação
         requestAnimationFrame(() => {
-            if (position === 'top') {
-                // Inserir antes do item alvo - o item arrastado toma o lugar deste item
-                if (dragging !== itemDiv && dragging.nextSibling !== itemDiv) {
-                    categoriaBody.insertBefore(dragging, itemDiv);
-                }
-            } else {
-                // Inserir depois do item alvo
-                const nextSibling = itemDiv.nextSibling;
-                if (nextSibling && nextSibling !== dragging) {
-                    if (dragging.nextSibling !== nextSibling) {
+            // Verificar novamente se o dragging ainda é válido
+            if (!dragging._isDragging || !categoriaBody.contains(dragging)) {
+                return;
+            }
+            
+            // Obter todos os itens na ordem atual
+            const todosItens = Array.from(categoriaBody.querySelectorAll('.item'));
+            const indexDragging = todosItens.indexOf(dragging);
+            const indexTarget = todosItens.indexOf(itemDiv);
+            
+            // Se já está na posição correta, não fazer nada
+            if (indexDragging === indexTarget) return;
+            
+            // Quando você solta sobre um item, o item arrastado deve tomar o lugar desse item
+            // Precisamos verificar a posição relativa para decidir se inserir antes ou depois
+            if (dragging !== itemDiv) {
+                if (indexDragging < indexTarget) {
+                    // Item arrastado está ANTES do item alvo (arrastando para baixo)
+                    // Para tomar o lugar do item alvo, precisamos inserir DEPOIS dele
+                    const nextSibling = itemDiv.nextSibling;
+                    if (nextSibling && nextSibling !== dragging) {
                         categoriaBody.insertBefore(dragging, nextSibling);
+                    } else if (!nextSibling) {
+                        // Se não há próximo irmão, adicionar no final
+                        categoriaBody.appendChild(dragging);
                     }
-                } else if (!nextSibling && dragging !== categoriaBody.lastElementChild) {
-                    categoriaBody.appendChild(dragging);
+                } else {
+                    // Item arrastado está DEPOIS do item alvo (arrastando para cima)
+                    // Para tomar o lugar do item alvo, precisamos inserir ANTES dele
+                    categoriaBody.insertBefore(dragging, itemDiv);
                 }
             }
         });
@@ -1172,15 +1278,20 @@ function criarItem(categoria, index, item) {
     itemDiv.addEventListener('dragenter', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        const dragging = document.querySelector('.item.dragging');
-        if (dragging && dragging !== itemDiv && dragging.dataset.categoria === categoria) {
-            // A classe drag-over será adicionada no dragover
+        const dragging = dragState.draggingItem || document.querySelector('.item.dragging');
+        if (dragging && dragging !== itemDiv) {
+            const draggingCategoria = dragging._originalCategoria || dragging.dataset.categoria;
+            const categoriaBody = itemDiv.closest('.categoria-body');
+            if (draggingCategoria === categoria && categoriaBody) {
+                categoriaBody.classList.add('dragging-active');
+            }
         }
     });
     
     itemDiv.addEventListener('dragleave', (e) => {
         // Só remover se realmente saiu do item (não apenas passou para um filho)
-        if (!itemDiv.contains(e.relatedTarget)) {
+        const relatedTarget = e.relatedTarget;
+        if (!itemDiv.contains(relatedTarget) && !itemDiv.isSameNode(relatedTarget)) {
             itemDiv.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
             if (dragState.lastDragOverElement === itemDiv) {
                 dragState.lastDragOverElement = null;
@@ -1192,7 +1303,16 @@ function criarItem(categoria, index, item) {
     itemDiv.addEventListener('drop', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        itemDiv.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
+        
+        const dragging = dragState.draggingItem || document.querySelector('.item.dragging');
+        if (dragging && dragging._isDragging) {
+            // Garantir que o item está na posição correta
+            const categoriaBody = itemDiv.closest('.categoria-body');
+            if (categoriaBody && categoriaBody.contains(dragging)) {
+                // O item já foi posicionado pelo dragover, apenas limpar classes
+                itemDiv.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
+            }
+        }
     });
 
     // Adicionar ao conjunto de selecionados
