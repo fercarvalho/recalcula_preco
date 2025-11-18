@@ -1224,6 +1224,8 @@ select.form-input:disabled {
     justify-content: center;
     transition: all 0.3s;
     margin-bottom: 0;
+    margin-top: 24px;
+    align-self: flex-start;
 }
 
 .item-linha .btn-adicionar-linha:hover {
@@ -1250,6 +1252,8 @@ select.form-input:disabled {
     justify-content: center;
     transition: all 0.3s;
     margin-bottom: 0;
+    margin-top: 24px;
+    align-self: flex-start;
 }
 
 .item-linha .btn-remover-linha:hover {
