@@ -976,6 +976,10 @@ select.form-input {
     background-repeat: no-repeat;
     background-position: right 12px center;
     padding-right: 40px;
+    margin: 0;
+    box-sizing: border-box;
+    width: 100%;
+    vertical-align: top;
 }
 
 .form-input select:focus,
@@ -1134,6 +1138,7 @@ select.form-input:disabled {
     min-width: 180px;
     display: flex;
     flex-direction: column;
+    align-items: stretch;
 }
 
 .label-categoria-externo {
@@ -1153,6 +1158,8 @@ select.form-input:disabled {
     margin: 0;
     display: flex;
     flex-direction: column;
+    width: 100%;
+    align-items: stretch;
 }
 
 .item-linha .form-group.categoria label {
@@ -1172,6 +1179,8 @@ select.form-input:disabled {
     z-index: 0 !important;
     display: block !important;
     width: 100% !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
 }
 
 .item-linha .form-group select {
@@ -1187,6 +1196,9 @@ select.form-input:disabled {
     -webkit-user-select: auto !important;
     -moz-user-select: auto !important;
     pointer-events: auto !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
 }
 
 .item-linha .btn-adicionar-linha {
