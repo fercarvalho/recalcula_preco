@@ -1104,6 +1104,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     inicializarInterface();
     inicializarEventos();
     selecionarTodosItens();
+    aplicarConfiguracoesAdmin(); // Aplicar configurações do painel admin
 });
 
 // Inicializar interface
@@ -1380,6 +1381,10 @@ function criarCategoria(categoria) {
 
     categoriaDiv.appendChild(header);
     categoriaDiv.appendChild(body);
+    
+    // Aplicar cores personalizadas
+    const config = carregarConfiguracoesAdmin();
+    header.style.background = config.corPrimaria;
     
     // Atualizar estado inicial do checkbox da categoria
     setTimeout(() => {
@@ -2022,6 +2027,9 @@ function inicializarEventos() {
     
     // Botão adicionar categoria
     document.getElementById('btn-adicionar-categoria').addEventListener('click', adicionarNovaCategoria);
+    
+    // Botão painel admin
+    document.getElementById('btn-painel-admin').addEventListener('click', abrirPainelAdmin);
 
     // Botão aplicar reajuste
     document.getElementById('btn-aplicar-reajuste').addEventListener('click', () => {
@@ -2303,5 +2311,272 @@ async function aplicarReajuste() {
         console.error('Erro ao aplicar reajuste:', error);
         await mostrarAlert('Erro', 'Erro ao salvar alguns valores. Verifique o console para mais detalhes.');
     }
+}
+
+// ========== PAINEL ADMINISTRATIVO ==========
+
+// Carregar configurações salvas
+function carregarConfiguracoesAdmin() {
+    const config = {
+        logo: localStorage.getItem('admin-logo') || 'logo.png',
+        corPrimaria: localStorage.getItem('admin-cor-primaria') || '#FF6B35',
+        corSecundaria: localStorage.getItem('admin-cor-secundaria') || '#2a2a2a',
+        corFundo: localStorage.getItem('admin-cor-fundo') || '#1a1a1a'
+    };
+    return config;
+}
+
+// Aplicar configurações ao sistema
+function aplicarConfiguracoesAdmin() {
+    const config = carregarConfiguracoesAdmin();
+    
+    // Aplicar logo
+    const logoImg = document.querySelector('.logo');
+    if (logoImg && config.logo && config.logo !== 'logo.png') {
+        logoImg.src = config.logo;
+    }
+    
+    // Aplicar cores usando CSS variables
+    document.documentElement.style.setProperty('--cor-primaria', config.corPrimaria);
+    document.documentElement.style.setProperty('--cor-secundaria', config.corSecundaria);
+    document.documentElement.style.setProperty('--cor-fundo', config.corFundo);
+    
+    // Aplicar cores diretamente nos elementos principais
+    const corPrimaria = config.corPrimaria;
+    const corSecundaria = config.corSecundaria;
+    const corFundo = config.corFundo;
+    
+    // Header
+    const header = document.querySelector('header');
+    if (header) {
+        header.style.background = corPrimaria;
+    }
+    
+    // Botões primários
+    document.querySelectorAll('.btn-primary').forEach(btn => {
+        btn.style.background = corPrimaria;
+    });
+    
+    // Botões secundários
+    document.querySelectorAll('.btn-secondary').forEach(btn => {
+        btn.style.background = corSecundaria;
+    });
+    
+    // Categoria header
+    document.querySelectorAll('.categoria-header').forEach(header => {
+        header.style.background = corPrimaria;
+    });
+    
+    // Body background
+    document.body.style.background = corFundo;
+    
+    // Botões de adicionar produto
+    document.querySelectorAll('.btn-adicionar-produto').forEach(btn => {
+        if (!btn.id || btn.id !== 'btn-painel-admin') {
+            btn.style.background = corPrimaria;
+        }
+    });
+    
+    // Modal headers
+    document.querySelectorAll('.modal-header').forEach(header => {
+        header.style.background = corPrimaria;
+    });
+}
+
+// Variável para controlar se os listeners já foram adicionados
+let adminListenersInicializados = false;
+
+// Abrir painel admin
+function abrirPainelAdmin() {
+    const modal = document.getElementById('modal-painel-admin');
+    const config = carregarConfiguracoesAdmin();
+    
+    // Carregar valores atuais
+    document.getElementById('admin-cor-primaria').value = config.corPrimaria;
+    document.getElementById('admin-cor-primaria-text').value = config.corPrimaria;
+    document.getElementById('admin-cor-secundaria').value = config.corSecundaria;
+    document.getElementById('admin-cor-secundaria-text').value = config.corSecundaria;
+    document.getElementById('admin-cor-fundo').value = config.corFundo;
+    document.getElementById('admin-cor-fundo-text').value = config.corFundo;
+    
+    // Atualizar preview
+    atualizarPreviewCores();
+    atualizarPreviewLogo();
+    
+    // Inicializar listeners apenas uma vez
+    if (!adminListenersInicializados) {
+        const corPrimariaInput = document.getElementById('admin-cor-primaria');
+        const corPrimariaText = document.getElementById('admin-cor-primaria-text');
+        const corSecundariaInput = document.getElementById('admin-cor-secundaria');
+        const corSecundariaText = document.getElementById('admin-cor-secundaria-text');
+        const corFundoInput = document.getElementById('admin-cor-fundo');
+        const corFundoText = document.getElementById('admin-cor-fundo-text');
+        const logoUpload = document.getElementById('admin-logo-upload');
+        const btnRemoverLogo = document.getElementById('btn-remover-logo');
+        const btnSalvar = document.getElementById('btn-admin-salvar');
+        const btnCancel = document.getElementById('btn-admin-cancel');
+        const btnResetar = document.getElementById('btn-admin-resetar');
+        
+        // Event listeners para color pickers
+        corPrimariaInput.addEventListener('input', (e) => {
+            corPrimariaText.value = e.target.value;
+            atualizarPreviewCores();
+        });
+        
+        corPrimariaText.addEventListener('input', (e) => {
+            const valor = e.target.value;
+            if (/^#[0-9A-F]{6}$/i.test(valor)) {
+                corPrimariaInput.value = valor;
+                atualizarPreviewCores();
+            }
+        });
+        
+        corSecundariaInput.addEventListener('input', (e) => {
+            corSecundariaText.value = e.target.value;
+            atualizarPreviewCores();
+        });
+        
+        corSecundariaText.addEventListener('input', (e) => {
+            const valor = e.target.value;
+            if (/^#[0-9A-F]{6}$/i.test(valor)) {
+                corSecundariaInput.value = valor;
+                atualizarPreviewCores();
+            }
+        });
+        
+        corFundoInput.addEventListener('input', (e) => {
+            corFundoText.value = e.target.value;
+            atualizarPreviewCores();
+        });
+        
+        corFundoText.addEventListener('input', (e) => {
+            const valor = e.target.value;
+            if (/^#[0-9A-F]{6}$/i.test(valor)) {
+                corFundoInput.value = valor;
+                atualizarPreviewCores();
+            }
+        });
+        
+        // Upload de logo
+        logoUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const logoUrl = event.target.result;
+                    document.getElementById('logo-preview-img').src = logoUrl;
+                    localStorage.setItem('admin-logo', logoUrl);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        // Remover logo
+        btnRemoverLogo.addEventListener('click', () => {
+            localStorage.removeItem('admin-logo');
+            document.getElementById('logo-preview-img').src = 'logo.png';
+            logoUpload.value = '';
+        });
+        
+        // Salvar
+        btnSalvar.addEventListener('click', async () => {
+            salvarConfiguracoesAdmin();
+            modal.classList.remove('show');
+            aplicarConfiguracoesAdmin();
+            await mostrarAlert('Sucesso', 'Configurações salvas com sucesso!');
+        });
+        
+        // Cancelar
+        btnCancel.addEventListener('click', () => {
+            modal.classList.remove('show');
+        });
+        
+        // Resetar
+        btnResetar.addEventListener('click', async () => {
+            const confirmado = await mostrarConfirm('Resetar Configurações', 'Tem certeza que deseja resetar todas as configurações para os valores padrão?');
+            if (confirmado) {
+                resetarConfiguracoesAdmin();
+                modal.classList.remove('show');
+                aplicarConfiguracoesAdmin();
+                await mostrarAlert('Sucesso', 'Configurações resetadas para os valores padrão!');
+            }
+        });
+        
+        // Fechar modal
+        modal.querySelector('.close-modal').addEventListener('click', () => {
+            modal.classList.remove('show');
+        });
+        
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('show');
+            }
+        });
+        
+        adminListenersInicializados = true;
+    }
+    
+    modal.classList.add('show');
+}
+
+// Atualizar preview das cores
+function atualizarPreviewCores() {
+    const corPrimariaEl = document.getElementById('admin-cor-primaria');
+    const corSecundariaEl = document.getElementById('admin-cor-secundaria');
+    const corFundoEl = document.getElementById('admin-cor-fundo');
+    
+    if (!corPrimariaEl || !corSecundariaEl || !corFundoEl) return;
+    
+    const corPrimaria = corPrimariaEl.value;
+    const corSecundaria = corSecundariaEl.value;
+    const corFundo = corFundoEl.value;
+    
+    const previewPrimaria = document.getElementById('preview-primaria');
+    const previewSecundaria = document.getElementById('preview-secundaria');
+    const previewFundo = document.getElementById('preview-fundo');
+    
+    if (previewPrimaria) previewPrimaria.style.background = corPrimaria;
+    if (previewSecundaria) previewSecundaria.style.background = corSecundaria;
+    if (previewFundo) previewFundo.style.background = corFundo;
+}
+
+// Atualizar preview da logo
+function atualizarPreviewLogo() {
+    const config = carregarConfiguracoesAdmin();
+    const logoImg = document.getElementById('logo-preview-img');
+    if (config.logo && config.logo !== 'logo.png') {
+        logoImg.src = config.logo;
+    } else {
+        logoImg.src = 'logo.png';
+    }
+}
+
+// Salvar configurações
+function salvarConfiguracoesAdmin() {
+    const corPrimariaEl = document.getElementById('admin-cor-primaria');
+    const corSecundariaEl = document.getElementById('admin-cor-secundaria');
+    const corFundoEl = document.getElementById('admin-cor-fundo');
+    
+    if (!corPrimariaEl || !corSecundariaEl || !corFundoEl) return;
+    
+    const corPrimaria = corPrimariaEl.value;
+    const corSecundaria = corSecundariaEl.value;
+    const corFundo = corFundoEl.value;
+    const logo = localStorage.getItem('admin-logo') || 'logo.png';
+    
+    localStorage.setItem('admin-cor-primaria', corPrimaria);
+    localStorage.setItem('admin-cor-secundaria', corSecundaria);
+    localStorage.setItem('admin-cor-fundo', corFundo);
+    if (logo !== 'logo.png') {
+        localStorage.setItem('admin-logo', logo);
+    }
+}
+
+// Resetar configurações
+function resetarConfiguracoesAdmin() {
+    localStorage.removeItem('admin-cor-primaria');
+    localStorage.removeItem('admin-cor-secundaria');
+    localStorage.removeItem('admin-cor-fundo');
+    localStorage.removeItem('admin-logo');
 }
 

@@ -819,6 +819,10 @@ header p {
     max-width: 400px;
 }
 
+.modal-large {
+    max-width: 800px;
+}
+
 @keyframes slideUp {
     from {
         transform: translateY(50px);
@@ -1267,5 +1271,113 @@ select.form-input:disabled {
 
 #modal-editar-item-content.modal-content-large {
     max-width: 900px;
+}
+
+/* Estilos do Painel Admin */
+.admin-section {
+    margin-bottom: 30px;
+    padding-bottom: 30px;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.admin-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.admin-section h3 {
+    color: #FF6B35;
+    margin-bottom: 20px;
+    font-size: 1.3em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.color-picker-group {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.color-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.color-picker {
+    width: 60px;
+    height: 40px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    cursor: pointer;
+    padding: 0;
+}
+
+.color-text-input {
+    flex: 1;
+    padding: 10px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.95em;
+    font-family: monospace;
+    transition: border-color 0.3s;
+}
+
+.color-text-input:focus {
+    outline: none;
+    border-color: #FF6B35;
+}
+
+.logo-preview-container {
+    margin-top: 20px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.logo-preview {
+    margin: 15px 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+}
+
+.logo-preview img {
+    max-width: 200px;
+    max-height: 200px;
+    border-radius: 50%;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.color-preview {
+    margin-top: 20px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.preview-boxes {
+    display: flex;
+    gap: 15px;
+    margin-top: 15px;
+    flex-wrap: wrap;
+}
+
+.preview-box {
+    flex: 1;
+    min-width: 150px;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: 600;
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
