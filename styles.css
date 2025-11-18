@@ -1128,9 +1128,17 @@ select.form-input:disabled {
     flex: 2;
 }
 
+.item-linha .form-group.nome label {
+    margin-bottom: 0;
+}
+
 .item-linha .form-group.valor {
     flex: 1;
     max-width: 150px;
+}
+
+.item-linha .form-group.valor label {
+    margin-bottom: 0;
 }
 
 .categoria-container {
