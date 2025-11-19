@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { FaCheck, FaTimes, FaArrowRight, FaArrowLeft } from 'react-icons/fa';
+import { FaCheck, FaTimes, FaArrowRight, FaArrowLeft, FaFolderPlus, FaPlusCircle, FaStore } from 'react-icons/fa';
 import './TutorialOnboarding.css';
 
 const TUTORIAL_COMPLETED_KEY = 'calculadora_tutorial_completed';
@@ -31,6 +31,9 @@ interface TutorialOnboardingProps {
   totalItens: number;
   totalPlataformas: number;
   onHighlightElement?: (selector: string | null) => void;
+  onOpenAdicionarCategoria?: () => void;
+  onOpenAdicionarItem?: () => void;
+  onOpenPlataformas?: () => void;
 }
 
 type TutorialStep = {
@@ -58,7 +61,7 @@ const tutorialSteps: TutorialStep[] = [
     {
       id: 1,
       title: 'Etapa 1: Adicionar Categorias',
-      description: 'Primeiro, vamos criar as categorias dos seus produtos. Clique no botão "Adicionar Categoria" para começar. Você pode adicionar um ícone para cada categoria para facilitar a identificação.',
+      description: 'Primeiro, vamos criar as categorias dos seus produtos. Clique no botão abaixo para abrir o modal de adicionar categoria. Você pode adicionar um ícone para cada categoria para facilitar a identificação.',
       targetSelector: 'button-with-folder-plus',
       position: 'bottom',
       requirements: { categorias: 1 },
@@ -66,7 +69,7 @@ const tutorialSteps: TutorialStep[] = [
     {
       id: 2,
       title: 'Etapa 2: Adicionar Itens',
-      description: 'Agora que você tem categorias, vamos adicionar os itens (produtos) em cada categoria. Clique no botão "Adicionar Novo Produto" para adicionar seus produtos com seus respectivos valores.',
+      description: 'Agora que você tem categorias, vamos adicionar os itens (produtos) em cada categoria. Clique no botão abaixo para abrir o modal de adicionar produto com seus respectivos valores.',
       targetSelector: 'button-with-plus-circle',
       position: 'bottom',
       requirements: { itens: 1 },
@@ -74,7 +77,7 @@ const tutorialSteps: TutorialStep[] = [
     {
       id: 3,
       title: 'Etapa 3: Configurar Plataformas',
-      description: 'Por fim, vamos configurar as plataformas de delivery (como iFood, Uber Eats, etc.) com suas respectivas taxas. Clique no botão "Gerenciar Plataformas" para adicionar as plataformas e seus percentuais ou valores cobrados.',
+      description: 'Por fim, vamos configurar as plataformas de delivery (como iFood, Uber Eats, etc.) com suas respectivas taxas. Clique no botão abaixo para abrir o gerenciamento de plataformas.',
       targetSelector: 'button-with-store',
       position: 'bottom',
       requirements: { plataformas: 1 },
@@ -97,6 +100,9 @@ const TutorialOnboarding = ({
   totalItens,
   totalPlataformas,
   onHighlightElement,
+  onOpenAdicionarCategoria,
+  onOpenAdicionarItem,
+  onOpenPlataformas,
 }: TutorialOnboardingProps) => {
   const [currentStep, setCurrentStep] = useState(getTutorialStep());
   const [highlightedElement, setHighlightedElement] = useState<HTMLElement | null>(null);
@@ -188,37 +194,8 @@ const TutorialOnboarding = ({
     }
   }, [currentStep, handleComplete]);
 
-  // Auto-avançar quando requisitos forem atendidos
-  useEffect(() => {
-    if (!isOpen) return;
-    if (currentStep === 0 || currentStep === tutorialSteps.length - 1) return;
-
-    const currentStepData = tutorialSteps[currentStep];
-    const checkRequirements = () => {
-      const req = currentStepData.requirements;
-      let canProceed = true;
-
-      if (req.categorias !== undefined && categorias.length < req.categorias) {
-        canProceed = false;
-      }
-      if (req.itens !== undefined && totalItens < req.itens) {
-        canProceed = false;
-      }
-      if (req.plataformas !== undefined && totalPlataformas < req.plataformas) {
-        canProceed = false;
-      }
-
-      return canProceed;
-    };
-
-    const interval = setInterval(() => {
-      if (checkRequirements()) {
-        handleNext();
-      }
-    }, 500);
-
-    return () => clearInterval(interval);
-  }, [isOpen, currentStep, categorias.length, totalItens, totalPlataformas, handleNext]);
+  // Removido auto-avanço automático - o usuário deve avançar manualmente
+  // Isso permite que o tutorial seja visualizado mesmo quando já existem dados
 
   const handlePrevious = () => {
     if (currentStep > 0) {
@@ -241,12 +218,8 @@ const TutorialOnboarding = ({
   const isLastStep = currentStep === tutorialSteps.length - 1;
   const hasTarget = step.targetSelector !== null;
 
-  // Verificar requisitos
+  // Verificar requisitos (apenas para exibição, não bloqueia avanço)
   const req = step.requirements;
-  const requirementsMet =
-    (req.categorias === undefined || categorias.length >= req.categorias) &&
-    (req.itens === undefined || totalItens >= req.itens) &&
-    (req.plataformas === undefined || totalPlataformas >= req.plataformas);
 
   return (
     <div className="tutorial-overlay" ref={overlayRef}>
@@ -288,26 +261,54 @@ const TutorialOnboarding = ({
         <div className="tutorial-content">
           <p>{step.description}</p>
           {!isFirstStep && !isLastStep && (
-            <div className="tutorial-requirements">
-              {req.categorias !== undefined && (
-                <div className={`requirement ${categorias.length >= req.categorias ? 'met' : ''}`}>
-                  <FaCheck className={categorias.length >= req.categorias ? 'check-icon' : 'check-icon-hidden'} />
-                  Adicionar {req.categorias} categoria(s) ({categorias.length}/{req.categorias})
-                </div>
-              )}
-              {req.itens !== undefined && (
-                <div className={`requirement ${totalItens >= req.itens ? 'met' : ''}`}>
-                  <FaCheck className={totalItens >= req.itens ? 'check-icon' : 'check-icon-hidden'} />
-                  Adicionar {req.itens} item(s) ({totalItens}/{req.itens})
-                </div>
-              )}
-              {req.plataformas !== undefined && (
-                <div className={`requirement ${totalPlataformas >= req.plataformas ? 'met' : ''}`}>
-                  <FaCheck className={totalPlataformas >= req.plataformas ? 'check-icon' : 'check-icon-hidden'} />
-                  Adicionar {req.plataformas} plataforma(s) ({totalPlataformas}/{req.plataformas})
-                </div>
-              )}
-            </div>
+            <>
+              <div className="tutorial-requirements">
+                {req.categorias !== undefined && (
+                  <div className={`requirement ${categorias.length >= req.categorias ? 'met' : ''}`}>
+                    <FaCheck className={categorias.length >= req.categorias ? 'check-icon' : 'check-icon-hidden'} />
+                    Adicionar {req.categorias} categoria(s) ({categorias.length}/{req.categorias})
+                  </div>
+                )}
+                {req.itens !== undefined && (
+                  <div className={`requirement ${totalItens >= req.itens ? 'met' : ''}`}>
+                    <FaCheck className={totalItens >= req.itens ? 'check-icon' : 'check-icon-hidden'} />
+                    Adicionar {req.itens} item(s) ({totalItens}/{req.itens})
+                  </div>
+                )}
+                {req.plataformas !== undefined && (
+                  <div className={`requirement ${totalPlataformas >= req.plataformas ? 'met' : ''}`}>
+                    <FaCheck className={totalPlataformas >= req.plataformas ? 'check-icon' : 'check-icon-hidden'} />
+                    Adicionar {req.plataformas} plataforma(s) ({totalPlataformas}/{req.plataformas})
+                  </div>
+                )}
+              </div>
+              <div className="tutorial-action-button">
+                {currentStep === 1 && onOpenAdicionarCategoria && (
+                  <button
+                    className="btn-adicionar-produto"
+                    onClick={onOpenAdicionarCategoria}
+                  >
+                    <FaFolderPlus /> Adicionar Categoria
+                  </button>
+                )}
+                {currentStep === 2 && onOpenAdicionarItem && (
+                  <button
+                    className="btn-adicionar-produto"
+                    onClick={onOpenAdicionarItem}
+                  >
+                    <FaPlusCircle /> Adicionar Novo Produto
+                  </button>
+                )}
+                {currentStep === 3 && onOpenPlataformas && (
+                  <button
+                    className="btn-adicionar-produto btn-plataformas"
+                    onClick={onOpenPlataformas}
+                  >
+                    <FaStore /> Gerenciar Plataformas
+                  </button>
+                )}
+              </div>
+            </>
           )}
         </div>
         <div className="tutorial-footer">
@@ -333,7 +334,6 @@ const TutorialOnboarding = ({
               <button
                 className="btn-tutorial btn-tutorial-primary"
                 onClick={handleNext}
-                disabled={!isFirstStep && !requirementsMet}
               >
                 Próximo <FaArrowRight />
               </button>

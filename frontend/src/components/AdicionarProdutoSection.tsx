@@ -11,18 +11,24 @@ interface AdicionarProdutoSectionProps {
   categorias: string[];
   onOpenPlataformas?: () => void;
   onOpenPainelAdmin?: () => void;
+  onOpenAdicionarCategoria?: () => void;
+  onOpenAdicionarItem?: () => void;
 }
 
-const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, onOpenPainelAdmin }: AdicionarProdutoSectionProps) => {
+const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, onOpenPainelAdmin, onOpenAdicionarCategoria, onOpenAdicionarItem }: AdicionarProdutoSectionProps) => {
   const [showAdicionarCategoriaModal, setShowAdicionarCategoriaModal] = useState(false);
   const [showEditarItemModal, setShowEditarItemModal] = useState(false);
 
   const handleAdicionarProduto = () => {
-    if (categorias.length === 0) {
-      mostrarAlert('Atenção', 'Não há categorias disponíveis. Por favor, crie uma categoria primeiro.');
-      return;
+    if (onOpenAdicionarItem) {
+      onOpenAdicionarItem();
+    } else {
+      if (categorias.length === 0) {
+        mostrarAlert('Atenção', 'Não há categorias disponíveis. Por favor, crie uma categoria primeiro.');
+        return;
+      }
+      setShowEditarItemModal(true);
     }
-    setShowEditarItemModal(true);
   };
 
   const handleSalvarItem = () => {
@@ -31,7 +37,11 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
   };
 
   const handleAdicionarCategoria = () => {
-    setShowAdicionarCategoriaModal(true);
+    if (onOpenAdicionarCategoria) {
+      onOpenAdicionarCategoria();
+    } else {
+      setShowAdicionarCategoriaModal(true);
+    }
   };
 
   const handleSalvarCategoria = async (nome: string, icone: string | null) => {

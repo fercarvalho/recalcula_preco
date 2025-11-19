@@ -10,6 +10,8 @@ import PainelAdmin from './components/PainelAdmin';
 import GerenciamentoPlataformas from './components/GerenciamentoPlataformas';
 import TutorialOnboarding, { isTutorialCompleted } from './components/TutorialOnboarding';
 import Login from './components/Login';
+import AdicionarCategoriaModal from './components/AdicionarCategoriaModal';
+import EditarItemModal from './components/EditarItemModal';
 import { isAuthenticated, getToken } from './services/auth';
 import { carregarPlataformas } from './utils/plataformas';
 import { mostrarAlert, mostrarConfirm } from './utils/modals';
@@ -26,6 +28,8 @@ function App() {
   const [itensParaReajustar, setItensParaReajustar] = useState<Item[]>([]);
   const [showPainelAdmin, setShowPainelAdmin] = useState(false);
   const [showPlataformas, setShowPlataformas] = useState(false);
+  const [showAdicionarCategoriaModal, setShowAdicionarCategoriaModal] = useState(false);
+  const [showEditarItemModal, setShowEditarItemModal] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [totalPlataformas, setTotalPlataformas] = useState(0);
   const [authenticated, setAuthenticated] = useState(false);
@@ -327,6 +331,14 @@ function App() {
             onItemAdded={carregarItens}
             onOpenPlataformas={() => setShowPlataformas(true)}
             onOpenPainelAdmin={() => setShowPainelAdmin(true)}
+            onOpenAdicionarCategoria={() => setShowAdicionarCategoriaModal(true)}
+            onOpenAdicionarItem={() => {
+              if (Object.keys(itensPorCategoria).length === 0) {
+                mostrarAlert('Atenção', 'Não há categorias disponíveis. Por favor, crie uma categoria primeiro.');
+                return;
+              }
+              setShowEditarItemModal(true);
+            }}
           />
 
               <ItensSection
@@ -360,6 +372,38 @@ function App() {
         onClose={() => setShowPlataformas(false)}
       />
 
+      <AdicionarCategoriaModal
+        isOpen={showAdicionarCategoriaModal}
+        onClose={() => setShowAdicionarCategoriaModal(false)}
+        onSave={async (nome: string, icone: string | null) => {
+          try {
+            await apiService.criarCategoria(nome, icone);
+            await mostrarAlert('Sucesso', `Categoria "${nome}" criada com sucesso!`);
+            await carregarItens();
+            setShowAdicionarCategoriaModal(false);
+          } catch (error: any) {
+            const mensagemErro = error.response?.data?.error || error.message || 'Erro ao criar a categoria. Tente novamente.';
+            if (mensagemErro.includes('UNIQUE') || mensagemErro.includes('já existe')) {
+              await mostrarAlert('Erro', 'Esta categoria já existe!');
+            } else {
+              await mostrarAlert('Erro', mensagemErro);
+            }
+          }
+        }}
+      />
+
+      <EditarItemModal
+        isOpen={showEditarItemModal}
+        item={null}
+        categorias={Object.keys(itensPorCategoria)}
+        modoAdicionar={true}
+        onClose={() => setShowEditarItemModal(false)}
+        onSave={() => {
+          carregarItens();
+          setShowEditarItemModal(false);
+        }}
+      />
+
       <TutorialOnboarding
         isOpen={showTutorial}
         onComplete={() => {
@@ -370,6 +414,15 @@ function App() {
         categorias={Object.keys(itensPorCategoria)}
         totalItens={Object.values(itensPorCategoria).reduce((acc, itens) => acc + itens.length, 0)}
         totalPlataformas={totalPlataformas}
+        onOpenAdicionarCategoria={() => setShowAdicionarCategoriaModal(true)}
+        onOpenAdicionarItem={() => {
+          if (Object.keys(itensPorCategoria).length === 0) {
+            mostrarAlert('Atenção', 'Não há categorias disponíveis. Por favor, crie uma categoria primeiro.');
+            return;
+          }
+          setShowEditarItemModal(true);
+        }}
+        onOpenPlataformas={() => setShowPlataformas(true)}
       />
     </div>
   );

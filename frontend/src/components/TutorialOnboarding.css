@@ -249,6 +249,17 @@
   transform: translateY(-2px);
 }
 
+.tutorial-action-button {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.tutorial-action-button .btn-adicionar-produto {
+  z-index: 10002;
+  position: relative;
+}
+
 /* Responsividade */
 @media (max-width: 768px) {
   .tutorial-tooltip {
