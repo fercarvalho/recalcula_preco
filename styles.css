@@ -409,15 +409,15 @@ header p {
     background: #FF6B35;
     color: white;
     border: none;
-    padding: 14px 26px;
+    padding: 14px 27px;
     border-radius: 10px;
-    font-size: 1.05em;
+    font-size: 1.07em;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s;
     display: inline-flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     white-space: nowrap;
 }
