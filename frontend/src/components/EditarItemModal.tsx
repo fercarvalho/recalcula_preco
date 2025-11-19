@@ -3,7 +3,7 @@ import Modal from './Modal';
 import { apiService } from '../services/api';
 import { mostrarAlert } from '../utils/modals';
 import type { Item } from '../types';
-import { FaTimes, FaPlus } from 'react-icons/fa';
+import { FaTimes, FaPlus, FaCheck } from 'react-icons/fa';
 import './EditarItemModal.css';
 
 interface EditarItemModalProps {
@@ -166,14 +166,13 @@ const EditarItemModal = ({
     >
       {modoAdicionar && (
         <div style={{ marginBottom: '20px' }}>
-          <label>
-            <input
-              type="checkbox"
-              checked={modoMultiplo}
-              onChange={(e) => setModoMultiplo(e.target.checked)}
-            />
-            {' '}Adicionar múltiplos itens
-          </label>
+          <button
+            type="button"
+            className={`btn-toggle-multiplo ${modoMultiplo ? 'active' : ''}`}
+            onClick={() => setModoMultiplo(!modoMultiplo)}
+          >
+            {modoMultiplo ? <FaCheck /> : <FaPlus />} {modoMultiplo ? 'Modo Múltiplos Itens Ativo' : 'Adicionar Múltiplos Itens'}
+          </button>
         </div>
       )}
 

@@ -122,3 +122,40 @@
   border-color: var(--cor-primaria);
 }
 
+.btn-toggle-multiplo {
+  padding: 10px 20px;
+  border: 2px solid var(--cor-primaria);
+  border-radius: 8px;
+  background: white;
+  color: var(--cor-primaria);
+  cursor: pointer;
+  font-size: 0.95em;
+  font-weight: 600;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.btn-toggle-multiplo:hover {
+  background: color-mix(in srgb, var(--cor-primaria) 10%, white);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.btn-toggle-multiplo.active {
+  background: var(--cor-primaria);
+  color: white;
+  border-color: var(--cor-primaria);
+}
+
+.btn-toggle-multiplo.active:hover {
+  background: color-mix(in srgb, var(--cor-primaria) 90%, white);
+}
+
+.btn-toggle-multiplo svg {
+  flex-shrink: 0;
+}
+
