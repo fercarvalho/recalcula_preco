@@ -412,31 +412,63 @@ async function inicializarOrdemCategorias(usuarioId) {
 
 // ========== FUNÇÕES DE AUTENTICAÇÃO ==========
 
-// Verificar credenciais do usuário
-async function verificarCredenciais(username, senha) {
+// Verificar credenciais do usuário (aceita username ou email)
+async function verificarCredenciais(identificador, senha) {
     try {
-        const result = await pool.query(
-            'SELECT id, username, email, senha_hash, is_admin FROM usuarios WHERE username = $1',
-            [username]
-        );
+        // Detectar se é email (contém @) ou username
+        const isEmail = identificador.includes('@');
+        
+        let result;
+        if (isEmail) {
+            // Buscar por email (pode haver múltiplos usuários com o mesmo email)
+            result = await pool.query(
+                'SELECT id, username, email, senha_hash, is_admin FROM usuarios WHERE email = $1',
+                [identificador.trim().toLowerCase()]
+            );
+        } else {
+            // Buscar por username (único)
+            result = await pool.query(
+                'SELECT id, username, email, senha_hash, is_admin FROM usuarios WHERE username = $1',
+                [identificador.trim()]
+            );
+        }
         
         if (result.rows.length === 0) {
             return null;
         }
         
-        const usuario = result.rows[0];
-        const senhaValida = await bcrypt.compare(senha, usuario.senha_hash);
-        
-        if (!senhaValida) {
+        // Se for email e houver múltiplos usuários, verificar a senha de cada um
+        // até encontrar o correto (combinação email + senha)
+        if (isEmail && result.rows.length > 1) {
+            for (const usuario of result.rows) {
+                const senhaValida = await bcrypt.compare(senha, usuario.senha_hash);
+                if (senhaValida) {
+                    return {
+                        id: usuario.id,
+                        username: usuario.username,
+                        email: usuario.email,
+                        is_admin: usuario.is_admin || false
+                    };
+                }
+            }
+            // Nenhuma senha correspondeu
             return null;
+        } else {
+            // Username (único) ou email (único resultado)
+            const usuario = result.rows[0];
+            const senhaValida = await bcrypt.compare(senha, usuario.senha_hash);
+            
+            if (!senhaValida) {
+                return null;
+            }
+            
+            return {
+                id: usuario.id,
+                username: usuario.username,
+                email: usuario.email,
+                is_admin: usuario.is_admin || false
+            };
         }
-        
-        return {
-            id: usuario.id,
-            username: usuario.username,
-            email: usuario.email,
-            is_admin: usuario.is_admin || false
-        };
     } catch (error) {
         console.error('Erro ao verificar credenciais:', error);
         throw error;

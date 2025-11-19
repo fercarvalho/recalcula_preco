@@ -62,14 +62,14 @@ const Login = ({ onLoginSuccess }: LoginProps) => {
         </div>
         <form onSubmit={handleSubmit} className="login-form">
           <div className="form-group">
-            <label htmlFor="username">Usuário:</label>
+            <label htmlFor="username">Usuário ou Email:</label>
             <input
               id="username"
               type="text"
               className="form-input"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Digite seu usuário"
+              placeholder="Digite seu usuário ou email"
               autoFocus
               disabled={loading}
             />

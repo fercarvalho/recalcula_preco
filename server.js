@@ -18,13 +18,13 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // ========== ROTAS DE AUTENTICAÇÃO (SEM MIDDLEWARE) ==========
 
-// Login
+// Login (aceita username ou email)
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { username, senha } = req.body;
         
         if (!username || !senha) {
-            return res.status(400).json({ error: 'Username e senha são obrigatórios' });
+            return res.status(400).json({ error: 'Username/Email e senha são obrigatórios' });
         }
         
         const usuario = await db.verificarCredenciais(username, senha);
@@ -40,6 +40,7 @@ app.post('/api/auth/login', async (req, res) => {
             user: {
                 id: usuario.id,
                 username: usuario.username,
+                email: usuario.email,
                 is_admin: usuario.is_admin || false
             }
         });
