@@ -3,6 +3,7 @@ import { FaEye, FaEyeSlash, FaUserPlus } from 'react-icons/fa';
 import { saveAuth } from '../services/auth';
 import { mostrarAlert } from '../utils/modals';
 import RegistroModal from './RegistroModal';
+import EsqueciSenhaModal from './EsqueciSenhaModal';
 import './Login.css';
 
 interface LoginProps {
@@ -15,6 +16,7 @@ const Login = ({ onLoginSuccess }: LoginProps) => {
   const [showSenha, setShowSenha] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showRegistro, setShowRegistro] = useState(false);
+  const [showEsqueciSenha, setShowEsqueciSenha] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,6 +107,16 @@ const Login = ({ onLoginSuccess }: LoginProps) => {
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
+        <div className="login-links">
+          <button
+            type="button"
+            className="btn-link"
+            onClick={() => setShowEsqueciSenha(true)}
+            disabled={loading}
+          >
+            Esqueci minha senha
+          </button>
+        </div>
         <div className="login-footer">
           <button
             type="button"
@@ -120,6 +132,10 @@ const Login = ({ onLoginSuccess }: LoginProps) => {
         isOpen={showRegistro}
         onClose={() => setShowRegistro(false)}
         onRegisterSuccess={onLoginSuccess}
+      />
+      <EsqueciSenhaModal
+        isOpen={showEsqueciSenha}
+        onClose={() => setShowEsqueciSenha(false)}
       />
     </div>
   );

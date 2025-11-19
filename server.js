@@ -5,6 +5,7 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const db = require('./database');
 const { authenticateToken, requireAdmin, generateToken } = require('./middleware/auth');
+const { enviarEmailRecuperacao } = require('./services/email');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -180,6 +181,107 @@ app.post('/api/auth/reiniciar-sistema', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error('Erro ao reiniciar sistema:', error);
         res.status(500).json({ error: error.message || 'Erro ao reiniciar sistema' });
+    }
+});
+
+// Solicitar recuperação de senha
+app.post('/api/auth/recuperar-senha', async (req, res) => {
+    try {
+        const { email } = req.body;
+        
+        if (!email || !email.trim()) {
+            return res.status(400).json({ error: 'Email é obrigatório' });
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email.trim())) {
+            return res.status(400).json({ error: 'Email inválido' });
+        }
+
+        // Buscar usuários com este email
+        const usuarios = await db.obterUsuariosPorEmail(email.trim().toLowerCase());
+        
+        if (usuarios.length === 0) {
+            // Por segurança, não revelar se o email existe ou não
+            return res.json({ 
+                message: 'Se o email estiver cadastrado, você receberá um link de recuperação.' 
+            });
+        }
+
+        // Criar token para cada usuário com este email
+        const tokensCriados = [];
+        for (const usuario of usuarios) {
+            try {
+                const tokenData = await db.criarTokenRecuperacao(usuario.id);
+                await enviarEmailRecuperacao(usuario.email, tokenData.token, usuario.username);
+                tokensCriados.push(usuario.username);
+                console.log(`✅ Token de recuperação criado e email enviado para: ${usuario.username} (${usuario.email})`);
+            } catch (error) {
+                console.error(`❌ Erro ao processar recuperação para usuário ${usuario.username}:`, error.message);
+                // Continuar com os outros usuários mesmo se um falhar
+            }
+        }
+
+        // Por segurança, sempre retornar a mesma mensagem
+        return res.json({ 
+            message: 'Se o email estiver cadastrado, você receberá um link de recuperação.' 
+        });
+    } catch (error) {
+        console.error('Erro ao solicitar recuperação de senha:', error);
+        res.status(500).json({ error: 'Erro ao processar solicitação de recuperação de senha' });
+    }
+});
+
+// Validar token de recuperação
+app.get('/api/auth/validar-token/:token', async (req, res) => {
+    try {
+        const { token } = req.params;
+        
+        if (!token) {
+            return res.status(400).json({ error: 'Token é obrigatório' });
+        }
+
+        const tokenValido = await db.validarTokenRecuperacao(token);
+        
+        if (!tokenValido) {
+            return res.status(400).json({ error: 'Token inválido ou expirado' });
+        }
+
+        res.json({ 
+            valid: true,
+            username: tokenValido.username 
+        });
+    } catch (error) {
+        console.error('Erro ao validar token:', error);
+        res.status(500).json({ error: 'Erro ao validar token' });
+    }
+});
+
+// Resetar senha com token
+app.post('/api/auth/resetar-senha', async (req, res) => {
+    try {
+        const { token, novaSenha } = req.body;
+        
+        if (!token || !novaSenha) {
+            return res.status(400).json({ error: 'Token e nova senha são obrigatórios' });
+        }
+
+        if (novaSenha.length < 6) {
+            return res.status(400).json({ error: 'A senha deve ter pelo menos 6 caracteres' });
+        }
+
+        const usuario = await db.resetarSenhaComToken(token, novaSenha);
+        
+        res.json({ 
+            message: 'Senha redefinida com sucesso!',
+            user: {
+                id: usuario.id,
+                username: usuario.username
+            }
+        });
+    } catch (error) {
+        console.error('Erro ao resetar senha:', error);
+        res.status(500).json({ error: error.message || 'Erro ao resetar senha' });
     }
 });
 

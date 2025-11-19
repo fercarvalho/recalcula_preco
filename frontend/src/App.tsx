@@ -13,6 +13,7 @@ import TutorialOnboarding, { isTutorialCompleted } from './components/TutorialOn
 import Login from './components/Login';
 import AdicionarCategoriaModal from './components/AdicionarCategoriaModal';
 import EditarItemModal from './components/EditarItemModal';
+import ResetarSenhaModal from './components/ResetarSenhaModal';
 import { isAuthenticated, getToken, getUser, saveAuth } from './services/auth';
 import { carregarPlataformas } from './utils/plataformas';
 import { mostrarAlert, mostrarConfirm } from './utils/modals';
@@ -36,6 +37,8 @@ function App() {
   const [totalPlataformas, setTotalPlataformas] = useState(0);
   const [authenticated, setAuthenticated] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [showResetarSenha, setShowResetarSenha] = useState(false);
+  const [resetToken, setResetToken] = useState<string | null>(null);
 
   useEffect(() => {
     // Verificar autenticação
@@ -498,6 +501,23 @@ function App() {
           null
         }
       />
+
+      {resetToken && (
+        <ResetarSenhaModal
+          isOpen={showResetarSenha}
+          onClose={() => {
+            setShowResetarSenha(false);
+            setResetToken(null);
+          }}
+          token={resetToken}
+          onSuccess={() => {
+            setShowResetarSenha(false);
+            setResetToken(null);
+            setAuthenticated(false);
+            setCheckingAuth(true);
+          }}
+        />
+      )}
     </div>
   );
 }

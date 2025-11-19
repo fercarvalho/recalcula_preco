@@ -144,6 +144,31 @@
   cursor: not-allowed;
 }
 
+.login-links {
+  margin-top: 15px;
+  text-align: center;
+}
+
+.btn-link {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: underline;
+}
+
+.btn-link:hover:not(:disabled) {
+  color: var(--cor-primaria, #FF6B35);
+}
+
+.btn-link:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .login-footer {
   margin-top: 20px;
   text-align: center;

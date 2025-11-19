@@ -235,6 +235,30 @@ async function inicializar() {
             await pool.query('ALTER TABLE categorias ADD COLUMN icone VARCHAR(100)');
         }
         
+        // Criar tabela de tokens de recuperação de senha
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                id SERIAL PRIMARY KEY,
+                usuario_id INTEGER REFERENCES usuarios(id) ON DELETE CASCADE,
+                token VARCHAR(255) UNIQUE NOT NULL,
+                expires_at TIMESTAMP NOT NULL,
+                used BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        // Criar índice para busca rápida por token
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token 
+            ON password_reset_tokens(token)
+        `);
+        
+        // Limpar tokens expirados periodicamente (executar na inicialização)
+        await pool.query(`
+            DELETE FROM password_reset_tokens 
+            WHERE expires_at < NOW() OR used = TRUE
+        `);
+        
         // Criar usuário admin padrão se não existir
         let adminPadrao = await pool.query('SELECT id FROM usuarios WHERE username = $1', ['admin']);
         if (adminPadrao.rows.length === 0) {
@@ -1427,6 +1451,130 @@ async function criarCategoria(nome, icone = null, usuarioId) {
     }
 }
 
+// ========== FUNÇÕES DE RECUPERAÇÃO DE SENHA ==========
+
+// Obter usuários por email (pode haver múltiplos)
+async function obterUsuariosPorEmail(email) {
+    try {
+        const result = await pool.query(
+            'SELECT id, username, email FROM usuarios WHERE email = $1',
+            [email.trim().toLowerCase()]
+        );
+        
+        return result.rows;
+    } catch (error) {
+        console.error('Erro ao obter usuários por email:', error);
+        throw error;
+    }
+}
+
+// Criar token de recuperação de senha
+async function criarTokenRecuperacao(usuarioId) {
+    try {
+        const crypto = require('crypto');
+        const token = crypto.randomBytes(32).toString('hex');
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + 1); // Token expira em 1 hora
+        
+        // Invalidar tokens anteriores do usuário
+        await pool.query(
+            'UPDATE password_reset_tokens SET used = TRUE WHERE usuario_id = $1 AND used = FALSE',
+            [usuarioId]
+        );
+        
+        // Criar novo token
+        const result = await pool.query(
+            'INSERT INTO password_reset_tokens (usuario_id, token, expires_at) VALUES ($1, $2, $3) RETURNING token, expires_at',
+            [usuarioId, token, expiresAt]
+        );
+        
+        return {
+            token: result.rows[0].token,
+            expiresAt: result.rows[0].expires_at
+        };
+    } catch (error) {
+        console.error('Erro ao criar token de recuperação:', error);
+        throw error;
+    }
+}
+
+// Validar token de recuperação de senha
+async function validarTokenRecuperacao(token) {
+    try {
+        const result = await pool.query(
+            `SELECT prt.usuario_id, prt.expires_at, prt.used, u.username, u.email
+             FROM password_reset_tokens prt
+             JOIN usuarios u ON prt.usuario_id = u.id
+             WHERE prt.token = $1 AND prt.used = FALSE AND prt.expires_at > NOW()`,
+            [token]
+        );
+        
+        if (result.rows.length === 0) {
+            return null;
+        }
+        
+        return {
+            usuarioId: result.rows[0].usuario_id,
+            username: result.rows[0].username,
+            email: result.rows[0].email,
+            expiresAt: result.rows[0].expires_at
+        };
+    } catch (error) {
+        console.error('Erro ao validar token de recuperação:', error);
+        throw error;
+    }
+}
+
+// Marcar token como usado
+async function marcarTokenComoUsado(token) {
+    try {
+        await pool.query(
+            'UPDATE password_reset_tokens SET used = TRUE WHERE token = $1',
+            [token]
+        );
+    } catch (error) {
+        console.error('Erro ao marcar token como usado:', error);
+        throw error;
+    }
+}
+
+// Resetar senha usando token
+async function resetarSenhaComToken(token, novaSenha) {
+    try {
+        // Validar token
+        const tokenValido = await validarTokenRecuperacao(token);
+        if (!tokenValido) {
+            throw new Error('Token inválido ou expirado');
+        }
+        
+        // Validar senha
+        if (!novaSenha || novaSenha.length < 6) {
+            throw new Error('A senha deve ter pelo menos 6 caracteres');
+        }
+        
+        // Criptografar nova senha
+        const novaSenhaHash = await bcrypt.hash(novaSenha, 10);
+        
+        // Atualizar senha
+        await pool.query(
+            'UPDATE usuarios SET senha_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+            [novaSenhaHash, tokenValido.usuarioId]
+        );
+        
+        // Marcar token como usado
+        await marcarTokenComoUsado(token);
+        
+        return {
+            id: tokenValido.usuarioId,
+            username: tokenValido.username,
+            email: tokenValido.email
+        };
+    } catch (error) {
+        console.error('Erro ao resetar senha:', error);
+        throw error;
+    }
+}
+
 // Fechar conexão
 async function fechar() {
     try {
@@ -1467,5 +1615,9 @@ module.exports = {
     atualizarIconeCategoria,
     obterIconeCategoria,
     deletarCategoria,
+    obterUsuariosPorEmail,
+    criarTokenRecuperacao,
+    validarTokenRecuperacao,
+    resetarSenhaComToken,
     fechar
 };
