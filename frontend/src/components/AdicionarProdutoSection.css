@@ -35,13 +35,13 @@
 }
 
 .btn-adicionar-produto.btn-admin {
-  background: #6c757d;
+  background: var(--cor-fundo);
 }
 
 .btn-adicionar-produto.btn-admin:hover {
-  background: #5a6268 !important;
+  background: color-mix(in srgb, var(--cor-fundo) 90%, white) !important;
   transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(90, 98, 104, 0.3);
+  box-shadow: 0 6px 12px color-mix(in srgb, var(--cor-fundo) 30%, transparent);
 }
 
 .btn-adicionar-produto:hover {
