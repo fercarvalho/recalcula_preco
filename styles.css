@@ -790,6 +790,11 @@ header p {
     animation: fadeIn 0.3s;
 }
 
+/* Modal de confirmação deve ficar acima de outros modais */
+#modal-confirm {
+    z-index: 2000;
+}
+
 .modal.show {
     display: flex;
     align-items: center;

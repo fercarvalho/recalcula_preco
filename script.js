@@ -2697,6 +2697,14 @@ function atualizarListaPlataformas() {
         btnExcluir.className = 'btn-excluir-plataforma';
         btnExcluir.innerHTML = '<i class="fas fa-trash"></i> Excluir';
         btnExcluir.onclick = async () => {
+            // Fechar modal de adicionar plataformas se estiver aberto
+            const modalAdicionar = document.getElementById('modal-plataforma-form');
+            if (modalAdicionar && modalAdicionar.classList.contains('show')) {
+                modalAdicionar.classList.remove('show');
+                // Aguardar um pouco para garantir que o modal foi fechado antes de mostrar a confirmação
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            
             const confirmado = await mostrarConfirm('Excluir Plataforma', `Tem certeza que deseja excluir a plataforma "${plataforma.nome}"?`);
             if (confirmado) {
                 plataformas.splice(index, 1);
@@ -2961,7 +2969,13 @@ function atualizarTaxaLinha(linha) {
 // Abrir formulário de plataforma (adicionar múltiplas)
 function abrirFormPlataforma() {
     const modal = document.getElementById('modal-plataforma-form');
+    const modalGerenciar = document.getElementById('modal-plataformas');
     const container = document.getElementById('plataformas-linhas-container');
+    
+    // Fechar modal de gerenciar plataformas se estiver aberto
+    if (modalGerenciar && modalGerenciar.classList.contains('show')) {
+        modalGerenciar.classList.remove('show');
+    }
     
     // Limpar container
     container.innerHTML = '';
