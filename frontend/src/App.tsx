@@ -423,6 +423,12 @@ function App() {
           setShowEditarItemModal(true);
         }}
         onOpenPlataformas={() => setShowPlataformas(true)}
+        modalAberto={
+          showAdicionarCategoriaModal ? 'categoria' :
+          showEditarItemModal ? 'item' :
+          showPlataformas ? 'plataformas' :
+          null
+        }
       />
     </div>
   );

@@ -8,7 +8,7 @@ import './AdicionarCategoriaModal.css';
 interface AdicionarCategoriaModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (nome: string, icone: string | null) => void;
+  onSave: (nome: string, icone: string | null) => Promise<void>;
 }
 
 const AdicionarCategoriaModal = ({ isOpen, onClose, onSave }: AdicionarCategoriaModalProps) => {
@@ -16,14 +16,14 @@ const AdicionarCategoriaModal = ({ isOpen, onClose, onSave }: AdicionarCategoria
   const [icone, setIcone] = useState<string | null>(null);
   const [showIconeModal, setShowIconeModal] = useState(false);
 
-  const handleSalvar = () => {
+  const handleSalvar = async () => {
     if (!nome.trim()) {
       return;
     }
-    onSave(nome.trim(), icone);
+    await onSave(nome.trim(), icone);
     setNome('');
     setIcone(null);
-    onClose();
+    // Não fechar aqui - deixar o onSave no App.tsx fechar após o alert
   };
 
   const handleCancelar = () => {

@@ -4,8 +4,18 @@
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 10000;
+  z-index: 999;
   pointer-events: all;
+}
+
+.tutorial-overlay.modal-open {
+  z-index: 1001;
+  pointer-events: none;
+}
+
+.tutorial-overlay.modal-open .tutorial-tooltip {
+  pointer-events: all;
+  z-index: 1002;
 }
 
 .tutorial-overlay::before {
@@ -17,11 +27,18 @@
   bottom: 0;
   background: rgba(0, 0, 0, 0.75);
   backdrop-filter: blur(2px);
+  transition: opacity 0.3s ease, backdrop-filter 0.3s ease;
+}
+
+.tutorial-overlay.modal-open::before {
+  opacity: 0;
+  backdrop-filter: blur(0px);
+  pointer-events: none;
 }
 
 .tutorial-spotlight {
   position: absolute;
-  z-index: 10001;
+  z-index: 1000;
   border-radius: 8px;
   box-shadow: 
     0 0 0 9999px rgba(0, 0, 0, 0.75),
@@ -30,6 +47,12 @@
   pointer-events: none;
   animation: spotlight-pulse 2s ease-in-out infinite;
   transition: all 0.3s ease;
+  opacity: 1;
+}
+
+.tutorial-overlay.modal-open .tutorial-spotlight {
+  opacity: 0;
+  pointer-events: none;
 }
 
 @keyframes spotlight-pulse {
@@ -256,8 +279,41 @@
 }
 
 .tutorial-action-button .btn-adicionar-produto {
-  z-index: 10002;
+  z-index: 1001;
   position: relative;
+}
+
+.tutorial-modal-instruction {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--cor-primaria, #FF6B35);
+  color: white;
+  padding: 16px 24px;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  z-index: 1002;
+  max-width: 90%;
+  text-align: center;
+  animation: slide-up 0.3s ease-out;
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.tutorial-modal-instruction p {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
 }
 
 /* Responsividade */

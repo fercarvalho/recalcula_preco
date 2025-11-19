@@ -34,6 +34,7 @@ interface TutorialOnboardingProps {
   onOpenAdicionarCategoria?: () => void;
   onOpenAdicionarItem?: () => void;
   onOpenPlataformas?: () => void;
+  modalAberto?: 'categoria' | 'item' | 'plataformas' | null;
 }
 
 type TutorialStep = {
@@ -103,6 +104,7 @@ const TutorialOnboarding = ({
   onOpenAdicionarCategoria,
   onOpenAdicionarItem,
   onOpenPlataformas,
+  modalAberto,
 }: TutorialOnboardingProps) => {
   const [currentStep, setCurrentStep] = useState(getTutorialStep());
   const [highlightedElement, setHighlightedElement] = useState<HTMLElement | null>(null);
@@ -221,9 +223,24 @@ const TutorialOnboarding = ({
   // Verificar requisitos (apenas para exibição, não bloqueia avanço)
   const req = step.requirements;
 
+  const getModalInstruction = () => {
+    if (modalAberto === 'categoria') {
+      return 'Preencha o nome da categoria e, se desejar, escolha um ícone. Clique em "Salvar" quando terminar.';
+    }
+    if (modalAberto === 'item') {
+      return 'Preencha o nome do produto, valor e selecione a categoria. Clique em "Salvar" quando terminar.';
+    }
+    if (modalAberto === 'plataformas') {
+      return 'Adicione as plataformas de delivery com suas taxas. Clique em "Salvar" quando terminar.';
+    }
+    return null;
+  };
+
+  const modalInstruction = getModalInstruction();
+
   return (
-    <div className="tutorial-overlay" ref={overlayRef}>
-      {hasTarget && highlightedElement && (
+    <div className={`tutorial-overlay ${modalAberto ? 'modal-open' : ''}`} ref={overlayRef}>
+      {!modalAberto && hasTarget && highlightedElement && (
         <div
           className="tutorial-spotlight"
           style={{
@@ -235,23 +252,24 @@ const TutorialOnboarding = ({
         />
       )}
 
-      <div
-        className={`tutorial-tooltip tutorial-tooltip-${step.position}`}
-        ref={tooltipRef}
-        style={
-          hasTarget && highlightedElement
-            ? {
-                top: step.position === 'bottom' ? `${spotlightPosition.top + spotlightPosition.height + 20}px` : undefined,
-                left: step.position === 'bottom' ? `${spotlightPosition.left + spotlightPosition.width / 2}px` : undefined,
-                transform: step.position === 'bottom' ? 'translateX(-50%)' : undefined,
-              }
-            : {
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-              }
-        }
-      >
+      {!modalAberto && (
+        <div
+          className={`tutorial-tooltip tutorial-tooltip-${step.position}`}
+          ref={tooltipRef}
+          style={
+            hasTarget && highlightedElement
+              ? {
+                  top: step.position === 'bottom' ? `${spotlightPosition.top + spotlightPosition.height + 20}px` : undefined,
+                  left: step.position === 'bottom' ? `${spotlightPosition.left + spotlightPosition.width / 2}px` : undefined,
+                  transform: step.position === 'bottom' ? 'translateX(-50%)' : undefined,
+                }
+              : {
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                }
+          }
+        >
         <div className="tutorial-header">
           <h3>{step.title}</h3>
           <button className="tutorial-close" onClick={handleSkip} title="Pular tutorial">
@@ -259,8 +277,11 @@ const TutorialOnboarding = ({
           </button>
         </div>
         <div className="tutorial-content">
-          <p>{step.description}</p>
-          {!isFirstStep && !isLastStep && (
+          {!modalAberto && <p>{step.description}</p>}
+          {modalAberto && (
+            <p>Use o modal abaixo para completar esta etapa. Quando terminar, feche o modal para continuar o tutorial.</p>
+          )}
+          {!isFirstStep && !isLastStep && !modalAberto && (
             <>
               <div className="tutorial-requirements">
                 {req.categorias !== undefined && (
@@ -340,7 +361,13 @@ const TutorialOnboarding = ({
             )}
           </div>
         </div>
-      </div>
+        </div>
+      )}
+      {modalInstruction && (
+        <div className="tutorial-modal-instruction">
+          <p>{modalInstruction}</p>
+        </div>
+      )}
     </div>
   );
 };
