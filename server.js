@@ -4,7 +4,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
 const db = require('./database');
-const { authenticateToken, generateToken } = require('./middleware/auth');
+const { authenticateToken, requireAdmin, generateToken } = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -32,14 +32,15 @@ app.post('/api/auth/login', async (req, res) => {
         if (!usuario) {
             return res.status(401).json({ error: 'Credenciais inválidas' });
         }
-        
+
         const token = generateToken(usuario.id);
         
         res.json({
             token,
             user: {
                 id: usuario.id,
-                username: usuario.username
+                username: usuario.username,
+                is_admin: usuario.is_admin || false
             }
         });
     } catch (error) {
@@ -64,7 +65,8 @@ app.post('/api/auth/register', async (req, res) => {
             token,
             user: {
                 id: usuario.id,
-                username: usuario.username
+                username: usuario.username,
+                is_admin: false
             }
         });
     } catch (error) {
@@ -79,7 +81,8 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
         res.json({
             user: {
                 id: req.user.id,
-                username: req.user.username
+                username: req.user.username,
+                is_admin: req.user.is_admin || false
             }
         });
     } catch (error) {
@@ -150,6 +153,180 @@ app.post('/api/auth/reiniciar-sistema', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error('Erro ao reiniciar sistema:', error);
         res.status(500).json({ error: error.message || 'Erro ao reiniciar sistema' });
+    }
+});
+
+// ========== ROTAS DE ADMINISTRAÇÃO ==========
+
+// Listar todos os usuários (apenas admin)
+app.get('/api/admin/usuarios', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const usuarios = await db.listarUsuarios();
+        res.json(usuarios);
+    } catch (error) {
+        console.error('Erro ao listar usuários:', error);
+        res.status(500).json({ error: error.message || 'Erro ao listar usuários' });
+    }
+});
+
+// Obter dados de um usuário específico (apenas admin)
+app.get('/api/admin/usuarios/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const usuario = await db.obterUsuarioPorId(parseInt(id));
+        
+        if (!usuario) {
+            return res.status(404).json({ error: 'Usuário não encontrado' });
+        }
+
+        // Obter dados do usuário
+        const itensPorCategoria = await db.obterTodosItens(parseInt(id));
+        const categorias = await db.obterCategorias(parseInt(id));
+        
+        // obterTodosItens já retorna um objeto organizado por categoria
+        // Garantir que todas as categorias estejam no objeto de itens
+        const itensCompletos = {};
+        if (Array.isArray(categorias)) {
+            categorias.forEach(cat => {
+                itensCompletos[cat] = itensPorCategoria[cat] || [];
+            });
+        } else {
+            // Se não houver categorias, usar as chaves do objeto de itens
+            Object.keys(itensPorCategoria || {}).forEach(cat => {
+                itensCompletos[cat] = itensPorCategoria[cat] || [];
+            });
+        }
+        
+        res.json({
+            usuario,
+            itens: itensCompletos,
+            categorias: Array.isArray(categorias) ? categorias : Object.keys(itensCompletos)
+        });
+    } catch (error) {
+        console.error('Erro ao obter dados do usuário:', error);
+        res.status(500).json({ error: error.message || 'Erro ao obter dados do usuário' });
+    }
+});
+
+// Atualizar usuário (apenas admin)
+app.put('/api/admin/usuarios/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { username, senha, is_admin } = req.body;
+        
+        const usuario = await db.atualizarUsuario(parseInt(id), username, senha, is_admin);
+        res.json(usuario);
+    } catch (error) {
+        console.error('Erro ao atualizar usuário:', error);
+        res.status(500).json({ error: error.message || 'Erro ao atualizar usuário' });
+    }
+});
+
+// Deletar usuário (apenas admin)
+app.delete('/api/admin/usuarios/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        if (parseInt(id) === req.userId) {
+            return res.status(400).json({ error: 'Você não pode deletar sua própria conta' });
+        }
+        
+        const usuario = await db.deletarUsuario(parseInt(id));
+        res.json({ message: `Usuário "${usuario.username}" deletado com sucesso`, usuario });
+    } catch (error) {
+        console.error('Erro ao deletar usuário:', error);
+        res.status(500).json({ error: error.message || 'Erro ao deletar usuário' });
+    }
+});
+
+// Editar item de outro usuário (apenas admin)
+app.put('/api/admin/usuarios/:usuarioId/itens/:itemId', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { usuarioId, itemId } = req.params;
+        const { nome, valor, categoria } = req.body;
+        
+        await db.atualizarItem(parseInt(itemId), nome, valor, categoria, parseInt(usuarioId));
+        res.json({ message: 'Item atualizado com sucesso' });
+    } catch (error) {
+        console.error('Erro ao atualizar item:', error);
+        res.status(500).json({ error: error.message || 'Erro ao atualizar item' });
+    }
+});
+
+// Criar item para outro usuário (apenas admin)
+app.post('/api/admin/usuarios/:usuarioId/itens', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { usuarioId } = req.params;
+        const { categoria, nome, valor } = req.body;
+        
+        const item = await db.criarItem(categoria, nome, valor, parseInt(usuarioId));
+        res.json(item);
+    } catch (error) {
+        console.error('Erro ao criar item:', error);
+        res.status(500).json({ error: error.message || 'Erro ao criar item' });
+    }
+});
+
+// Deletar item de outro usuário (apenas admin)
+app.delete('/api/admin/usuarios/:usuarioId/itens/:itemId', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { usuarioId, itemId } = req.params;
+        
+        await db.deletarItem(parseInt(itemId), parseInt(usuarioId));
+        res.json({ message: 'Item deletado com sucesso' });
+    } catch (error) {
+        console.error('Erro ao deletar item:', error);
+        res.status(500).json({ error: error.message || 'Erro ao deletar item' });
+    }
+});
+
+// Criar categoria para outro usuário (apenas admin)
+app.post('/api/admin/usuarios/:usuarioId/categorias', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { usuarioId } = req.params;
+        const { nome, icone } = req.body;
+        
+        const categoria = await db.criarCategoria(nome, icone || null, parseInt(usuarioId));
+        res.json(categoria);
+    } catch (error) {
+        console.error('Erro ao criar categoria:', error);
+        res.status(500).json({ error: error.message || 'Erro ao criar categoria' });
+    }
+});
+
+// Atualizar categoria de outro usuário (apenas admin)
+app.put('/api/admin/usuarios/:usuarioId/categorias/:nome', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { usuarioId, nome } = req.params;
+        const { novoNome, icone } = req.body;
+        const categoriaNome = decodeURIComponent(nome);
+        
+        if (novoNome && novoNome !== categoriaNome) {
+            await db.renomearCategoria(categoriaNome, novoNome, parseInt(usuarioId));
+        }
+        
+        if (icone !== undefined) {
+            await db.atualizarIconeCategoria(novoNome || categoriaNome, icone, parseInt(usuarioId));
+        }
+        
+        res.json({ message: 'Categoria atualizada com sucesso' });
+    } catch (error) {
+        console.error('Erro ao atualizar categoria:', error);
+        res.status(500).json({ error: error.message || 'Erro ao atualizar categoria' });
+    }
+});
+
+// Deletar categoria de outro usuário (apenas admin)
+app.delete('/api/admin/usuarios/:usuarioId/categorias/:nome', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { usuarioId, nome } = req.params;
+        const categoriaNome = decodeURIComponent(nome);
+        
+        await db.deletarCategoria(categoriaNome, parseInt(usuarioId));
+        res.json({ message: 'Categoria deletada com sucesso' });
+    } catch (error) {
+        console.error('Erro ao deletar categoria:', error);
+        res.status(500).json({ error: error.message || 'Erro ao deletar categoria' });
     }
 });
 

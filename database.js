@@ -100,10 +100,16 @@ async function inicializar() {
                 id SERIAL PRIMARY KEY,
                 username VARCHAR(255) UNIQUE NOT NULL,
                 senha_hash VARCHAR(255) NOT NULL,
+                is_admin BOOLEAN DEFAULT FALSE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
+        
+        // Adicionar coluna is_admin se não existir
+        if (!(await colunaExiste('usuarios', 'is_admin'))) {
+            await pool.query('ALTER TABLE usuarios ADD COLUMN is_admin BOOLEAN DEFAULT FALSE');
+        }
             
         // Criar tabela itens se não existir
         await pool.query(`
@@ -199,13 +205,28 @@ async function inicializar() {
             await pool.query('ALTER TABLE categorias ADD COLUMN icone VARCHAR(100)');
         }
         
+        // Criar usuário admin padrão se não existir
+        let adminPadrao = await pool.query('SELECT id FROM usuarios WHERE username = $1', ['admin']);
+        if (adminPadrao.rows.length === 0) {
+            const senhaHashAdmin = await bcrypt.hash('admin123', 10);
+            const resultAdmin = await pool.query(
+                'INSERT INTO usuarios (username, senha_hash, is_admin) VALUES ($1, $2, $3) RETURNING id',
+                ['admin', senhaHashAdmin, true]
+            );
+            adminPadrao = resultAdmin;
+            console.log('Usuário admin padrão "admin" criado (senha: admin123)');
+        } else {
+            // Garantir que o admin existente tenha is_admin = true
+            await pool.query('UPDATE usuarios SET is_admin = true WHERE username = $1', ['admin']);
+        }
+        
         // Criar usuário padrão viralatas se não existir
         let usuarioPadrao = await pool.query('SELECT id FROM usuarios WHERE username = $1', ['viralatas']);
         if (usuarioPadrao.rows.length === 0) {
             const senhaHash = await bcrypt.hash('edulili123', 10);
             const result = await pool.query(
-                'INSERT INTO usuarios (username, senha_hash) VALUES ($1, $2) RETURNING id',
-                ['viralatas', senhaHash]
+                'INSERT INTO usuarios (username, senha_hash, is_admin) VALUES ($1, $2, $3) RETURNING id',
+                ['viralatas', senhaHash, false]
             );
             usuarioPadrao = result;
             console.log('Usuário padrão "viralatas" criado');
@@ -354,7 +375,7 @@ async function inicializarOrdemCategorias(usuarioId) {
 async function verificarCredenciais(username, senha) {
     try {
         const result = await pool.query(
-            'SELECT id, username, senha_hash FROM usuarios WHERE username = $1',
+            'SELECT id, username, senha_hash, is_admin FROM usuarios WHERE username = $1',
             [username]
         );
         
@@ -371,7 +392,8 @@ async function verificarCredenciais(username, senha) {
         
         return {
             id: usuario.id,
-            username: usuario.username
+            username: usuario.username,
+            is_admin: usuario.is_admin || false
         };
     } catch (error) {
         console.error('Erro ao verificar credenciais:', error);
@@ -383,7 +405,7 @@ async function verificarCredenciais(username, senha) {
 async function obterUsuarioPorId(id) {
     try {
         const result = await pool.query(
-            'SELECT id, username FROM usuarios WHERE id = $1',
+            'SELECT id, username, is_admin FROM usuarios WHERE id = $1',
             [id]
         );
         
@@ -393,10 +415,108 @@ async function obterUsuarioPorId(id) {
         
         return {
             id: result.rows[0].id,
-            username: result.rows[0].username
+            username: result.rows[0].username,
+            is_admin: result.rows[0].is_admin || false
         };
     } catch (error) {
         console.error('Erro ao obter usuário:', error);
+        throw error;
+    }
+}
+
+// Listar todos os usuários (apenas para admin)
+async function listarUsuarios() {
+    try {
+        const result = await pool.query(
+            'SELECT id, username, is_admin, created_at FROM usuarios ORDER BY created_at DESC'
+        );
+        
+        return result.rows.map(row => ({
+            id: row.id,
+            username: row.username,
+            is_admin: row.is_admin || false,
+            created_at: row.created_at
+        }));
+    } catch (error) {
+        console.error('Erro ao listar usuários:', error);
+        throw error;
+    }
+}
+
+// Atualizar usuário (apenas para admin)
+async function atualizarUsuario(usuarioId, novoUsername, novaSenha, isAdmin) {
+    try {
+        const updates = [];
+        const values = [];
+        let paramIndex = 1;
+
+        if (novoUsername) {
+            // Verificar se o novo username já existe
+            const existente = await pool.query(
+                'SELECT id FROM usuarios WHERE username = $1 AND id != $2',
+                [novoUsername.trim(), usuarioId]
+            );
+            if (existente.rows.length > 0) {
+                throw new Error('Este nome de usuário já está em uso');
+            }
+            updates.push(`username = $${paramIndex++}`);
+            values.push(novoUsername.trim());
+        }
+
+        if (novaSenha) {
+            if (novaSenha.length < 6) {
+                throw new Error('A senha deve ter pelo menos 6 caracteres');
+            }
+            const senhaHash = await bcrypt.hash(novaSenha, 10);
+            updates.push(`senha_hash = $${paramIndex++}`);
+            values.push(senhaHash);
+        }
+
+        if (isAdmin !== undefined) {
+            updates.push(`is_admin = $${paramIndex++}`);
+            values.push(isAdmin);
+        }
+
+        if (updates.length === 0) {
+            throw new Error('Nenhuma alteração especificada');
+        }
+
+        updates.push(`updated_at = CURRENT_TIMESTAMP`);
+        values.push(usuarioId);
+
+        const query = `UPDATE usuarios SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, username, is_admin`;
+        const result = await pool.query(query, values);
+
+        if (result.rows.length === 0) {
+            throw new Error('Usuário não encontrado');
+        }
+
+        return {
+            id: result.rows[0].id,
+            username: result.rows[0].username,
+            is_admin: result.rows[0].is_admin || false
+        };
+    } catch (error) {
+        console.error('Erro ao atualizar usuário:', error);
+        throw error;
+    }
+}
+
+// Deletar usuário (apenas para admin)
+async function deletarUsuario(usuarioId) {
+    try {
+        const result = await pool.query('DELETE FROM usuarios WHERE id = $1 RETURNING id, username', [usuarioId]);
+        
+        if (result.rows.length === 0) {
+            throw new Error('Usuário não encontrado');
+        }
+
+        return {
+            id: result.rows[0].id,
+            username: result.rows[0].username
+        };
+    } catch (error) {
+        console.error('Erro ao deletar usuário:', error);
         throw error;
     }
 }
@@ -845,10 +965,19 @@ async function deletarItem(id, usuarioId) {
 async function obterCategorias(usuarioId) {
     try {
         const result = await pool.query(
-            'SELECT DISTINCT nome FROM categorias WHERE usuario_id = $1 ORDER BY CASE WHEN ordem IS NULL THEN 1 ELSE 0 END, ordem, nome',
+            'SELECT nome, ordem FROM categorias WHERE usuario_id = $1 ORDER BY CASE WHEN ordem IS NULL THEN 1 ELSE 0 END, ordem, nome',
             [usuarioId]
         );
-        return result.rows.map(row => row.nome);
+        // Remover duplicatas mantendo a ordem
+        const categoriasUnicas = [];
+        const categoriasVistas = new Set();
+        result.rows.forEach(row => {
+            if (!categoriasVistas.has(row.nome)) {
+                categoriasUnicas.push(row.nome);
+                categoriasVistas.add(row.nome);
+            }
+        });
+        return categoriasUnicas;
     } catch (error) {
         console.error('Erro ao obter categorias:', error);
         throw error;
@@ -1180,6 +1309,9 @@ module.exports = {
     alterarLogin,
     alterarSenha,
     reiniciarSistema,
+    listarUsuarios,
+    atualizarUsuario,
+    deletarUsuario,
     obterTodosItens,
     obterItensPorCategoria,
     obterItemPorId,

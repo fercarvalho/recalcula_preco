@@ -26,12 +26,21 @@ const authenticateToken = async (req, res, next) => {
 
             req.user = usuario;
             req.userId = usuario.id;
+            req.isAdmin = usuario.is_admin || false;
             next();
         });
     } catch (error) {
         console.error('Erro na autenticação:', error);
         return res.status(500).json({ error: 'Erro interno do servidor' });
     }
+};
+
+// Middleware para verificar se é admin
+const requireAdmin = (req, res, next) => {
+    if (!req.isAdmin) {
+        return res.status(403).json({ error: 'Acesso negado. Apenas administradores podem acessar esta rota.' });
+    }
+    next();
 };
 
 // Gerar token JWT
@@ -41,6 +50,7 @@ const generateToken = (userId) => {
 
 module.exports = {
     authenticateToken,
+    requireAdmin,
     generateToken,
     JWT_SECRET
 };

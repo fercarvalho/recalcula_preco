@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { getUser } from '../services/auth';
-import { FaUser, FaSignOutAlt, FaKey, FaUserEdit, FaRedo, FaGraduationCap } from 'react-icons/fa';
+import { FaUser, FaSignOutAlt, FaKey, FaUserEdit, FaRedo, FaGraduationCap, FaShieldAlt } from 'react-icons/fa';
 import AlterarLoginModal from './AlterarLoginModal';
 import AlterarSenhaModal from './AlterarSenhaModal';
 import { mostrarConfirm } from '../utils/modals';
@@ -10,9 +10,11 @@ interface MenuUsuarioProps {
   onLogout: () => void;
   onReiniciarSistema: () => void;
   onReexibirTutorial: () => void;
+  onOpenAdminPanel?: () => void;
+  isAdmin?: boolean;
 }
 
-const MenuUsuario = ({ onLogout, onReiniciarSistema, onReexibirTutorial }: MenuUsuarioProps) => {
+const MenuUsuario = ({ onLogout, onReiniciarSistema, onReexibirTutorial, onOpenAdminPanel, isAdmin }: MenuUsuarioProps) => {
   const [showMenu, setShowMenu] = useState(false);
   const [showAlterarLogin, setShowAlterarLogin] = useState(false);
   const [showAlterarSenha, setShowAlterarSenha] = useState(false);
@@ -114,6 +116,22 @@ const MenuUsuario = ({ onLogout, onReiniciarSistema, onReexibirTutorial }: MenuU
             </button>
 
             <div className="menu-usuario-divider"></div>
+
+            {isAdmin && onOpenAdminPanel && (
+              <>
+                <button
+                  className="menu-usuario-item"
+                  onClick={() => {
+                    onOpenAdminPanel();
+                    setShowMenu(false);
+                  }}
+                >
+                  <FaShieldAlt className="menu-icon" />
+                  <span>Painel Admin</span>
+                </button>
+                <div className="menu-usuario-divider"></div>
+              </>
+            )}
 
             <button
               className="menu-usuario-item"

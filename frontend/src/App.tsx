@@ -7,12 +7,13 @@ import ItensSection from './components/ItensSection';
 import AdicionarProdutoSection from './components/AdicionarProdutoSection';
 import ConfirmacaoReajusteModal from './components/ConfirmacaoReajusteModal';
 import PainelAdmin from './components/PainelAdmin';
+import AdminPanel from './components/AdminPanel';
 import GerenciamentoPlataformas from './components/GerenciamentoPlataformas';
 import TutorialOnboarding, { isTutorialCompleted } from './components/TutorialOnboarding';
 import Login from './components/Login';
 import AdicionarCategoriaModal from './components/AdicionarCategoriaModal';
 import EditarItemModal from './components/EditarItemModal';
-import { isAuthenticated, getToken } from './services/auth';
+import { isAuthenticated, getToken, getUser, saveAuth } from './services/auth';
 import { carregarPlataformas } from './utils/plataformas';
 import { mostrarAlert, mostrarConfirm } from './utils/modals';
 import './App.css';
@@ -27,6 +28,7 @@ function App() {
   const [showConfirmacaoModal, setShowConfirmacaoModal] = useState(false);
   const [itensParaReajustar, setItensParaReajustar] = useState<Item[]>([]);
   const [showPainelAdmin, setShowPainelAdmin] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showPlataformas, setShowPlataformas] = useState(false);
   const [showAdicionarCategoriaModal, setShowAdicionarCategoriaModal] = useState(false);
   const [showEditarItemModal, setShowEditarItemModal] = useState(false);
@@ -50,6 +52,11 @@ function App() {
           });
           
           if (response.ok) {
+            const data = await response.json();
+            // Atualizar dados do usuário no localStorage incluindo is_admin
+            if (data.user) {
+              saveAuth(getToken() || '', data.user);
+            }
             setAuthenticated(true);
             carregarItens();
             // Verificar se é a primeira vez e mostrar tutorial
@@ -312,6 +319,8 @@ function App() {
         <Header
           onReiniciarSistema={handleReiniciarSistema}
           onReexibirTutorial={handleReexibirTutorial}
+          onOpenAdminPanel={() => setShowAdminPanel(true)}
+          isAdmin={getUser()?.is_admin || false}
         />
         
         <div className="main-content">
@@ -365,6 +374,11 @@ function App() {
       <PainelAdmin
         isOpen={showPainelAdmin}
         onClose={() => setShowPainelAdmin(false)}
+      />
+
+      <AdminPanel
+        isOpen={showAdminPanel}
+        onClose={() => setShowAdminPanel(false)}
       />
 
       <GerenciamentoPlataformas

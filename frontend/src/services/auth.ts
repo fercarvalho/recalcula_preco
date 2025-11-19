@@ -4,6 +4,7 @@ const USER_KEY = 'calculadora_auth_user';
 export interface User {
   id: number;
   username: string;
+  is_admin?: boolean;
 }
 
 export interface LoginResponse {

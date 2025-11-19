@@ -5,9 +5,11 @@ import './Header.css';
 interface HeaderProps {
   onReiniciarSistema: () => void;
   onReexibirTutorial: () => void;
+  onOpenAdminPanel?: () => void;
+  isAdmin?: boolean;
 }
 
-const Header = ({ onReiniciarSistema, onReexibirTutorial }: HeaderProps) => {
+const Header = ({ onReiniciarSistema, onReexibirTutorial, onOpenAdminPanel, isAdmin }: HeaderProps) => {
   const handleLogout = () => {
     clearAuth();
     window.location.href = '/';
@@ -28,6 +30,8 @@ const Header = ({ onReiniciarSistema, onReexibirTutorial }: HeaderProps) => {
             onLogout={handleLogout}
             onReiniciarSistema={onReiniciarSistema}
             onReexibirTutorial={onReexibirTutorial}
+            onOpenAdminPanel={onOpenAdminPanel}
+            isAdmin={isAdmin}
           />
         </div>
       </div>
