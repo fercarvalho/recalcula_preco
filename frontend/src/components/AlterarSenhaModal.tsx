@@ -102,7 +102,7 @@ const AlterarSenhaModal = ({ isOpen, onClose }: AlterarSenhaModalProps) => {
     >
       <form onSubmit={handleSubmit} className="alterar-senha-form">
         <div className="form-group">
-          <label htmlFor="senha-atual">Senha Atual:</label>
+          <label htmlFor="senha-atual">Senha Atual <span className="required">*</span>:</label>
           <div className="password-input-wrapper">
             <input
               id="senha-atual"
@@ -128,7 +128,7 @@ const AlterarSenhaModal = ({ isOpen, onClose }: AlterarSenhaModalProps) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="nova-senha">Nova Senha:</label>
+          <label htmlFor="nova-senha">Nova Senha <span className="required">*</span>:</label>
           <div className="password-input-wrapper">
             <input
               id="nova-senha"
@@ -154,7 +154,7 @@ const AlterarSenhaModal = ({ isOpen, onClose }: AlterarSenhaModalProps) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="confirmar-senha">Confirmar Nova Senha:</label>
+          <label htmlFor="confirmar-senha">Confirmar Nova Senha <span className="required">*</span>:</label>
           <div className="password-input-wrapper">
             <input
               id="confirmar-senha"

@@ -99,6 +99,7 @@ async function inicializar() {
             CREATE TABLE IF NOT EXISTS usuarios (
                 id SERIAL PRIMARY KEY,
                 username VARCHAR(255) UNIQUE NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
                 senha_hash VARCHAR(255) NOT NULL,
                 is_admin BOOLEAN DEFAULT FALSE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -109,6 +110,24 @@ async function inicializar() {
         // Adicionar coluna is_admin se não existir
         if (!(await colunaExiste('usuarios', 'is_admin'))) {
             await pool.query('ALTER TABLE usuarios ADD COLUMN is_admin BOOLEAN DEFAULT FALSE');
+        }
+        
+        // Adicionar coluna email se não existir
+        if (!(await colunaExiste('usuarios', 'email'))) {
+            await pool.query('ALTER TABLE usuarios ADD COLUMN email VARCHAR(255)');
+            // Atualizar emails dos usuários padrão primeiro
+            await pool.query(`UPDATE usuarios SET email = 'fercarvalho10@gmail.com' WHERE username = 'admin' AND (email IS NULL OR email = '')`);
+            await pool.query(`UPDATE usuarios SET email = 'viralataslanchonete@gmail.com' WHERE username = 'viralatas' AND (email IS NULL OR email = '')`);
+            // Para outros usuários sem email, gerar um email temporário baseado no username
+            const usuariosSemEmail = await pool.query('SELECT id, username FROM usuarios WHERE email IS NULL OR email = \'\'');
+            for (const usuario of usuariosSemEmail.rows) {
+                const emailTemp = `${usuario.username}@temp.local`;
+                await pool.query('UPDATE usuarios SET email = $1 WHERE id = $2', [emailTemp, usuario.id]);
+            }
+            // Tornar email obrigatório
+            await pool.query('ALTER TABLE usuarios ALTER COLUMN email SET NOT NULL');
+            // Adicionar constraint de unicidade
+            await pool.query('ALTER TABLE usuarios ADD CONSTRAINT usuarios_email_unique UNIQUE (email)');
         }
             
         // Criar tabela itens se não existir
@@ -210,14 +229,19 @@ async function inicializar() {
         if (adminPadrao.rows.length === 0) {
             const senhaHashAdmin = await bcrypt.hash('admin123', 10);
             const resultAdmin = await pool.query(
-                'INSERT INTO usuarios (username, senha_hash, is_admin) VALUES ($1, $2, $3) RETURNING id',
-                ['admin', senhaHashAdmin, true]
+                'INSERT INTO usuarios (username, email, senha_hash, is_admin) VALUES ($1, $2, $3, $4) RETURNING id',
+                ['admin', 'fercarvalho10@gmail.com', senhaHashAdmin, true]
             );
             adminPadrao = resultAdmin;
-            console.log('Usuário admin padrão "admin" criado (senha: admin123)');
+            console.log('Usuário admin padrão "admin" criado (senha: admin123, email: fercarvalho10@gmail.com)');
         } else {
-            // Garantir que o admin existente tenha is_admin = true
+            // Garantir que o admin existente tenha is_admin = true e email
             await pool.query('UPDATE usuarios SET is_admin = true WHERE username = $1', ['admin']);
+            // Atualizar email do admin se não tiver
+            const adminAtual = await pool.query('SELECT email FROM usuarios WHERE username = $1', ['admin']);
+            if (!adminAtual.rows[0]?.email) {
+                await pool.query('UPDATE usuarios SET email = $1 WHERE username = $2', ['fercarvalho10@gmail.com', 'admin']);
+            }
         }
         
         // Criar usuário padrão viralatas se não existir
@@ -225,11 +249,17 @@ async function inicializar() {
         if (usuarioPadrao.rows.length === 0) {
             const senhaHash = await bcrypt.hash('edulili123', 10);
             const result = await pool.query(
-                'INSERT INTO usuarios (username, senha_hash, is_admin) VALUES ($1, $2, $3) RETURNING id',
-                ['viralatas', senhaHash, false]
+                'INSERT INTO usuarios (username, email, senha_hash, is_admin) VALUES ($1, $2, $3, $4) RETURNING id',
+                ['viralatas', 'viralataslanchonete@gmail.com', senhaHash, false]
             );
             usuarioPadrao = result;
-            console.log('Usuário padrão "viralatas" criado');
+            console.log('Usuário padrão "viralatas" criado (email: viralataslanchonete@gmail.com)');
+        } else {
+            // Atualizar email do viralatas se não tiver
+            const viralatasAtual = await pool.query('SELECT email FROM usuarios WHERE username = $1', ['viralatas']);
+            if (!viralatasAtual.rows[0]?.email) {
+                await pool.query('UPDATE usuarios SET email = $1 WHERE username = $2', ['viralataslanchonete@gmail.com', 'viralatas']);
+            }
         }
         const usuarioId = usuarioPadrao.rows[0].id;
         
@@ -375,7 +405,7 @@ async function inicializarOrdemCategorias(usuarioId) {
 async function verificarCredenciais(username, senha) {
     try {
         const result = await pool.query(
-            'SELECT id, username, senha_hash, is_admin FROM usuarios WHERE username = $1',
+            'SELECT id, username, email, senha_hash, is_admin FROM usuarios WHERE username = $1',
             [username]
         );
         
@@ -393,6 +423,7 @@ async function verificarCredenciais(username, senha) {
         return {
             id: usuario.id,
             username: usuario.username,
+            email: usuario.email,
             is_admin: usuario.is_admin || false
         };
     } catch (error) {
@@ -405,7 +436,7 @@ async function verificarCredenciais(username, senha) {
 async function obterUsuarioPorId(id) {
     try {
         const result = await pool.query(
-            'SELECT id, username, is_admin FROM usuarios WHERE id = $1',
+            'SELECT id, username, email, is_admin FROM usuarios WHERE id = $1',
             [id]
         );
         
@@ -416,6 +447,7 @@ async function obterUsuarioPorId(id) {
         return {
             id: result.rows[0].id,
             username: result.rows[0].username,
+            email: result.rows[0].email,
             is_admin: result.rows[0].is_admin || false
         };
     } catch (error) {
@@ -428,12 +460,13 @@ async function obterUsuarioPorId(id) {
 async function listarUsuarios() {
     try {
         const result = await pool.query(
-            'SELECT id, username, is_admin, created_at FROM usuarios ORDER BY created_at DESC'
+            'SELECT id, username, email, is_admin, created_at FROM usuarios ORDER BY created_at DESC'
         );
         
         return result.rows.map(row => ({
             id: row.id,
             username: row.username,
+            email: row.email,
             is_admin: row.is_admin || false,
             created_at: row.created_at
         }));
@@ -444,7 +477,7 @@ async function listarUsuarios() {
 }
 
 // Atualizar usuário (apenas para admin)
-async function atualizarUsuario(usuarioId, novoUsername, novaSenha, isAdmin) {
+async function atualizarUsuario(usuarioId, novoUsername, novoEmail, novaSenha, isAdmin) {
     try {
         const updates = [];
         const values = [];
@@ -461,6 +494,23 @@ async function atualizarUsuario(usuarioId, novoUsername, novaSenha, isAdmin) {
             }
             updates.push(`username = $${paramIndex++}`);
             values.push(novoUsername.trim());
+        }
+
+        if (novoEmail) {
+            // Verificar se o novo email já existe
+            const existente = await pool.query(
+                'SELECT id FROM usuarios WHERE email = $1 AND id != $2',
+                [novoEmail.trim().toLowerCase(), usuarioId]
+            );
+            if (existente.rows.length > 0) {
+                throw new Error('Este email já está em uso');
+            }
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(novoEmail.trim())) {
+                throw new Error('Email inválido');
+            }
+            updates.push(`email = $${paramIndex++}`);
+            values.push(novoEmail.trim().toLowerCase());
         }
 
         if (novaSenha) {
@@ -484,7 +534,7 @@ async function atualizarUsuario(usuarioId, novoUsername, novaSenha, isAdmin) {
         updates.push(`updated_at = CURRENT_TIMESTAMP`);
         values.push(usuarioId);
 
-        const query = `UPDATE usuarios SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, username, is_admin`;
+        const query = `UPDATE usuarios SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, username, email, is_admin`;
         const result = await pool.query(query, values);
 
         if (result.rows.length === 0) {
@@ -494,6 +544,7 @@ async function atualizarUsuario(usuarioId, novoUsername, novaSenha, isAdmin) {
         return {
             id: result.rows[0].id,
             username: result.rows[0].username,
+            email: result.rows[0].email,
             is_admin: result.rows[0].is_admin || false
         };
     } catch (error) {
@@ -589,6 +640,55 @@ async function alterarSenha(usuarioId, senhaAtual, novaSenha) {
     }
 }
 
+// Alterar email do usuário
+async function alterarEmail(usuarioId, novoEmail, senha) {
+    try {
+        // Verificar senha atual
+        const usuario = await verificarCredenciaisPorId(usuarioId, senha);
+        if (!usuario) {
+            throw new Error('Senha incorreta');
+        }
+
+        // Validar email
+        if (!novoEmail || !novoEmail.trim()) {
+            throw new Error('O email é obrigatório');
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(novoEmail.trim())) {
+            throw new Error('Email inválido');
+        }
+
+        // Verificar se o novo email já existe
+        const emailExistente = await pool.query(
+            'SELECT id FROM usuarios WHERE email = $1 AND id != $2',
+            [novoEmail.trim().toLowerCase(), usuarioId]
+        );
+
+        if (emailExistente.rows.length > 0) {
+            throw new Error('Este email já está em uso por outro usuário');
+        }
+
+        // Atualizar email
+        const result = await pool.query(
+            'UPDATE usuarios SET email = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id, email',
+            [novoEmail.trim().toLowerCase(), usuarioId]
+        );
+
+        if (result.rows.length === 0) {
+            throw new Error('Usuário não encontrado');
+        }
+
+        return {
+            id: result.rows[0].id,
+            email: result.rows[0].email
+        };
+    } catch (error) {
+        console.error('Erro ao alterar email:', error);
+        throw error;
+    }
+}
+
 // Verificar credenciais por ID (para validação de senha)
 async function verificarCredenciaisPorId(usuarioId, senha) {
     try {
@@ -619,7 +719,7 @@ async function verificarCredenciaisPorId(usuarioId, senha) {
 }
 
 // Criar novo usuário
-async function criarUsuario(username, senha) {
+async function criarUsuario(username, email, senha) {
     try {
         // Verificar se o username já existe
         const usuarioExistente = await pool.query(
@@ -631,14 +731,34 @@ async function criarUsuario(username, senha) {
             throw new Error('Este nome de usuário já está em uso');
         }
 
+        // Verificar se o email já existe
+        const emailExistente = await pool.query(
+            'SELECT id FROM usuarios WHERE email = $1',
+            [email.trim().toLowerCase()]
+        );
+
+        if (emailExistente.rows.length > 0) {
+            throw new Error('Este email já está em uso');
+        }
+
         // Validar username
         if (username.trim().length < 3) {
             throw new Error('O nome de usuário deve ter pelo menos 3 caracteres');
         }
 
+        // Validar email
+        if (!email || !email.trim()) {
+            throw new Error('O email é obrigatório');
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email.trim())) {
+            throw new Error('Email inválido');
+        }
+
         // Validar senha
-        if (senha.length < 6) {
-            throw new Error('A senha deve ter pelo menos 6 caracteres');
+        if (!senha || senha.length < 6) {
+            throw new Error('A senha é obrigatória e deve ter pelo menos 6 caracteres');
         }
 
         // Criptografar senha
@@ -646,13 +766,14 @@ async function criarUsuario(username, senha) {
 
         // Criar usuário
         const result = await pool.query(
-            'INSERT INTO usuarios (username, senha_hash) VALUES ($1, $2) RETURNING id, username',
-            [username.trim(), senhaHash]
+            'INSERT INTO usuarios (username, email, senha_hash) VALUES ($1, $2, $3) RETURNING id, username, email',
+            [username.trim(), email.trim().toLowerCase(), senhaHash]
         );
 
         return {
             id: result.rows[0].id,
-            username: result.rows[0].username
+            username: result.rows[0].username,
+            email: result.rows[0].email
         };
     } catch (error) {
         console.error('Erro ao criar usuário:', error);
@@ -1308,6 +1429,7 @@ module.exports = {
     criarUsuario,
     alterarLogin,
     alterarSenha,
+    alterarEmail,
     reiniciarSistema,
     listarUsuarios,
     atualizarUsuario,

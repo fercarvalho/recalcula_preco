@@ -11,6 +11,7 @@ import './AdminPanel.css';
 interface Usuario {
   id: number;
   username: string;
+  email?: string;
   is_admin: boolean;
   created_at: string;
 }
@@ -569,6 +570,7 @@ interface EditarUsuarioModalProps {
 
 const EditarUsuarioModal = ({ isOpen, onClose, usuario, onUsuarioAtualizado }: EditarUsuarioModalProps) => {
   const [username, setUsername] = useState(usuario.username);
+  const [email, setEmail] = useState(usuario.email || '');
   const [senha, setSenha] = useState('');
   const [isAdmin, setIsAdmin] = useState(usuario.is_admin);
   const [loading, setLoading] = useState(false);
@@ -577,6 +579,7 @@ const EditarUsuarioModal = ({ isOpen, onClose, usuario, onUsuarioAtualizado }: E
   useEffect(() => {
     if (isOpen) {
       setUsername(usuario.username);
+      setEmail(usuario.email || '');
       setSenha('');
       setIsAdmin(usuario.is_admin);
     }
@@ -585,6 +588,17 @@ const EditarUsuarioModal = ({ isOpen, onClose, usuario, onUsuarioAtualizado }: E
   const handleSalvar = async () => {
     if (!username.trim()) {
       await mostrarAlert('Erro', 'O nome de usuário não pode estar vazio.');
+      return;
+    }
+
+    if (!email.trim()) {
+      await mostrarAlert('Erro', 'O email é obrigatório.');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      await mostrarAlert('Erro', 'Por favor, insira um email válido.');
       return;
     }
 
@@ -605,6 +619,7 @@ const EditarUsuarioModal = ({ isOpen, onClose, usuario, onUsuarioAtualizado }: E
         },
         body: JSON.stringify({
           username: username.trim(),
+          email: email.trim().toLowerCase(),
           senha: senha || undefined,
           is_admin: isAdmin,
         }),
@@ -645,13 +660,27 @@ const EditarUsuarioModal = ({ isOpen, onClose, usuario, onUsuarioAtualizado }: E
     >
       <div className="editar-usuario-form">
         <div className="form-group">
-          <label htmlFor="username-edit">Nome de Usuário:</label>
+          <label htmlFor="username-edit">Nome de Usuário <span className="required">*</span>:</label>
           <input
             id="username-edit"
             type="text"
             className="form-input"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
+            disabled={loading}
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="email-edit">Email <span className="required">*</span>:</label>
+          <input
+            id="email-edit"
+            type="email"
+            className="form-input"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Digite o email"
             disabled={loading}
             required
           />

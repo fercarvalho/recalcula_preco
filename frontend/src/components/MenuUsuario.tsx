@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { getUser } from '../services/auth';
-import { FaUser, FaSignOutAlt, FaKey, FaUserEdit, FaRedo, FaGraduationCap, FaShieldAlt } from 'react-icons/fa';
+import { FaUser, FaSignOutAlt, FaKey, FaUserEdit, FaRedo, FaGraduationCap, FaShieldAlt, FaEnvelope } from 'react-icons/fa';
 import AlterarLoginModal from './AlterarLoginModal';
 import AlterarSenhaModal from './AlterarSenhaModal';
+import AlterarEmailModal from './AlterarEmailModal';
 import { mostrarConfirm } from '../utils/modals';
 import './MenuUsuario.css';
 
@@ -18,13 +19,14 @@ const MenuUsuario = ({ onLogout, onReiniciarSistema, onReexibirTutorial, onOpenA
   const [showMenu, setShowMenu] = useState(false);
   const [showAlterarLogin, setShowAlterarLogin] = useState(false);
   const [showAlterarSenha, setShowAlterarSenha] = useState(false);
+  const [showAlterarEmail, setShowAlterarEmail] = useState(false);
   const [user, setUser] = useState(getUser());
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Atualizar usuário quando o componente montar ou quando o login for alterado
+  // Atualizar usuário quando o componente montar ou quando o login/email for alterado
   useEffect(() => {
     setUser(getUser());
-  }, [showAlterarLogin]);
+  }, [showAlterarLogin, showAlterarEmail]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -107,6 +109,17 @@ const MenuUsuario = ({ onLogout, onReiniciarSistema, onReexibirTutorial, onOpenA
             <button
               className="menu-usuario-item"
               onClick={() => {
+                setShowAlterarEmail(true);
+                setShowMenu(false);
+              }}
+            >
+              <FaEnvelope className="menu-icon" />
+              <span>Alterar Email</span>
+            </button>
+
+            <button
+              className="menu-usuario-item"
+              onClick={() => {
                 setShowAlterarSenha(true);
                 setShowMenu(false);
               }}
@@ -175,6 +188,11 @@ const MenuUsuario = ({ onLogout, onReiniciarSistema, onReexibirTutorial, onOpenA
       <AlterarSenhaModal
         isOpen={showAlterarSenha}
         onClose={() => setShowAlterarSenha(false)}
+      />
+
+      <AlterarEmailModal
+        isOpen={showAlterarEmail}
+        onClose={() => setShowAlterarEmail(false)}
       />
     </>
   );

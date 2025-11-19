@@ -3,15 +3,15 @@ import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import Modal from './Modal';
 import { mostrarAlert } from '../utils/modals';
 import { getUser, saveAuth, getToken } from '../services/auth';
-import './AlterarLoginModal.css';
+import './AlterarEmailModal.css';
 
-interface AlterarLoginModalProps {
+interface AlterarEmailModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const AlterarLoginModal = ({ isOpen, onClose }: AlterarLoginModalProps) => {
-  const [novoLogin, setNovoLogin] = useState('');
+const AlterarEmailModal = ({ isOpen, onClose }: AlterarEmailModalProps) => {
+  const [novoEmail, setNovoEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [showSenha, setShowSenha] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -20,13 +20,19 @@ const AlterarLoginModal = ({ isOpen, onClose }: AlterarLoginModalProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!novoLogin.trim()) {
-      await mostrarAlert('Erro', 'O novo login não pode estar vazio.');
+    if (!novoEmail.trim()) {
+      await mostrarAlert('Erro', 'O novo email não pode estar vazio.');
       return;
     }
 
-    if (novoLogin.trim() === user?.username) {
-      await mostrarAlert('Atenção', 'O novo login deve ser diferente do atual.');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(novoEmail.trim())) {
+      await mostrarAlert('Erro', 'Por favor, insira um email válido.');
+      return;
+    }
+
+    if (novoEmail.trim().toLowerCase() === user?.email?.toLowerCase()) {
+      await mostrarAlert('Atenção', 'O novo email deve ser diferente do atual.');
       return;
     }
 
@@ -40,14 +46,14 @@ const AlterarLoginModal = ({ isOpen, onClose }: AlterarLoginModalProps) => {
       const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
       const token = getToken();
 
-      const response = await fetch(`${API_BASE}/api/auth/alterar-login`, {
+      const response = await fetch(`${API_BASE}/api/auth/alterar-email`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          novoLogin: novoLogin.trim(),
+          novoEmail: novoEmail.trim().toLowerCase(),
           senha,
         }),
       });
@@ -55,23 +61,24 @@ const AlterarLoginModal = ({ isOpen, onClose }: AlterarLoginModalProps) => {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao alterar login');
+        throw new Error(data.error || 'Erro ao alterar email');
       }
 
-      // Atualizar token e usuário no localStorage
-      if (data.token && data.user) {
-        saveAuth(data.token, data.user);
+      // Atualizar usuário no localStorage
+      if (data.user && user) {
+        const updatedUser = { ...user, email: data.user.email };
+        saveAuth(token || '', updatedUser);
       }
 
-      await mostrarAlert('Sucesso', 'Login alterado com sucesso!');
-      setNovoLogin('');
+      await mostrarAlert('Sucesso', 'Email alterado com sucesso!');
+      setNovoEmail('');
       setSenha('');
       onClose();
       // Recarregar a página para atualizar o header
       window.location.reload();
     } catch (error: any) {
-      console.error('Erro ao alterar login:', error);
-      await mostrarAlert('Erro', error.message || 'Erro ao alterar login. Verifique sua senha e tente novamente.');
+      console.error('Erro ao alterar email:', error);
+      await mostrarAlert('Erro', error.message || 'Erro ao alterar email. Verifique sua senha e tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -81,7 +88,7 @@ const AlterarLoginModal = ({ isOpen, onClose }: AlterarLoginModalProps) => {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Alterar Login"
+      title="Alterar Email"
       size="small"
       footer={
         <>
@@ -89,32 +96,32 @@ const AlterarLoginModal = ({ isOpen, onClose }: AlterarLoginModalProps) => {
             Cancelar
           </button>
           <button onClick={handleSubmit} className="btn-primary" disabled={loading}>
-            {loading ? 'Alterando...' : 'Alterar Login'}
+            {loading ? 'Alterando...' : 'Alterar Email'}
           </button>
         </>
       }
     >
-      <form onSubmit={handleSubmit} className="alterar-login-form">
+      <form onSubmit={handleSubmit} className="alterar-email-form">
         <div className="form-group">
-          <label htmlFor="login-atual">Login Atual:</label>
+          <label htmlFor="email-atual">Email Atual:</label>
           <input
-            id="login-atual"
-            type="text"
+            id="email-atual"
+            type="email"
             className="form-input"
-            value={user?.username || ''}
+            value={user?.email || ''}
             disabled
           />
         </div>
 
         <div className="form-group">
-          <label htmlFor="novo-login">Novo Login <span className="required">*</span>:</label>
+          <label htmlFor="novo-email">Novo Email <span className="required">*</span>:</label>
           <input
-            id="novo-login"
-            type="text"
+            id="novo-email"
+            type="email"
             className="form-input"
-            value={novoLogin}
-            onChange={(e) => setNovoLogin(e.target.value)}
-            placeholder="Digite o novo login"
+            value={novoEmail}
+            onChange={(e) => setNovoEmail(e.target.value)}
+            placeholder="Digite o novo email"
             autoFocus
             disabled={loading}
             required
@@ -153,5 +160,5 @@ const AlterarLoginModal = ({ isOpen, onClose }: AlterarLoginModalProps) => {
   );
 };
 
-export default AlterarLoginModal;
+export default AlterarEmailModal;
 

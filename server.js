@@ -52,13 +52,13 @@ app.post('/api/auth/login', async (req, res) => {
 // Registrar novo usuário
 app.post('/api/auth/register', async (req, res) => {
     try {
-        const { username, senha } = req.body;
+        const { username, email, senha } = req.body;
         
-        if (!username || !senha) {
-            return res.status(400).json({ error: 'Username e senha são obrigatórios' });
+        if (!username || !email || !senha) {
+            return res.status(400).json({ error: 'Username, email e senha são obrigatórios' });
         }
 
-        const usuario = await db.criarUsuario(username, senha);
+        const usuario = await db.criarUsuario(username, email, senha);
         const token = generateToken(usuario.id);
         
         res.json({
@@ -66,6 +66,7 @@ app.post('/api/auth/register', async (req, res) => {
             user: {
                 id: usuario.id,
                 username: usuario.username,
+                email: usuario.email,
                 is_admin: false
             }
         });
@@ -82,6 +83,7 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
             user: {
                 id: req.user.id,
                 username: req.user.username,
+                email: req.user.email,
                 is_admin: req.user.is_admin || false
             }
         });
@@ -141,6 +143,30 @@ app.put('/api/auth/alterar-senha', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error('Erro ao alterar senha:', error);
         res.status(500).json({ error: error.message || 'Erro ao alterar senha' });
+    }
+});
+
+// Alterar email
+app.put('/api/auth/alterar-email', authenticateToken, async (req, res) => {
+    try {
+        const { novoEmail, senha } = req.body;
+        
+        if (!novoEmail || !senha) {
+            return res.status(400).json({ error: 'Novo email e senha são obrigatórios' });
+        }
+
+        const usuario = await db.alterarEmail(req.userId, novoEmail, senha);
+        
+        res.json({
+            message: 'Email alterado com sucesso',
+            user: {
+                id: usuario.id,
+                email: usuario.email
+            }
+        });
+    } catch (error) {
+        console.error('Erro ao alterar email:', error);
+        res.status(500).json({ error: error.message || 'Erro ao alterar email' });
     }
 });
 
@@ -212,9 +238,9 @@ app.get('/api/admin/usuarios/:id', authenticateToken, requireAdmin, async (req, 
 app.put('/api/admin/usuarios/:id', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
-        const { username, senha, is_admin } = req.body;
+        const { username, email, senha, is_admin } = req.body;
         
-        const usuario = await db.atualizarUsuario(parseInt(id), username, senha, is_admin);
+        const usuario = await db.atualizarUsuario(parseInt(id), username, email, senha, is_admin);
         res.json(usuario);
     } catch (error) {
         console.error('Erro ao atualizar usuário:', error);
