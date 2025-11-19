@@ -193,10 +193,10 @@ function App() {
           />
 
           <div className="adicionar-produto-section">
-            <button onClick={() => setShowPlataformas(true)} className="btn-adicionar-produto" style={{ background: '#17a2b8' }}>
+            <button onClick={() => setShowPlataformas(true)} className="btn-adicionar-produto btn-plataformas">
               <i className="fas fa-store"></i> Gerenciar Plataformas
             </button>
-            <button onClick={() => setShowPainelAdmin(true)} className="btn-adicionar-produto" style={{ background: '#6c757d' }}>
+            <button onClick={() => setShowPainelAdmin(true)} className="btn-adicionar-produto btn-admin">
               <i className="fas fa-cog"></i> Painel de Personalização
             </button>
           </div>

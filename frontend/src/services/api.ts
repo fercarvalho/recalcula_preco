@@ -32,7 +32,7 @@ export const apiService = {
     return response.data;
   },
 
-  async atualizarValorNovo(id: number, valorNovo: number): Promise<Item> {
+  async atualizarValorNovo(id: number, valorNovo: number | null): Promise<Item> {
     const response = await api.put<Item>(`/api/itens/${id}`, { valorNovo });
     return response.data;
   },

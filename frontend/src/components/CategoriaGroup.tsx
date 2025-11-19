@@ -167,6 +167,7 @@ const CategoriaGroup = ({
                   onToggleSelect={() => onToggleItem(item.id)}
                   onEdit={() => handleEditarItem(item)}
                   onDelete={handleDeletarItem}
+                  onItemUpdated={onItemUpdated}
                 />
               </div>
             ))}

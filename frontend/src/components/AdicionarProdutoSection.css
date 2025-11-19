@@ -24,6 +24,26 @@
   white-space: nowrap;
 }
 
+.btn-adicionar-produto.btn-plataformas {
+  background: #17a2b8;
+}
+
+.btn-adicionar-produto.btn-plataformas:hover {
+  background: #138496 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(19, 132, 150, 0.3);
+}
+
+.btn-adicionar-produto.btn-admin {
+  background: #6c757d;
+}
+
+.btn-adicionar-produto.btn-admin:hover {
+  background: #5a6268 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(90, 98, 104, 0.3);
+}
+
 .btn-adicionar-produto:hover {
   background: #FF8555;
   transform: translateY(-2px);
