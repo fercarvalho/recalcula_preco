@@ -99,7 +99,7 @@ async function inicializar() {
             CREATE TABLE IF NOT EXISTS usuarios (
                 id SERIAL PRIMARY KEY,
                 username VARCHAR(255) UNIQUE NOT NULL,
-                email VARCHAR(255) UNIQUE NOT NULL,
+                email VARCHAR(255) NOT NULL,
                 senha_hash VARCHAR(255) NOT NULL,
                 is_admin BOOLEAN DEFAULT FALSE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -110,6 +110,13 @@ async function inicializar() {
         // Adicionar coluna is_admin se não existir
         if (!(await colunaExiste('usuarios', 'is_admin'))) {
             await pool.query('ALTER TABLE usuarios ADD COLUMN is_admin BOOLEAN DEFAULT FALSE');
+        }
+        
+        // Remover constraint de unicidade do email se existir (permitir emails duplicados)
+        try {
+            await pool.query('ALTER TABLE usuarios DROP CONSTRAINT IF EXISTS usuarios_email_unique');
+        } catch (error) {
+            // Ignorar erro se a constraint não existir
         }
         
         // Adicionar coluna email se não existir
@@ -126,8 +133,12 @@ async function inicializar() {
             }
             // Tornar email obrigatório
             await pool.query('ALTER TABLE usuarios ALTER COLUMN email SET NOT NULL');
-            // Adicionar constraint de unicidade
-            await pool.query('ALTER TABLE usuarios ADD CONSTRAINT usuarios_email_unique UNIQUE (email)');
+            // Remover constraint de unicidade se existir (caso tenha sido adicionada anteriormente)
+            try {
+                await pool.query('ALTER TABLE usuarios DROP CONSTRAINT IF EXISTS usuarios_email_unique');
+            } catch (error) {
+                // Ignorar erro se a constraint não existir
+            }
         }
             
         // Criar tabela itens se não existir
@@ -497,14 +508,7 @@ async function atualizarUsuario(usuarioId, novoUsername, novoEmail, novaSenha, i
         }
 
         if (novoEmail) {
-            // Verificar se o novo email já existe
-            const existente = await pool.query(
-                'SELECT id FROM usuarios WHERE email = $1 AND id != $2',
-                [novoEmail.trim().toLowerCase(), usuarioId]
-            );
-            if (existente.rows.length > 0) {
-                throw new Error('Este email já está em uso');
-            }
+            // Validar formato do email
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailRegex.test(novoEmail.trim())) {
                 throw new Error('Email inválido');
@@ -659,16 +663,6 @@ async function alterarEmail(usuarioId, novoEmail, senha) {
             throw new Error('Email inválido');
         }
 
-        // Verificar se o novo email já existe
-        const emailExistente = await pool.query(
-            'SELECT id FROM usuarios WHERE email = $1 AND id != $2',
-            [novoEmail.trim().toLowerCase(), usuarioId]
-        );
-
-        if (emailExistente.rows.length > 0) {
-            throw new Error('Este email já está em uso por outro usuário');
-        }
-
         // Atualizar email
         const result = await pool.query(
             'UPDATE usuarios SET email = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id, email',
@@ -729,16 +723,6 @@ async function criarUsuario(username, email, senha) {
 
         if (usuarioExistente.rows.length > 0) {
             throw new Error('Este nome de usuário já está em uso');
-        }
-
-        // Verificar se o email já existe
-        const emailExistente = await pool.query(
-            'SELECT id FROM usuarios WHERE email = $1',
-            [email.trim().toLowerCase()]
-        );
-
-        if (emailExistente.rows.length > 0) {
-            throw new Error('Este email já está em uso');
         }
 
         // Validar username
