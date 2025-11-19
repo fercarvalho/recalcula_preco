@@ -95,6 +95,9 @@
                 <button id="btn-adicionar-categoria" class="btn-adicionar-produto">
                     <i class="fas fa-folder-plus"></i> Adicionar Categoria
                 </button>
+                <button id="btn-gerenciar-plataformas" class="btn-adicionar-produto" style="background: #17a2b8;">
+                    <i class="fas fa-store"></i> Gerenciar Plataformas
+                </button>
                 <button id="btn-painel-admin" class="btn-adicionar-produto" style="background: #6c757d;">
                     <i class="fas fa-cog"></i> Painel de Personalização
                 </button>
@@ -316,6 +319,86 @@
                 <button id="btn-admin-salvar" class="btn-primary">
                     <i class="fas fa-save"></i> Salvar Configurações
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Gerenciamento de Plataformas -->
+    <div id="modal-plataformas" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>Gerenciar Plataformas</h2>
+                <span class="close-modal" data-modal="plataformas">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="admin-section">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3><i class="fas fa-store"></i> Plataformas Cadastradas</h3>
+                        <button id="btn-adicionar-plataforma" class="btn-primary">
+                            <i class="fas fa-plus"></i> Adicionar Plataforma
+                        </button>
+                    </div>
+                    <div id="plataformas-lista" class="plataformas-container">
+                        <!-- Plataformas serão adicionadas dinamicamente aqui -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-plataformas-fechar" class="btn-secondary">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Adicionar/Editar Plataforma -->
+    <div id="modal-plataforma-form" class="modal">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h2 id="modal-plataforma-titulo">Adicionar Plataforma</h2>
+                <span class="close-modal" data-modal="plataforma-form">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="plataforma-nome">Nome da Plataforma:</label>
+                    <input type="text" id="plataforma-nome" class="form-input" placeholder="Ex: iFood, Uber Eats, etc.">
+                </div>
+                <div class="form-group">
+                    <label>Método de Cálculo da Taxa:</label>
+                    <div class="radio-group" style="flex-direction: column; gap: 10px;">
+                        <label class="radio-label">
+                            <input type="radio" name="metodo-taxa" value="calcular" checked>
+                            <span>Calcular automaticamente (informar vendas e cobrança)</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="metodo-taxa" value="direto">
+                            <span>Inserir percentual diretamente</span>
+                        </label>
+                    </div>
+                </div>
+                <div id="grupo-calcular-taxa">
+                    <div class="form-group">
+                        <label for="plataforma-vendas">Total Vendido na Plataforma (R$):</label>
+                        <input type="number" id="plataforma-vendas" class="form-input" step="0.01" min="0" placeholder="0,00">
+                    </div>
+                    <div class="form-group">
+                        <label for="plataforma-cobranca">Total Cobrado pela Plataforma (R$):</label>
+                        <input type="number" id="plataforma-cobranca" class="form-input" step="0.01" min="0" placeholder="0,00">
+                    </div>
+                    <div class="form-group" style="background: #e8f5e9; padding: 15px; border-radius: 8px;">
+                        <label style="font-weight: 600;">Taxa Calculada:</label>
+                        <div id="taxa-calculada" style="font-size: 1.2em; color: #28a745; font-weight: 600;">0%</div>
+                    </div>
+                </div>
+                <div id="grupo-taxa-direta" style="display: none;">
+                    <div class="form-group">
+                        <label for="plataforma-taxa">Taxa da Plataforma (%):</label>
+                        <input type="number" id="plataforma-taxa" class="form-input" step="0.01" min="0" max="100" placeholder="0,00">
+                        <small class="form-help">Percentual que a plataforma cobra sobre cada venda</small>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-plataforma-cancel" class="btn-secondary">Cancelar</button>
+                <button id="btn-plataforma-salvar" class="btn-primary">Salvar</button>
             </div>
         </div>
     </div>

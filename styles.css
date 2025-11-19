@@ -409,9 +409,9 @@ header p {
     background: #FF6B35;
     color: white;
     border: none;
-    padding: 15px 30px;
+    padding: 14px 26px;
     border-radius: 10px;
-    font-size: 1.1em;
+    font-size: 1.05em;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s;
@@ -419,6 +419,7 @@ header p {
     align-items: center;
     gap: 10px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    white-space: nowrap;
 }
 
 .btn-adicionar-produto:hover {
@@ -432,7 +433,7 @@ header p {
 }
 
 .btn-adicionar-produto i {
-    font-size: 1.2em;
+    font-size: 1.15em;
 }
 
 .itens-section h2 {
@@ -1379,5 +1380,116 @@ select.form-input:disabled {
     color: white;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Estilos de Plataformas */
+.plataformas-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.plataforma-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: #f8f9fa;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    transition: all 0.3s;
+}
+
+.plataforma-item:hover {
+    border-color: #FF6B35;
+    box-shadow: 0 2px 8px rgba(255, 107, 53, 0.2);
+}
+
+.plataforma-info {
+    flex: 1;
+}
+
+.plataforma-nome {
+    font-weight: 600;
+    font-size: 1.1em;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.plataforma-taxa {
+    color: #666;
+    font-size: 0.9em;
+}
+
+.plataforma-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-editar-plataforma,
+.btn-excluir-plataforma {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.btn-editar-plataforma {
+    background: #FF6B35;
+    color: white;
+}
+
+.btn-editar-plataforma:hover {
+    background: #FF8555;
+    transform: translateY(-2px);
+}
+
+.btn-excluir-plataforma {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-excluir-plataforma:hover {
+    background: #c82333;
+    transform: translateY(-2px);
+}
+
+/* Estilos para preços das plataformas nos itens */
+.item-precos-plataformas {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 2px dashed #e9ecef;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.item-preco-plataforma {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: #f0f8ff;
+    border-radius: 6px;
+    border-left: 3px solid #17a2b8;
+}
+
+.item-preco-plataforma label {
+    font-size: 0.85em;
+    color: #666;
+    font-weight: 600;
+    margin: 0;
+}
+
+.preco-plataforma-valor {
+    font-size: 0.95em;
+    color: #17a2b8;
+    font-weight: 600;
 }
 

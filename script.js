@@ -79,6 +79,8 @@ let dragState = {
     lastDragOverPosition: null,
     draggingItem: null
 };
+// Plataformas cadastradas
+let plataformas = [];
 
 // Função utilitária para fechar qualquer modal aberto
 function fecharModalAberto() {
@@ -1100,6 +1102,7 @@ async function deletarCategoria(categoria) {
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', async () => {
+    carregarPlataformas(); // Carregar plataformas do localStorage
     await carregarDados(); // Carregar dados da API primeiro
     inicializarInterface();
     inicializarEventos();
@@ -1124,7 +1127,11 @@ function inicializarInterface() {
         const categoriaDiv = criarCategoria(categoria);
         container.appendChild(categoriaDiv);
     });
-
+    
+    // Atualizar preços das plataformas após criar todos os itens
+    setTimeout(() => {
+        atualizarPrecosPlataformas();
+    }, 100);
 }
 
 // Mapeamento de ícones para categorias
@@ -1474,6 +1481,9 @@ function criarItem(categoria, index, item) {
     
     info.appendChild(nomeContainer);
     info.appendChild(valoresDiv);
+    
+    // Adicionar preços das plataformas após criar o item completo
+    // Será chamado após o item ser adicionado ao DOM
 
     // Botão de excluir item
     const btnExcluir = document.createElement('button');
@@ -1715,6 +1725,9 @@ function criarItem(categoria, index, item) {
                     await atualizarValorNovoAPI(id, null);
                 }
                 
+                // Atualizar preços das plataformas
+                atualizarPrecosItemPlataformas(itemDiv, item);
+                
                 // Feedback visual
                 inputValorAntigo.style.borderColor = '#28a745';
                 setTimeout(() => {
@@ -1753,6 +1766,11 @@ function criarItem(categoria, index, item) {
             checkbox.dispatchEvent(new Event('change'));
         }
     });
+    
+    // Adicionar preços das plataformas após o item estar completo
+    setTimeout(() => {
+        atualizarPrecosItemPlataformas(itemDiv, item);
+    }, 0);
 
     return itemDiv;
 }
@@ -2030,6 +2048,9 @@ function inicializarEventos() {
     
     // Botão painel admin
     document.getElementById('btn-painel-admin').addEventListener('click', abrirPainelAdmin);
+    
+    // Botão gerenciar plataformas
+    document.getElementById('btn-gerenciar-plataformas').addEventListener('click', abrirGerenciarPlataformas);
 
     // Botão aplicar reajuste
     document.getElementById('btn-aplicar-reajuste').addEventListener('click', () => {
@@ -2286,6 +2307,9 @@ async function aplicarReajuste() {
         // Atualizar na interface
         if (itemElement && valorAntigoInput) {
             valorAntigoInput.value = novoValor.toFixed(2);
+            
+            // Atualizar preços das plataformas
+            atualizarPrecosItemPlataformas(itemElement, item);
             
             // Feedback visual
             valorAntigoInput.style.borderColor = '#28a745';
@@ -2578,5 +2602,296 @@ function resetarConfiguracoesAdmin() {
     localStorage.removeItem('admin-cor-secundaria');
     localStorage.removeItem('admin-cor-fundo');
     localStorage.removeItem('admin-logo');
+}
+
+// ========== GERENCIAMENTO DE PLATAFORMAS ==========
+
+// Carregar plataformas do localStorage
+function carregarPlataformas() {
+    const plataformasSalvas = localStorage.getItem('plataformas');
+    if (plataformasSalvas) {
+        plataformas = JSON.parse(plataformasSalvas);
+    } else {
+        plataformas = [];
+    }
+}
+
+// Salvar plataformas no localStorage
+function salvarPlataformas() {
+    localStorage.setItem('plataformas', JSON.stringify(plataformas));
+}
+
+// Calcular taxa baseada em vendas e cobrança
+function calcularTaxa(vendas, cobranca) {
+    if (!vendas || vendas === 0) return 0;
+    return (cobranca / vendas) * 100;
+}
+
+// Calcular preço com taxa da plataforma
+function calcularPrecoPlataforma(precoBase, taxaPercentual) {
+    return precoBase * (1 + taxaPercentual / 100);
+}
+
+// Abrir modal de gerenciar plataformas
+function abrirGerenciarPlataformas() {
+    const modal = document.getElementById('modal-plataformas');
+    atualizarListaPlataformas();
+    
+    // Botão adicionar plataforma
+    document.getElementById('btn-adicionar-plataforma').onclick = () => {
+        modal.classList.remove('show');
+        abrirFormPlataforma();
+    };
+    
+    // Botão fechar
+    document.getElementById('btn-plataformas-fechar').onclick = () => {
+        modal.classList.remove('show');
+    };
+    
+    modal.querySelector('.close-modal').onclick = () => {
+        modal.classList.remove('show');
+    };
+    
+    modal.onclick = (e) => {
+        if (e.target === modal) {
+            modal.classList.remove('show');
+        }
+    };
+    
+    modal.classList.add('show');
+}
+
+// Atualizar lista de plataformas
+function atualizarListaPlataformas() {
+    const container = document.getElementById('plataformas-lista');
+    container.innerHTML = '';
+    
+    if (plataformas.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">Nenhuma plataforma cadastrada. Clique em "Adicionar Plataforma" para começar.</p>';
+        return;
+    }
+    
+    plataformas.forEach((plataforma, index) => {
+        const item = document.createElement('div');
+        item.className = 'plataforma-item';
+        
+        const info = document.createElement('div');
+        info.className = 'plataforma-info';
+        info.innerHTML = `
+            <div class="plataforma-nome">${plataforma.nome}</div>
+            <div class="plataforma-taxa">Taxa: ${plataforma.taxa.toFixed(2)}%</div>
+        `;
+        
+        const actions = document.createElement('div');
+        actions.className = 'plataforma-actions';
+        
+        const btnEditar = document.createElement('button');
+        btnEditar.className = 'btn-editar-plataforma';
+        btnEditar.innerHTML = '<i class="fas fa-edit"></i> Editar';
+        btnEditar.onclick = () => {
+            document.getElementById('modal-plataformas').classList.remove('show');
+            abrirFormPlataforma(index);
+        };
+        
+        const btnExcluir = document.createElement('button');
+        btnExcluir.className = 'btn-excluir-plataforma';
+        btnExcluir.innerHTML = '<i class="fas fa-trash"></i> Excluir';
+        btnExcluir.onclick = async () => {
+            const confirmado = await mostrarConfirm('Excluir Plataforma', `Tem certeza que deseja excluir a plataforma "${plataforma.nome}"?`);
+            if (confirmado) {
+                plataformas.splice(index, 1);
+                salvarPlataformas();
+                atualizarListaPlataformas();
+                atualizarPrecosPlataformas(); // Atualizar preços dos itens
+            }
+        };
+        
+        actions.appendChild(btnEditar);
+        actions.appendChild(btnExcluir);
+        
+        item.appendChild(info);
+        item.appendChild(actions);
+        container.appendChild(item);
+    });
+}
+
+// Abrir formulário de plataforma
+function abrirFormPlataforma(index = null) {
+    const modal = document.getElementById('modal-plataforma-form');
+    const titulo = document.getElementById('modal-plataforma-titulo');
+    const nomeInput = document.getElementById('plataforma-nome');
+    const vendasInput = document.getElementById('plataforma-vendas');
+    const cobrancaInput = document.getElementById('plataforma-cobranca');
+    const taxaInput = document.getElementById('plataforma-taxa');
+    const grupoCalcular = document.getElementById('grupo-calcular-taxa');
+    const grupoDireto = document.getElementById('grupo-taxa-direta');
+    const taxaCalculada = document.getElementById('taxa-calculada');
+    const metodoRadios = document.querySelectorAll('input[name="metodo-taxa"]');
+    
+    // Limpar campos
+    nomeInput.value = '';
+    vendasInput.value = '';
+    cobrancaInput.value = '';
+    taxaInput.value = '';
+    taxaCalculada.textContent = '0%';
+    
+    // Se está editando, preencher valores
+    if (index !== null && plataformas[index]) {
+        const plataforma = plataformas[index];
+        titulo.textContent = 'Editar Plataforma';
+        nomeInput.value = plataforma.nome;
+        taxaInput.value = plataforma.taxa;
+        metodoRadios[1].checked = true; // Método direto
+        grupoCalcular.style.display = 'none';
+        grupoDireto.style.display = 'block';
+    } else {
+        titulo.textContent = 'Adicionar Plataforma';
+        metodoRadios[0].checked = true; // Método calcular
+        grupoCalcular.style.display = 'block';
+        grupoDireto.style.display = 'none';
+    }
+    
+    // Event listeners para método de cálculo
+    metodoRadios.forEach(radio => {
+        radio.onchange = () => {
+            if (radio.value === 'calcular') {
+                grupoCalcular.style.display = 'block';
+                grupoDireto.style.display = 'none';
+            } else {
+                grupoCalcular.style.display = 'none';
+                grupoDireto.style.display = 'block';
+            }
+        };
+    });
+    
+    // Calcular taxa em tempo real
+    vendasInput.addEventListener('input', atualizarTaxaCalculada);
+    cobrancaInput.addEventListener('input', atualizarTaxaCalculada);
+    
+    function atualizarTaxaCalculada() {
+        const vendas = parseFloat(vendasInput.value) || 0;
+        const cobranca = parseFloat(cobrancaInput.value) || 0;
+        if (vendas > 0) {
+            const taxa = calcularTaxa(vendas, cobranca);
+            taxaCalculada.textContent = `${taxa.toFixed(2)}%`;
+        } else {
+            taxaCalculada.textContent = '0%';
+        }
+    }
+    
+    // Salvar
+    document.getElementById('btn-plataforma-salvar').onclick = () => {
+        const nome = nomeInput.value.trim();
+        if (!nome) {
+            mostrarAlert('Atenção', 'Por favor, informe o nome da plataforma.');
+            return;
+        }
+        
+        const metodoSelecionado = document.querySelector('input[name="metodo-taxa"]:checked').value;
+        let taxa = 0;
+        
+        if (metodoSelecionado === 'calcular') {
+            const vendas = parseFloat(vendasInput.value) || 0;
+            const cobranca = parseFloat(cobrancaInput.value) || 0;
+            if (vendas === 0) {
+                mostrarAlert('Atenção', 'Por favor, informe o valor total vendido.');
+                return;
+            }
+            taxa = calcularTaxa(vendas, cobranca);
+        } else {
+            taxa = parseFloat(taxaInput.value) || 0;
+            if (taxa === 0) {
+                mostrarAlert('Atenção', 'Por favor, informe a taxa da plataforma.');
+                return;
+            }
+        }
+        
+        if (index !== null) {
+            // Editar
+            plataformas[index] = { nome, taxa };
+        } else {
+            // Adicionar
+            plataformas.push({ nome, taxa });
+        }
+        
+        salvarPlataformas();
+        modal.classList.remove('show');
+        atualizarPrecosPlataformas(); // Atualizar preços dos itens
+        mostrarAlert('Sucesso', `Plataforma "${nome}" ${index !== null ? 'atualizada' : 'adicionada'} com sucesso!`);
+    };
+    
+    // Cancelar
+    document.getElementById('btn-plataforma-cancel').onclick = () => {
+        modal.classList.remove('show');
+    };
+    
+    modal.querySelector('.close-modal').onclick = () => {
+        modal.classList.remove('show');
+    };
+    
+    modal.onclick = (e) => {
+        if (e.target === modal) {
+            modal.classList.remove('show');
+        }
+    };
+    
+    modal.classList.add('show');
+    nomeInput.focus();
+}
+
+// Atualizar preços das plataformas em todos os itens
+function atualizarPrecosPlataformas() {
+    document.querySelectorAll('.item').forEach(itemDiv => {
+        const categoria = itemDiv.dataset.categoria;
+        const index = parseInt(itemDiv.dataset.index);
+        const item = itensPorCategoria[categoria] && itensPorCategoria[categoria][index];
+        
+        if (item) {
+            atualizarPrecosItemPlataformas(itemDiv, item);
+        }
+    });
+}
+
+// Atualizar preços das plataformas em um item específico
+function atualizarPrecosItemPlataformas(itemDiv, item) {
+    // Remover seção de preços de plataformas existente
+    const plataformasSection = itemDiv.querySelector('.item-precos-plataformas');
+    if (plataformasSection) {
+        plataformasSection.remove();
+    }
+    
+    // Se não há plataformas, não mostrar nada
+    if (plataformas.length === 0) {
+        return;
+    }
+    
+    // Obter o valor atual do input (pode ter sido editado)
+    const valorAntigoInput = itemDiv.querySelector('.item-valor-antigo');
+    const precoBase = valorAntigoInput ? parseFloat(valorAntigoInput.value) : (item.valor || 0);
+    
+    if (isNaN(precoBase) || precoBase <= 0) {
+        return;
+    }
+    
+    // Criar seção de preços das plataformas
+    const plataformasDiv = document.createElement('div');
+    plataformasDiv.className = 'item-precos-plataformas';
+    
+    plataformas.forEach(plataforma => {
+        const precoPlataforma = calcularPrecoPlataforma(precoBase, plataforma.taxa);
+        const precoDiv = document.createElement('div');
+        precoDiv.className = 'item-preco-plataforma';
+        precoDiv.innerHTML = `
+            <label>${plataforma.nome}:</label>
+            <span class="preco-plataforma-valor">R$ ${precoPlataforma.toFixed(2)}</span>
+        `;
+        plataformasDiv.appendChild(precoDiv);
+    });
+    
+    // Adicionar após os valores existentes
+    const valoresDiv = itemDiv.querySelector('.item-valores');
+    if (valoresDiv) {
+        valoresDiv.appendChild(plataformasDiv);
+    }
 }
 
