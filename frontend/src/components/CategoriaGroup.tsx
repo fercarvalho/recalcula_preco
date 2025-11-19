@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { Item } from '../types';
 import { apiService } from '../services/api';
 import { mostrarAlert, mostrarConfirm } from '../utils/modals';
@@ -15,6 +15,7 @@ interface CategoriaGroupProps {
   categorias: string[];
   onToggleItem: (itemId: number) => void;
   onToggleCategoria: () => void;
+  onToggleCategoriaSelecionada: () => void;
   onItemUpdated: () => void;
   onDragStart: (e: React.DragEvent, categoria: string) => void;
   onDragEnd: (e: React.DragEvent) => void;
@@ -31,6 +32,7 @@ const CategoriaGroup = ({
   categorias,
   onToggleItem,
   onToggleCategoria,
+  onToggleCategoriaSelecionada,
   onItemUpdated,
   onDragStart,
   onDragEnd,
@@ -40,6 +42,7 @@ const CategoriaGroup = ({
 }: CategoriaGroupProps) => {
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const checkboxRef = useRef<HTMLInputElement>(null);
 
   // Drag and drop para itens dentro da categoria
   const itemDragDrop = useDragAndDrop(
@@ -103,6 +106,18 @@ const CategoriaGroup = ({
     }
   };
 
+  // Verificar se todos os itens da categoria estão selecionados
+  const todosItensSelecionados = itens.length > 0 && itens.every(item => itensSelecionados.has(item.id));
+  // Verificar se alguns (mas não todos) itens estão selecionados
+  const algunsItensSelecionados = itens.some(item => itensSelecionados.has(item.id)) && !todosItensSelecionados;
+
+  // Atualizar estado indeterminado do checkbox
+  useEffect(() => {
+    if (checkboxRef.current) {
+      checkboxRef.current.indeterminate = algunsItensSelecionados;
+    }
+  }, [algunsItensSelecionados]);
+
   return (
     <>
       <div
@@ -119,9 +134,21 @@ const CategoriaGroup = ({
           onClick={onToggleCategoria}
         >
           <div className="categoria-header-left">
-            <span className="drag-handle" title="Arrastar para reordenar">
+            <span className="drag-handle" title="Arrastar para reordenar" onClick={(e) => e.stopPropagation()}>
               <i className="fas fa-grip-vertical"></i>
             </span>
+            <input
+              type="checkbox"
+              ref={checkboxRef}
+              checked={todosItensSelecionados}
+              onChange={(e) => {
+                e.stopPropagation();
+                onToggleCategoriaSelecionada();
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="categoria-checkbox"
+              title={todosItensSelecionados ? 'Deselecionar todos os itens' : 'Selecionar todos os itens'}
+            />
             <h3>
               <i className={`fas fa-chevron-${isCollapsed ? 'right' : 'down'}`}></i>
               {categoria}

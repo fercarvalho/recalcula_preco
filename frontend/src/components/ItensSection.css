@@ -33,11 +33,11 @@
 }
 
 .categoria-group.drag-over {
-  border-top: 3px solid #FF6B35;
+  border-top: 3px solid var(--cor-primaria);
 }
 
 .categoria-header {
-  background: #FF6B35;
+  background: var(--cor-primaria);
   color: white;
   padding: 15px 20px;
   font-weight: 600;
@@ -54,6 +54,14 @@
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.categoria-checkbox {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: var(--cor-primaria);
+  flex-shrink: 0;
 }
 
 .drag-handle {
@@ -149,15 +157,15 @@
 }
 
 .itens-grid > div.drag-over {
-  border: 2px solid #FF6B35;
+  border: 2px solid var(--cor-primaria);
 }
 
 .itens-grid > div.drag-over-top {
-  border-top: 3px solid #FF6B35;
+  border-top: 3px solid var(--cor-primaria);
 }
 
 .itens-grid > div.drag-over-bottom {
-  border-bottom: 3px solid #FF6B35;
+  border-bottom: 3px solid var(--cor-primaria);
 }
 
 .categoria-count {
@@ -168,7 +176,7 @@
 
 .itens-section h2 {
   margin-bottom: 25px;
-  color: #FF6B35;
+  color: var(--cor-primaria);
   font-size: 1.8em;
 }
 
@@ -182,7 +190,7 @@
 }
 
 .itens-grid.dragging-active {
-  background: rgba(255, 107, 53, 0.05);
+  background: color-mix(in srgb, var(--cor-primaria) 5%, transparent);
   border-radius: 8px;
   transition: background 0.2s ease;
 }

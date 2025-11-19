@@ -8,7 +8,7 @@
 
 .reajuste-form h2 {
   margin-bottom: 20px;
-  color: #FF6B35;
+  color: var(--cor-primaria);
   font-size: 1.8em;
 }
 
@@ -47,7 +47,7 @@
   width: 18px;
   height: 18px;
   cursor: pointer;
-  accent-color: #FF6B35;
+  accent-color: var(--cor-primaria);
 }
 
 .form-group select,
@@ -63,7 +63,7 @@
 .form-group select:focus,
 .form-group input:focus {
   outline: none;
-  border-color: #FF6B35;
+  border-color: var(--cor-primaria);
 }
 
 .form-group input::placeholder {
@@ -104,14 +104,14 @@
 }
 
 .btn-primary {
-  background: #FF6B35;
+  background: var(--cor-primaria);
   color: white;
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  background: #FF8555;
-  box-shadow: 0 6px 20px rgba(255, 107, 53, 0.4);
+  background: color-mix(in srgb, var(--cor-primaria) 90%, white);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--cor-primaria) 40%, transparent);
 }
 
 .btn-secondary {

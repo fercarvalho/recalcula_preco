@@ -32,6 +32,13 @@ function App() {
       setLoading(true);
       const itens = await apiService.obterTodosItens();
       setItensPorCategoria(itens);
+      
+      // Selecionar todos os itens por padrão
+      const todosIds = new Set<number>();
+      Object.values(itens).forEach(itensDaCategoria => {
+        itensDaCategoria.forEach(item => todosIds.add(item.id));
+      });
+      setItensSelecionados(todosIds);
     } catch (error) {
       console.error('Erro ao carregar itens:', error);
     } finally {
@@ -46,6 +53,23 @@ function App() {
         novo.delete(itemId);
       } else {
         novo.add(itemId);
+      }
+      return novo;
+    });
+  };
+
+  const toggleCategoriaSelecionada = (categoria: string) => {
+    const itensDaCategoria = itensPorCategoria[categoria] || [];
+    const todosSelecionados = itensDaCategoria.every(item => itensSelecionados.has(item.id));
+    
+    setItensSelecionados(prev => {
+      const novo = new Set(prev);
+      if (todosSelecionados) {
+        // Deselecionar todos os itens da categoria
+        itensDaCategoria.forEach(item => novo.delete(item.id));
+      } else {
+        // Selecionar todos os itens da categoria
+        itensDaCategoria.forEach(item => novo.add(item.id));
       }
       return novo;
     });
@@ -190,25 +214,19 @@ function App() {
           <AdicionarProdutoSection
             categorias={Object.keys(itensPorCategoria)}
             onItemAdded={carregarItens}
+            onOpenPlataformas={() => setShowPlataformas(true)}
+            onOpenPainelAdmin={() => setShowPainelAdmin(true)}
           />
 
-          <div className="adicionar-produto-section">
-            <button onClick={() => setShowPlataformas(true)} className="btn-adicionar-produto btn-plataformas">
-              <i className="fas fa-store"></i> Gerenciar Plataformas
-            </button>
-            <button onClick={() => setShowPainelAdmin(true)} className="btn-adicionar-produto btn-admin">
-              <i className="fas fa-cog"></i> Painel de Personalização
-            </button>
-          </div>
-
-          <ItensSection
-            itensPorCategoria={itensPorCategoria}
-            itensSelecionados={itensSelecionados}
-            categoriasColapsadas={categoriasColapsadas}
-            onToggleItem={toggleItemSelecionado}
-            onToggleCategoria={toggleCategoria}
-            onItemUpdated={carregarItens}
-          />
+              <ItensSection
+                itensPorCategoria={itensPorCategoria}
+                itensSelecionados={itensSelecionados}
+                categoriasColapsadas={categoriasColapsadas}
+                onToggleItem={toggleItemSelecionado}
+                onToggleCategoria={toggleCategoria}
+                onToggleCategoriaSelecionada={toggleCategoriaSelecionada}
+                onItemUpdated={carregarItens}
+              />
         </div>
       </div>
 

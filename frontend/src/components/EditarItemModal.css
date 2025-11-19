@@ -43,7 +43,7 @@
 .item-linha .form-group input:focus,
 .item-linha .form-group select:focus {
   outline: none;
-  border-color: #FF6B35;
+  border-color: var(--cor-primaria);
 }
 
 .item-linha .form-group.nome {
@@ -115,6 +115,6 @@
 
 .modal-editar-item-form-simples .form-input:focus {
   outline: none;
-  border-color: #FF6B35;
+  border-color: var(--cor-primaria);
 }
 

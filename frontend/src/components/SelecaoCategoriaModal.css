@@ -21,17 +21,17 @@
 }
 
 .btn-categoria-opcao.categoria-selecionada {
-  background: #FF6B35;
+  background: var(--cor-primaria);
   color: white;
-  border-color: #FF6B35;
+  border-color: var(--cor-primaria);
   font-weight: 600;
   transform: translateX(5px);
 }
 
 .btn-categoria-opcao:hover {
-  background: #FF6B35;
+  background: var(--cor-primaria);
   color: white;
-  border-color: #FF6B35;
+  border-color: var(--cor-primaria);
   transform: translateX(5px);
 }
 

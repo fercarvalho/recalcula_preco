@@ -11,6 +11,7 @@ interface ItensSectionProps {
   categoriasColapsadas: Set<string>;
   onToggleItem: (itemId: number) => void;
   onToggleCategoria: (categoria: string) => void;
+  onToggleCategoriaSelecionada: (categoria: string) => void;
   onItemUpdated: () => void;
 }
 
@@ -20,6 +21,7 @@ const ItensSection = ({
   categoriasColapsadas,
   onToggleItem,
   onToggleCategoria,
+  onToggleCategoriaSelecionada,
   onItemUpdated,
 }: ItensSectionProps) => {
   const [categoriasOrdenadas, setCategoriasOrdenadas] = useState<string[]>(Object.keys(itensPorCategoria));
@@ -67,6 +69,7 @@ const ItensSection = ({
               categorias={categoriasOrdenadas}
               onToggleItem={onToggleItem}
               onToggleCategoria={() => onToggleCategoria(categoria)}
+              onToggleCategoriaSelecionada={() => onToggleCategoriaSelecionada(categoria)}
               onItemUpdated={onItemUpdated}
               onDragStart={(e) => categoriaDragDrop.handleDragStart(e, categoria, 'categoria')}
               onDragEnd={categoriaDragDrop.handleDragEnd}

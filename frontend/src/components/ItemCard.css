@@ -13,11 +13,11 @@
 
 .item-card:hover {
   background: #e9ecef;
-  border-color: #FF6B35;
+  border-color: var(--cor-primaria);
 }
 
 .item-card.selected {
-  border-color: #FF6B35;
+  border-color: var(--cor-primaria);
   background: #fff3f0;
 }
 
@@ -26,7 +26,7 @@
   height: 20px;
   margin-right: 12px;
   cursor: pointer;
-  accent-color: #FF6B35;
+  accent-color: var(--cor-primaria);
 }
 
 .item-content {
@@ -80,7 +80,7 @@
 
 .valor-atual {
   font-weight: 600;
-  color: #FF6B35;
+  color: var(--cor-primaria);
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -93,13 +93,13 @@
   border-radius: 6px;
   font-size: 1em;
   font-weight: 600;
-  color: #FF6B35;
+  color: var(--cor-primaria);
   transition: border-color 0.3s;
 }
 
 .item-valor-input:focus {
   outline: none;
-  border-color: #FF6B35;
+  border-color: var(--cor-primaria);
 }
 
 .item-valor-input:disabled {
@@ -139,7 +139,7 @@
 }
 
 .item-drag-handle:hover {
-  color: #FF6B35;
+  color: var(--cor-primaria);
 }
 
 .item-drag-handle:active {
@@ -163,12 +163,12 @@
 }
 
 .btn-edit {
-  background: #FF6B35;
+  background: var(--cor-primaria);
   opacity: 0.8;
 }
 
 .btn-edit:hover {
-  background: #FF8555;
+  background: color-mix(in srgb, var(--cor-primaria) 90%, white);
   opacity: 1;
   transform: scale(1.1);
 }
@@ -207,7 +207,7 @@
 
 .edit-input:focus {
   outline: none;
-  border-color: #FF6B35;
+  border-color: var(--cor-primaria);
 }
 
 .edit-actions {

@@ -17,8 +17,8 @@
 }
 
 .plataforma-item:hover {
-  border-color: #FF6B35;
-  box-shadow: 0 2px 8px rgba(255, 107, 53, 0.2);
+  border-color: var(--cor-primaria);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--cor-primaria) 20%, transparent);
 }
 
 .plataforma-info {
@@ -56,12 +56,12 @@
 }
 
 .btn-editar-plataforma {
-  background: #FF6B35;
+  background: var(--cor-primaria);
   color: white;
 }
 
 .btn-editar-plataforma:hover {
-  background: #FF8555;
+  background: color-mix(in srgb, var(--cor-primaria) 90%, white);
   transform: translateY(-2px);
 }
 

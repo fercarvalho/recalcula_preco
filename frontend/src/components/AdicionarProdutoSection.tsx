@@ -7,9 +7,11 @@ import './AdicionarProdutoSection.css';
 interface AdicionarProdutoSectionProps {
   onItemAdded: () => void;
   categorias: string[];
+  onOpenPlataformas?: () => void;
+  onOpenPainelAdmin?: () => void;
 }
 
-const AdicionarProdutoSection = ({ onItemAdded, categorias }: AdicionarProdutoSectionProps) => {
+const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, onOpenPainelAdmin }: AdicionarProdutoSectionProps) => {
   const [showCategoriaModal, setShowCategoriaModal] = useState(false);
   const [produtoData, setProdutoData] = useState<{ nome: string; valor: number } | null>(null);
 
@@ -80,6 +82,16 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias }: AdicionarProdutoSe
         <button onClick={handleAdicionarCategoria} className="btn-adicionar-produto">
           <i className="fas fa-folder-plus"></i> Adicionar Categoria
         </button>
+        {onOpenPlataformas && (
+          <button onClick={onOpenPlataformas} className="btn-adicionar-produto btn-plataformas">
+            <i className="fas fa-store"></i> Gerenciar Plataformas
+          </button>
+        )}
+        {onOpenPainelAdmin && (
+          <button onClick={onOpenPainelAdmin} className="btn-adicionar-produto btn-admin">
+            <i className="fas fa-cog"></i> Painel de Personalização
+          </button>
+        )}
       </div>
       <SelecaoCategoriaModal
         isOpen={showCategoriaModal}
