@@ -46,6 +46,21 @@
   border-color: var(--cor-primaria, #FF6B35);
 }
 
+.usuario-item.clickable {
+  cursor: pointer;
+}
+
+.usuario-item.clickable:hover {
+  background: rgba(255, 107, 53, 0.05);
+  border-color: var(--cor-primaria, #FF6B35);
+  transform: translateX(2px);
+}
+
+.usuario-item.clickable .usuario-nome {
+  color: var(--cor-primaria, #FF6B35);
+  font-weight: 600;
+}
+
 .usuario-item-header {
   display: flex;
   justify-content: space-between;
@@ -107,6 +122,20 @@
 .btn-icon.danger:hover {
   background: rgba(255, 0, 0, 0.1);
   color: #f44336;
+}
+
+.btn-load-user {
+  background: var(--cor-primaria, #FF6B35);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.btn-load-user:hover {
+  background: #e55a2b;
+  color: white;
 }
 
 .admin-usuario-detalhes {

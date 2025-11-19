@@ -20,6 +20,38 @@ header {
   display: flex;
   align-items: center;
   gap: 15px;
+  flex-direction: column;
+}
+
+.admin-viewing-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 193, 7, 0.2);
+  border: 1px solid rgba(255, 193, 7, 0.5);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #856404;
+}
+
+.admin-viewing-banner span {
+  font-weight: 500;
+}
+
+.btn-voltar-usuario {
+  background: var(--cor-primaria, #FF6B35);
+  color: white;
+  border: none;
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: background 0.2s ease;
+}
+
+.btn-voltar-usuario:hover {
+  background: #e55a2b;
 }
 
 @media (max-width: 768px) {

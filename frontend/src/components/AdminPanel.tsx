@@ -24,9 +24,10 @@ interface UsuarioDetalhes {
 interface AdminPanelProps {
   isOpen: boolean;
   onClose: () => void;
+  onCarregarUsuarioNoSistema?: (usuarioId: number) => Promise<void>;
 }
 
-const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
+const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelProps) => {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [usuarioSelecionado, setUsuarioSelecionado] = useState<number | null>(null);
   const [usuarioDetalhes, setUsuarioDetalhes] = useState<UsuarioDetalhes | null>(null);
@@ -97,11 +98,20 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
     }
   };
 
-  const handleSelecionarUsuario = (usuarioId: number) => {
+  const handleSelecionarUsuario = async (usuarioId: number) => {
+    // Se já está selecionado, apenas deseleciona
     if (usuarioSelecionado === usuarioId) {
       setUsuarioSelecionado(null);
       setUsuarioDetalhes(null);
+      return;
+    }
+
+    // Se tem a função de carregar no sistema, carrega diretamente
+    if (onCarregarUsuarioNoSistema) {
+      await onCarregarUsuarioNoSistema(usuarioId);
+      onClose();
     } else {
+      // Caso contrário, apenas expande os detalhes (comportamento antigo)
       setUsuarioSelecionado(usuarioId);
       carregarDetalhesUsuario(usuarioId);
     }
@@ -321,8 +331,9 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
               {usuarios.map(usuario => (
                 <div
                   key={usuario.id}
-                  className={`usuario-item ${usuarioSelecionado === usuario.id ? 'selected' : ''}`}
+                  className={`usuario-item ${usuarioSelecionado === usuario.id ? 'selected' : ''} ${onCarregarUsuarioNoSistema ? 'clickable' : ''}`}
                   onClick={() => handleSelecionarUsuario(usuario.id)}
+                  title={onCarregarUsuarioNoSistema ? `Clique para carregar os dados de "${usuario.username}" no sistema` : undefined}
                 >
                   <div className="usuario-item-header">
                     <div className="usuario-info">
@@ -337,6 +348,22 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
                     <div className="usuario-actions" onClick={(e) => e.stopPropagation()}>
                       <button
                         className="btn-icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (usuarioSelecionado === usuario.id) {
+                            setUsuarioSelecionado(null);
+                            setUsuarioDetalhes(null);
+                          } else {
+                            setUsuarioSelecionado(usuario.id);
+                            carregarDetalhesUsuario(usuario.id);
+                          }
+                        }}
+                        title="Ver detalhes do usuário"
+                      >
+                        <FaEye />
+                      </button>
+                      <button
+                        className="btn-icon"
                         onClick={() => handleEditarUsuario(usuario)}
                         title="Editar usuário"
                       >
@@ -349,7 +376,6 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
                       >
                         <FaTrash />
                       </button>
-                      {usuarioSelecionado === usuario.id ? <FaChevronDown /> : <FaChevronRight />}
                     </div>
                   </div>
                 </div>

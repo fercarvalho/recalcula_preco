@@ -379,6 +379,60 @@ function App() {
       <AdminPanel
         isOpen={showAdminPanel}
         onClose={() => setShowAdminPanel(false)}
+        onCarregarUsuarioNoSistema={async (usuarioId: number) => {
+          try {
+            setLoading(true);
+            // Carregar itens do usuário selecionado
+            const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
+            const token = getToken();
+            
+            // Obter dados do usuário
+            const response = await fetch(`${API_BASE}/api/admin/usuarios/${usuarioId}`, {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+              },
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              
+              // Converter o objeto de itens por categoria para o formato esperado
+              const itensPorCategoria: ItensPorCategoria = {};
+              Object.keys(data.itens || {}).forEach(categoria => {
+                itensPorCategoria[categoria] = (data.itens[categoria] || []).map((item: any) => ({
+                  id: item.id,
+                  nome: item.nome,
+                  valor: item.valor,
+                  valorNovo: item.valorNovo,
+                  valorBackup: item.valorBackup || item.valor,
+                  categoria: categoria,
+                  ordem: item.ordem || 0,
+                }));
+              });
+              
+              setItensPorCategoria(itensPorCategoria);
+              
+              // Selecionar todos os itens por padrão (igual ao comportamento normal)
+              const todosIds = new Set<number>();
+              Object.values(itensPorCategoria).forEach(itensDaCategoria => {
+                itensDaCategoria.forEach(item => todosIds.add(item.id));
+              });
+              setItensSelecionados(todosIds);
+              
+              // Salvar o ID do usuário sendo visualizado no localStorage
+              localStorage.setItem('admin_viewing_user_id', usuarioId.toString());
+              
+              await mostrarAlert('Sucesso', `Dados do usuário "${data.usuario.username}" carregados no sistema!`);
+            } else {
+              throw new Error('Erro ao carregar dados do usuário');
+            }
+          } catch (error: any) {
+            console.error('Erro ao carregar dados do usuário:', error);
+            await mostrarAlert('Erro', error.message || 'Erro ao carregar dados do usuário.');
+          } finally {
+            setLoading(false);
+          }
+        }}
       />
 
       <GerenciamentoPlataformas
