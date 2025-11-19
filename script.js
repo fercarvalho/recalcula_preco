@@ -2697,13 +2697,19 @@ function atualizarListaPlataformas() {
         btnExcluir.className = 'btn-excluir-plataforma';
         btnExcluir.innerHTML = '<i class="fas fa-trash"></i> Excluir';
         btnExcluir.onclick = async () => {
-            // Fechar modal de adicionar plataformas se estiver aberto
+            // Fechar todos os modais abertos antes de mostrar a confirmação
             const modalAdicionar = document.getElementById('modal-plataforma-form');
+            const modalGerenciar = document.getElementById('modal-plataformas');
+            
             if (modalAdicionar && modalAdicionar.classList.contains('show')) {
                 modalAdicionar.classList.remove('show');
-                // Aguardar um pouco para garantir que o modal foi fechado antes de mostrar a confirmação
-                await new Promise(resolve => setTimeout(resolve, 100));
             }
+            if (modalGerenciar && modalGerenciar.classList.contains('show')) {
+                modalGerenciar.classList.remove('show');
+            }
+            
+            // Aguardar um pouco para garantir que os modais foram fechados antes de mostrar a confirmação
+            await new Promise(resolve => setTimeout(resolve, 150));
             
             const confirmado = await mostrarConfirm('Excluir Plataforma', `Tem certeza que deseja excluir a plataforma "${plataforma.nome}"?`);
             if (confirmado) {
