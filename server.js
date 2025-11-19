@@ -219,12 +219,17 @@ app.delete('/api/categorias/:nome', async (req, res) => {
     }
 });
 
-// Servir arquivos estáticos (DEPOIS das rotas da API)
-app.use(express.static(__dirname));
+// Servir arquivos estáticos do frontend React (DEPOIS das rotas da API)
+const frontendPath = path.join(__dirname, 'frontend', 'dist');
+app.use(express.static(frontendPath));
 
-// Servir o arquivo HTML
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+// Servir o arquivo HTML do React para todas as rotas não-API
+app.get('*', (req, res) => {
+    // Não servir index.html para rotas de API
+    if (req.path.startsWith('/api/')) {
+        return res.status(404).json({ error: 'Rota não encontrada' });
+    }
+    res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
 // Inicializar banco de dados e iniciar servidor

@@ -4,8 +4,10 @@
   "description": "Calculadora de Reajuste de Preços - Vira-Latas",
   "main": "server.js",
   "scripts": {
+    "build:frontend": "cd frontend && npm install && npm run build",
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "dev:frontend": "cd frontend && npm run dev"
   },
   "keywords": ["calculadora", "reajuste", "precos"],
   "author": "",

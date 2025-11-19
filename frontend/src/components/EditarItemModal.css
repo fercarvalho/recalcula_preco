@@ -1,0 +1,120 @@
+.itens-linhas-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.item-linha {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 15px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.item-linha .form-group {
+  flex: 1;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.item-linha .form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 0.9em;
+  color: #666;
+  font-weight: normal;
+}
+
+.item-linha .form-group input,
+.item-linha .form-group select {
+  width: 100%;
+  padding: 10px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.95em;
+  transition: border-color 0.3s;
+}
+
+.item-linha .form-group input:focus,
+.item-linha .form-group select:focus {
+  outline: none;
+  border-color: #FF6B35;
+}
+
+.item-linha .form-group.nome {
+  flex: 2;
+}
+
+.item-linha .form-group.valor {
+  flex: 1;
+  max-width: 150px;
+}
+
+.item-linha .form-group.categoria {
+  flex: 1.5;
+  min-width: 180px;
+}
+
+.btn-remover-linha {
+  width: 45px;
+  height: 45px;
+  min-width: 45px;
+  border-radius: 8px;
+  background: #dc3545;
+  color: white;
+  border: none;
+  font-size: 1.2em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+  margin-top: 24px;
+  align-self: flex-start;
+}
+
+.btn-remover-linha:hover {
+  background: #c82333;
+  transform: scale(1.05);
+}
+
+.btn-remover-linha:active {
+  transform: scale(0.95);
+}
+
+.modal-editar-item-form-simples {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.modal-editar-item-form-simples .form-group {
+  margin: 0;
+}
+
+.modal-editar-item-form-simples .form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #555;
+}
+
+.modal-editar-item-form-simples .form-input {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  font-size: 1em;
+  transition: border-color 0.3s;
+}
+
+.modal-editar-item-form-simples .form-input:focus {
+  outline: none;
+  border-color: #FF6B35;
+}
+

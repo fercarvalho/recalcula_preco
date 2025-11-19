@@ -1,0 +1,77 @@
+.plataformas-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.plataforma-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background: #f8f9fa;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  transition: all 0.3s;
+}
+
+.plataforma-item:hover {
+  border-color: #FF6B35;
+  box-shadow: 0 2px 8px rgba(255, 107, 53, 0.2);
+}
+
+.plataforma-info {
+  flex: 1;
+}
+
+.plataforma-nome {
+  font-weight: 600;
+  font-size: 1.1em;
+  color: #333;
+  margin-bottom: 5px;
+}
+
+.plataforma-taxa {
+  color: #666;
+  font-size: 0.9em;
+}
+
+.plataforma-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-editar-plataforma,
+.btn-excluir-plataforma {
+  padding: 8px 15px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.btn-editar-plataforma {
+  background: #FF6B35;
+  color: white;
+}
+
+.btn-editar-plataforma:hover {
+  background: #FF8555;
+  transform: translateY(-2px);
+}
+
+.btn-excluir-plataforma {
+  background: #dc3545;
+  color: white;
+}
+
+.btn-excluir-plataforma:hover {
+  background: #c82333;
+  transform: translateY(-2px);
+}
+

@@ -1,0 +1,107 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --cor-primaria: #FF6B35;
+  --cor-secundaria: #2a2a2a;
+  --cor-fundo: #1a1a1a;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: var(--cor-fundo);
+  min-height: 100vh;
+  padding: 20px;
+  color: #333;
+  position: relative;
+}
+
+.app {
+  position: relative;
+}
+
+.patinha {
+  position: fixed;
+  z-index: 100;
+  opacity: 0.6;
+  animation: float 3s ease-in-out infinite;
+}
+
+.patinha img {
+  width: 60px;
+  height: auto;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.patinha-top-left {
+  top: 20px;
+  left: 20px;
+  animation-delay: 0s;
+}
+
+.patinha-top-right {
+  top: 20px;
+  right: 20px;
+  animation-delay: 0.5s;
+}
+
+.patinha-bottom-left {
+  bottom: 20px;
+  left: 20px;
+  animation-delay: 1s;
+}
+
+.patinha-bottom-right {
+  bottom: 20px;
+  right: 20px;
+  animation-delay: 1.5s;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.main-content {
+  padding: 30px;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  color: white;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #FF6B35;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

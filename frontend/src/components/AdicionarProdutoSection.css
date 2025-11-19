@@ -1,0 +1,40 @@
+.adicionar-produto-section {
+  margin: 30px 0;
+  text-align: center;
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-adicionar-produto {
+  background: #FF6B35;
+  color: white;
+  border: none;
+  padding: 14px 27px;
+  border-radius: 10px;
+  font-size: 1.07em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  white-space: nowrap;
+}
+
+.btn-adicionar-produto:hover {
+  background: #FF8555;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(255, 107, 53, 0.3);
+}
+
+.btn-adicionar-produto:active {
+  transform: translateY(0);
+}
+
+.btn-adicionar-produto i {
+  font-size: 1.15em;
+}
+
