@@ -2725,8 +2725,12 @@ function abrirFormPlataforma(index = null) {
     const taxaInput = document.getElementById('plataforma-taxa');
     const grupoCalcular = document.getElementById('grupo-calcular-taxa');
     const grupoDireto = document.getElementById('grupo-taxa-direta');
+    const campos1Mes = document.getElementById('campos-1-mes');
+    const campos3Meses = document.getElementById('campos-3-meses');
     const taxaCalculada = document.getElementById('taxa-calculada');
+    const taxaDetalhes = document.getElementById('taxa-detalhes');
     const metodoRadios = document.querySelectorAll('input[name="metodo-taxa"]');
+    const periodoRadios = document.querySelectorAll('input[name="periodo-calculo"]');
     
     // Limpar campos
     nomeInput.value = '';
@@ -2734,6 +2738,13 @@ function abrirFormPlataforma(index = null) {
     cobrancaInput.value = '';
     taxaInput.value = '';
     taxaCalculada.textContent = '0%';
+    taxaDetalhes.textContent = '';
+    
+    // Limpar campos de 3 meses
+    for (let i = 1; i <= 3; i++) {
+        document.getElementById(`plataforma-vendas-mes${i}`).value = '';
+        document.getElementById(`plataforma-cobranca-mes${i}`).value = '';
+    }
     
     // Se está editando, preencher valores
     if (index !== null && plataformas[index]) {
@@ -2747,8 +2758,11 @@ function abrirFormPlataforma(index = null) {
     } else {
         titulo.textContent = 'Adicionar Plataforma';
         metodoRadios[0].checked = true; // Método calcular
+        periodoRadios[0].checked = true; // 1 mês
         grupoCalcular.style.display = 'block';
         grupoDireto.style.display = 'none';
+        campos1Mes.style.display = 'block';
+        campos3Meses.style.display = 'none';
     }
     
     // Event listeners para método de cálculo
@@ -2764,19 +2778,68 @@ function abrirFormPlataforma(index = null) {
         };
     });
     
-    // Calcular taxa em tempo real
+    // Event listeners para período de cálculo
+    periodoRadios.forEach(radio => {
+        radio.onchange = () => {
+            if (radio.value === '1') {
+                campos1Mes.style.display = 'block';
+                campos3Meses.style.display = 'none';
+            } else {
+                campos1Mes.style.display = 'none';
+                campos3Meses.style.display = 'block';
+            }
+            atualizarTaxaCalculada();
+        };
+    });
+    
+    // Calcular taxa em tempo real - 1 mês
     vendasInput.addEventListener('input', atualizarTaxaCalculada);
     cobrancaInput.addEventListener('input', atualizarTaxaCalculada);
     
+    // Calcular taxa em tempo real - 3 meses
+    for (let i = 1; i <= 3; i++) {
+        const vendasMes = document.getElementById(`plataforma-vendas-mes${i}`);
+        const cobrancaMes = document.getElementById(`plataforma-cobranca-mes${i}`);
+        vendasMes.addEventListener('input', atualizarTaxaCalculada);
+        cobrancaMes.addEventListener('input', atualizarTaxaCalculada);
+    }
+    
     function atualizarTaxaCalculada() {
-        const vendas = parseFloat(vendasInput.value) || 0;
-        const cobranca = parseFloat(cobrancaInput.value) || 0;
-        if (vendas > 0) {
-            const taxa = calcularTaxa(vendas, cobranca);
-            taxaCalculada.textContent = `${taxa.toFixed(2)}%`;
+        const periodoSelecionado = document.querySelector('input[name="periodo-calculo"]:checked').value;
+        let taxa = 0;
+        let detalhes = '';
+        
+        if (periodoSelecionado === '1') {
+            // Cálculo de 1 mês
+            const vendas = parseFloat(vendasInput.value) || 0;
+            const cobranca = parseFloat(cobrancaInput.value) || 0;
+            if (vendas > 0) {
+                taxa = calcularTaxa(vendas, cobranca);
+            }
         } else {
-            taxaCalculada.textContent = '0%';
+            // Cálculo de 3 meses (média)
+            const taxas = [];
+            const detalhesMeses = [];
+            
+            for (let i = 1; i <= 3; i++) {
+                const vendas = parseFloat(document.getElementById(`plataforma-vendas-mes${i}`).value) || 0;
+                const cobranca = parseFloat(document.getElementById(`plataforma-cobranca-mes${i}`).value) || 0;
+                
+                if (vendas > 0) {
+                    const taxaMes = calcularTaxa(vendas, cobranca);
+                    taxas.push(taxaMes);
+                    detalhesMeses.push(`Mês ${i}: ${taxaMes.toFixed(2)}%`);
+                }
+            }
+            
+            if (taxas.length > 0) {
+                taxa = taxas.reduce((a, b) => a + b, 0) / taxas.length;
+                detalhes = detalhesMeses.join(' | ') + ` | Média: ${taxa.toFixed(2)}%`;
+            }
         }
+        
+        taxaCalculada.textContent = `${taxa.toFixed(2)}%`;
+        taxaDetalhes.textContent = detalhes;
     }
     
     // Salvar
@@ -2791,13 +2854,40 @@ function abrirFormPlataforma(index = null) {
         let taxa = 0;
         
         if (metodoSelecionado === 'calcular') {
-            const vendas = parseFloat(vendasInput.value) || 0;
-            const cobranca = parseFloat(cobrancaInput.value) || 0;
-            if (vendas === 0) {
-                mostrarAlert('Atenção', 'Por favor, informe o valor total vendido.');
-                return;
+            const periodoSelecionado = document.querySelector('input[name="periodo-calculo"]:checked').value;
+            
+            if (periodoSelecionado === '1') {
+                // Cálculo de 1 mês
+                const vendas = parseFloat(vendasInput.value) || 0;
+                const cobranca = parseFloat(cobrancaInput.value) || 0;
+                if (vendas === 0) {
+                    mostrarAlert('Atenção', 'Por favor, informe o valor total vendido.');
+                    return;
+                }
+                taxa = calcularTaxa(vendas, cobranca);
+            } else {
+                // Cálculo de 3 meses (média)
+                const taxas = [];
+                let temDados = false;
+                
+                for (let i = 1; i <= 3; i++) {
+                    const vendas = parseFloat(document.getElementById(`plataforma-vendas-mes${i}`).value) || 0;
+                    const cobranca = parseFloat(document.getElementById(`plataforma-cobranca-mes${i}`).value) || 0;
+                    
+                    if (vendas > 0) {
+                        temDados = true;
+                        const taxaMes = calcularTaxa(vendas, cobranca);
+                        taxas.push(taxaMes);
+                    }
+                }
+                
+                if (!temDados || taxas.length === 0) {
+                    mostrarAlert('Atenção', 'Por favor, informe os dados de pelo menos um mês.');
+                    return;
+                }
+                
+                taxa = taxas.reduce((a, b) => a + b, 0) / taxas.length;
             }
-            taxa = calcularTaxa(vendas, cobranca);
         } else {
             taxa = parseFloat(taxaInput.value) || 0;
             if (taxa === 0) {
