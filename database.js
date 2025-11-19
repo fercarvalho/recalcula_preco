@@ -498,6 +498,48 @@ async function verificarCredenciaisPorId(usuarioId, senha) {
     }
 }
 
+// Criar novo usuário
+async function criarUsuario(username, senha) {
+    try {
+        // Verificar se o username já existe
+        const usuarioExistente = await pool.query(
+            'SELECT id FROM usuarios WHERE username = $1',
+            [username.trim()]
+        );
+
+        if (usuarioExistente.rows.length > 0) {
+            throw new Error('Este nome de usuário já está em uso');
+        }
+
+        // Validar username
+        if (username.trim().length < 3) {
+            throw new Error('O nome de usuário deve ter pelo menos 3 caracteres');
+        }
+
+        // Validar senha
+        if (senha.length < 6) {
+            throw new Error('A senha deve ter pelo menos 6 caracteres');
+        }
+
+        // Criptografar senha
+        const senhaHash = await bcrypt.hash(senha, 10);
+
+        // Criar usuário
+        const result = await pool.query(
+            'INSERT INTO usuarios (username, senha_hash) VALUES ($1, $2) RETURNING id, username',
+            [username.trim(), senhaHash]
+        );
+
+        return {
+            id: result.rows[0].id,
+            username: result.rows[0].username
+        };
+    } catch (error) {
+        console.error('Erro ao criar usuário:', error);
+        throw error;
+    }
+}
+
 // Reiniciar sistema (deletar todos os dados do usuário)
 async function reiniciarSistema(usuarioId) {
     const client = await pool.connect();
@@ -1134,6 +1176,7 @@ module.exports = {
     inicializar,
     verificarCredenciais,
     obterUsuarioPorId,
+    criarUsuario,
     alterarLogin,
     alterarSenha,
     reiniciarSistema,

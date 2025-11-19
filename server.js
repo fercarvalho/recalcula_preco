@@ -48,6 +48,31 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
+// Registrar novo usuário
+app.post('/api/auth/register', async (req, res) => {
+    try {
+        const { username, senha } = req.body;
+        
+        if (!username || !senha) {
+            return res.status(400).json({ error: 'Username e senha são obrigatórios' });
+        }
+
+        const usuario = await db.criarUsuario(username, senha);
+        const token = generateToken(usuario.id);
+        
+        res.json({
+            token,
+            user: {
+                id: usuario.id,
+                username: usuario.username
+            }
+        });
+    } catch (error) {
+        console.error('Erro no registro:', error);
+        res.status(500).json({ error: error.message || 'Erro interno do servidor' });
+    }
+});
+
 // Verificar token (para verificar se o usuário está autenticado)
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
     try {

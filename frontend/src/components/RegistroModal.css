@@ -1,0 +1,82 @@
+.registro-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.registro-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.registro-form label {
+  color: rgba(0, 0, 0, 0.9);
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.registro-form .form-input {
+  padding: 12px 16px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  background: white;
+  color: #333;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+
+.registro-form .form-input:focus {
+  outline: none;
+  border-color: var(--cor-primaria, #FF6B35);
+  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+}
+
+.registro-form .form-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.registro-form .form-input::placeholder {
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-wrapper .form-input {
+  padding-right: 45px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  background: transparent;
+  border: none;
+  color: #FF6B35 !important;
+  cursor: pointer;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+  z-index: 1;
+  font-size: 1.1rem;
+}
+
+.password-toggle:hover {
+  color: #e55a2b !important;
+}
+
+.password-toggle svg {
+  color: #FF6B35 !important;
+}
+
+.password-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+

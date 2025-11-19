@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import { FaEye, FaEyeSlash, FaUserPlus } from 'react-icons/fa';
 import { saveAuth } from '../services/auth';
 import { mostrarAlert } from '../utils/modals';
+import RegistroModal from './RegistroModal';
 import './Login.css';
 
 interface LoginProps {
@@ -13,6 +14,7 @@ const Login = ({ onLoginSuccess }: LoginProps) => {
   const [senha, setSenha] = useState('');
   const [showSenha, setShowSenha] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showRegistro, setShowRegistro] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,7 +105,22 @@ const Login = ({ onLoginSuccess }: LoginProps) => {
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
+        <div className="login-footer">
+          <button
+            type="button"
+            className="btn-criar-conta"
+            onClick={() => setShowRegistro(true)}
+            disabled={loading}
+          >
+            <FaUserPlus /> Criar Nova Conta
+          </button>
+        </div>
       </div>
+      <RegistroModal
+        isOpen={showRegistro}
+        onClose={() => setShowRegistro(false)}
+        onRegisterSuccess={onLoginSuccess}
+      />
     </div>
   );
 };
