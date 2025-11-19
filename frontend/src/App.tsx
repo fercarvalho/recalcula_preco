@@ -8,6 +8,8 @@ import AdicionarProdutoSection from './components/AdicionarProdutoSection';
 import ConfirmacaoReajusteModal from './components/ConfirmacaoReajusteModal';
 import PainelAdmin from './components/PainelAdmin';
 import GerenciamentoPlataformas from './components/GerenciamentoPlataformas';
+import TutorialOnboarding, { isTutorialCompleted } from './components/TutorialOnboarding';
+import { carregarPlataformas } from './utils/plataformas';
 import { mostrarAlert, mostrarConfirm } from './utils/modals';
 import './App.css';
 
@@ -22,9 +24,29 @@ function App() {
   const [itensParaReajustar, setItensParaReajustar] = useState<Item[]>([]);
   const [showPainelAdmin, setShowPainelAdmin] = useState(false);
   const [showPlataformas, setShowPlataformas] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [totalPlataformas, setTotalPlataformas] = useState(0);
 
   useEffect(() => {
     carregarItens();
+    // Verificar se é a primeira vez e mostrar tutorial
+    if (!isTutorialCompleted()) {
+      setShowTutorial(true);
+    }
+    
+    // Atualizar contagem de plataformas
+    setTotalPlataformas(carregarPlataformas().length);
+    
+    // Listener para atualizar quando plataformas mudarem
+    const handlePlataformasUpdate = () => {
+      setTotalPlataformas(carregarPlataformas().length);
+    };
+    
+    window.addEventListener('plataformas-updated', handlePlataformasUpdate);
+    
+    return () => {
+      window.removeEventListener('plataformas-updated', handlePlataformasUpdate);
+    };
   }, []);
 
   const carregarItens = async () => {
@@ -247,6 +269,18 @@ function App() {
       <GerenciamentoPlataformas
         isOpen={showPlataformas}
         onClose={() => setShowPlataformas(false)}
+      />
+
+      <TutorialOnboarding
+        isOpen={showTutorial}
+        onComplete={() => {
+          setShowTutorial(false);
+          carregarItens();
+        }}
+        onSkip={() => setShowTutorial(false)}
+        categorias={Object.keys(itensPorCategoria)}
+        totalItens={Object.values(itensPorCategoria).reduce((acc, itens) => acc + itens.length, 0)}
+        totalPlataformas={totalPlataformas}
       />
     </div>
   );
