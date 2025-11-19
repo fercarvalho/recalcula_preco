@@ -282,7 +282,7 @@ const CategoriaGroup = ({
         isOpen={showEditModal}
         item={editingItem}
         categorias={categorias}
-        categoriaAtual={editingItem ? categoria : undefined}
+        categoriaAtual={categoria}
         modoAdicionar={!editingItem}
         onClose={() => {
           setShowEditModal(false);

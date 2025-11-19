@@ -45,8 +45,10 @@ const EditarItemModal = ({
         setModoMultiplo(false);
         setNome('');
         setValor('');
-        setCategoria(categorias[0] || '');
-        setItensLinhas([{ nome: '', valor: '', categoria: categorias[0] || '' }]);
+        // Usar categoriaAtual se fornecida, senão usar a primeira categoria disponível
+        const categoriaInicial = categoriaAtual || categorias[0] || '';
+        setCategoria(categoriaInicial);
+        setItensLinhas([{ nome: '', valor: '', categoria: categoriaInicial }]);
       } else if (item) {
         setModoMultiplo(false);
         setNome(item.nome);
@@ -58,7 +60,9 @@ const EditarItemModal = ({
   }, [isOpen, item, modoAdicionar, categorias, categoriaAtual]);
 
   const adicionarLinha = () => {
-    setItensLinhas([...itensLinhas, { nome: '', valor: '', categoria: categorias[0] || '' }]);
+    // Ao adicionar nova linha, usar categoriaAtual se disponível, senão usar a primeira categoria
+    const categoriaPadrao = categoriaAtual || categorias[0] || '';
+    setItensLinhas([...itensLinhas, { nome: '', valor: '', categoria: categoriaPadrao }]);
   };
 
   const removerLinha = (index: number) => {
