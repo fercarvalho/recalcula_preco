@@ -92,10 +92,10 @@ async function inicializar() {
         // Testar conexão
         await pool.query('SELECT NOW()');
         console.log('Conectado ao banco de dados PostgreSQL');
-
+            
         // Criar tabela itens se não existir
         await pool.query(`
-            CREATE TABLE IF NOT EXISTS itens (
+                CREATE TABLE IF NOT EXISTS itens (
                 id SERIAL PRIMARY KEY,
                 categoria VARCHAR(255) NOT NULL,
                 nome VARCHAR(255) NOT NULL,
@@ -105,49 +105,49 @@ async function inicializar() {
                 ordem INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(categoria, nome)
-            )
+                    UNIQUE(categoria, nome)
+                )
         `);
-
+                
         // Adicionar coluna valor_backup se não existir
         if (!(await colunaExiste('itens', 'valor_backup'))) {
             await pool.query('ALTER TABLE itens ADD COLUMN valor_backup NUMERIC(10, 2)');
-        }
-
+                    }
+                
         // Adicionar coluna ordem se não existir
         if (!(await colunaExiste('itens', 'ordem'))) {
             await pool.query('ALTER TABLE itens ADD COLUMN ordem INTEGER');
-        }
-
-        // Criar tabela de categorias para gerenciar ordem
+                    }
+                
+                // Criar tabela de categorias para gerenciar ordem
         await pool.query(`
-            CREATE TABLE IF NOT EXISTS categorias (
+                    CREATE TABLE IF NOT EXISTS categorias (
                 nome VARCHAR(255) PRIMARY KEY,
-                ordem INTEGER NOT NULL,
+                        ordem INTEGER NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
+                    )
         `);
-
-        // Verificar se há dados
+                
+                // Verificar se há dados
         const countResult = await pool.query('SELECT COUNT(*) as count FROM itens');
         const count = parseInt(countResult.rows[0].count);
-
-        // Se não houver dados, inserir dados padrão
+                    
+                    // Se não houver dados, inserir dados padrão
         if (count === 0) {
             await inserirDadosPadrao();
-            console.log('Dados padrão inseridos');
+                            console.log('Dados padrão inseridos');
             await inicializarOrdemCategorias();
             await inicializarOrdemItens();
-        } else {
-            // Inicializar ordem de categorias e itens se necessário
+                    } else {
+                        // Inicializar ordem de categorias e itens se necessário
             await inicializarOrdemCategorias();
             await inicializarOrdemItens();
         }
     } catch (error) {
         console.error('Erro ao inicializar banco de dados:', error);
         throw error;
-    }
+                    }
 }
 
 // Inserir dados padrão
@@ -176,7 +176,7 @@ async function inserirDadosPadrao() {
         throw error;
     } finally {
         client.release();
-    }
+                    }
 }
 
 // Inicializar ordem dos itens (para itens que não têm ordem definida)
@@ -186,33 +186,33 @@ async function inicializarOrdemItens() {
         const categorias = categoriasResult.rows;
 
         for (const categoriaRow of categorias) {
-            const categoria = categoriaRow.categoria;
-
-            // Obter todos os itens desta categoria que não têm ordem definida, ordenados por nome
+                const categoria = categoriaRow.categoria;
+                
+                // Obter todos os itens desta categoria que não têm ordem definida, ordenados por nome
             const itensResult = await pool.query(
                 'SELECT id FROM itens WHERE categoria = $1 AND (ordem IS NULL OR ordem = 999) ORDER BY nome',
                 [categoria]
             );
             const itens = itensResult.rows;
-
-            // Obter a maior ordem atual para esta categoria
+                    
+                    // Obter a maior ordem atual para esta categoria
             const maxResult = await pool.query(
                 'SELECT MAX(ordem) as maxOrdem FROM itens WHERE categoria = $1 AND ordem IS NOT NULL AND ordem != 999',
                 [categoria]
             );
             const maxOrdem = maxResult.rows[0]?.maxordem;
             const ordemInicial = (maxOrdem !== null && maxOrdem !== undefined) ? maxOrdem + 1 : 0;
-
-            // Atualizar a ordem de cada item
+                        
+                        // Atualizar a ordem de cada item
             for (let index = 0; index < itens.length; index++) {
                 await pool.query(
                     'UPDATE itens SET ordem = $1 WHERE id = $2',
                     [ordemInicial + index, itens[index].id]
                 );
-            }
+                                }
         }
         
-        console.log('Ordem dos itens inicializada com sucesso');
+                                        console.log('Ordem dos itens inicializada com sucesso');
     } catch (error) {
         console.error('Erro ao inicializar ordem dos itens:', error);
         throw error;
@@ -225,17 +225,17 @@ async function inicializarOrdemCategorias() {
         // Obter todas as categorias únicas dos itens
         const categoriasResult = await pool.query('SELECT DISTINCT categoria FROM itens');
         const categorias = categoriasResult.rows.map(row => row.categoria);
-
-        // Verificar quais categorias já têm ordem definida
+            
+            // Verificar quais categorias já têm ordem definida
         const existentesResult = await pool.query('SELECT nome FROM categorias');
         const nomesExistentes = new Set(existentesResult.rows.map(c => c.nome));
         const categoriasParaInserir = categorias.filter(cat => !nomesExistentes.has(cat));
-
-        if (categoriasParaInserir.length === 0) {
-            return;
-        }
-
-        // Obter a maior ordem atual
+                
+                if (categoriasParaInserir.length === 0) {
+                    return;
+                }
+                
+                // Obter a maior ordem atual
         const maxResult = await pool.query('SELECT MAX(ordem) as maxOrdem FROM categorias');
         const maxOrdem = maxResult.rows[0]?.maxordem;
         const ordemInicial = (maxOrdem !== null && maxOrdem !== undefined) ? maxOrdem + 1 : 0;
@@ -250,7 +250,7 @@ async function inicializarOrdemCategorias() {
     } catch (error) {
         console.error('Erro ao inicializar ordem das categorias:', error);
         throw error;
-    }
+                            }
 }
 
 // Obter todos os itens organizados por categoria (na ordem salva)
@@ -261,79 +261,79 @@ async function obterTodosItens() {
             'SELECT nome, ordem FROM categorias ORDER BY CASE WHEN ordem IS NULL THEN 1 ELSE 0 END, ordem, nome'
         );
         const categoriasOrdenadas = categoriasResult.rows;
-
+            
         // Criar mapa de ordem
-        const ordemMap = {};
-        categoriasOrdenadas.forEach((cat) => {
-            ordemMap[cat.nome] = cat.ordem !== null && cat.ordem !== undefined ? cat.ordem : 999;
-        });
-
-        console.log('Categorias ordenadas do banco:', categoriasOrdenadas.map(c => `${c.nome}:${c.ordem}`));
-        console.log('Mapa de ordem criado:', ordemMap);
-
+            const ordemMap = {};
+            categoriasOrdenadas.forEach((cat) => {
+                ordemMap[cat.nome] = cat.ordem !== null && cat.ordem !== undefined ? cat.ordem : 999;
+            });
+            
+            console.log('Categorias ordenadas do banco:', categoriasOrdenadas.map(c => `${c.nome}:${c.ordem}`));
+            console.log('Mapa de ordem criado:', ordemMap);
+            
         // Obter todos os itens
         const itensResult = await pool.query(
             'SELECT * FROM itens ORDER BY categoria, CASE WHEN ordem IS NULL THEN 1 ELSE 0 END, ordem, nome'
         );
         const rows = itensResult.rows;
-
-        // Organizar por categoria e atualizar valor_backup se necessário
-        const itensPorCategoria = {};
-        const promessasAtualizacao = [];
-
+                
+                // Organizar por categoria e atualizar valor_backup se necessário
+                const itensPorCategoria = {};
+                const promessasAtualizacao = [];
+                
         for (const row of rows) {
-            if (!itensPorCategoria[row.categoria]) {
-                itensPorCategoria[row.categoria] = [];
-            }
-
-            // Se não houver valor_backup, criar com o valor atual
-            if (row.valor_backup === null || row.valor_backup === undefined) {
-                promessasAtualizacao.push(
+                    if (!itensPorCategoria[row.categoria]) {
+                        itensPorCategoria[row.categoria] = [];
+                    }
+                    
+                    // Se não houver valor_backup, criar com o valor atual
+                    if (row.valor_backup === null || row.valor_backup === undefined) {
+                        promessasAtualizacao.push(
                     pool.query(
                         'UPDATE itens SET valor_backup = $1 WHERE id = $2',
                         [row.valor, row.id]
                     )
-                );
-            }
-
-            itensPorCategoria[row.categoria].push({
-                id: row.id,
-                nome: row.nome,
+                        );
+                    }
+                    
+                    itensPorCategoria[row.categoria].push({
+                        id: row.id,
+                        nome: row.nome,
                 valor: parseFloat(row.valor),
                 valorNovo: row.valor_novo ? parseFloat(row.valor_novo) : null,
                 valorBackup: row.valor_backup !== null && row.valor_backup !== undefined ? parseFloat(row.valor_backup) : parseFloat(row.valor),
-                ordem: row.ordem !== null && row.ordem !== undefined ? row.ordem : 999
-            });
+                        ordem: row.ordem !== null && row.ordem !== undefined ? row.ordem : 999
+                    });
         }
-
-        // Incluir categorias que não têm itens (categorias vazias)
-        categoriasOrdenadas.forEach(cat => {
-            if (!itensPorCategoria[cat.nome]) {
-                itensPorCategoria[cat.nome] = [];
-            }
-        });
-
-        // Ordenar categorias pela ordem salva
-        const todasCategorias = new Set([
-            ...Object.keys(itensPorCategoria),
-            ...categoriasOrdenadas.map(cat => cat.nome)
-        ]);
-
-        const categoriasOrdenadasArray = Array.from(todasCategorias).sort((a, b) => {
-            const ordemA = ordemMap[a] !== undefined ? ordemMap[a] : 999;
-            const ordemB = ordemMap[b] !== undefined ? ordemMap[b] : 999;
-            return ordemA - ordemB;
-        });
-
-        console.log('Categorias ordenadas para retornar:', categoriasOrdenadasArray);
-
+                
+                // Incluir categorias que não têm itens (categorias vazias)
+                categoriasOrdenadas.forEach(cat => {
+                    if (!itensPorCategoria[cat.nome]) {
+                        itensPorCategoria[cat.nome] = [];
+                    }
+                });
+                
+                // Ordenar categorias pela ordem salva
+                const todasCategorias = new Set([
+                    ...Object.keys(itensPorCategoria),
+                    ...categoriasOrdenadas.map(cat => cat.nome)
+                ]);
+                
+                const categoriasOrdenadasArray = Array.from(todasCategorias).sort((a, b) => {
+                    const ordemA = ordemMap[a] !== undefined ? ordemMap[a] : 999;
+                    const ordemB = ordemMap[b] !== undefined ? ordemMap[b] : 999;
+                    return ordemA - ordemB;
+                });
+                
+                console.log('Categorias ordenadas para retornar:', categoriasOrdenadasArray);
+                
         // Criar objeto ordenado
-        const itensPorCategoriaOrdenado = {};
-        categoriasOrdenadasArray.forEach(categoria => {
-            itensPorCategoriaOrdenado[categoria] = itensPorCategoria[categoria] || [];
-        });
-
-        // Aguardar atualizações de backup (mas não bloquear a resposta)
+                const itensPorCategoriaOrdenado = {};
+                categoriasOrdenadasArray.forEach(categoria => {
+                    itensPorCategoriaOrdenado[categoria] = itensPorCategoria[categoria] || [];
+                });
+                
+                // Aguardar atualizações de backup (mas não bloquear a resposta)
         await Promise.all(promessasAtualizacao).catch(() => {});
 
         return itensPorCategoriaOrdenado;
@@ -350,12 +350,12 @@ async function obterItemPorId(id) {
         
         if (result.rows.length === 0) {
             return null;
-        }
-
+            }
+            
         const row = result.rows[0];
         return {
-            id: row.id,
-            nome: row.nome,
+                id: row.id,
+                nome: row.nome,
             valor: parseFloat(row.valor),
             valorNovo: row.valor_novo ? parseFloat(row.valor_novo) : null
         };
@@ -374,11 +374,11 @@ async function obterItensPorCategoria(categoria) {
         );
 
         return result.rows.map(row => ({
-            id: row.id,
-            nome: row.nome,
+                id: row.id,
+                nome: row.nome,
             valor: parseFloat(row.valor),
             valorNovo: row.valor_novo ? parseFloat(row.valor_novo) : null,
-            ordem: row.ordem !== null && row.ordem !== undefined ? row.ordem : 999
+                ordem: row.ordem !== null && row.ordem !== undefined ? row.ordem : 999
         }));
     } catch (error) {
         console.error('Erro ao obter itens por categoria:', error);
@@ -404,11 +404,11 @@ async function criarItem(categoria, nome, valor) {
 
         const row = result.rows[0];
         return {
-            id: row.id,
-            nome: row.nome,
+                            id: row.id,
+                            nome: row.nome,
             valor: parseFloat(row.valor),
             valorNovo: row.valor_novo ? parseFloat(row.valor_novo) : null,
-            ordem: row.ordem
+                            ordem: row.ordem
         };
     } catch (error) {
         console.error('Erro ao criar item:', error);
@@ -420,33 +420,33 @@ async function criarItem(categoria, nome, valor) {
 async function atualizarItem(id, nome, valor, categoria) {
     try {
         console.log(`[DB] Atualizando item ${id}: nome="${nome}", valor=${valor}, categoria="${categoria}"`);
-
+        
         // Se categoria foi fornecida, precisamos atualizar a categoria e a ordem
         if (categoria !== undefined && categoria !== null) {
             // Primeiro obter o item atual para verificar se a categoria mudou
             const itemAtualResult = await pool.query('SELECT categoria FROM itens WHERE id = $1', [id]);
             
             if (itemAtualResult.rows.length === 0) {
-                console.error('[DB] Item não encontrado:', id);
+                    console.error('[DB] Item não encontrado:', id);
                 return null;
-            }
-
+                }
+                
             const categoriaAtual = itemAtualResult.rows[0].categoria;
-            const categoriaMudou = categoria.trim() !== categoriaAtual.trim();
-
-            console.log(`[DB] Categoria atual: "${categoriaAtual}", nova: "${categoria}", mudou: ${categoriaMudou}`);
-
-            if (categoriaMudou) {
-                // Se a categoria mudou, obter a maior ordem da nova categoria
+                const categoriaMudou = categoria.trim() !== categoriaAtual.trim();
+                
+                console.log(`[DB] Categoria atual: "${categoriaAtual}", nova: "${categoria}", mudou: ${categoriaMudou}`);
+                
+                if (categoriaMudou) {
+                    // Se a categoria mudou, obter a maior ordem da nova categoria
                 const maxResult = await pool.query(
                     'SELECT MAX(ordem) as maxOrdem FROM itens WHERE categoria = $1',
                     [categoria]
                 );
                 const maxOrdem = maxResult.rows[0]?.maxordem;
                 const novaOrdem = (maxOrdem !== null && maxOrdem !== undefined) ? maxOrdem + 1 : 0;
-                console.log(`[DB] Nova ordem na categoria "${categoria}": ${novaOrdem}`);
-
-                // Atualizar categoria e ordem
+                        console.log(`[DB] Nova ordem na categoria "${categoria}": ${novaOrdem}`);
+                        
+                        // Atualizar categoria e ordem
                 const updateResult = await pool.query(
                     'UPDATE itens SET nome = $1, valor = $2, categoria = $3, ordem = $4, updated_at = CURRENT_TIMESTAMP WHERE id = $5 RETURNING *',
                     [nome, valor, categoria, novaOrdem, id]
@@ -454,20 +454,20 @@ async function atualizarItem(id, nome, valor, categoria) {
 
                 if (updateResult.rows.length === 0) {
                     return null;
-                }
-
+                                }
+                                
                 const row = updateResult.rows[0];
                 console.log(`[DB] Item atualizado: categoria="${row.categoria}"`);
                 return {
-                    id: row.id,
-                    nome: row.nome,
+                                        id: row.id,
+                                        nome: row.nome,
                     valor: parseFloat(row.valor),
                     valorNovo: row.valor_novo ? parseFloat(row.valor_novo) : null,
-                    categoria: row.categoria
+                                        categoria: row.categoria
                 };
-            } else {
+                } else {
                 // Categoria não mudou, mas vamos atualizar mesmo assim
-                console.log(`[DB] Categoria não mudou, atualizando mesmo assim`);
+                    console.log(`[DB] Categoria não mudou, atualizando mesmo assim`);
                 const updateResult = await pool.query(
                     'UPDATE itens SET nome = $1, valor = $2, categoria = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4 RETURNING *',
                     [nome, valor, categoria, id]
@@ -475,18 +475,18 @@ async function atualizarItem(id, nome, valor, categoria) {
 
                 if (updateResult.rows.length === 0) {
                     return null;
-                }
-
+                            }
+                            
                 const row = updateResult.rows[0];
-                console.log(`[DB] Item retornado: categoria="${row.categoria}"`);
+                                console.log(`[DB] Item retornado: categoria="${row.categoria}"`);
                 return {
-                    id: row.id,
-                    nome: row.nome,
+                                    id: row.id,
+                                    nome: row.nome,
                     valor: parseFloat(row.valor),
                     valorNovo: row.valor_novo ? parseFloat(row.valor_novo) : null,
-                    categoria: row.categoria
+                                    categoria: row.categoria
                 };
-            }
+                        }
         } else {
             // Categoria não foi fornecida, atualizar normalmente
             const updateResult = await pool.query(
@@ -496,21 +496,21 @@ async function atualizarItem(id, nome, valor, categoria) {
 
             if (updateResult.rows.length === 0) {
                 return null;
-            }
-
+                    }
+                    
             const row = updateResult.rows[0];
             return {
-                id: row.id,
-                nome: row.nome,
+                            id: row.id,
+                            nome: row.nome,
                 valor: parseFloat(row.valor),
                 valorNovo: row.valor_novo ? parseFloat(row.valor_novo) : null,
-                categoria: row.categoria
+                            categoria: row.categoria
             };
-        }
+                }
     } catch (error) {
         console.error('[DB] Erro ao atualizar item:', error);
         throw error;
-    }
+        }
 }
 
 // Deletar item
@@ -568,9 +568,9 @@ async function resetarValores() {
     try {
         const result = await pool.query(`
             UPDATE itens 
-            SET valor = valor_backup, 
-                valor_novo = NULL, 
-                updated_at = CURRENT_TIMESTAMP 
+             SET valor = valor_backup, 
+                 valor_novo = NULL, 
+                 updated_at = CURRENT_TIMESTAMP 
             WHERE valor_backup IS NOT NULL
         `);
         return result.rowCount;
@@ -586,10 +586,10 @@ async function atualizarOrdemCategorias(categorias) {
         if (categorias.length === 0) {
             return;
         }
-
+        
         console.log('=== INICIANDO ATUALIZAÇÃO DE ORDEM ===');
         console.log('Categorias recebidas:', categorias);
-
+        
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
@@ -606,10 +606,10 @@ async function atualizarOrdemCategorias(categorias) {
             }
 
             await client.query('COMMIT');
-            console.log('=== ORDEM ATUALIZADA COM SUCESSO ===');
-            console.log('Ordem final:', categorias.join(' -> '));
-
-            // Verificar se foi salvo corretamente
+                                console.log('=== ORDEM ATUALIZADA COM SUCESSO ===');
+                                console.log('Ordem final:', categorias.join(' -> '));
+                                
+                                // Verificar se foi salvo corretamente
             const verifyResult = await pool.query('SELECT nome, ordem FROM categorias ORDER BY ordem');
             console.log('Verificação no banco:', verifyResult.rows.map(r => `${r.nome}:${r.ordem}`).join(', '));
         } catch (error) {
@@ -617,9 +617,71 @@ async function atualizarOrdemCategorias(categorias) {
             throw error;
         } finally {
             client.release();
-        }
+                    }
     } catch (error) {
         console.error('Erro ao atualizar ordem das categorias:', error);
+        throw error;
+    }
+}
+
+// Renomear categoria
+async function renomearCategoria(nomeAntigo, nomeNovo) {
+    try {
+        console.log(`[DB] Renomeando categoria: "${nomeAntigo}" -> "${nomeNovo}"`);
+        
+        if (nomeAntigo.trim() === nomeNovo.trim()) {
+            console.log('[DB] Nome não mudou, nada a fazer');
+            return true;
+        }
+        
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            
+            // Verificar se a nova categoria já existe
+            const categoriaExistente = await client.query('SELECT nome FROM categorias WHERE nome = $1', [nomeNovo.trim()]);
+            if (categoriaExistente.rows.length > 0) {
+                throw new Error('Esta categoria já existe!');
+            }
+            
+            // Atualizar todos os itens com a nova categoria
+            const itensResult = await client.query(
+                'UPDATE itens SET categoria = $1, updated_at = CURRENT_TIMESTAMP WHERE categoria = $2',
+                [nomeNovo.trim(), nomeAntigo]
+            );
+            console.log(`[DB] ${itensResult.rowCount} item(ns) atualizado(s) com a nova categoria`);
+            
+            // Atualizar a tabela categorias
+            const categoriaResult = await client.query(
+                'UPDATE categorias SET nome = $1, updated_at = CURRENT_TIMESTAMP WHERE nome = $2',
+                [nomeNovo.trim(), nomeAntigo]
+            );
+            
+            // Se não havia na tabela categorias, criar
+            if (categoriaResult.rowCount === 0) {
+                // Obter a ordem atual ou usar a maior ordem + 1
+                const ordemResult = await client.query('SELECT MAX(ordem) as maxOrdem FROM categorias');
+                const maxOrdem = ordemResult.rows[0]?.maxordem;
+                const novaOrdem = (maxOrdem !== null && maxOrdem !== undefined) ? maxOrdem + 1 : 0;
+                
+                await client.query(
+                    'INSERT INTO categorias (nome, ordem, updated_at) VALUES ($1, $2, CURRENT_TIMESTAMP)',
+                    [nomeNovo.trim(), novaOrdem]
+                );
+                console.log(`[DB] Nova categoria criada na tabela categorias com ordem ${novaOrdem}`);
+            }
+            
+            await client.query('COMMIT');
+            console.log(`[DB] Categoria renomeada com sucesso: "${nomeAntigo}" -> "${nomeNovo}"`);
+            return true;
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
+    } catch (error) {
+        console.error(`[DB] Erro ao renomear categoria "${nomeAntigo}":`, error);
         throw error;
     }
 }
@@ -628,28 +690,28 @@ async function atualizarOrdemCategorias(categorias) {
 async function deletarCategoria(nome) {
     try {
         console.log(`[DB] Iniciando deleção da categoria: "${nome}"`);
-
+        
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
 
-            // Primeiro deletar todos os itens da categoria
+        // Primeiro deletar todos os itens da categoria
             const itensResult = await client.query('DELETE FROM itens WHERE categoria = $1', [nome]);
             const itensDeletados = itensResult.rowCount;
             console.log(`[DB] ${itensDeletados} item(ns) deletado(s) da categoria "${nome}"`);
-
+            
             // Depois deletar a categoria (se existir na tabela categorias)
             const categoriaResult = await client.query('DELETE FROM categorias WHERE nome = $1', [nome]);
             const categoriaDeletada = categoriaResult.rowCount > 0;
             
-            if (categoriaDeletada) {
-                console.log(`[DB] Categoria "${nome}" deletada com sucesso da tabela categorias`);
-            } else {
-                console.log(`[DB] Categoria "${nome}" não existia na tabela categorias, mas itens foram deletados`);
-            }
-
+                if (categoriaDeletada) {
+                    console.log(`[DB] Categoria "${nome}" deletada com sucesso da tabela categorias`);
+                } else {
+                    console.log(`[DB] Categoria "${nome}" não existia na tabela categorias, mas itens foram deletados`);
+                }
+                
             await client.query('COMMIT');
-            console.log(`[DB] Deleção da categoria "${nome}" concluída com sucesso`);
+                console.log(`[DB] Deleção da categoria "${nome}" concluída com sucesso`);
             return true;
         } catch (error) {
             await client.query('ROLLBACK');
@@ -669,10 +731,10 @@ async function atualizarOrdemItens(categoria, itensIds) {
         if (!Array.isArray(itensIds) || itensIds.length === 0) {
             return;
         }
-
+        
         console.log(`=== ATUALIZANDO ORDEM DOS ITENS DA CATEGORIA: ${categoria} ===`);
         console.log('IDs dos itens na ordem:', itensIds);
-
+        
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
@@ -686,13 +748,13 @@ async function atualizarOrdemItens(categoria, itensIds) {
             }
 
             await client.query('COMMIT');
-            console.log('=== ORDEM DOS ITENS ATUALIZADA COM SUCESSO ===');
+                                console.log('=== ORDEM DOS ITENS ATUALIZADA COM SUCESSO ===');
         } catch (error) {
             await client.query('ROLLBACK');
             throw error;
         } finally {
             client.release();
-        }
+                            }
     } catch (error) {
         console.error('Erro ao atualizar ordem dos itens:', error);
         throw error;
@@ -714,12 +776,12 @@ async function criarCategoria(nome) {
             );
             return { nome, ordem: novaOrdem };
         } catch (error) {
-            // Se já existir, apenas retornar sucesso
+                        // Se já existir, apenas retornar sucesso
             if (error.code === '23505') { // UNIQUE constraint violation
                 return { nome, ordem: novaOrdem };
             }
             throw error;
-        }
+                        }
     } catch (error) {
         console.error('Erro ao criar categoria:', error);
         throw error;
@@ -730,11 +792,11 @@ async function criarCategoria(nome) {
 async function fechar() {
     try {
         await pool.end();
-        console.log('Conexão com banco de dados fechada');
+                    console.log('Conexão com banco de dados fechada');
     } catch (error) {
         console.error('Erro ao fechar conexão:', error);
         throw error;
-    }
+                }
 }
 
 module.exports = {
@@ -752,6 +814,7 @@ module.exports = {
     atualizarOrdemCategorias,
     atualizarOrdemItens,
     criarCategoria,
+    renomearCategoria,
     deletarCategoria,
     fechar
 };

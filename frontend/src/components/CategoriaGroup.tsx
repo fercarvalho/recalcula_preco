@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import type { Item } from '../types';
 import { apiService } from '../services/api';
-import { mostrarAlert, mostrarConfirm } from '../utils/modals';
+import { mostrarAlert, mostrarConfirm, mostrarPrompt } from '../utils/modals';
 import ItemCard from './ItemCard';
 import EditarItemModal from './EditarItemModal';
 import { useDragAndDrop } from '../hooks/useDragAndDrop';
+import { FaGripVertical, FaChevronRight, FaChevronDown, FaPencilAlt, FaPlus, FaTrash } from 'react-icons/fa';
 import './CategoriaGroup.css';
 
 interface CategoriaGroupProps {
@@ -85,6 +86,22 @@ const CategoriaGroup = ({
     }
   };
 
+  const handleRenomearCategoria = async () => {
+    const novoNome = await mostrarPrompt('Renomear Categoria', 'Digite o novo nome da categoria:', categoria);
+    if (!novoNome || novoNome.trim() === '' || novoNome.trim() === categoria) {
+      return;
+    }
+
+    try {
+      await apiService.renomearCategoria(categoria, novoNome.trim());
+      await mostrarAlert('Sucesso', `Categoria renomeada de "${categoria}" para "${novoNome.trim()}" com sucesso!`);
+      onItemUpdated();
+    } catch (error: any) {
+      const mensagemErro = error.response?.data?.error || error.message || 'Erro ao renomear a categoria. Tente novamente.';
+      await mostrarAlert('Erro', mensagemErro);
+    }
+  };
+
   const handleDeletarCategoria = async () => {
     const quantidadeItens = itens.length;
     const mensagem = quantidadeItens > 0
@@ -135,7 +152,7 @@ const CategoriaGroup = ({
         >
           <div className="categoria-header-left">
             <span className="drag-handle" title="Arrastar para reordenar" onClick={(e) => e.stopPropagation()}>
-              <i className="fas fa-grip-vertical"></i>
+              <FaGripVertical />
             </span>
             <input
               type="checkbox"
@@ -150,10 +167,20 @@ const CategoriaGroup = ({
               title={todosItensSelecionados ? 'Deselecionar todos os itens' : 'Selecionar todos os itens'}
             />
             <h3>
-              <i className={`fas fa-chevron-${isCollapsed ? 'right' : 'down'}`}></i>
+              {isCollapsed ? <FaChevronRight /> : <FaChevronDown />}
               {categoria}
-              <span className="categoria-count">({itens.length})</span>
             </h3>
+            <button
+              className="btn-editar-categoria"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRenomearCategoria();
+              }}
+              title="Editar nome da categoria"
+            >
+              <FaPencilAlt />
+            </button>
+            <span className="categoria-count">({itens.length})</span>
           </div>
           <div className="categoria-actions" onClick={(e) => e.stopPropagation()}>
             <button
@@ -165,14 +192,14 @@ const CategoriaGroup = ({
               }}
               title="Adicionar item"
             >
-              <i className="fas fa-plus"></i>
+              <FaPlus />
             </button>
             <button
               className="btn-deletar-categoria"
               onClick={handleDeletarCategoria}
               title="Deletar categoria"
             >
-              <i className="fas fa-trash"></i>
+              <FaTrash />
             </button>
           </div>
         </div>

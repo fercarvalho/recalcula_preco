@@ -3,6 +3,7 @@ import type { Item } from '../types';
 import { apiService } from '../services/api';
 import { carregarPlataformas, calcularPrecoComPlataforma } from '../utils/plataformas';
 import { mostrarAlert } from '../utils/modals';
+import { FaChevronUp, FaChevronDown, FaGripVertical, FaEdit, FaTrash } from 'react-icons/fa';
 import './ItemCard.css';
 
 interface ItemCardProps {
@@ -148,22 +149,25 @@ const ItemCard = ({ item, isSelected, onToggleSelect, onEdit, onDelete, onItemUp
           </div>
           {plataformas.length > 0 && (
             <div className="item-precos-plataformas">
-              <button
-                onClick={() => setShowPlataformas(!showPlataformas)}
-                className="btn-toggle-plataformas"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: '#17a2b8',
-                  cursor: 'pointer',
-                  fontSize: '0.85em',
-                  padding: '5px 0',
-                  textDecoration: 'underline',
-                }}
-              >
-                <i className={`fas fa-chevron-${showPlataformas ? 'up' : 'down'}`}></i>
-                {' '}Preços por plataforma ({plataformas.length})
-              </button>
+                <button
+                  onClick={() => setShowPlataformas(!showPlataformas)}
+                  className="btn-toggle-plataformas"
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#17a2b8',
+                    cursor: 'pointer',
+                    fontSize: '0.85em',
+                    padding: '5px 0',
+                    textDecoration: 'underline',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                  }}
+                >
+                  {showPlataformas ? <FaChevronUp /> : <FaChevronDown />}
+                  {' '}Preços por plataforma ({plataformas.length})
+                </button>
               {showPlataformas && (
                 <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {plataformas.map((plataforma) => {
@@ -180,17 +184,17 @@ const ItemCard = ({ item, isSelected, onToggleSelect, onEdit, onDelete, onItemUp
             </div>
           )}
         </div>
-        <div className="item-actions">
-          <span className="item-drag-handle" title="Arrastar para reordenar">
-            <i className="fas fa-grip-vertical"></i>
-          </span>
-          <button onClick={onEdit} className="btn-edit">
-            <i className="fas fa-edit"></i>
-          </button>
-          <button onClick={() => onDelete(item.id)} className="btn-delete">
-            <i className="fas fa-trash"></i>
-          </button>
-        </div>
+            <div className="item-actions">
+              <span className="item-drag-handle" title="Arrastar para reordenar">
+                <FaGripVertical />
+              </span>
+              <button onClick={onEdit} className="btn-edit">
+                <FaEdit />
+              </button>
+              <button onClick={() => onDelete(item.id)} className="btn-delete">
+                <FaTrash />
+              </button>
+            </div>
       </div>
     </div>
   );

@@ -55,6 +55,11 @@
   gap: 5px;
 }
 
+.btn-editar-plataforma svg,
+.btn-excluir-plataforma svg {
+  flex-shrink: 0;
+}
+
 .btn-editar-plataforma {
   background: var(--cor-primaria);
   color: white;

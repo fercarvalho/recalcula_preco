@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { apiService } from '../services/api';
 import { mostrarAlert, mostrarPrompt, mostrarPromptNumber } from '../utils/modals';
 import SelecaoCategoriaModal from './SelecaoCategoriaModal';
+import { FaPlusCircle, FaFolderPlus, FaStore, FaCog } from 'react-icons/fa';
 import './AdicionarProdutoSection.css';
 
 interface AdicionarProdutoSectionProps {
@@ -77,19 +78,19 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
     <>
       <div className="adicionar-produto-section">
         <button onClick={handleAdicionarProduto} className="btn-adicionar-produto">
-          <i className="fas fa-plus-circle"></i> Adicionar Novo Produto
+          <FaPlusCircle /> Adicionar Novo Produto
         </button>
         <button onClick={handleAdicionarCategoria} className="btn-adicionar-produto">
-          <i className="fas fa-folder-plus"></i> Adicionar Categoria
+          <FaFolderPlus /> Adicionar Categoria
         </button>
         {onOpenPlataformas && (
           <button onClick={onOpenPlataformas} className="btn-adicionar-produto btn-plataformas">
-            <i className="fas fa-store"></i> Gerenciar Plataformas
+            <FaStore /> Gerenciar Plataformas
           </button>
         )}
         {onOpenPainelAdmin && (
           <button onClick={onOpenPainelAdmin} className="btn-adicionar-produto btn-admin">
-            <i className="fas fa-cog"></i> Painel de Personalização
+            <FaCog /> Painel de Personalização
           </button>
         )}
       </div>

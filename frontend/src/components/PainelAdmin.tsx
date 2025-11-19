@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Modal from './Modal';
 import { mostrarAlert, mostrarConfirm } from '../utils/modals';
+import { FaUndo, FaSave, FaImage, FaPalette, FaTrash } from 'react-icons/fa';
 import './PainelAdmin.css';
 
 interface ConfiguracoesAdmin {
@@ -150,17 +151,17 @@ const PainelAdmin = ({ isOpen, onClose }: PainelAdminProps) => {
       footer={
         <>
           <button onClick={handleResetar} className="btn-secondary">
-            <i className="fas fa-undo"></i> Resetar para Padrão
+            <FaUndo /> Resetar para Padrão
           </button>
           <button onClick={onClose} className="btn-secondary">Cancelar</button>
           <button onClick={handleSalvar} className="btn-primary">
-            <i className="fas fa-save"></i> Salvar Configurações
+            <FaSave /> Salvar Configurações
           </button>
         </>
       }
     >
       <div className="admin-section">
-        <h3><i className="fas fa-image"></i> Logo do Sistema</h3>
+        <h3><FaImage /> Logo do Sistema</h3>
         <div className="form-group">
           <label htmlFor="admin-logo-upload">Selecionar Nova Logo:</label>
           <input
@@ -185,13 +186,13 @@ const PainelAdmin = ({ isOpen, onClose }: PainelAdminProps) => {
             />
           </div>
           <button onClick={handleRemoverLogo} className="btn-secondary" style={{ marginTop: '10px' }}>
-            <i className="fas fa-trash"></i> Remover Logo
+            <FaTrash /> Remover Logo
           </button>
         </div>
       </div>
 
       <div className="admin-section">
-        <h3><i className="fas fa-palette"></i> Cores do Sistema</h3>
+        <h3><FaPalette /> Cores do Sistema</h3>
         <div className="color-picker-group">
           <div className="form-group">
             <label htmlFor="admin-cor-primaria">Cor Primária (Botões, Headers):</label>

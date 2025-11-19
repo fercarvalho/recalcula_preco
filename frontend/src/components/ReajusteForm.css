@@ -101,6 +101,15 @@
   transition: all 0.3s;
   flex: 1;
   min-width: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-primary svg,
+.btn-secondary svg {
+  flex-shrink: 0;
 }
 
 .btn-primary {

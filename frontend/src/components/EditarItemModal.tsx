@@ -3,6 +3,7 @@ import Modal from './Modal';
 import { apiService } from '../services/api';
 import { mostrarAlert } from '../utils/modals';
 import type { Item } from '../types';
+import { FaTimes, FaPlus } from 'react-icons/fa';
 import './EditarItemModal.css';
 
 interface EditarItemModalProps {
@@ -215,14 +216,14 @@ const EditarItemModal = ({
                   onClick={() => removerLinha(index)}
                   title="Remover linha"
                 >
-                  <i className="fas fa-times"></i>
+                  <FaTimes />
                 </button>
               )}
             </div>
           ))}
           <div style={{ textAlign: 'center', marginTop: '15px' }}>
             <button onClick={adicionarLinha} className="btn-secondary">
-              <i className="fas fa-plus"></i> Adicionar Outra Linha
+              <FaPlus /> Adicionar Outra Linha
             </button>
           </div>
         </div>

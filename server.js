@@ -202,6 +202,29 @@ app.post('/api/categorias', async (req, res) => {
     }
 });
 
+// Renomear categoria
+app.put('/api/categorias/:nomeAntigo', async (req, res) => {
+    try {
+        const { nomeAntigo } = req.params;
+        const { nomeNovo } = req.body;
+        const categoriaNomeAntigo = decodeURIComponent(nomeAntigo);
+        
+        if (!nomeNovo || nomeNovo.trim() === '') {
+            return res.status(400).json({ error: 'Novo nome da categoria é obrigatório' });
+        }
+        
+        const sucesso = await db.renomearCategoria(categoriaNomeAntigo, nomeNovo.trim());
+        if (!sucesso) {
+            return res.status(404).json({ error: 'Categoria não encontrada' });
+        }
+        
+        res.json({ message: 'Categoria renomeada com sucesso' });
+    } catch (error) {
+        console.error('Erro ao renomear categoria:', error);
+        res.status(500).json({ error: error.message || 'Erro ao renomear categoria' });
+    }
+});
+
 // Deletar categoria
 app.delete('/api/categorias/:nome', async (req, res) => {
     try {

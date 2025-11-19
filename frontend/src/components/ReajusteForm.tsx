@@ -1,4 +1,5 @@
 import type { TipoReajuste } from '../types';
+import { FaUndo } from 'react-icons/fa';
 import './ReajusteForm.css';
 
 interface ReajusteFormProps {
@@ -87,7 +88,7 @@ const ReajusteForm = ({
           Aplicar Reajuste
         </button>
         <button onClick={onResetarValores} className="btn-secondary" title="Resetar todos os valores para os padrões">
-          <i className="fas fa-undo"></i> Resetar Valores
+          <FaUndo /> Resetar Valores
         </button>
       </div>
     </section>

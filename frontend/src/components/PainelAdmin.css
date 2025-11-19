@@ -19,6 +19,10 @@
   gap: 10px;
 }
 
+.admin-section h3 svg {
+  flex-shrink: 0;
+}
+
 .color-picker-group {
   display: flex;
   flex-direction: column;

@@ -61,6 +61,10 @@ export const apiService = {
     return response.data;
   },
 
+  async renomearCategoria(nomeAntigo: string, nomeNovo: string): Promise<void> {
+    await api.put(`/api/categorias/${encodeURIComponent(nomeAntigo)}`, { nomeNovo });
+  },
+
   async deletarCategoria(nome: string): Promise<void> {
     await api.delete(`/api/categorias/${encodeURIComponent(nome)}`);
   },

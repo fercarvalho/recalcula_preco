@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Modal from './Modal';
 import { mostrarAlert, mostrarConfirm } from '../utils/modals';
 import { carregarPlataformas, type Plataforma } from '../utils/plataformas';
+import { FaStore, FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
 import './GerenciamentoPlataformas.css';
 
 const PLATAFORMAS_STORAGE_KEY = 'calculadora_plataformas';
@@ -105,10 +106,10 @@ const GerenciamentoPlataformas = ({ isOpen, onClose }: GerenciamentoPlataformasP
         }
       >
         <div className="admin-section">
-          <h3><i className="fas fa-store"></i> Plataformas Cadastradas</h3>
+          <h3><FaStore /> Plataformas Cadastradas</h3>
           <div style={{ marginBottom: '20px' }}>
             <button onClick={handleAdicionar} className="btn-primary">
-              <i className="fas fa-plus"></i> Adicionar Plataforma
+              <FaPlus /> Adicionar Plataforma
             </button>
           </div>
           <div className="plataformas-container">
@@ -128,13 +129,13 @@ const GerenciamentoPlataformas = ({ isOpen, onClose }: GerenciamentoPlataformasP
                       onClick={() => handleEditar(plataforma)}
                       className="btn-editar-plataforma"
                     >
-                      <i className="fas fa-edit"></i> Editar
+                      <FaEdit /> Editar
                     </button>
                     <button
                       onClick={() => handleDeletar(plataforma)}
                       className="btn-excluir-plataforma"
                     >
-                      <i className="fas fa-trash"></i> Excluir
+                      <FaTrash /> Excluir
                     </button>
                   </div>
                 </div>

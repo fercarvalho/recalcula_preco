@@ -86,7 +86,7 @@
   cursor: grabbing;
 }
 
-.drag-handle i {
+.drag-handle svg {
   pointer-events: none;
 }
 
@@ -101,6 +101,34 @@
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.categoria-header h3 svg {
+  flex-shrink: 0;
+}
+
+.btn-editar-categoria {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 5px;
+}
+
+.btn-editar-categoria svg {
+  flex-shrink: 0;
+}
+
+.btn-editar-categoria:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
 }
 
 .categoria-actions {
@@ -123,6 +151,10 @@
   justify-content: center;
 }
 
+.btn-deletar-categoria svg {
+  flex-shrink: 0;
+}
+
 .btn-deletar-categoria:hover {
   background: rgba(255, 0, 0, 0.5);
   transform: scale(1.1);
@@ -140,6 +172,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.btn-adicionar-item svg {
+  flex-shrink: 0;
 }
 
 .btn-adicionar-item:hover {

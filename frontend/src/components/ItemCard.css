@@ -162,6 +162,15 @@
   height: 28px;
 }
 
+.btn-edit svg,
+.btn-delete svg {
+  flex-shrink: 0;
+}
+
+.item-drag-handle svg {
+  flex-shrink: 0;
+}
+
 .btn-edit {
   background: var(--cor-primaria);
   opacity: 0.8;
