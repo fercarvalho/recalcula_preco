@@ -2,7 +2,39 @@ header {
   background: var(--cor-primaria, #FF6B35);
   color: white;
   padding: 30px;
-  text-align: center;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.header-content > div:first-child {
+  text-align: left;
+}
+
+.header-user {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+@media (max-width: 768px) {
+  .header-content {
+    flex-direction: column;
+  }
+  
+  .header-content > div:first-child {
+    text-align: center;
+  }
+  
+  .header-user {
+    justify-content: center;
+  }
+  
 }
 
 .logo-container {

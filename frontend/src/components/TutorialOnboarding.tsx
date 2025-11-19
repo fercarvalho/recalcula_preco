@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { FaCheck, FaTimes, FaArrowRight, FaArrowLeft, FaFolderPlus, FaPlusCircle, FaStore } from 'react-icons/fa';
+import { FaCheck, FaTimes, FaArrowRight, FaArrowLeft } from 'react-icons/fa';
 import './TutorialOnboarding.css';
 
 const TUTORIAL_COMPLETED_KEY = 'calculadora_tutorial_completed';
@@ -37,7 +37,7 @@ type TutorialStep = {
   id: number;
   title: string;
   description: string;
-  targetSelector: string;
+  targetSelector: string | null;
   position: 'top' | 'bottom' | 'left' | 'right' | 'center';
   requirements: {
     categorias?: number;
@@ -130,16 +130,22 @@ const TutorialOnboarding = ({
         });
 
         if (element) {
-          setHighlightedElement(element);
-          const rect = element.getBoundingClientRect();
-          setSpotlightPosition({
-            top: rect.top + window.scrollY,
-            left: rect.left + window.scrollX,
-            width: rect.width,
-            height: rect.height,
-          });
-          if (onHighlightElement) {
-            onHighlightElement(step.targetSelector);
+          const htmlElement = element as HTMLElement;
+          setHighlightedElement(htmlElement);
+          try {
+            const rect = htmlElement.getBoundingClientRect();
+            setSpotlightPosition({
+              top: rect.top + window.scrollY,
+              left: rect.left + window.scrollX,
+              width: rect.width,
+              height: rect.height,
+            });
+            if (onHighlightElement && step.targetSelector) {
+              onHighlightElement(step.targetSelector);
+            }
+          } catch (e) {
+            // Elemento pode não estar visível ainda
+            setHighlightedElement(null);
           }
         } else {
           setHighlightedElement(null);
@@ -221,13 +227,6 @@ const TutorialOnboarding = ({
       setTutorialStep(prevStep);
     }
   };
-
-  const handleComplete = useCallback(() => {
-    markTutorialCompleted();
-    setCurrentStep(0);
-    setTutorialStep(0);
-    onComplete();
-  }, [onComplete]);
 
   const handleSkip = () => {
     markTutorialCompleted();

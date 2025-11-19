@@ -9,6 +9,8 @@ import ConfirmacaoReajusteModal from './components/ConfirmacaoReajusteModal';
 import PainelAdmin from './components/PainelAdmin';
 import GerenciamentoPlataformas from './components/GerenciamentoPlataformas';
 import TutorialOnboarding, { isTutorialCompleted } from './components/TutorialOnboarding';
+import Login from './components/Login';
+import { isAuthenticated, getToken } from './services/auth';
 import { carregarPlataformas } from './utils/plataformas';
 import { mostrarAlert, mostrarConfirm } from './utils/modals';
 import './App.css';
@@ -26,13 +28,44 @@ function App() {
   const [showPlataformas, setShowPlataformas] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [totalPlataformas, setTotalPlataformas] = useState(0);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
-    carregarItens();
-    // Verificar se é a primeira vez e mostrar tutorial
-    if (!isTutorialCompleted()) {
-      setShowTutorial(true);
-    }
+    // Verificar autenticação
+    const checkAuth = async () => {
+      if (isAuthenticated()) {
+        try {
+          // Verificar se o token ainda é válido
+          const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
+          const token = getToken();
+          const response = await fetch(`${API_BASE}/api/auth/me`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+          
+          if (response.ok) {
+            setAuthenticated(true);
+            carregarItens();
+            // Verificar se é a primeira vez e mostrar tutorial
+            if (!isTutorialCompleted()) {
+              setShowTutorial(true);
+            }
+          } else {
+            setAuthenticated(false);
+          }
+        } catch (error) {
+          console.error('Erro ao verificar autenticação:', error);
+          setAuthenticated(false);
+        }
+      } else {
+        setAuthenticated(false);
+      }
+      setCheckingAuth(false);
+    };
+    
+    checkAuth();
     
     // Atualizar contagem de plataformas
     setTotalPlataformas(carregarPlataformas().length);
@@ -194,6 +227,59 @@ function App() {
     });
   };
 
+  const handleReiniciarSistema = async () => {
+    try {
+      const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
+      const token = getToken();
+
+      const response = await fetch(`${API_BASE}/api/auth/reiniciar-sistema`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao reiniciar sistema');
+      }
+
+      await mostrarAlert('Sucesso', 'Sistema reiniciado com sucesso! Todos os dados foram apagados.');
+      await carregarItens();
+    } catch (error: any) {
+      console.error('Erro ao reiniciar sistema:', error);
+      await mostrarAlert('Erro', error.message || 'Erro ao reiniciar sistema. Tente novamente.');
+    }
+  };
+
+  const handleReexibirTutorial = () => {
+    // Limpar flag de tutorial completo
+    localStorage.removeItem('calculadora_tutorial_completed');
+    localStorage.removeItem('calculadora_tutorial_step');
+    setShowTutorial(true);
+  };
+
+  if (checkingAuth) {
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <p>Carregando...</p>
+      </div>
+    );
+  }
+
+  if (!authenticated) {
+    return <Login onLoginSuccess={() => {
+      setAuthenticated(true);
+      carregarItens();
+      if (!isTutorialCompleted()) {
+        setShowTutorial(true);
+      }
+    }} />;
+  }
+
   if (loading) {
     return (
       <div className="loading-container">
@@ -219,7 +305,10 @@ function App() {
       </div>
 
       <div className="container">
-        <Header />
+        <Header
+          onReiniciarSistema={handleReiniciarSistema}
+          onReexibirTutorial={handleReexibirTutorial}
+        />
         
         <div className="main-content">
           <ReajusteForm

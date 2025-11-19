@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { Item, ItensPorCategoria, Categoria } from '../types';
+import { getAuthHeaders, clearAuth } from './auth';
 
 const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
 
@@ -9,6 +10,32 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// Interceptor para adicionar token em todas as requisições
+api.interceptors.request.use(
+  (config) => {
+    const authHeaders = getAuthHeaders();
+    if (authHeaders.Authorization) {
+      config.headers.Authorization = authHeaders.Authorization;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Interceptor para tratar erros de autenticação
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      clearAuth();
+      window.location.href = '/';
+    }
+    return Promise.reject(error);
+  }
+);
 
 export const apiService = {
   // Itens
