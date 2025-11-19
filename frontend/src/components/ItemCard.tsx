@@ -17,7 +17,7 @@ interface ItemCardProps {
 
 const ItemCard = ({ item, isSelected, onToggleSelect, onEdit, onDelete, onItemUpdated }: ItemCardProps) => {
   const [plataformas, setPlataformas] = useState(carregarPlataformas());
-  const [showPlataformas, setShowPlataformas] = useState(false);
+  const [showPlataformas, setShowPlataformas] = useState(true);
   const [valor, setValor] = useState(item.valor.toString());
   const [salvando, setSalvando] = useState(false);
   const valorInputRef = useRef<HTMLInputElement>(null);
