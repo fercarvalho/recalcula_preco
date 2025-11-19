@@ -6,17 +6,39 @@ Sistema de cálculo de reajuste de preços para o estabelecimento Vira-Latas Hot
 
 - **Frontend**: HTML, CSS, JavaScript (Vanilla)
 - **Backend**: Node.js + Express
-- **Banco de Dados**: SQLite
+- **Banco de Dados**: PostgreSQL
 
 ## Instalação
 
-### 1. Instalar dependências
+### 1. Configurar PostgreSQL
+
+Certifique-se de que o PostgreSQL está instalado e rodando. Veja o arquivo `CONFIGURACAO_POSTGRESQL.md` para instruções detalhadas.
+
+Crie um arquivo `.env` na raiz do projeto com as configurações do banco:
+
+```
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=calculadora_reajuste
+DB_USER=postgres
+DB_PASSWORD=sua_senha_aqui
+```
+
+### 2. Criar o banco de dados
+
+```bash
+psql -U postgres
+CREATE DATABASE calculadora_reajuste;
+\q
+```
+
+### 3. Instalar dependências
 
 ```bash
 npm install
 ```
 
-### 2. Iniciar o servidor
+### 4. Iniciar o servidor
 
 ```bash
 npm start
@@ -104,6 +126,8 @@ A tabela `itens` possui:
 - `DELETE /api/itens/:id` - Deletar item
 - `GET /api/categorias` - Obter lista de categorias
 
-## Migração de SQLite para PostgreSQL (opcional)
+## Migração de SQLite para PostgreSQL
 
-Se preferir usar PostgreSQL no futuro, você pode modificar o arquivo `database.js` para usar `pg` em vez de `sqlite3`.
+O projeto foi migrado de SQLite para PostgreSQL. As tabelas são criadas automaticamente na primeira execução do servidor.
+
+Se você tinha dados no SQLite anterior, será necessário migrar manualmente ou usar uma ferramenta de migração de dados.
