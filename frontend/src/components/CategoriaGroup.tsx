@@ -4,8 +4,10 @@ import { apiService } from '../services/api';
 import { mostrarAlert, mostrarConfirm, mostrarPrompt } from '../utils/modals';
 import ItemCard from './ItemCard';
 import EditarItemModal from './EditarItemModal';
+import SelecionarIconeModal from './SelecionarIconeModal';
 import { useDragAndDrop } from '../hooks/useDragAndDrop';
-import { FaGripVertical, FaChevronRight, FaChevronDown, FaPencilAlt, FaPlus, FaTrash } from 'react-icons/fa';
+import { FaGripVertical, FaChevronRight, FaChevronDown, FaPencilAlt, FaPlus, FaTrash, FaFolder } from 'react-icons/fa';
+import * as FaIcons from 'react-icons/fa';
 import './CategoriaGroup.css';
 
 interface CategoriaGroupProps {
@@ -43,6 +45,8 @@ const CategoriaGroup = ({
 }: CategoriaGroupProps) => {
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showIconeModal, setShowIconeModal] = useState(false);
+  const [iconeCategoria, setIconeCategoria] = useState<string | null>(null);
   const checkboxRef = useRef<HTMLInputElement>(null);
 
   // Drag and drop para itens dentro da categoria
@@ -128,12 +132,48 @@ const CategoriaGroup = ({
   // Verificar se alguns (mas não todos) itens estão selecionados
   const algunsItensSelecionados = itens.some(item => itensSelecionados.has(item.id)) && !todosItensSelecionados;
 
+  // Carregar ícone da categoria
+  useEffect(() => {
+    const carregarIcone = async () => {
+      try {
+        const icone = await apiService.obterIconeCategoria(categoria);
+        setIconeCategoria(icone);
+      } catch (error) {
+        console.error('Erro ao carregar ícone da categoria:', error);
+      }
+    };
+    carregarIcone();
+  }, [categoria]);
+
   // Atualizar estado indeterminado do checkbox
   useEffect(() => {
     if (checkboxRef.current) {
       checkboxRef.current.indeterminate = algunsItensSelecionados;
     }
   }, [algunsItensSelecionados]);
+
+  const handleSelecionarIcone = async (icone: string) => {
+    try {
+      await apiService.atualizarIconeCategoria(categoria, icone);
+      setIconeCategoria(icone);
+      await mostrarAlert('Sucesso', 'Ícone da categoria atualizado com sucesso!');
+      onItemUpdated();
+    } catch (error: any) {
+      const mensagemErro = error.response?.data?.error || error.message || 'Erro ao atualizar ícone da categoria. Tente novamente.';
+      await mostrarAlert('Erro', mensagemErro);
+    }
+  };
+
+  const renderIcone = () => {
+    if (!iconeCategoria) {
+      return <FaFolder />; // Ícone padrão
+    }
+    const IconComponent = (FaIcons as any)[iconeCategoria];
+    if (!IconComponent) {
+      return <FaFolder />; // Fallback se o ícone não existir
+    }
+    return <IconComponent />;
+  };
 
   return (
     <>
@@ -168,6 +208,16 @@ const CategoriaGroup = ({
             />
             <h3>
               {isCollapsed ? <FaChevronRight /> : <FaChevronDown />}
+              <button
+                className="btn-icone-categoria"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowIconeModal(true);
+                }}
+                title="Clique para alterar o ícone da categoria"
+              >
+                {renderIcone()}
+              </button>
               {categoria}
             </h3>
             <button
@@ -239,6 +289,12 @@ const CategoriaGroup = ({
           setEditingItem(null);
         }}
         onSave={handleSalvarItem}
+      />
+      <SelecionarIconeModal
+        isOpen={showIconeModal}
+        iconeAtual={iconeCategoria}
+        onClose={() => setShowIconeModal(false)}
+        onSelect={handleSelecionarIcone}
       />
     </>
   );

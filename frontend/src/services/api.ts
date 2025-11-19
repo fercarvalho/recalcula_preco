@@ -56,13 +56,22 @@ export const apiService = {
     return response.data;
   },
 
-  async criarCategoria(nome: string): Promise<Categoria> {
-    const response = await api.post<Categoria>('/api/categorias', { nome });
+  async criarCategoria(nome: string, icone?: string | null): Promise<Categoria> {
+    const response = await api.post<Categoria>('/api/categorias', { nome, icone: icone || null });
     return response.data;
   },
 
   async renomearCategoria(nomeAntigo: string, nomeNovo: string): Promise<void> {
     await api.put(`/api/categorias/${encodeURIComponent(nomeAntigo)}`, { nomeNovo });
+  },
+
+  async atualizarIconeCategoria(nome: string, icone: string): Promise<void> {
+    await api.put(`/api/categorias/${encodeURIComponent(nome)}/icone`, { icone });
+  },
+
+  async obterIconeCategoria(nome: string): Promise<string | null> {
+    const response = await api.get<{ icone: string | null }>(`/api/categorias/${encodeURIComponent(nome)}/icone`);
+    return response.data.icone;
   },
 
   async deletarCategoria(nome: string): Promise<void> {

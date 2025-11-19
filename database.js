@@ -124,10 +124,16 @@ async function inicializar() {
                     CREATE TABLE IF NOT EXISTS categorias (
                 nome VARCHAR(255) PRIMARY KEY,
                         ordem INTEGER NOT NULL,
+                icone VARCHAR(100),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )
         `);
+                
+                // Adicionar coluna icone se não existir
+        if (!(await colunaExiste('categorias', 'icone'))) {
+            await pool.query('ALTER TABLE categorias ADD COLUMN icone VARCHAR(100)');
+        }
                 
                 // Verificar se há dados
         const countResult = await pool.query('SELECT COUNT(*) as count FROM itens');
@@ -624,6 +630,59 @@ async function atualizarOrdemCategorias(categorias) {
     }
 }
 
+// Atualizar ícone da categoria
+async function atualizarIconeCategoria(nome, icone) {
+    try {
+        console.log(`[DB] Atualizando ícone da categoria "${nome}" para "${icone}"`);
+        
+        const client = await pool.connect();
+        try {
+            // Verificar se a categoria existe na tabela categorias
+            const categoriaExistente = await client.query('SELECT nome FROM categorias WHERE nome = $1', [nome]);
+            
+            if (categoriaExistente.rows.length > 0) {
+                // Atualizar o ícone
+                await client.query(
+                    'UPDATE categorias SET icone = $1, updated_at = CURRENT_TIMESTAMP WHERE nome = $2',
+                    [icone, nome]
+                );
+            } else {
+                // Se não existe, criar a entrada na tabela categorias
+                const ordemResult = await client.query('SELECT MAX(ordem) as maxOrdem FROM categorias');
+                const maxOrdem = ordemResult.rows[0]?.maxordem;
+                const novaOrdem = (maxOrdem !== null && maxOrdem !== undefined) ? maxOrdem + 1 : 0;
+                
+                await client.query(
+                    'INSERT INTO categorias (nome, ordem, icone, updated_at) VALUES ($1, $2, $3, CURRENT_TIMESTAMP)',
+                    [nome, novaOrdem, icone]
+                );
+            }
+            
+            console.log(`[DB] Ícone da categoria "${nome}" atualizado com sucesso`);
+            return true;
+        } finally {
+            client.release();
+        }
+    } catch (error) {
+        console.error(`[DB] Erro ao atualizar ícone da categoria "${nome}":`, error);
+        throw error;
+    }
+}
+
+// Obter ícone da categoria
+async function obterIconeCategoria(nome) {
+    try {
+        const result = await pool.query('SELECT icone FROM categorias WHERE nome = $1', [nome]);
+        if (result.rows.length > 0) {
+            return result.rows[0].icone || null;
+        }
+        return null;
+    } catch (error) {
+        console.error(`[DB] Erro ao obter ícone da categoria "${nome}":`, error);
+        return null;
+    }
+}
+
 // Renomear categoria
 async function renomearCategoria(nomeAntigo, nomeNovo) {
     try {
@@ -762,7 +821,7 @@ async function atualizarOrdemItens(categoria, itensIds) {
 }
 
 // Criar nova categoria
-async function criarCategoria(nome) {
+async function criarCategoria(nome, icone = null) {
     try {
         // Obter a maior ordem atual
         const maxResult = await pool.query('SELECT MAX(ordem) as maxOrdem FROM categorias');
@@ -771,14 +830,14 @@ async function criarCategoria(nome) {
 
         try {
             const result = await pool.query(
-                'INSERT INTO categorias (nome, ordem) VALUES ($1, $2) RETURNING *',
-                [nome, novaOrdem]
+                'INSERT INTO categorias (nome, ordem, icone) VALUES ($1, $2, $3) RETURNING *',
+                [nome, novaOrdem, icone]
             );
-            return { nome, ordem: novaOrdem };
+            return { nome, ordem: novaOrdem, icone: icone || null };
         } catch (error) {
                         // Se já existir, apenas retornar sucesso
             if (error.code === '23505') { // UNIQUE constraint violation
-                return { nome, ordem: novaOrdem };
+                return { nome, ordem: novaOrdem, icone: icone || null };
             }
             throw error;
                         }
@@ -815,6 +874,8 @@ module.exports = {
     atualizarOrdemItens,
     criarCategoria,
     renomearCategoria,
+    atualizarIconeCategoria,
+    obterIconeCategoria,
     deletarCategoria,
     fechar
 };

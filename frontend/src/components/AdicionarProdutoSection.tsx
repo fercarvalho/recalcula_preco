@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { apiService } from '../services/api';
 import { mostrarAlert, mostrarPrompt, mostrarPromptNumber } from '../utils/modals';
 import SelecaoCategoriaModal from './SelecaoCategoriaModal';
+import AdicionarCategoriaModal from './AdicionarCategoriaModal';
 import { FaPlusCircle, FaFolderPlus, FaStore, FaCog } from 'react-icons/fa';
 import './AdicionarProdutoSection.css';
 
@@ -14,6 +15,7 @@ interface AdicionarProdutoSectionProps {
 
 const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, onOpenPainelAdmin }: AdicionarProdutoSectionProps) => {
   const [showCategoriaModal, setShowCategoriaModal] = useState(false);
+  const [showAdicionarCategoriaModal, setShowAdicionarCategoriaModal] = useState(false);
   const [produtoData, setProdutoData] = useState<{ nome: string; valor: number } | null>(null);
 
   const handleAdicionarProduto = async () => {
@@ -56,21 +58,22 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
     }
   };
 
-  const handleAdicionarCategoria = async () => {
-    const nome = await mostrarPrompt('Adicionar Categoria', 'Digite o nome da nova categoria:');
-    if (!nome || nome.trim() === '') {
-      return;
-    }
+  const handleAdicionarCategoria = () => {
+    setShowAdicionarCategoriaModal(true);
+  };
 
+  const handleSalvarCategoria = async (nome: string, icone: string | null) => {
     try {
-      await apiService.criarCategoria(nome.trim());
-      await mostrarAlert('Sucesso', `Categoria "${nome.trim()}" criada com sucesso!`);
+      await apiService.criarCategoria(nome, icone);
+      await mostrarAlert('Sucesso', `Categoria "${nome}" criada com sucesso!`);
       onItemAdded();
     } catch (error: any) {
-      const mensagemErro = error.message?.includes('UNIQUE') 
-        ? 'Esta categoria já existe!' 
-        : 'Erro ao criar a categoria. Tente novamente.';
-      await mostrarAlert('Erro', mensagemErro);
+      const mensagemErro = error.response?.data?.error || error.message || 'Erro ao criar a categoria. Tente novamente.';
+      if (mensagemErro.includes('UNIQUE') || mensagemErro.includes('já existe')) {
+        await mostrarAlert('Erro', 'Esta categoria já existe!');
+      } else {
+        await mostrarAlert('Erro', mensagemErro);
+      }
     }
   };
 
@@ -102,6 +105,11 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
           setShowCategoriaModal(false);
           setProdutoData(null);
         }}
+      />
+      <AdicionarCategoriaModal
+        isOpen={showAdicionarCategoriaModal}
+        onClose={() => setShowAdicionarCategoriaModal(false)}
+        onSave={handleSalvarCategoria}
       />
     </>
   );

@@ -1,0 +1,46 @@
+.adicionar-categoria-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.btn-selecionar-icone {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.3s;
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.btn-selecionar-icone:hover {
+  border-color: var(--cor-primaria);
+  background: #fff3f0;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.icone-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5em;
+  color: var(--cor-primaria);
+  min-width: 30px;
+}
+
+.icone-preview svg {
+  flex-shrink: 0;
+}
+
+.icone-texto {
+  font-size: 1em;
+  color: #333;
+  font-weight: 500;
+}
+

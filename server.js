@@ -188,17 +188,17 @@ app.put('/api/itens/categoria/:categoria/ordem', async (req, res) => {
 // Criar nova categoria
 app.post('/api/categorias', async (req, res) => {
     try {
-        const { nome } = req.body;
+        const { nome, icone } = req.body;
         
         if (!nome || nome.trim() === '') {
             return res.status(400).json({ error: 'Nome da categoria é obrigatório' });
         }
         
-        const categoria = await db.criarCategoria(nome.trim());
+        const categoria = await db.criarCategoria(nome.trim(), icone || null);
         res.status(201).json(categoria);
     } catch (error) {
         console.error('Erro ao criar categoria:', error);
-        res.status(500).json({ error: 'Erro ao criar categoria' });
+        res.status(500).json({ error: error.message || 'Erro ao criar categoria' });
     }
 });
 
@@ -222,6 +222,43 @@ app.put('/api/categorias/:nomeAntigo', async (req, res) => {
     } catch (error) {
         console.error('Erro ao renomear categoria:', error);
         res.status(500).json({ error: error.message || 'Erro ao renomear categoria' });
+    }
+});
+
+// Atualizar ícone da categoria
+app.put('/api/categorias/:nome/icone', async (req, res) => {
+    try {
+        const { nome } = req.params;
+        const { icone } = req.body;
+        const categoriaNome = decodeURIComponent(nome);
+        
+        if (!icone || icone.trim() === '') {
+            return res.status(400).json({ error: 'Nome do ícone é obrigatório' });
+        }
+        
+        const sucesso = await db.atualizarIconeCategoria(categoriaNome, icone.trim());
+        if (!sucesso) {
+            return res.status(404).json({ error: 'Erro ao atualizar ícone da categoria' });
+        }
+        
+        res.json({ message: 'Ícone da categoria atualizado com sucesso' });
+    } catch (error) {
+        console.error('Erro ao atualizar ícone da categoria:', error);
+        res.status(500).json({ error: error.message || 'Erro ao atualizar ícone da categoria' });
+    }
+});
+
+// Obter ícone da categoria
+app.get('/api/categorias/:nome/icone', async (req, res) => {
+    try {
+        const { nome } = req.params;
+        const categoriaNome = decodeURIComponent(nome);
+        
+        const icone = await db.obterIconeCategoria(categoriaNome);
+        res.json({ icone });
+    } catch (error) {
+        console.error('Erro ao obter ícone da categoria:', error);
+        res.status(500).json({ error: error.message || 'Erro ao obter ícone da categoria' });
     }
 });
 
