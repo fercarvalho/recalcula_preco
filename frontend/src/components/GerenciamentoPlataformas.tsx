@@ -432,170 +432,176 @@ const GerenciamentoPlataformas = ({ isOpen, onClose }: GerenciamentoPlataformasP
 
         {modoMultiplo && !editingPlataforma ? (
           <div className="itens-linhas-container">
-            {plataformasLinhas.map((linha, index) => (
-              <div key={index} className="item-linha">
-                <div className="form-group nome">
-                  <label>Nome da Plataforma:</label>
-                  <input
-                    type="text"
-                    value={linha.nome}
-                    onChange={(e) => atualizarLinha(index, 'nome', e.target.value)}
-                    placeholder="Ex: iFood, Uber Eats, etc."
-                  />
-                </div>
-                <div className="form-group tipo-calculo">
-                  <label>Tipo de Cálculo:</label>
-                  <select
-                    value={linha.tipoCalculo}
-                    onChange={(e) => atualizarLinha(index, 'tipoCalculo', e.target.value as TipoCalculo)}
-                  >
-                    <option value="percentual">Percentual Direto</option>
-                    <option value="valor">Valor Vendido + Taxa Cobrada</option>
-                  </select>
-                </div>
-                {linha.tipoCalculo === 'percentual' ? (
-                  <div className="form-group valor">
-                    <label>Taxa (%):</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="100"
-                      value={linha.taxa}
-                      onChange={(e) => atualizarLinha(index, 'taxa', e.target.value)}
-                      placeholder="0,00"
-                    />
-                  </div>
-                ) : (
-                  <>
-                    <div className="form-group periodo">
-                      <label>Período:</label>
+            {plataformasLinhas.map((linha, index) => {
+              const valoresMensais = linha.valoresMensais || [
+                { valorVendido: '', valorCobrado: '' },
+                { valorVendido: '', valorCobrado: '' },
+                { valorVendido: '', valorCobrado: '' },
+              ];
+              const atualizarValoresMensais = (campo: 'valorVendido' | 'valorCobrado', valor: string, mesIndex: number) => {
+                const novasLinhas = [...plataformasLinhas];
+                if (!novasLinhas[index].valoresMensais) {
+                  novasLinhas[index].valoresMensais = [
+                    { valorVendido: '', valorCobrado: '' },
+                    { valorVendido: '', valorCobrado: '' },
+                    { valorVendido: '', valorCobrado: '' },
+                  ];
+                }
+                novasLinhas[index].valoresMensais![mesIndex] = {
+                  ...novasLinhas[index].valoresMensais![mesIndex],
+                  [campo]: valor,
+                };
+                setPlataformasLinhas(novasLinhas);
+              };
+              return (
+                <div key={index} className="item-linha-wrapper">
+                  <div className="item-linha">
+                    <div className="form-group nome">
+                      <label>Nome da Plataforma:</label>
+                      <input
+                        type="text"
+                        value={linha.nome}
+                        onChange={(e) => atualizarLinha(index, 'nome', e.target.value)}
+                        placeholder="Ex: iFood, Uber Eats, etc."
+                      />
+                    </div>
+                    <div className="form-group tipo-calculo">
+                      <label>Tipo de Cálculo:</label>
                       <select
-                        value={linha.periodoCalculo || '1mes'}
-                        onChange={(e) => {
-                          const novoPeriodo = e.target.value as PeriodoCalculo;
-                          atualizarLinha(index, 'periodoCalculo', novoPeriodo);
-                          if (novoPeriodo === '3meses' && !linha.valoresMensais) {
-                            const novasLinhas = [...plataformasLinhas];
-                            novasLinhas[index].valoresMensais = [
-                              { valorVendido: '', valorCobrado: '' },
-                              { valorVendido: '', valorCobrado: '' },
-                              { valorVendido: '', valorCobrado: '' },
-                            ];
-                            setPlataformasLinhas(novasLinhas);
-                          }
-                        }}
+                        value={linha.tipoCalculo}
+                        onChange={(e) => atualizarLinha(index, 'tipoCalculo', e.target.value as TipoCalculo)}
                       >
-                        <option value="1mes">Último Mês</option>
-                        <option value="3meses">Últimos 3 Meses</option>
+                        <option value="percentual">Percentual Direto</option>
+                        <option value="valor">Valor Vendido + Taxa Cobrada</option>
                       </select>
                     </div>
-                    {linha.periodoCalculo === '1mes' ? (
-                      <>
-                        <div className="form-group valor">
-                          <label>Valor Vendido (R$):</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={linha.valorVendido || ''}
-                            onChange={(e) => atualizarLinha(index, 'valorVendido', e.target.value)}
-                            placeholder="0,00"
-                          />
-                        </div>
-                        <div className="form-group valor">
-                          <label>Taxa Cobrada (R$):</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={linha.valorCobrado || ''}
-                            onChange={(e) => atualizarLinha(index, 'valorCobrado', e.target.value)}
-                            placeholder="0,00"
-                          />
-                        </div>
-                        {linha.valorVendido && linha.valorCobrado && parseFloat(linha.valorVendido) > 0 && (
-                          <div className="form-group percentual-calculado">
-                            <label>Percentual Calculado:</label>
-                            <div className="percentual-display">
-                              {calcularPercentual(parseFloat(linha.valorVendido), parseFloat(linha.valorCobrado || '0')).toFixed(2)}%
-                            </div>
-                          </div>
-                        )}
-                      </>
+                    {linha.tipoCalculo === 'percentual' ? (
+                      <div className="form-group valor">
+                        <label>Taxa (%):</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max="100"
+                          value={linha.taxa}
+                          onChange={(e) => atualizarLinha(index, 'taxa', e.target.value)}
+                          placeholder="0,00"
+                        />
+                      </div>
                     ) : (
                       <>
-                        {[0, 1, 2].map((mesIndex) => {
-                          const valoresMensais = linha.valoresMensais || [
-                            { valorVendido: '', valorCobrado: '' },
-                            { valorVendido: '', valorCobrado: '' },
-                            { valorVendido: '', valorCobrado: '' },
-                          ];
-                          const atualizarValoresMensais = (campo: 'valorVendido' | 'valorCobrado', valor: string) => {
-                            const novasLinhas = [...plataformasLinhas];
-                            if (!novasLinhas[index].valoresMensais) {
-                              novasLinhas[index].valoresMensais = [
-                                { valorVendido: '', valorCobrado: '' },
-                                { valorVendido: '', valorCobrado: '' },
-                                { valorVendido: '', valorCobrado: '' },
-                              ];
-                            }
-                            novasLinhas[index].valoresMensais![mesIndex] = {
-                              ...novasLinhas[index].valoresMensais![mesIndex],
-                              [campo]: valor,
-                            };
-                            setPlataformasLinhas(novasLinhas);
-                          };
-                          return (
-                            <div key={mesIndex} className="mes-container">
-                              <div className="form-group valor">
-                                <label>Mês {mesIndex + 1} - Vendido (R$):</label>
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  value={valoresMensais[mesIndex]?.valorVendido || ''}
-                                  onChange={(e) => atualizarValoresMensais('valorVendido', e.target.value)}
-                                  placeholder="0,00"
-                                />
-                              </div>
-                              <div className="form-group valor">
-                                <label>Mês {mesIndex + 1} - Cobrado (R$):</label>
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  value={valoresMensais[mesIndex]?.valorCobrado || ''}
-                                  onChange={(e) => atualizarValoresMensais('valorCobrado', e.target.value)}
-                                  placeholder="0,00"
-                                />
-                              </div>
+                        <div className="form-group periodo">
+                          <label>Período:</label>
+                          <select
+                            value={linha.periodoCalculo || '1mes'}
+                            onChange={(e) => {
+                              const novoPeriodo = e.target.value as PeriodoCalculo;
+                              atualizarLinha(index, 'periodoCalculo', novoPeriodo);
+                              if (novoPeriodo === '3meses' && !linha.valoresMensais) {
+                                const novasLinhas = [...plataformasLinhas];
+                                novasLinhas[index].valoresMensais = [
+                                  { valorVendido: '', valorCobrado: '' },
+                                  { valorVendido: '', valorCobrado: '' },
+                                  { valorVendido: '', valorCobrado: '' },
+                                ];
+                                setPlataformasLinhas(novasLinhas);
+                              }
+                            }}
+                          >
+                            <option value="1mes">Último Mês</option>
+                            <option value="3meses">Últimos 3 Meses</option>
+                          </select>
+                        </div>
+                        {linha.periodoCalculo === '1mes' ? (
+                          <>
+                            <div className="form-group valor">
+                              <label>Valor Vendido (R$):</label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={linha.valorVendido || ''}
+                                onChange={(e) => atualizarLinha(index, 'valorVendido', e.target.value)}
+                                placeholder="0,00"
+                              />
                             </div>
-                          );
-                        })}
-                        {linha.valoresMensais && linha.valoresMensais.some(v => parseFloat(v.valorVendido || '0') > 0) && (
-                          <div className="form-group percentual-calculado">
-                            <label>Média Percentual:</label>
-                            <div className="percentual-display">
-                              {calcularMediaPercentual(linha.valoresMensais).toFixed(2)}%
+                            <div className="form-group valor">
+                              <label>Taxa Cobrada (R$):</label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={linha.valorCobrado || ''}
+                                onChange={(e) => atualizarLinha(index, 'valorCobrado', e.target.value)}
+                                placeholder="0,00"
+                              />
                             </div>
-                          </div>
-                        )}
+                            {linha.valorVendido && linha.valorCobrado && parseFloat(linha.valorVendido) > 0 && (
+                              <div className="form-group percentual-calculado">
+                                <label>Percentual Calculado:</label>
+                                <div className="percentual-display">
+                                  {calcularPercentual(parseFloat(linha.valorVendido), parseFloat(linha.valorCobrado || '0')).toFixed(2)}%
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        ) : null}
                       </>
                     )}
-                  </>
-                )}
-                {plataformasLinhas.length > 1 && (
-                  <button
-                    className="btn-remover-linha"
-                    onClick={() => removerLinha(index)}
-                    title="Remover linha"
-                  >
-                    <FaTimes />
-                  </button>
-                )}
-              </div>
-            ))}
+                    {plataformasLinhas.length > 1 && (
+                      <button
+                        className="btn-remover-linha"
+                        onClick={() => removerLinha(index)}
+                        title="Remover linha"
+                      >
+                        <FaTimes />
+                      </button>
+                    )}
+                  </div>
+                  {linha.tipoCalculo === 'valor' && linha.periodoCalculo === '3meses' && (
+                    <div className="item-linha-segunda">
+                      <div className="meses-container">
+                        {[0, 1, 2].map((mesIndex) => (
+                          <div key={mesIndex} className="mes-item">
+                            <div className="mes-header">Mês {mesIndex + 1}</div>
+                            <div className="form-group">
+                              <label>Valor Vendido (R$):</label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={valoresMensais[mesIndex]?.valorVendido || ''}
+                                onChange={(e) => atualizarValoresMensais('valorVendido', e.target.value, mesIndex)}
+                                placeholder="0,00"
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label>Taxa Cobrada (R$):</label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={valoresMensais[mesIndex]?.valorCobrado || ''}
+                                onChange={(e) => atualizarValoresMensais('valorCobrado', e.target.value, mesIndex)}
+                                placeholder="0,00"
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {linha.valoresMensais && linha.valoresMensais.some(v => parseFloat(v.valorVendido || '0') > 0) && (
+                        <div className="media-percentual-container">
+                          <label>Média Percentual:</label>
+                          <div className="percentual-display">
+                            {calcularMediaPercentual(linha.valoresMensais).toFixed(2)}%
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
             <div style={{ textAlign: 'center', marginTop: '15px' }}>
               <button onClick={adicionarLinha} className="btn-secondary">
                 <FaPlus /> Adicionar Outra Linha
