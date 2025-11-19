@@ -19,13 +19,21 @@ interface GerenciamentoPlataformasProps {
 }
 
 type TipoCalculo = 'percentual' | 'valor';
+type PeriodoCalculo = '1mes' | '3meses';
+
+interface ValoresMensais {
+  valorVendido: string;
+  valorCobrado: string;
+}
 
 interface PlataformaLinha {
   nome: string;
   taxa: string;
   tipoCalculo: TipoCalculo;
+  periodoCalculo?: PeriodoCalculo;
   valorVendido?: string;
   valorCobrado?: string;
+  valoresMensais?: ValoresMensais[];
 }
 
 const GerenciamentoPlataformas = ({ isOpen, onClose }: GerenciamentoPlataformasProps) => {
@@ -36,10 +44,16 @@ const GerenciamentoPlataformas = ({ isOpen, onClose }: GerenciamentoPlataformasP
   const [formNome, setFormNome] = useState('');
   const [formTaxa, setFormTaxa] = useState('');
   const [formTipoCalculo, setFormTipoCalculo] = useState<TipoCalculo>('percentual');
+  const [formPeriodoCalculo, setFormPeriodoCalculo] = useState<PeriodoCalculo>('1mes');
   const [formValorVendido, setFormValorVendido] = useState('');
   const [formValorCobrado, setFormValorCobrado] = useState('');
+  const [formValoresMensais, setFormValoresMensais] = useState<ValoresMensais[]>([
+    { valorVendido: '', valorCobrado: '' },
+    { valorVendido: '', valorCobrado: '' },
+    { valorVendido: '', valorCobrado: '' },
+  ]);
   const [plataformasLinhas, setPlataformasLinhas] = useState<PlataformaLinha[]>([
-    { nome: '', taxa: '', tipoCalculo: 'percentual' },
+    { nome: '', taxa: '', tipoCalculo: 'percentual', periodoCalculo: '1mes' },
   ]);
 
   useEffect(() => {
@@ -54,14 +68,20 @@ const GerenciamentoPlataformas = ({ isOpen, onClose }: GerenciamentoPlataformasP
     setFormNome('');
     setFormTaxa('');
     setFormTipoCalculo('percentual');
+    setFormPeriodoCalculo('1mes');
     setFormValorVendido('');
     setFormValorCobrado('');
-    setPlataformasLinhas([{ nome: '', taxa: '', tipoCalculo: 'percentual' }]);
+    setFormValoresMensais([
+      { valorVendido: '', valorCobrado: '' },
+      { valorVendido: '', valorCobrado: '' },
+      { valorVendido: '', valorCobrado: '' },
+    ]);
+    setPlataformasLinhas([{ nome: '', taxa: '', tipoCalculo: 'percentual', periodoCalculo: '1mes' }]);
     setShowFormModal(true);
   };
 
   const adicionarLinha = () => {
-    setPlataformasLinhas([...plataformasLinhas, { nome: '', taxa: '', tipoCalculo: 'percentual' }]);
+    setPlataformasLinhas([...plataformasLinhas, { nome: '', taxa: '', tipoCalculo: 'percentual', periodoCalculo: '1mes' }]);
   };
 
   const removerLinha = (index: number) => {
@@ -81,15 +101,39 @@ const GerenciamentoPlataformas = ({ isOpen, onClose }: GerenciamentoPlataformasP
     return (valorCobrado / valorVendido) * 100;
   };
 
+  const calcularMediaPercentual = (valoresMensais: ValoresMensais[]): number => {
+    const percentuais: number[] = [];
+    
+    for (const valores of valoresMensais) {
+      const valorVendido = parseFloat(valores.valorVendido || '0');
+      const valorCobrado = parseFloat(valores.valorCobrado || '0');
+      
+      if (valorVendido > 0) {
+        percentuais.push(calcularPercentual(valorVendido, valorCobrado));
+      }
+    }
+    
+    if (percentuais.length === 0) return 0;
+    
+    const soma = percentuais.reduce((acc, val) => acc + val, 0);
+    return soma / percentuais.length;
+  };
+
   const handleEditar = (plataforma: Plataforma) => {
     setEditingPlataforma(plataforma);
     setModoMultiplo(false);
     setFormNome(plataforma.nome);
     setFormTaxa(plataforma.taxa.toString());
     setFormTipoCalculo('percentual');
+    setFormPeriodoCalculo('1mes');
     setFormValorVendido('');
     setFormValorCobrado('');
-    setPlataformasLinhas([{ nome: '', taxa: '', tipoCalculo: 'percentual' }]);
+    setFormValoresMensais([
+      { valorVendido: '', valorCobrado: '' },
+      { valorVendido: '', valorCobrado: '' },
+      { valorVendido: '', valorCobrado: '' },
+    ]);
+    setPlataformasLinhas([{ nome: '', taxa: '', tipoCalculo: 'percentual', periodoCalculo: '1mes' }]);
     setShowFormModal(true);
   };
 
@@ -107,18 +151,50 @@ const GerenciamentoPlataformas = ({ isOpen, onClose }: GerenciamentoPlataformasP
           taxa = parseFloat(linha.taxa);
           if (isNaN(taxa) || taxa < 0 || taxa > 100) continue;
         } else {
-          const valorVendido = parseFloat(linha.valorVendido || '0');
-          const valorCobrado = parseFloat(linha.valorCobrado || '0');
-          
-          if (isNaN(valorVendido) || valorVendido <= 0) continue;
-          if (isNaN(valorCobrado) || valorCobrado < 0) continue;
-          if (valorCobrado > valorVendido) {
-            await mostrarAlert('Erro', `Na plataforma "${linha.nome.trim()}", o valor cobrado não pode ser maior que o valor vendido.`);
-            return;
-          }
+          if (linha.periodoCalculo === '1mes') {
+            const valorVendido = parseFloat(linha.valorVendido || '0');
+            const valorCobrado = parseFloat(linha.valorCobrado || '0');
+            
+            if (isNaN(valorVendido) || valorVendido <= 0) continue;
+            if (isNaN(valorCobrado) || valorCobrado < 0) continue;
+            if (valorCobrado > valorVendido) {
+              await mostrarAlert('Erro', `Na plataforma "${linha.nome.trim()}", o valor cobrado não pode ser maior que o valor vendido.`);
+              return;
+            }
 
-          taxa = calcularPercentual(valorVendido, valorCobrado);
-          if (taxa > 100) continue;
+            taxa = calcularPercentual(valorVendido, valorCobrado);
+            if (taxa > 100) continue;
+          } else {
+            // Últimos 3 meses - calcular média
+            if (!linha.valoresMensais || linha.valoresMensais.length !== 3) continue;
+            
+            const valoresValidos = linha.valoresMensais.filter(
+              v => parseFloat(v.valorVendido || '0') > 0
+            );
+            
+            if (valoresValidos.length === 0) continue;
+            
+            // Validar cada mês
+            for (let i = 0; i < linha.valoresMensais.length; i++) {
+              const valores = linha.valoresMensais[i];
+              const valorVendido = parseFloat(valores.valorVendido || '0');
+              const valorCobrado = parseFloat(valores.valorCobrado || '0');
+              
+              if (valorVendido > 0) {
+                if (isNaN(valorCobrado) || valorCobrado < 0) {
+                  await mostrarAlert('Erro', `Na plataforma "${linha.nome.trim()}", o mês ${i + 1} tem valor vendido mas não tem valor cobrado.`);
+                  return;
+                }
+                if (valorCobrado > valorVendido) {
+                  await mostrarAlert('Erro', `Na plataforma "${linha.nome.trim()}", no mês ${i + 1}, o valor cobrado não pode ser maior que o valor vendido.`);
+                  return;
+                }
+              }
+            }
+            
+            taxa = calcularMediaPercentual(linha.valoresMensais);
+            if (taxa > 100) continue;
+          }
         }
 
         plataformasValidas.push({ nome: linha.nome.trim(), taxa });
@@ -167,26 +243,62 @@ const GerenciamentoPlataformas = ({ isOpen, onClose }: GerenciamentoPlataformasP
           return;
         }
       } else {
-        const valorVendido = parseFloat(formValorVendido);
-        const valorCobrado = parseFloat(formValorCobrado);
-        
-        if (isNaN(valorVendido) || valorVendido <= 0) {
-          await mostrarAlert('Erro', 'O valor vendido deve ser um número maior que zero.');
-          return;
-        }
-        if (isNaN(valorCobrado) || valorCobrado < 0) {
-          await mostrarAlert('Erro', 'O valor cobrado deve ser um número maior ou igual a zero.');
-          return;
-        }
-        if (valorCobrado > valorVendido) {
-          await mostrarAlert('Erro', 'O valor cobrado não pode ser maior que o valor vendido.');
-          return;
-        }
+        if (formPeriodoCalculo === '1mes') {
+          const valorVendido = parseFloat(formValorVendido);
+          const valorCobrado = parseFloat(formValorCobrado);
+          
+          if (isNaN(valorVendido) || valorVendido <= 0) {
+            await mostrarAlert('Erro', 'O valor vendido deve ser um número maior que zero.');
+            return;
+          }
+          if (isNaN(valorCobrado) || valorCobrado < 0) {
+            await mostrarAlert('Erro', 'O valor cobrado deve ser um número maior ou igual a zero.');
+            return;
+          }
+          if (valorCobrado > valorVendido) {
+            await mostrarAlert('Erro', 'O valor cobrado não pode ser maior que o valor vendido.');
+            return;
+          }
 
-        taxa = calcularPercentual(valorVendido, valorCobrado);
-        if (taxa > 100) {
-          await mostrarAlert('Erro', 'O percentual calculado não pode ser maior que 100%.');
-          return;
+          taxa = calcularPercentual(valorVendido, valorCobrado);
+          if (taxa > 100) {
+            await mostrarAlert('Erro', 'O percentual calculado não pode ser maior que 100%.');
+            return;
+          }
+        } else {
+          // Últimos 3 meses - calcular média
+          const valoresValidos = formValoresMensais.filter(
+            v => parseFloat(v.valorVendido || '0') > 0
+          );
+          
+          if (valoresValidos.length === 0) {
+            await mostrarAlert('Erro', 'Adicione pelo menos um mês com valor vendido maior que zero.');
+            return;
+          }
+          
+          // Validar cada mês
+          for (let i = 0; i < formValoresMensais.length; i++) {
+            const valores = formValoresMensais[i];
+            const valorVendido = parseFloat(valores.valorVendido || '0');
+            const valorCobrado = parseFloat(valores.valorCobrado || '0');
+            
+            if (valorVendido > 0) {
+              if (isNaN(valorCobrado) || valorCobrado < 0) {
+                await mostrarAlert('Erro', `O mês ${i + 1} tem valor vendido mas não tem valor cobrado.`);
+                return;
+              }
+              if (valorCobrado > valorVendido) {
+                await mostrarAlert('Erro', `No mês ${i + 1}, o valor cobrado não pode ser maior que o valor vendido.`);
+                return;
+              }
+            }
+          }
+          
+          taxa = calcularMediaPercentual(formValoresMensais);
+          if (taxa > 100) {
+            await mostrarAlert('Erro', 'A média percentual calculada não pode ser maior que 100%.');
+            return;
+          }
         }
       }
 
@@ -356,35 +468,120 @@ const GerenciamentoPlataformas = ({ isOpen, onClose }: GerenciamentoPlataformasP
                   </div>
                 ) : (
                   <>
-                    <div className="form-group valor">
-                      <label>Valor Vendido (R$):</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={linha.valorVendido || ''}
-                        onChange={(e) => atualizarLinha(index, 'valorVendido', e.target.value)}
-                        placeholder="0,00"
-                      />
+                    <div className="form-group periodo">
+                      <label>Período:</label>
+                      <select
+                        value={linha.periodoCalculo || '1mes'}
+                        onChange={(e) => {
+                          const novoPeriodo = e.target.value as PeriodoCalculo;
+                          atualizarLinha(index, 'periodoCalculo', novoPeriodo);
+                          if (novoPeriodo === '3meses' && !linha.valoresMensais) {
+                            const novasLinhas = [...plataformasLinhas];
+                            novasLinhas[index].valoresMensais = [
+                              { valorVendido: '', valorCobrado: '' },
+                              { valorVendido: '', valorCobrado: '' },
+                              { valorVendido: '', valorCobrado: '' },
+                            ];
+                            setPlataformasLinhas(novasLinhas);
+                          }
+                        }}
+                      >
+                        <option value="1mes">Último Mês</option>
+                        <option value="3meses">Últimos 3 Meses</option>
+                      </select>
                     </div>
-                    <div className="form-group valor">
-                      <label>Taxa Cobrada (R$):</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={linha.valorCobrado || ''}
-                        onChange={(e) => atualizarLinha(index, 'valorCobrado', e.target.value)}
-                        placeholder="0,00"
-                      />
-                    </div>
-                    {linha.valorVendido && linha.valorCobrado && parseFloat(linha.valorVendido) > 0 && (
-                      <div className="form-group percentual-calculado">
-                        <label>Percentual Calculado:</label>
-                        <div className="percentual-display">
-                          {calcularPercentual(parseFloat(linha.valorVendido), parseFloat(linha.valorCobrado || '0')).toFixed(2)}%
+                    {linha.periodoCalculo === '1mes' ? (
+                      <>
+                        <div className="form-group valor">
+                          <label>Valor Vendido (R$):</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={linha.valorVendido || ''}
+                            onChange={(e) => atualizarLinha(index, 'valorVendido', e.target.value)}
+                            placeholder="0,00"
+                          />
                         </div>
-                      </div>
+                        <div className="form-group valor">
+                          <label>Taxa Cobrada (R$):</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={linha.valorCobrado || ''}
+                            onChange={(e) => atualizarLinha(index, 'valorCobrado', e.target.value)}
+                            placeholder="0,00"
+                          />
+                        </div>
+                        {linha.valorVendido && linha.valorCobrado && parseFloat(linha.valorVendido) > 0 && (
+                          <div className="form-group percentual-calculado">
+                            <label>Percentual Calculado:</label>
+                            <div className="percentual-display">
+                              {calcularPercentual(parseFloat(linha.valorVendido), parseFloat(linha.valorCobrado || '0')).toFixed(2)}%
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        {[0, 1, 2].map((mesIndex) => {
+                          const valoresMensais = linha.valoresMensais || [
+                            { valorVendido: '', valorCobrado: '' },
+                            { valorVendido: '', valorCobrado: '' },
+                            { valorVendido: '', valorCobrado: '' },
+                          ];
+                          const atualizarValoresMensais = (campo: 'valorVendido' | 'valorCobrado', valor: string) => {
+                            const novasLinhas = [...plataformasLinhas];
+                            if (!novasLinhas[index].valoresMensais) {
+                              novasLinhas[index].valoresMensais = [
+                                { valorVendido: '', valorCobrado: '' },
+                                { valorVendido: '', valorCobrado: '' },
+                                { valorVendido: '', valorCobrado: '' },
+                              ];
+                            }
+                            novasLinhas[index].valoresMensais![mesIndex] = {
+                              ...novasLinhas[index].valoresMensais![mesIndex],
+                              [campo]: valor,
+                            };
+                            setPlataformasLinhas(novasLinhas);
+                          };
+                          return (
+                            <div key={mesIndex} className="mes-container">
+                              <div className="form-group valor">
+                                <label>Mês {mesIndex + 1} - Vendido (R$):</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={valoresMensais[mesIndex]?.valorVendido || ''}
+                                  onChange={(e) => atualizarValoresMensais('valorVendido', e.target.value)}
+                                  placeholder="0,00"
+                                />
+                              </div>
+                              <div className="form-group valor">
+                                <label>Mês {mesIndex + 1} - Cobrado (R$):</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={valoresMensais[mesIndex]?.valorCobrado || ''}
+                                  onChange={(e) => atualizarValoresMensais('valorCobrado', e.target.value)}
+                                  placeholder="0,00"
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {linha.valoresMensais && linha.valoresMensais.some(v => parseFloat(v.valorVendido || '0') > 0) && (
+                          <div className="form-group percentual-calculado">
+                            <label>Média Percentual:</label>
+                            <div className="percentual-display">
+                              {calcularMediaPercentual(linha.valoresMensais).toFixed(2)}%
+                            </div>
+                          </div>
+                        )}
+                      </>
                     )}
                   </>
                 )}
@@ -449,38 +646,103 @@ const GerenciamentoPlataformas = ({ isOpen, onClose }: GerenciamentoPlataformasP
             ) : (
               <>
                 <div className="form-group">
-                  <label htmlFor="plataforma-valor-vendido">Valor Vendido (R$):</label>
-                  <input
-                    type="number"
-                    id="plataforma-valor-vendido"
+                  <label htmlFor="plataforma-periodo">Período:</label>
+                  <select
+                    id="plataforma-periodo"
                     className="form-input"
-                    step="0.01"
-                    min="0"
-                    value={formValorVendido}
-                    onChange={(e) => setFormValorVendido(e.target.value)}
-                    placeholder="0,00"
-                  />
+                    value={formPeriodoCalculo}
+                    onChange={(e) => setFormPeriodoCalculo(e.target.value as PeriodoCalculo)}
+                  >
+                    <option value="1mes">Último Mês</option>
+                    <option value="3meses">Últimos 3 Meses</option>
+                  </select>
                 </div>
-                <div className="form-group">
-                  <label htmlFor="plataforma-valor-cobrado">Taxa Cobrada (R$):</label>
-                  <input
-                    type="number"
-                    id="plataforma-valor-cobrado"
-                    className="form-input"
-                    step="0.01"
-                    min="0"
-                    value={formValorCobrado}
-                    onChange={(e) => setFormValorCobrado(e.target.value)}
-                    placeholder="0,00"
-                  />
-                </div>
-                {formValorVendido && formValorCobrado && parseFloat(formValorVendido) > 0 && (
-                  <div className="form-group">
-                    <label>Percentual Calculado:</label>
-                    <div className="percentual-display">
-                      {calcularPercentual(parseFloat(formValorVendido), parseFloat(formValorCobrado)).toFixed(2)}%
+                {formPeriodoCalculo === '1mes' ? (
+                  <>
+                    <div className="form-group">
+                      <label htmlFor="plataforma-valor-vendido">Valor Vendido (R$):</label>
+                      <input
+                        type="number"
+                        id="plataforma-valor-vendido"
+                        className="form-input"
+                        step="0.01"
+                        min="0"
+                        value={formValorVendido}
+                        onChange={(e) => setFormValorVendido(e.target.value)}
+                        placeholder="0,00"
+                      />
                     </div>
-                  </div>
+                    <div className="form-group">
+                      <label htmlFor="plataforma-valor-cobrado">Taxa Cobrada (R$):</label>
+                      <input
+                        type="number"
+                        id="plataforma-valor-cobrado"
+                        className="form-input"
+                        step="0.01"
+                        min="0"
+                        value={formValorCobrado}
+                        onChange={(e) => setFormValorCobrado(e.target.value)}
+                        placeholder="0,00"
+                      />
+                    </div>
+                    {formValorVendido && formValorCobrado && parseFloat(formValorVendido) > 0 && (
+                      <div className="form-group">
+                        <label>Percentual Calculado:</label>
+                        <div className="percentual-display">
+                          {calcularPercentual(parseFloat(formValorVendido), parseFloat(formValorCobrado)).toFixed(2)}%
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {[0, 1, 2].map((mesIndex) => (
+                      <div key={mesIndex} style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
+                        <div className="form-group" style={{ flex: 1 }}>
+                          <label htmlFor={`mes-${mesIndex}-vendido`}>Mês {mesIndex + 1} - Valor Vendido (R$):</label>
+                          <input
+                            type="number"
+                            id={`mes-${mesIndex}-vendido`}
+                            className="form-input"
+                            step="0.01"
+                            min="0"
+                            value={formValoresMensais[mesIndex]?.valorVendido || ''}
+                            onChange={(e) => {
+                              const novosValores = [...formValoresMensais];
+                              novosValores[mesIndex] = { ...novosValores[mesIndex], valorVendido: e.target.value };
+                              setFormValoresMensais(novosValores);
+                            }}
+                            placeholder="0,00"
+                          />
+                        </div>
+                        <div className="form-group" style={{ flex: 1 }}>
+                          <label htmlFor={`mes-${mesIndex}-cobrado`}>Mês {mesIndex + 1} - Taxa Cobrada (R$):</label>
+                          <input
+                            type="number"
+                            id={`mes-${mesIndex}-cobrado`}
+                            className="form-input"
+                            step="0.01"
+                            min="0"
+                            value={formValoresMensais[mesIndex]?.valorCobrado || ''}
+                            onChange={(e) => {
+                              const novosValores = [...formValoresMensais];
+                              novosValores[mesIndex] = { ...novosValores[mesIndex], valorCobrado: e.target.value };
+                              setFormValoresMensais(novosValores);
+                            }}
+                            placeholder="0,00"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    {formValoresMensais.some(v => parseFloat(v.valorVendido || '0') > 0) && (
+                      <div className="form-group">
+                        <label>Média Percentual:</label>
+                        <div className="percentual-display">
+                          {calcularMediaPercentual(formValoresMensais).toFixed(2)}%
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )}

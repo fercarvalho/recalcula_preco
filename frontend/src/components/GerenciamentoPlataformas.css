@@ -143,6 +143,22 @@
   min-width: 180px;
 }
 
+.item-linha .form-group.periodo {
+  flex: 1;
+  min-width: 150px;
+}
+
+.mes-container {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.mes-container .form-group {
+  flex: 1;
+}
+
 .item-linha .form-group.percentual-calculado {
   flex: 1;
   max-width: 150px;
