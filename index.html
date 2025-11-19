@@ -349,118 +349,51 @@
         </div>
     </div>
 
-    <!-- Modal de Adicionar/Editar Plataforma -->
+    <!-- Modal de Adicionar Plataformas -->
     <div id="modal-plataforma-form" class="modal">
-        <div class="modal-content modal-small">
+        <div class="modal-content modal-large">
             <div class="modal-header">
-                <h2 id="modal-plataforma-titulo">Adicionar Plataforma</h2>
+                <h2 id="modal-plataforma-titulo">Adicionar Plataformas</h2>
                 <span class="close-modal" data-modal="plataforma-form">&times;</span>
             </div>
             <div class="modal-body">
-                <div class="form-group">
-                    <label for="plataforma-nome">Nome da Plataforma:</label>
-                    <input type="text" id="plataforma-nome" class="form-input" placeholder="Ex: iFood, Uber Eats, etc.">
+                <div id="plataformas-linhas-container" style="display: flex; flex-direction: column; gap: 20px;">
+                    <!-- Linhas de plataformas serão adicionadas dinamicamente aqui -->
                 </div>
-                <div class="form-group">
-                    <label>Método de Cálculo da Taxa:</label>
-                    <div class="radio-group" style="flex-direction: column; gap: 10px;">
-                        <label class="radio-label">
-                            <input type="radio" name="metodo-taxa" value="calcular" checked>
-                            <span>Calcular automaticamente (informar vendas e cobrança)</span>
-                        </label>
-                        <label class="radio-label">
-                            <input type="radio" name="metodo-taxa" value="direto">
-                            <span>Inserir percentual diretamente</span>
-                        </label>
-                    </div>
-                </div>
-                <div id="grupo-calcular-taxa">
-                    <div class="form-group">
-                        <label>Período de Cálculo:</label>
-                        <div class="radio-group" style="flex-direction: row; gap: 20px;">
-                            <label class="radio-label">
-                                <input type="radio" name="periodo-calculo" value="1" checked>
-                                <span>1 mês (mês anterior)</span>
-                            </label>
-                            <label class="radio-label">
-                                <input type="radio" name="periodo-calculo" value="3">
-                                <span>3 meses (média)</span>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <!-- Campos para 1 mês -->
-                    <div id="campos-1-mes">
-                        <div class="form-group">
-                            <label for="plataforma-vendas">Total Vendido na Plataforma (R$):</label>
-                            <input type="number" id="plataforma-vendas" class="form-input" step="0.01" min="0" placeholder="0,00">
-                        </div>
-                        <div class="form-group">
-                            <label for="plataforma-cobranca">Total Cobrado pela Plataforma (R$):</label>
-                            <input type="number" id="plataforma-cobranca" class="form-input" step="0.01" min="0" placeholder="0,00">
-                        </div>
-                    </div>
-                    
-                    <!-- Campos para 3 meses -->
-                    <div id="campos-3-meses" style="display: none;">
-                        <div class="form-group">
-                            <label style="font-weight: 600; margin-bottom: 10px; display: block;">Mês 1 (mais antigo):</label>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                                <div>
-                                    <label for="plataforma-vendas-mes1" style="font-size: 0.9em;">Vendas (R$):</label>
-                                    <input type="number" id="plataforma-vendas-mes1" class="form-input" step="0.01" min="0" placeholder="0,00">
-                                </div>
-                                <div>
-                                    <label for="plataforma-cobranca-mes1" style="font-size: 0.9em;">Cobrança (R$):</label>
-                                    <input type="number" id="plataforma-cobranca-mes1" class="form-input" step="0.01" min="0" placeholder="0,00">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label style="font-weight: 600; margin-bottom: 10px; display: block;">Mês 2:</label>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                                <div>
-                                    <label for="plataforma-vendas-mes2" style="font-size: 0.9em;">Vendas (R$):</label>
-                                    <input type="number" id="plataforma-vendas-mes2" class="form-input" step="0.01" min="0" placeholder="0,00">
-                                </div>
-                                <div>
-                                    <label for="plataforma-cobranca-mes2" style="font-size: 0.9em;">Cobrança (R$):</label>
-                                    <input type="number" id="plataforma-cobranca-mes2" class="form-input" step="0.01" min="0" placeholder="0,00">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label style="font-weight: 600; margin-bottom: 10px; display: block;">Mês 3 (mais recente):</label>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                                <div>
-                                    <label for="plataforma-vendas-mes3" style="font-size: 0.9em;">Vendas (R$):</label>
-                                    <input type="number" id="plataforma-vendas-mes3" class="form-input" step="0.01" min="0" placeholder="0,00">
-                                </div>
-                                <div>
-                                    <label for="plataforma-cobranca-mes3" style="font-size: 0.9em;">Cobrança (R$):</label>
-                                    <input type="number" id="plataforma-cobranca-mes3" class="form-input" step="0.01" min="0" placeholder="0,00">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group" style="background: #e8f5e9; padding: 15px; border-radius: 8px;">
-                        <label style="font-weight: 600;">Taxa Calculada:</label>
-                        <div id="taxa-calculada" style="font-size: 1.2em; color: #28a745; font-weight: 600;">0%</div>
-                        <small id="taxa-detalhes" style="display: block; margin-top: 5px; color: #666; font-size: 0.85em;"></small>
-                    </div>
-                </div>
-                <div id="grupo-taxa-direta" style="display: none;">
-                    <div class="form-group">
-                        <label for="plataforma-taxa">Taxa da Plataforma (%):</label>
-                        <input type="number" id="plataforma-taxa" class="form-input" step="0.01" min="0" max="100" placeholder="0,00">
-                        <small class="form-help">Percentual que a plataforma cobra sobre cada venda</small>
-                    </div>
+                <div style="margin-top: 20px; text-align: center;">
+                    <button id="btn-adicionar-linha-plataforma" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-plus"></i> Adicionar Outra Plataforma
+                    </button>
                 </div>
             </div>
             <div class="modal-footer">
                 <button id="btn-plataforma-cancel" class="btn-secondary">Cancelar</button>
-                <button id="btn-plataforma-salvar" class="btn-primary">Salvar</button>
+                <button id="btn-plataforma-salvar" class="btn-primary">Adicionar Todas</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de Editar Plataforma (mantido para edição individual) -->
+    <div id="modal-plataforma-editar" class="modal">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h2>Editar Plataforma</h2>
+                <span class="close-modal" data-modal="plataforma-editar">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="plataforma-editar-nome">Nome da Plataforma:</label>
+                    <input type="text" id="plataforma-editar-nome" class="form-input" placeholder="Ex: iFood, Uber Eats, etc.">
+                </div>
+                <div class="form-group">
+                    <label for="plataforma-editar-taxa">Taxa da Plataforma (%):</label>
+                    <input type="number" id="plataforma-editar-taxa" class="form-input" step="0.01" min="0" max="100" placeholder="0,00">
+                    <small class="form-help">Percentual que a plataforma cobra sobre cada venda</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-plataforma-editar-cancel" class="btn-secondary">Cancelar</button>
+                <button id="btn-plataforma-editar-salvar" class="btn-primary">Salvar</button>
             </div>
         </div>
     </div>

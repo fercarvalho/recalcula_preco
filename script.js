@@ -2690,7 +2690,7 @@ function atualizarListaPlataformas() {
         btnEditar.innerHTML = '<i class="fas fa-edit"></i> Editar';
         btnEditar.onclick = () => {
             document.getElementById('modal-plataformas').classList.remove('show');
-            abrirFormPlataforma(index);
+            abrirEditarPlataforma(index);
         };
         
         const btnExcluir = document.createElement('button');
@@ -2715,71 +2715,171 @@ function atualizarListaPlataformas() {
     });
 }
 
-// Abrir formulário de plataforma
-function abrirFormPlataforma(index = null) {
-    const modal = document.getElementById('modal-plataforma-form');
-    const titulo = document.getElementById('modal-plataforma-titulo');
-    const nomeInput = document.getElementById('plataforma-nome');
-    const vendasInput = document.getElementById('plataforma-vendas');
-    const cobrancaInput = document.getElementById('plataforma-cobranca');
-    const taxaInput = document.getElementById('plataforma-taxa');
-    const grupoCalcular = document.getElementById('grupo-calcular-taxa');
-    const grupoDireto = document.getElementById('grupo-taxa-direta');
-    const campos1Mes = document.getElementById('campos-1-mes');
-    const campos3Meses = document.getElementById('campos-3-meses');
-    const taxaCalculada = document.getElementById('taxa-calculada');
-    const taxaDetalhes = document.getElementById('taxa-detalhes');
-    const metodoRadios = document.querySelectorAll('input[name="metodo-taxa"]');
-    const periodoRadios = document.querySelectorAll('input[name="periodo-calculo"]');
+// Criar linha de plataforma no modal de adicionar múltiplas
+function criarLinhaPlataforma(container, podeRemover = false) {
+    const linha = document.createElement('div');
+    linha.className = 'plataforma-linha';
+    linha.style.cssText = 'border: 2px solid #e9ecef; border-radius: 10px; padding: 20px; background: #f8f9fa;';
     
-    // Limpar campos
-    nomeInput.value = '';
-    vendasInput.value = '';
-    cobrancaInput.value = '';
-    taxaInput.value = '';
-    taxaCalculada.textContent = '0%';
-    taxaDetalhes.textContent = '';
+    // Cabeçalho da linha
+    const header = document.createElement('div');
+    header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;';
     
-    // Limpar campos de 3 meses
+    const tituloLinha = document.createElement('h4');
+    tituloLinha.textContent = 'Plataforma';
+    tituloLinha.style.cssText = 'margin: 0; color: #333; font-size: 1.1em;';
+    
+    const btnRemover = document.createElement('button');
+    if (podeRemover) {
+        btnRemover.className = 'btn-excluir-plataforma';
+        btnRemover.innerHTML = '<i class="fas fa-times"></i>';
+        btnRemover.style.cssText = 'padding: 5px 10px; font-size: 0.9em;';
+        btnRemover.onclick = () => linha.remove();
+    }
+    
+    header.appendChild(tituloLinha);
+    if (podeRemover) header.appendChild(btnRemover);
+    
+    // Campo Nome
+    const grupoNome = document.createElement('div');
+    grupoNome.className = 'form-group';
+    const labelNome = document.createElement('label');
+    labelNome.textContent = 'Nome da Plataforma:';
+    const inputNome = document.createElement('input');
+    inputNome.type = 'text';
+    inputNome.className = 'form-input plataforma-nome-input';
+    inputNome.placeholder = 'Ex: iFood, Uber Eats, etc.';
+    grupoNome.appendChild(labelNome);
+    grupoNome.appendChild(inputNome);
+    
+    // Método de cálculo
+    const grupoMetodo = document.createElement('div');
+    grupoMetodo.className = 'form-group';
+    const labelMetodo = document.createElement('label');
+    labelMetodo.textContent = 'Método de Cálculo da Taxa:';
+    const radioGroup = document.createElement('div');
+    radioGroup.className = 'radio-group';
+    radioGroup.style.cssText = 'flex-direction: row; gap: 20px;';
+    
+    const radioCalcular = document.createElement('label');
+    radioCalcular.className = 'radio-label';
+    radioCalcular.innerHTML = '<input type="radio" name="metodo-taxa-' + Date.now() + '-' + Math.random() + '" value="calcular" checked> <span>Calcular automaticamente</span>';
+    
+    const radioDireto = document.createElement('label');
+    radioDireto.className = 'radio-label';
+    radioDireto.innerHTML = '<input type="radio" name="metodo-taxa-' + Date.now() + '-' + Math.random() + '" value="direto"> <span>Inserir percentual</span>';
+    
+    radioGroup.appendChild(radioCalcular);
+    radioGroup.appendChild(radioDireto);
+    grupoMetodo.appendChild(labelMetodo);
+    grupoMetodo.appendChild(radioGroup);
+    
+    // Container para campos dinâmicos
+    const camposContainer = document.createElement('div');
+    camposContainer.className = 'plataforma-campos-container';
+    
+    // Campos de cálculo automático (1 mês)
+    const grupoCalcular = document.createElement('div');
+    grupoCalcular.className = 'grupo-calcular-taxa';
+    
+    const grupoPeriodo = document.createElement('div');
+    grupoPeriodo.className = 'form-group';
+    const labelPeriodo = document.createElement('label');
+    labelPeriodo.textContent = 'Período de Cálculo:';
+    const periodoGroup = document.createElement('div');
+    periodoGroup.className = 'radio-group';
+    periodoGroup.style.cssText = 'flex-direction: row; gap: 20px;';
+    
+    const radio1Mes = document.createElement('label');
+    radio1Mes.className = 'radio-label';
+    radio1Mes.innerHTML = '<input type="radio" name="periodo-' + Date.now() + '-' + Math.random() + '" value="1" checked> <span>1 mês</span>';
+    
+    const radio3Meses = document.createElement('label');
+    radio3Meses.className = 'radio-label';
+    radio3Meses.innerHTML = '<input type="radio" name="periodo-' + Date.now() + '-' + Math.random() + '" value="3"> <span>3 meses (média)</span>';
+    
+    periodoGroup.appendChild(radio1Mes);
+    periodoGroup.appendChild(radio3Meses);
+    grupoPeriodo.appendChild(labelPeriodo);
+    grupoPeriodo.appendChild(periodoGroup);
+    
+    // Campos 1 mês
+    const campos1Mes = document.createElement('div');
+    campos1Mes.className = 'campos-1-mes';
+    
+    const grupoVendas = document.createElement('div');
+    grupoVendas.className = 'form-group';
+    grupoVendas.innerHTML = '<label>Total Vendido (R$):</label><input type="number" class="form-input vendas-input" step="0.01" min="0" placeholder="0,00">';
+    
+    const grupoCobranca = document.createElement('div');
+    grupoCobranca.className = 'form-group';
+    grupoCobranca.innerHTML = '<label>Total Cobrado (R$):</label><input type="number" class="form-input cobranca-input" step="0.01" min="0" placeholder="0,00">';
+    
+    campos1Mes.appendChild(grupoVendas);
+    campos1Mes.appendChild(grupoCobranca);
+    
+    // Campos 3 meses
+    const campos3Meses = document.createElement('div');
+    campos3Meses.className = 'campos-3-meses';
+    campos3Meses.style.display = 'none';
+    
     for (let i = 1; i <= 3; i++) {
-        document.getElementById(`plataforma-vendas-mes${i}`).value = '';
-        document.getElementById(`plataforma-cobranca-mes${i}`).value = '';
+        const grupoMes = document.createElement('div');
+        grupoMes.className = 'form-group';
+        grupoMes.innerHTML = `
+            <label style="font-weight: 600; margin-bottom: 10px; display: block;">Mês ${i}:</label>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div>
+                    <label style="font-size: 0.9em;">Vendas (R$):</label>
+                    <input type="number" class="form-input vendas-mes${i}-input" step="0.01" min="0" placeholder="0,00">
+                </div>
+                <div>
+                    <label style="font-size: 0.9em;">Cobrança (R$):</label>
+                    <input type="number" class="form-input cobranca-mes${i}-input" step="0.01" min="0" placeholder="0,00">
+                </div>
+            </div>
+        `;
+        campos3Meses.appendChild(grupoMes);
     }
     
-    // Se está editando, preencher valores
-    if (index !== null && plataformas[index]) {
-        const plataforma = plataformas[index];
-        titulo.textContent = 'Editar Plataforma';
-        nomeInput.value = plataforma.nome;
-        taxaInput.value = plataforma.taxa;
-        metodoRadios[1].checked = true; // Método direto
-        grupoCalcular.style.display = 'none';
-        grupoDireto.style.display = 'block';
-    } else {
-        titulo.textContent = 'Adicionar Plataforma';
-        metodoRadios[0].checked = true; // Método calcular
-        periodoRadios[0].checked = true; // 1 mês
-        grupoCalcular.style.display = 'block';
-        grupoDireto.style.display = 'none';
-        campos1Mes.style.display = 'block';
-        campos3Meses.style.display = 'none';
-    }
+    grupoCalcular.appendChild(grupoPeriodo);
+    grupoCalcular.appendChild(campos1Mes);
+    grupoCalcular.appendChild(campos3Meses);
     
-    // Event listeners para método de cálculo
-    metodoRadios.forEach(radio => {
+    // Taxa calculada preview
+    const previewTaxa = document.createElement('div');
+    previewTaxa.className = 'form-group';
+    previewTaxa.style.cssText = 'background: #e8f5e9; padding: 15px; border-radius: 8px; margin-top: 10px;';
+    previewTaxa.innerHTML = '<label style="font-weight: 600;">Taxa Calculada:</label><div class="taxa-calculada-linha" style="font-size: 1.2em; color: #28a745; font-weight: 600;">0%</div>';
+    
+    grupoCalcular.appendChild(previewTaxa);
+    
+    // Campo taxa direta
+    const grupoTaxaDireta = document.createElement('div');
+    grupoTaxaDireta.className = 'grupo-taxa-direta';
+    grupoTaxaDireta.style.display = 'none';
+    grupoTaxaDireta.innerHTML = '<div class="form-group"><label>Taxa da Plataforma (%):</label><input type="number" class="form-input taxa-direta-input" step="0.01" min="0" max="100" placeholder="0,00"><small class="form-help">Percentual que a plataforma cobra sobre cada venda</small></div>';
+    
+    camposContainer.appendChild(grupoCalcular);
+    camposContainer.appendChild(grupoTaxaDireta);
+    
+    // Event listeners
+    const radiosMetodo = linha.querySelectorAll('input[name^="metodo-taxa"]');
+    radiosMetodo.forEach(radio => {
         radio.onchange = () => {
             if (radio.value === 'calcular') {
                 grupoCalcular.style.display = 'block';
-                grupoDireto.style.display = 'none';
+                grupoTaxaDireta.style.display = 'none';
             } else {
                 grupoCalcular.style.display = 'none';
-                grupoDireto.style.display = 'block';
+                grupoTaxaDireta.style.display = 'block';
             }
+            atualizarTaxaLinha(linha);
         };
     });
     
-    // Event listeners para período de cálculo
-    periodoRadios.forEach(radio => {
+    const radiosPeriodo = linha.querySelectorAll('input[name^="periodo"]');
+    radiosPeriodo.forEach(radio => {
         radio.onchange = () => {
             if (radio.value === '1') {
                 campos1Mes.style.display = 'block';
@@ -2788,130 +2888,221 @@ function abrirFormPlataforma(index = null) {
                 campos1Mes.style.display = 'none';
                 campos3Meses.style.display = 'block';
             }
-            atualizarTaxaCalculada();
+            atualizarTaxaLinha(linha);
         };
     });
     
-    // Calcular taxa em tempo real - 1 mês
-    vendasInput.addEventListener('input', atualizarTaxaCalculada);
-    cobrancaInput.addEventListener('input', atualizarTaxaCalculada);
+    // Event listeners para inputs
+    linha.querySelectorAll('input[type="number"]').forEach(input => {
+        input.addEventListener('input', () => atualizarTaxaLinha(linha));
+    });
     
-    // Calcular taxa em tempo real - 3 meses
-    for (let i = 1; i <= 3; i++) {
-        const vendasMes = document.getElementById(`plataforma-vendas-mes${i}`);
-        const cobrancaMes = document.getElementById(`plataforma-cobranca-mes${i}`);
-        vendasMes.addEventListener('input', atualizarTaxaCalculada);
-        cobrancaMes.addEventListener('input', atualizarTaxaCalculada);
+    // Montar linha
+    linha.appendChild(header);
+    linha.appendChild(grupoNome);
+    linha.appendChild(grupoMetodo);
+    linha.appendChild(camposContainer);
+    
+    container.appendChild(linha);
+    
+    // Focar no campo nome
+    inputNome.focus();
+    
+    return linha;
+}
+
+// Atualizar taxa calculada de uma linha
+function atualizarTaxaLinha(linha) {
+    const preview = linha.querySelector('.taxa-calculada-linha');
+    if (!preview) return;
+    
+    const metodoSelecionado = linha.querySelector('input[name^="metodo-taxa"]:checked');
+    if (!metodoSelecionado) return;
+    
+    if (metodoSelecionado.value === 'direto') {
+        const taxa = parseFloat(linha.querySelector('.taxa-direta-input')?.value) || 0;
+        preview.textContent = `${taxa.toFixed(2)}%`;
+        return;
     }
     
-    function atualizarTaxaCalculada() {
-        const periodoSelecionado = document.querySelector('input[name="periodo-calculo"]:checked').value;
-        let taxa = 0;
-        let detalhes = '';
-        
-        if (periodoSelecionado === '1') {
-            // Cálculo de 1 mês
-            const vendas = parseFloat(vendasInput.value) || 0;
-            const cobranca = parseFloat(cobrancaInput.value) || 0;
-            if (vendas > 0) {
-                taxa = calcularTaxa(vendas, cobranca);
-            }
+    // Cálculo automático
+    const periodoSelecionado = linha.querySelector('input[name^="periodo"]:checked');
+    if (!periodoSelecionado) return;
+    
+    if (periodoSelecionado.value === '1') {
+        const vendas = parseFloat(linha.querySelector('.vendas-input')?.value) || 0;
+        const cobranca = parseFloat(linha.querySelector('.cobranca-input')?.value) || 0;
+        if (vendas > 0) {
+            const taxa = calcularTaxa(vendas, cobranca);
+            preview.textContent = `${taxa.toFixed(2)}%`;
         } else {
-            // Cálculo de 3 meses (média)
-            const taxas = [];
-            const detalhesMeses = [];
+            preview.textContent = '0%';
+        }
+    } else {
+        // 3 meses
+        const taxas = [];
+        for (let i = 1; i <= 3; i++) {
+            const vendas = parseFloat(linha.querySelector(`.vendas-mes${i}-input`)?.value) || 0;
+            const cobranca = parseFloat(linha.querySelector(`.cobranca-mes${i}-input`)?.value) || 0;
+            if (vendas > 0) {
+                const taxaMes = calcularTaxa(vendas, cobranca);
+                taxas.push(taxaMes);
+            }
+        }
+        if (taxas.length > 0) {
+            const taxaMedia = taxas.reduce((a, b) => a + b, 0) / taxas.length;
+            preview.textContent = `${taxaMedia.toFixed(2)}%`;
+        } else {
+            preview.textContent = '0%';
+        }
+    }
+}
+
+// Abrir formulário de plataforma (adicionar múltiplas)
+function abrirFormPlataforma() {
+    const modal = document.getElementById('modal-plataforma-form');
+    const container = document.getElementById('plataformas-linhas-container');
+    
+    // Limpar container
+    container.innerHTML = '';
+    
+    // Criar primeira linha
+    criarLinhaPlataforma(container, false);
+    
+    // Botão adicionar linha
+    document.getElementById('btn-adicionar-linha-plataforma').onclick = () => {
+        criarLinhaPlataforma(container, true);
+    };
+    
+    // Salvar todas
+    document.getElementById('btn-plataforma-salvar').onclick = () => {
+        const linhas = container.querySelectorAll('.plataforma-linha');
+        const novasPlataformas = [];
+        
+        linhas.forEach((linha, index) => {
+            const nome = linha.querySelector('.plataforma-nome-input')?.value.trim();
+            if (!nome) return; // Pular linhas sem nome
             
-            for (let i = 1; i <= 3; i++) {
-                const vendas = parseFloat(document.getElementById(`plataforma-vendas-mes${i}`).value) || 0;
-                const cobranca = parseFloat(document.getElementById(`plataforma-cobranca-mes${i}`).value) || 0;
+            const metodoSelecionado = linha.querySelector('input[name^="metodo-taxa"]:checked');
+            if (!metodoSelecionado) return;
+            
+            let taxa = 0;
+            
+            if (metodoSelecionado.value === 'direto') {
+                taxa = parseFloat(linha.querySelector('.taxa-direta-input')?.value) || 0;
+                if (taxa === 0) {
+                    mostrarAlert('Atenção', `Por favor, informe a taxa da plataforma "${nome}".`);
+                    return;
+                }
+            } else {
+                // Cálculo automático
+                const periodoSelecionado = linha.querySelector('input[name^="periodo"]:checked');
+                if (!periodoSelecionado) return;
                 
-                if (vendas > 0) {
-                    const taxaMes = calcularTaxa(vendas, cobranca);
-                    taxas.push(taxaMes);
-                    detalhesMeses.push(`Mês ${i}: ${taxaMes.toFixed(2)}%`);
+                if (periodoSelecionado.value === '1') {
+                    const vendas = parseFloat(linha.querySelector('.vendas-input')?.value) || 0;
+                    const cobranca = parseFloat(linha.querySelector('.cobranca-input')?.value) || 0;
+                    if (vendas === 0) {
+                        mostrarAlert('Atenção', `Por favor, informe o valor total vendido para "${nome}".`);
+                        return;
+                    }
+                    taxa = calcularTaxa(vendas, cobranca);
+                } else {
+                    // 3 meses
+                    const taxas = [];
+                    for (let i = 1; i <= 3; i++) {
+                        const vendas = parseFloat(linha.querySelector(`.vendas-mes${i}-input`)?.value) || 0;
+                        const cobranca = parseFloat(linha.querySelector(`.cobranca-mes${i}-input`)?.value) || 0;
+                        if (vendas > 0) {
+                            const taxaMes = calcularTaxa(vendas, cobranca);
+                            taxas.push(taxaMes);
+                        }
+                    }
+                    if (taxas.length === 0) {
+                        mostrarAlert('Atenção', `Por favor, informe os dados de pelo menos um mês para "${nome}".`);
+                        return;
+                    }
+                    taxa = taxas.reduce((a, b) => a + b, 0) / taxas.length;
                 }
             }
             
-            if (taxas.length > 0) {
-                taxa = taxas.reduce((a, b) => a + b, 0) / taxas.length;
-                detalhes = detalhesMeses.join(' | ') + ` | Média: ${taxa.toFixed(2)}%`;
-            }
+            novasPlataformas.push({ nome, taxa });
+        });
+        
+        if (novasPlataformas.length === 0) {
+            mostrarAlert('Atenção', 'Por favor, adicione pelo menos uma plataforma válida.');
+            return;
         }
         
-        taxaCalculada.textContent = `${taxa.toFixed(2)}%`;
-        taxaDetalhes.textContent = detalhes;
+        // Adicionar todas as plataformas
+        novasPlataformas.forEach(plataforma => {
+            plataformas.push(plataforma);
+        });
+        
+        salvarPlataformas();
+        modal.classList.remove('show');
+        atualizarPrecosPlataformas();
+        mostrarAlert('Sucesso', `${novasPlataformas.length} plataforma(s) adicionada(s) com sucesso!`);
+    };
+    
+    // Cancelar
+    document.getElementById('btn-plataforma-cancel').onclick = () => {
+        modal.classList.remove('show');
+    };
+    
+    modal.querySelector('.close-modal').onclick = () => {
+        modal.classList.remove('show');
+    };
+    
+    modal.onclick = (e) => {
+        if (e.target === modal) {
+            modal.classList.remove('show');
+        }
+    };
+    
+    modal.classList.add('show');
+}
+
+// Abrir modal de editar plataforma individual
+function abrirEditarPlataforma(index) {
+    const modal = document.getElementById('modal-plataforma-editar');
+    const nomeInput = document.getElementById('plataforma-editar-nome');
+    const taxaInput = document.getElementById('plataforma-editar-taxa');
+    
+    if (!plataformas[index]) {
+        mostrarAlert('Erro', 'Plataforma não encontrada.');
+        return;
     }
     
+    const plataforma = plataformas[index];
+    nomeInput.value = plataforma.nome;
+    taxaInput.value = plataforma.taxa;
+    
     // Salvar
-    document.getElementById('btn-plataforma-salvar').onclick = () => {
+    document.getElementById('btn-plataforma-editar-salvar').onclick = () => {
         const nome = nomeInput.value.trim();
+        const taxa = parseFloat(taxaInput.value) || 0;
+        
         if (!nome) {
             mostrarAlert('Atenção', 'Por favor, informe o nome da plataforma.');
             return;
         }
         
-        const metodoSelecionado = document.querySelector('input[name="metodo-taxa"]:checked').value;
-        let taxa = 0;
-        
-        if (metodoSelecionado === 'calcular') {
-            const periodoSelecionado = document.querySelector('input[name="periodo-calculo"]:checked').value;
-            
-            if (periodoSelecionado === '1') {
-                // Cálculo de 1 mês
-                const vendas = parseFloat(vendasInput.value) || 0;
-                const cobranca = parseFloat(cobrancaInput.value) || 0;
-                if (vendas === 0) {
-                    mostrarAlert('Atenção', 'Por favor, informe o valor total vendido.');
-                    return;
-                }
-                taxa = calcularTaxa(vendas, cobranca);
-            } else {
-                // Cálculo de 3 meses (média)
-                const taxas = [];
-                let temDados = false;
-                
-                for (let i = 1; i <= 3; i++) {
-                    const vendas = parseFloat(document.getElementById(`plataforma-vendas-mes${i}`).value) || 0;
-                    const cobranca = parseFloat(document.getElementById(`plataforma-cobranca-mes${i}`).value) || 0;
-                    
-                    if (vendas > 0) {
-                        temDados = true;
-                        const taxaMes = calcularTaxa(vendas, cobranca);
-                        taxas.push(taxaMes);
-                    }
-                }
-                
-                if (!temDados || taxas.length === 0) {
-                    mostrarAlert('Atenção', 'Por favor, informe os dados de pelo menos um mês.');
-                    return;
-                }
-                
-                taxa = taxas.reduce((a, b) => a + b, 0) / taxas.length;
-            }
-        } else {
-            taxa = parseFloat(taxaInput.value) || 0;
-            if (taxa === 0) {
-                mostrarAlert('Atenção', 'Por favor, informe a taxa da plataforma.');
-                return;
-            }
+        if (taxa === 0) {
+            mostrarAlert('Atenção', 'Por favor, informe a taxa da plataforma.');
+            return;
         }
         
-        if (index !== null) {
-            // Editar
-            plataformas[index] = { nome, taxa };
-        } else {
-            // Adicionar
-            plataformas.push({ nome, taxa });
-        }
-        
+        plataformas[index] = { nome, taxa };
         salvarPlataformas();
         modal.classList.remove('show');
-        atualizarPrecosPlataformas(); // Atualizar preços dos itens
-        mostrarAlert('Sucesso', `Plataforma "${nome}" ${index !== null ? 'atualizada' : 'adicionada'} com sucesso!`);
+        atualizarListaPlataformas();
+        atualizarPrecosPlataformas();
+        mostrarAlert('Sucesso', `Plataforma "${nome}" atualizada com sucesso!`);
     };
     
     // Cancelar
-    document.getElementById('btn-plataforma-cancel').onclick = () => {
+    document.getElementById('btn-plataforma-editar-cancel').onclick = () => {
         modal.classList.remove('show');
     };
     
