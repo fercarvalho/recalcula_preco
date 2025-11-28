@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { Item, ItensPorCategoria, Categoria } from '../types';
+import type { Plataforma } from '../utils/plataformas';
 import { getAuthHeaders, clearAuth } from './auth';
 
 const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
@@ -29,10 +30,13 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 || error.response?.status === 403) {
+    // Só redirecionar para login se for erro de autenticação (401)
+    // Erros 403 podem ser de pagamento requerido, que não devem redirecionar
+    if (error.response?.status === 401) {
       clearAuth();
       window.location.href = '/';
     }
+    // Para 403, apenas rejeitar a promise sem redirecionar
     return Promise.reject(error);
   }
 );
@@ -111,6 +115,87 @@ export const apiService = {
 
   async atualizarOrdemItens(categoria: string, itensIds: number[]): Promise<void> {
     await api.put(`/api/itens/categoria/${encodeURIComponent(categoria)}/ordem`, { itensIds });
+  },
+
+  // Stripe
+  async criarCheckoutAnual(): Promise<{ sessionId: string; url: string }> {
+    const response = await api.post<{ sessionId: string; url: string }>('/api/stripe/checkout/anual');
+    return response.data;
+  },
+
+  async criarCheckoutUnico(): Promise<{ sessionId: string; url: string }> {
+    const response = await api.post<{ sessionId: string; url: string }>('/api/stripe/checkout/unico');
+    return response.data;
+  },
+
+  async verificarStatusPagamento(): Promise<{
+    temAcesso: boolean;
+    tipo: 'anual' | 'unico' | null;
+    assinatura: {
+      status: string;
+      plano_tipo: string;
+      current_period_end: string | null;
+      cancel_at_period_end: boolean;
+    } | null;
+  }> {
+    const response = await api.get<{
+      temAcesso: boolean;
+      tipo: 'anual' | 'unico' | null;
+      assinatura: {
+        status: string;
+        plano_tipo: string;
+        current_period_end: string | null;
+        cancel_at_period_end: boolean;
+      } | null;
+    }>('/api/stripe/status');
+    return response.data;
+  },
+
+  async cancelarAssinatura(cancelarImediatamente: boolean = false): Promise<void> {
+    await api.post('/api/stripe/cancelar-assinatura', { cancelarImediatamente });
+  },
+
+  async criarSessaoCustomerPortal(): Promise<{ url: string }> {
+    const response = await api.post<{ url: string }>('/api/stripe/customer-portal');
+    return response.data;
+  },
+
+  // Plataformas
+  async obterPlataformas(): Promise<Plataforma[]> {
+    const response = await api.get<Plataforma[]>('/api/plataformas');
+    return response.data;
+  },
+
+  async criarPlataforma(nome: string, taxa: number): Promise<Plataforma> {
+    const response = await api.post<Plataforma>('/api/plataformas', { nome, taxa });
+    return response.data;
+  },
+
+  async atualizarPlataforma(id: number, nome: string, taxa: number): Promise<Plataforma> {
+    const response = await api.put<Plataforma>(`/api/plataformas/${id}`, { nome, taxa });
+    return response.data;
+  },
+
+  async deletarPlataforma(id: number): Promise<void> {
+    await api.delete(`/api/plataformas/${id}`);
+  },
+
+  async atualizarOrdemPlataformas(plataformasIds: number[]): Promise<void> {
+    await api.put('/api/plataformas/ordem', { plataformasIds });
+  },
+
+  // Tutorial
+  async verificarStatusTutorial(): Promise<{ completed: boolean }> {
+    const response = await api.get<{ completed: boolean }>('/api/tutorial/status');
+    return response.data;
+  },
+
+  async marcarTutorialCompleto(): Promise<void> {
+    await api.post('/api/tutorial/complete');
+  },
+
+  async resetarTutorial(): Promise<void> {
+    await api.post('/api/tutorial/reset');
   },
 };
 

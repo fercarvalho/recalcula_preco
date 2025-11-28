@@ -1,26 +1,130 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { FaCheck, FaTimes, FaArrowRight, FaArrowLeft, FaFolderPlus, FaPlusCircle, FaStore } from 'react-icons/fa';
+import { getUser } from '../services/auth';
 import './TutorialOnboarding.css';
 
-const TUTORIAL_COMPLETED_KEY = 'calculadora_tutorial_completed';
-const TUTORIAL_STEP_KEY = 'calculadora_tutorial_step';
-
-export const isTutorialCompleted = (): boolean => {
-  return localStorage.getItem(TUTORIAL_COMPLETED_KEY) === 'true';
+const getTutorialKey = (userId?: number | null): string => {
+  if (userId) {
+    return `calculadora_tutorial_completed_${userId}`;
+  }
+  // Fallback para compatibilidade com versão antiga
+  return 'calculadora_tutorial_completed';
 };
 
-export const markTutorialCompleted = () => {
-  localStorage.setItem(TUTORIAL_COMPLETED_KEY, 'true');
-  localStorage.removeItem(TUTORIAL_STEP_KEY);
+const getTutorialStepKey = (userId?: number | null): string => {
+  if (userId) {
+    return `calculadora_tutorial_step_${userId}`;
+  }
+  // Fallback para compatibilidade com versão antiga
+  return 'calculadora_tutorial_step';
 };
 
-export const getTutorialStep = (): number => {
-  const step = localStorage.getItem(TUTORIAL_STEP_KEY);
+// Cache em memória para evitar múltiplas chamadas à API
+let tutorialCompletedCache: { [userId: number]: boolean } = {};
+
+export const isTutorialCompleted = async (userId?: number | null): Promise<boolean> => {
+  if (!userId) {
+    const user = getUser();
+    userId = user?.id;
+  }
+  
+  if (!userId) {
+    return false;
+  }
+  
+  // Se há cache válido, usar
+  if (tutorialCompletedCache[userId] !== undefined) {
+    return tutorialCompletedCache[userId];
+  }
+  
+  try {
+    const { apiService } = await import('../services/api');
+    const status = await apiService.verificarStatusTutorial();
+    tutorialCompletedCache[userId] = status.completed;
+    return status.completed;
+  } catch (error) {
+    console.error('Erro ao verificar status do tutorial, usando localStorage como fallback:', error);
+    // Fallback para localStorage
+    const key = getTutorialKey(userId);
+    const completed = localStorage.getItem(key) === 'true';
+    tutorialCompletedCache[userId] = completed;
+    return completed;
+  }
+};
+
+// Versão síncrona para compatibilidade (usa cache ou localStorage)
+export const isTutorialCompletedSync = (userId?: number | null): boolean => {
+  if (!userId) {
+    const user = getUser();
+    userId = user?.id;
+  }
+  
+  if (!userId) {
+    return false;
+  }
+  
+  // Se há cache válido, usar
+  if (tutorialCompletedCache[userId] !== undefined) {
+    return tutorialCompletedCache[userId];
+  }
+  
+  // Caso contrário, tentar localStorage
+  const key = getTutorialKey(userId);
+  return localStorage.getItem(key) === 'true';
+};
+
+export const markTutorialCompleted = async (userId?: number | null) => {
+  if (!userId) {
+    const user = getUser();
+    userId = user?.id;
+  }
+  
+  if (!userId) {
+    return;
+  }
+  
+  try {
+    const { apiService } = await import('../services/api');
+    await apiService.marcarTutorialCompleto();
+    // Atualizar cache
+    tutorialCompletedCache[userId] = true;
+    // Também salvar no localStorage como backup
+    const key = getTutorialKey(userId);
+    const stepKey = getTutorialStepKey(userId);
+    localStorage.setItem(key, 'true');
+    localStorage.removeItem(stepKey);
+  } catch (error) {
+    console.error('Erro ao marcar tutorial como completo, usando localStorage como fallback:', error);
+    // Fallback para localStorage
+    const key = getTutorialKey(userId);
+    const stepKey = getTutorialStepKey(userId);
+    localStorage.setItem(key, 'true');
+    localStorage.removeItem(stepKey);
+    tutorialCompletedCache[userId] = true;
+  }
+};
+
+// Limpar cache (útil quando tutorial é resetado)
+export const limparCacheTutorial = (userId?: number | null): void => {
+  if (userId) {
+    delete tutorialCompletedCache[userId];
+  } else {
+    const user = getUser();
+    if (user?.id) {
+      delete tutorialCompletedCache[user.id];
+    }
+  }
+};
+
+export const getTutorialStep = (userId?: number | null): number => {
+  const stepKey = getTutorialStepKey(userId);
+  const step = localStorage.getItem(stepKey);
   return step ? parseInt(step, 10) : 0;
 };
 
-export const setTutorialStep = (step: number) => {
-  localStorage.setItem(TUTORIAL_STEP_KEY, step.toString());
+export const setTutorialStep = (step: number, userId?: number | null) => {
+  const stepKey = getTutorialStepKey(userId);
+  localStorage.setItem(stepKey, step.toString());
 };
 
 interface TutorialOnboardingProps {
@@ -106,7 +210,9 @@ const TutorialOnboarding = ({
   onOpenPlataformas,
   modalAberto,
 }: TutorialOnboardingProps) => {
-  const [currentStep, setCurrentStep] = useState(getTutorialStep());
+  const user = getUser();
+  const userId = user?.id;
+  const [currentStep, setCurrentStep] = useState(getTutorialStep(userId));
   const [highlightedElement, setHighlightedElement] = useState<HTMLElement | null>(null);
   const [spotlightPosition, setSpotlightPosition] = useState({ top: 0, left: 0, width: 0, height: 0 });
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -179,22 +285,22 @@ const TutorialOnboarding = ({
   }, [isOpen, currentStep, step.targetSelector, onHighlightElement]);
 
 
-  const handleComplete = useCallback(() => {
-    markTutorialCompleted();
+  const handleComplete = useCallback(async () => {
+    await markTutorialCompleted(userId);
     setCurrentStep(0);
-    setTutorialStep(0);
+    setTutorialStep(0, userId);
     onComplete();
-  }, [onComplete]);
+  }, [onComplete, userId]);
 
   const handleNext = useCallback(() => {
     if (currentStep < tutorialSteps.length - 1) {
       const nextStep = currentStep + 1;
       setCurrentStep(nextStep);
-      setTutorialStep(nextStep);
+      setTutorialStep(nextStep, userId);
     } else {
       handleComplete();
     }
-  }, [currentStep, handleComplete]);
+  }, [currentStep, handleComplete, userId]);
 
   // Removido auto-avanço automático - o usuário deve avançar manualmente
   // Isso permite que o tutorial seja visualizado mesmo quando já existem dados
@@ -203,14 +309,14 @@ const TutorialOnboarding = ({
     if (currentStep > 0) {
       const prevStep = currentStep - 1;
       setCurrentStep(prevStep);
-      setTutorialStep(prevStep);
+      setTutorialStep(prevStep, userId);
     }
   };
 
-  const handleSkip = () => {
-    markTutorialCompleted();
+  const handleSkip = async () => {
+    await markTutorialCompleted(userId);
     setCurrentStep(0);
-    setTutorialStep(0);
+    setTutorialStep(0, userId);
     onSkip();
   };
 

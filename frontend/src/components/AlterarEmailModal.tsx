@@ -58,11 +58,18 @@ const AlterarEmailModal = ({ isOpen, onClose }: AlterarEmailModalProps) => {
         }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao alterar email');
+        let errorMessage = 'Erro ao alterar email';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = `Erro ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
+
+      const data = await response.json();
 
       // Atualizar usuário no localStorage
       if (data.user && user) {

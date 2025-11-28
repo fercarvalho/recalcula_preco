@@ -10,10 +10,19 @@ header {
   align-items: center;
   flex-wrap: wrap;
   gap: 20px;
+  position: relative;
 }
 
 .header-content > div:first-child {
-  text-align: left;
+  text-align: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.header-user {
+  position: absolute;
+  top: 0;
+  right: 0;
 }
 
 .header-user {
@@ -74,15 +83,24 @@ header {
   display: flex;
   justify-content: center;
   align-items: center;
+  width: 250px;
+  height: 250px;
+  overflow: hidden;
+  border-radius: 50%;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .logo {
-  max-width: 250px;
   width: 100%;
-  height: auto;
+  height: 100%;
   border-radius: 50%;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
   display: block;
+  object-fit: cover;
+  object-position: center;
+  margin: 0;
+  padding: 0;
 }
 
 header h1 {

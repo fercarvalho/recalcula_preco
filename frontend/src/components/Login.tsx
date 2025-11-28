@@ -37,11 +37,18 @@ const Login = ({ onLoginSuccess }: LoginProps) => {
         body: JSON.stringify({ username, senha }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao fazer login');
+        let errorMessage = 'Erro ao fazer login';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = `Erro ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
+
+      const data = await response.json();
 
       saveAuth(data.token, data.user);
       await mostrarAlert('Sucesso', `Bem-vindo, ${data.user.username}!`);
@@ -58,7 +65,7 @@ const Login = ({ onLoginSuccess }: LoginProps) => {
     <div className="login-container">
       <div className="login-box">
         <div className="login-header">
-          <img src="/logo.png" alt="Logo" className="login-logo" />
+          <img src="/logo_nova.png" alt="Logo" className="login-logo" />
           <h1>Calculadora de Reajuste</h1>
           <p>Faça login para continuar</p>
         </div>

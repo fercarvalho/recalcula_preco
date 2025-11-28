@@ -37,11 +37,18 @@ const EsqueciSenhaModal = ({ isOpen, onClose }: EsqueciSenhaModalProps) => {
         body: JSON.stringify({ email: email.trim().toLowerCase() }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao solicitar recuperação de senha');
+        let errorMessage = 'Erro ao solicitar recuperação de senha';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = `Erro ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
+
+      await response.json();
 
       await mostrarAlert(
         'Sucesso',

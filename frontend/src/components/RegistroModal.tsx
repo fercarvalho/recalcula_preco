@@ -60,11 +60,18 @@ const RegistroModal = ({ isOpen, onClose, onRegisterSuccess }: RegistroModalProp
         body: JSON.stringify({ username: username.trim(), email: email.trim().toLowerCase(), senha }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao criar usuário');
+        let errorMessage = 'Erro ao criar usuário';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = `Erro ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
+
+      const data = await response.json();
 
       saveAuth(data.token, data.user);
       await mostrarAlert('Sucesso', `Usuário "${data.user.username}" criado com sucesso!`);

@@ -4,18 +4,149 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
 const db = require('./database');
-const { authenticateToken, requireAdmin, generateToken } = require('./middleware/auth');
+const { authenticateToken, requireAdmin, requirePayment, generateToken } = require('./middleware/auth');
 const { enviarEmailRecuperacao } = require('./services/email');
+const stripeService = require('./services/stripe');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
-app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // Rotas da API (ANTES do express.static para evitar conflitos)
+
+// ========== WEBHOOK DO STRIPE (DEVE VIR ANTES DO bodyParser.json) ==========
+// O webhook precisa processar raw body, então deve vir antes do bodyParser.json
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+    let event;
+
+    try {
+        if (!stripeService.stripe) {
+            console.error('Stripe não está configurado');
+            return res.status(500).json({ error: 'Stripe não está configurado' });
+        }
+        event = stripeService.stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+    } catch (err) {
+        console.error('Erro na verificação do webhook:', err.message);
+        return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    try {
+        console.log('📥 Webhook recebido:', event.type);
+        const resultado = await stripeService.processarWebhook(event);
+
+        if (!resultado) {
+            console.log('⚠️  Evento não processado:', event.type);
+            return res.json({ received: true });
+        }
+
+        console.log('✅ Evento processado:', resultado.tipo);
+
+        // Processar pagamento único
+        if (resultado.tipo === 'pagamento_unico' || resultado.tipo === 'pagamento_unico_sucesso') {
+            const userId = resultado.userId || (resultado.metadata?.user_id ? parseInt(resultado.metadata.user_id) : null);
+            const paymentIntentId = resultado.paymentIntentId || resultado.sessionId;
+
+            console.log('💳 Processando pagamento único - UserId:', userId, 'PaymentIntentId:', paymentIntentId);
+
+            if (userId && paymentIntentId && stripeService.stripe) {
+                // Buscar sessão para obter valor
+                const session = await stripeService.stripe.checkout.sessions.retrieve(resultado.sessionId || event.data.object.id);
+                const valor = session.amount_total ? session.amount_total / 100 : 199.00; // Converter de centavos
+
+                console.log('💰 Valor do pagamento:', valor);
+
+                await db.criarPagamentoUnico(userId, {
+                    stripe_payment_intent_id: paymentIntentId,
+                    stripe_customer_id: session.customer || null,
+                    valor: valor,
+                    status: 'succeeded',
+                });
+
+                console.log('✅ Pagamento único salvo no banco de dados para usuário:', userId);
+            } else if (resultado.tipo === 'pagamento_unico_sucesso' && !userId) {
+                // payment_intent.succeeded não tem userId, mas checkout.session.completed já processou
+                // Então apenas ignoramos silenciosamente
+                console.log('ℹ️  payment_intent.succeeded recebido (já processado por checkout.session.completed)');
+            } else {
+                console.error('❌ Dados insuficientes para processar pagamento único:', { userId, paymentIntentId });
+            }
+        }
+
+        // Processar assinatura
+        if (resultado.tipo === 'assinatura') {
+            const userId = resultado.metadata?.user_id ? parseInt(resultado.metadata.user_id) : null;
+
+            console.log('📋 Processando assinatura - UserId:', userId, 'SubscriptionId:', resultado.subscriptionId);
+
+            if (userId) {
+                await db.criarOuAtualizarAssinatura(userId, {
+                    stripe_subscription_id: resultado.subscriptionId,
+                    stripe_customer_id: resultado.customerId,
+                    plano_tipo: 'anual',
+                    status: resultado.status,
+                    current_period_start: resultado.currentPeriodStart,
+                    current_period_end: resultado.currentPeriodEnd,
+                    cancel_at_period_end: resultado.cancelAtPeriodEnd || false,
+                });
+
+                console.log('✅ Assinatura salva no banco de dados para usuário:', userId, 'Status:', resultado.status);
+            } else {
+                console.error('❌ UserId não encontrado no metadata da assinatura');
+            }
+        }
+
+        // Processar cancelamento de assinatura
+        if (resultado.tipo === 'assinatura_cancelada') {
+            console.log('🚫 Processando cancelamento de assinatura:', resultado.subscriptionId);
+            const assinatura = await db.obterAssinaturaPorStripeId(resultado.subscriptionId);
+            if (assinatura) {
+                await db.criarOuAtualizarAssinatura(assinatura.usuario_id, {
+                    stripe_subscription_id: resultado.subscriptionId,
+                    stripe_customer_id: resultado.customerId,
+                    plano_tipo: 'anual',
+                    status: 'canceled',
+                    current_period_start: assinatura.current_period_start,
+                    current_period_end: assinatura.current_period_end,
+                    cancel_at_period_end: false,
+                });
+                console.log('✅ Assinatura cancelada no banco de dados para usuário:', assinatura.usuario_id);
+            }
+        }
+
+        // Processar falha no pagamento
+        if (resultado.tipo === 'pagamento_falhou') {
+            console.log('❌ Processando falha no pagamento:', resultado.subscriptionId);
+            const assinatura = await db.obterAssinaturaPorStripeId(resultado.subscriptionId);
+            if (assinatura) {
+                await db.criarOuAtualizarAssinatura(assinatura.usuario_id, {
+                    stripe_subscription_id: resultado.subscriptionId,
+                    stripe_customer_id: resultado.customerId,
+                    plano_tipo: 'anual',
+                    status: 'past_due',
+                    current_period_start: assinatura.current_period_start,
+                    current_period_end: assinatura.current_period_end,
+                    cancel_at_period_end: assinatura.cancel_at_period_end,
+                });
+                console.log('⚠️  Status da assinatura atualizado para past_due para usuário:', assinatura.usuario_id);
+            }
+        }
+
+        console.log('✅ Webhook processado com sucesso');
+        res.json({ received: true });
+    } catch (error) {
+        console.error('Erro ao processar webhook:', error);
+        res.status(500).json({ error: 'Erro ao processar webhook' });
+    }
+});
+
+// Agora aplicar bodyParser.json para todas as outras rotas
+app.use(bodyParser.json());
 
 // ========== ROTAS DE AUTENTICAÇÃO (SEM MIDDLEWARE) ==========
 
@@ -285,6 +416,122 @@ app.post('/api/auth/resetar-senha', async (req, res) => {
     }
 });
 
+// ========== ROTAS DO STRIPE ==========
+
+// Criar sessão de checkout para plano anual
+app.post('/api/stripe/checkout/anual', authenticateToken, async (req, res) => {
+    try {
+        const usuario = req.user;
+        const baseUrl = process.env.FRONTEND_URL || `http://localhost:${PORT}`;
+        
+        const session = await stripeService.criarCheckoutAnual(
+            usuario.email,
+            usuario.id,
+            `${baseUrl}/pagamento/sucesso?session_id={CHECKOUT_SESSION_ID}`,
+            `${baseUrl}/pagamento/cancelado`
+        );
+
+        res.json({ sessionId: session.id, url: session.url });
+    } catch (error) {
+        console.error('Erro ao criar checkout anual:', error);
+        res.status(500).json({ error: error.message || 'Erro ao criar sessão de checkout' });
+    }
+});
+
+// Criar sessão de checkout para pagamento único
+app.post('/api/stripe/checkout/unico', authenticateToken, async (req, res) => {
+    try {
+        const usuario = req.user;
+        const baseUrl = process.env.FRONTEND_URL || `http://localhost:${PORT}`;
+        
+        const session = await stripeService.criarCheckoutUnico(
+            usuario.email,
+            usuario.id,
+            `${baseUrl}/pagamento/sucesso?session_id={CHECKOUT_SESSION_ID}`,
+            `${baseUrl}/pagamento/cancelado`
+        );
+
+        res.json({ sessionId: session.id, url: session.url });
+    } catch (error) {
+        console.error('Erro ao criar checkout único:', error);
+        res.status(500).json({ error: error.message || 'Erro ao criar sessão de checkout' });
+    }
+});
+
+// Verificar status de pagamento do usuário
+app.get('/api/stripe/status', authenticateToken, async (req, res) => {
+    try {
+        const acesso = await db.verificarAcessoAtivo(req.userId);
+        const assinatura = await db.obterAssinatura(req.userId);
+
+        res.json({
+            temAcesso: acesso.temAcesso,
+            tipo: acesso.tipo === 'vitalicio' ? 'anual' : acesso.tipo, // Retornar 'anual' para compatibilidade com frontend
+            assinatura: acesso.tipo === 'vitalicio' ? {
+                status: 'active',
+                plano_tipo: 'vitalicio',
+                current_period_end: null, // Vitalício não expira
+                cancel_at_period_end: false,
+            } : (assinatura ? {
+                status: assinatura.status,
+                plano_tipo: assinatura.plano_tipo,
+                current_period_end: assinatura.current_period_end,
+                cancel_at_period_end: assinatura.cancel_at_period_end,
+            } : null),
+        });
+    } catch (error) {
+        console.error('Erro ao verificar status:', error);
+        res.status(500).json({ error: 'Erro ao verificar status de pagamento' });
+    }
+});
+
+// Cancelar assinatura
+app.post('/api/stripe/cancelar-assinatura', authenticateToken, async (req, res) => {
+    try {
+        const assinatura = await db.obterAssinatura(req.userId);
+
+        if (!assinatura || !assinatura.stripe_subscription_id) {
+            return res.status(404).json({ error: 'Assinatura não encontrada' });
+        }
+
+        const { cancelarImediatamente } = req.body;
+        await stripeService.cancelarAssinatura(assinatura.stripe_subscription_id, cancelarImediatamente);
+
+        res.json({ message: 'Assinatura cancelada com sucesso' });
+    } catch (error) {
+        console.error('Erro ao cancelar assinatura:', error);
+        res.status(500).json({ error: error.message || 'Erro ao cancelar assinatura' });
+    }
+});
+
+// Criar sessão do Customer Portal do Stripe
+app.post('/api/stripe/customer-portal', authenticateToken, async (req, res) => {
+    try {
+        const assinatura = await db.obterAssinatura(req.userId);
+
+        if (!assinatura || !assinatura.stripe_customer_id) {
+            return res.status(404).json({ error: 'Assinatura não encontrada ou cliente não identificado' });
+        }
+
+        if (!stripeService.stripe) {
+            return res.status(500).json({ error: 'Stripe não está configurado' });
+        }
+
+        const baseUrl = process.env.FRONTEND_URL || `http://localhost:${PORT}`;
+        const returnUrl = `${baseUrl}/`;
+
+        const session = await stripeService.criarSessaoCustomerPortal(
+            assinatura.stripe_customer_id,
+            returnUrl
+        );
+
+        res.json({ url: session.url });
+    } catch (error) {
+        console.error('Erro ao criar sessão do Customer Portal:', error);
+        res.status(500).json({ error: error.message || 'Erro ao criar sessão do Customer Portal' });
+    }
+});
+
 // ========== ROTAS DE ADMINISTRAÇÃO ==========
 
 // Listar todos os usuários (apenas admin)
@@ -462,7 +709,7 @@ app.delete('/api/admin/usuarios/:usuarioId/categorias/:nome', authenticateToken,
 // ========== ROTAS PROTEGIDAS (COM MIDDLEWARE) ==========
 
 // Obter todos os itens
-app.get('/api/itens', authenticateToken, async (req, res) => {
+app.get('/api/itens', authenticateToken, requirePayment, async (req, res) => {
     try {
         const itens = await db.obterTodosItens(req.userId);
         res.json(itens);
@@ -473,7 +720,7 @@ app.get('/api/itens', authenticateToken, async (req, res) => {
 });
 
 // Obter itens por categoria
-app.get('/api/itens/categoria/:categoria', authenticateToken, async (req, res) => {
+app.get('/api/itens/categoria/:categoria', authenticateToken, requirePayment, async (req, res) => {
     try {
         const { categoria } = req.params;
         const itens = await db.obterItensPorCategoria(categoria, req.userId);
@@ -485,29 +732,133 @@ app.get('/api/itens/categoria/:categoria', authenticateToken, async (req, res) =
 });
 
 // Criar novo item
-app.post('/api/itens', authenticateToken, async (req, res) => {
+app.post('/api/itens', authenticateToken, requirePayment, async (req, res) => {
     try {
         const { categoria, nome, valor } = req.body;
         
+        console.log('[API] Criar item - Dados recebidos:', { categoria, nome, valor, userId: req.userId });
+        
         if (!categoria || !nome || valor === undefined) {
+            console.log('[API] Erro de validação - campos faltando:', { categoria, nome, valor });
             return res.status(400).json({ error: 'Categoria, nome e valor são obrigatórios' });
         }
         
+        // Validar tipos
+        if (typeof categoria !== 'string' || typeof nome !== 'string') {
+            console.log('[API] Erro de validação - tipos inválidos:', { categoria: typeof categoria, nome: typeof nome });
+            return res.status(400).json({ error: 'Categoria e nome devem ser strings' });
+        }
+        
+        const valorNumerico = parseFloat(valor);
+        if (isNaN(valorNumerico) || valorNumerico < 0) {
+            console.log('[API] Erro de validação - valor inválido:', { valor, valorNumerico });
+            return res.status(400).json({ error: 'Valor deve ser um número maior ou igual a zero' });
+        }
+        
+        // Verificar se o usuário realmente tem acesso pago (não apenas trial mode)
+        const acesso = await db.verificarAcessoAtivo(req.userId);
+        
+        // Se for acesso único E o usuário realmente tem acesso pago, bloquear
+        // Mas permitir para usuários em trial mode (sem acesso pago)
+        // O req.acessoUnico pode estar definido pelo middleware mesmo para trial, então verificamos acesso.temAcesso
+        if (req.acessoUnico && acesso.temAcesso && acesso.tipo === 'unico') {
+            await db.marcarPagamentoUnicoComoUsado(req.userId);
+            // Retornar erro informando que dados não são salvos
+            return res.status(403).json({ 
+                error: 'Acesso único não permite salvar dados permanentemente. Os dados não serão salvos.',
+                codigo: 'ACESSO_UNICO_NAO_SALVA'
+            });
+        }
+        
+        // Se o usuário não tem acesso pago (trial mode), permitir criar itens
+        // Isso permite que usuários testem o sistema durante o tutorial
+        
+        // Permitir criação de itens para usuários em trial mode (sem acesso pago)
+        // O middleware requirePayment já permite isso para rotas trial
+        console.log('[API] Chamando db.criarItem com:', { categoria, nome, valor, userId: req.userId });
         const item = await db.criarItem(categoria, nome, valor, req.userId);
+        console.log('[API] Item criado com sucesso:', item);
         res.status(201).json(item);
     } catch (error) {
-        console.error('Erro ao criar item:', error);
-        res.status(500).json({ error: 'Erro ao criar item' });
+        console.error('========== ERRO AO CRIAR ITEM ==========');
+        console.error('Erro completo:', error);
+        console.error('Stack:', error.stack);
+        console.error('Detalhes do erro no servidor:', {
+            code: error.code,
+            message: error.message,
+            constraint: error.constraint,
+            detail: error.detail,
+            table: error.table,
+            categoria: categoria || 'não definido',
+            nome: nome || 'não definido',
+            valor: valor || 'não definido',
+            userId: req.userId,
+            tipoUserId: typeof req.userId
+        });
+        console.error('==========================================');
+        
+        // Se for erro de constraint incorreta
+        if (error.code === 'CONSTRAINT_INCORRETA') {
+            return res.status(500).json({ 
+                error: 'Erro na configuração do banco de dados. A constraint UNIQUE não inclui usuario_id.',
+                codigo: 'CONSTRAINT_INCORRETA',
+                detail: error.detail
+            });
+        }
+        
+        // Se for erro de item duplicado, retornar mensagem específica
+        if (error.code === 'ITEM_DUPLICADO' || error.message?.includes('já existe')) {
+            return res.status(409).json({ 
+                error: error.message || `Já existe um item com o nome "${nome}" na categoria "${categoria}".`,
+                codigo: 'ITEM_DUPLICADO'
+            });
+        }
+        
+        // Se for erro de constraint UNIQUE do PostgreSQL
+        if (error.code === '23505') {
+            // Verificar se a constraint é realmente de itens duplicados
+            if (error.constraint && error.constraint.includes('itens')) {
+                // Se a constraint antiga (sem usuario_id), informar problema
+                if (error.constraint === 'itens_categoria_nome_key') {
+                    return res.status(500).json({ 
+                        error: 'Erro na configuração do banco de dados. A constraint UNIQUE não inclui usuario_id.',
+                        codigo: 'CONSTRAINT_INCORRETA',
+                        detail: 'Por favor, contate o administrador para corrigir a constraint do banco de dados.'
+                    });
+                }
+                
+                return res.status(409).json({ 
+                    error: `Já existe um item com o nome "${nome}" na categoria "${categoria}".`,
+                    codigo: 'ITEM_DUPLICADO',
+                    detail: error.detail
+                });
+            }
+        }
+        
+        res.status(500).json({ 
+            error: error.message || 'Erro ao criar item',
+            codigo: error.code || 'ERRO_DESCONHECIDO',
+            detail: error.detail || error.stack
+        });
     }
 });
 
 // Atualizar item
-app.put('/api/itens/:id', authenticateToken, async (req, res) => {
+app.put('/api/itens/:id', authenticateToken, requirePayment, async (req, res) => {
     try {
         const { id } = req.params;
         const { nome, valor, valorNovo, categoria } = req.body;
         
         console.log(`[SERVER] PUT /api/itens/${id}`, { nome, valor, valorNovo, categoria });
+        
+        // Se for acesso único e tentar atualizar (não apenas valorNovo), não permitir
+        if (req.acessoUnico && (nome !== undefined || valor !== undefined || categoria !== undefined)) {
+            await db.marcarPagamentoUnicoComoUsado(req.userId);
+            return res.status(403).json({ 
+                error: 'Acesso único não permite salvar alterações permanentemente. Os dados não serão salvos.',
+                codigo: 'ACESSO_UNICO_NAO_SALVA'
+            });
+        }
         
         // Se valorNovo foi enviado, atualizar apenas ele
         if (valorNovo !== undefined && nome === undefined && valor === undefined && categoria === undefined) {
@@ -536,7 +887,7 @@ app.put('/api/itens/:id', authenticateToken, async (req, res) => {
 });
 
 // Salvar backup do valor antes de aplicar reajuste fixo
-app.post('/api/itens/:id/backup', authenticateToken, async (req, res) => {
+app.post('/api/itens/:id/backup', authenticateToken, requirePayment, async (req, res) => {
     try {
         const { id } = req.params;
         const { valorBackup } = req.body;
@@ -558,7 +909,7 @@ app.post('/api/itens/:id/backup', authenticateToken, async (req, res) => {
 });
 
 // Deletar item
-app.delete('/api/itens/:id', authenticateToken, async (req, res) => {
+app.delete('/api/itens/:id', authenticateToken, requirePayment, async (req, res) => {
     try {
         const { id } = req.params;
         const sucesso = await db.deletarItem(id, req.userId);
@@ -575,7 +926,7 @@ app.delete('/api/itens/:id', authenticateToken, async (req, res) => {
 });
 
 // Obter todas as categorias
-app.get('/api/categorias', authenticateToken, async (req, res) => {
+app.get('/api/categorias', authenticateToken, requirePayment, async (req, res) => {
     try {
         const categorias = await db.obterCategorias(req.userId);
         res.json(categorias);
@@ -586,7 +937,7 @@ app.get('/api/categorias', authenticateToken, async (req, res) => {
 });
 
 // Resetar valores (restaurar a partir do backup)
-app.post('/api/resetar-valores', authenticateToken, async (req, res) => {
+app.post('/api/resetar-valores', authenticateToken, requirePayment, async (req, res) => {
     try {
         const itensAtualizados = await db.resetarValores(req.userId);
         res.json({ message: 'Valores resetados com sucesso', itensAtualizados });
@@ -597,7 +948,7 @@ app.post('/api/resetar-valores', authenticateToken, async (req, res) => {
 });
 
 // Atualizar ordem das categorias
-app.put('/api/categorias/ordem', authenticateToken, async (req, res) => {
+app.put('/api/categorias/ordem', authenticateToken, requirePayment, async (req, res) => {
     try {
         const { categorias } = req.body;
         
@@ -614,7 +965,7 @@ app.put('/api/categorias/ordem', authenticateToken, async (req, res) => {
 });
 
 // Atualizar ordem dos itens dentro de uma categoria
-app.put('/api/itens/categoria/:categoria/ordem', authenticateToken, async (req, res) => {
+app.put('/api/itens/categoria/:categoria/ordem', authenticateToken, requirePayment, async (req, res) => {
     try {
         const { categoria } = req.params;
         const { itensIds } = req.body;
@@ -632,12 +983,22 @@ app.put('/api/itens/categoria/:categoria/ordem', authenticateToken, async (req, 
 });
 
 // Criar nova categoria
-app.post('/api/categorias', authenticateToken, async (req, res) => {
+app.post('/api/categorias', authenticateToken, requirePayment, async (req, res) => {
     try {
         const { nome, icone } = req.body;
         
         if (!nome || nome.trim() === '') {
             return res.status(400).json({ error: 'Nome da categoria é obrigatório' });
+        }
+        
+        // Se for acesso único, não permitir criar categoria
+        // Mas em modo trial (sem acesso), permitir criar para testar
+        if (req.acessoUnico) {
+            await db.marcarPagamentoUnicoComoUsado(req.userId);
+            return res.status(403).json({ 
+                error: 'Acesso único não permite criar categorias. Os dados não serão salvos.',
+                codigo: 'ACESSO_UNICO_NAO_SALVA'
+            });
         }
         
         const categoria = await db.criarCategoria(nome.trim(), icone || null, req.userId);
@@ -649,7 +1010,7 @@ app.post('/api/categorias', authenticateToken, async (req, res) => {
 });
 
 // Renomear categoria
-app.put('/api/categorias/:nomeAntigo', authenticateToken, async (req, res) => {
+app.put('/api/categorias/:nomeAntigo', authenticateToken, requirePayment, async (req, res) => {
     try {
         const { nomeAntigo } = req.params;
         const { nomeNovo } = req.body;
@@ -672,7 +1033,7 @@ app.put('/api/categorias/:nomeAntigo', authenticateToken, async (req, res) => {
 });
 
 // Atualizar ícone da categoria
-app.put('/api/categorias/:nome/icone', authenticateToken, async (req, res) => {
+app.put('/api/categorias/:nome/icone', authenticateToken, requirePayment, async (req, res) => {
     try {
         const { nome } = req.params;
         const { icone } = req.body;
@@ -695,7 +1056,7 @@ app.put('/api/categorias/:nome/icone', authenticateToken, async (req, res) => {
 });
 
 // Obter ícone da categoria
-app.get('/api/categorias/:nome/icone', authenticateToken, async (req, res) => {
+app.get('/api/categorias/:nome/icone', authenticateToken, requirePayment, async (req, res) => {
     try {
         const { nome } = req.params;
         const categoriaNome = decodeURIComponent(nome);
@@ -709,7 +1070,7 @@ app.get('/api/categorias/:nome/icone', authenticateToken, async (req, res) => {
 });
 
 // Deletar categoria
-app.delete('/api/categorias/:nome', authenticateToken, async (req, res) => {
+app.delete('/api/categorias/:nome', authenticateToken, requirePayment, async (req, res) => {
     try {
         const { nome } = req.params;
         const categoriaNome = decodeURIComponent(nome);
@@ -722,6 +1083,142 @@ app.delete('/api/categorias/:nome', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error('Erro ao deletar categoria:', error);
         res.status(500).json({ error: error.message || 'Erro ao deletar categoria' });
+    }
+});
+
+// ========== ENDPOINTS DE PLATAFORMAS ==========
+
+// Obter todas as plataformas do usuário
+app.get('/api/plataformas', authenticateToken, async (req, res) => {
+    try {
+        const plataformas = await db.obterPlataformas(req.userId);
+        res.json(plataformas);
+    } catch (error) {
+        console.error('Erro ao obter plataformas:', error);
+        res.status(500).json({ error: 'Erro ao obter plataformas' });
+    }
+});
+
+// Criar nova plataforma
+app.post('/api/plataformas', authenticateToken, async (req, res) => {
+    try {
+        const { nome, taxa } = req.body;
+        
+        if (!nome || nome.trim() === '') {
+            return res.status(400).json({ error: 'Nome da plataforma é obrigatório' });
+        }
+        
+        if (taxa === undefined || taxa === null) {
+            return res.status(400).json({ error: 'Taxa da plataforma é obrigatória' });
+        }
+        
+        const taxaNumerica = parseFloat(taxa);
+        if (isNaN(taxaNumerica) || taxaNumerica < 0 || taxaNumerica > 100) {
+            return res.status(400).json({ error: 'Taxa deve ser um número entre 0 e 100' });
+        }
+        
+        const plataforma = await db.criarPlataforma(req.userId, nome.trim(), taxaNumerica);
+        res.status(201).json(plataforma);
+    } catch (error) {
+        console.error('Erro ao criar plataforma:', error);
+        res.status(500).json({ error: error.message || 'Erro ao criar plataforma' });
+    }
+});
+
+// Atualizar plataforma
+app.put('/api/plataformas/:id', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { nome, taxa } = req.body;
+        
+        if (!nome || nome.trim() === '') {
+            return res.status(400).json({ error: 'Nome da plataforma é obrigatório' });
+        }
+        
+        if (taxa === undefined || taxa === null) {
+            return res.status(400).json({ error: 'Taxa da plataforma é obrigatória' });
+        }
+        
+        const taxaNumerica = parseFloat(taxa);
+        if (isNaN(taxaNumerica) || taxaNumerica < 0 || taxaNumerica > 100) {
+            return res.status(400).json({ error: 'Taxa deve ser um número entre 0 e 100' });
+        }
+        
+        const plataforma = await db.atualizarPlataforma(req.userId, id, nome.trim(), taxaNumerica);
+        if (!plataforma) {
+            return res.status(404).json({ error: 'Plataforma não encontrada' });
+        }
+        res.json(plataforma);
+    } catch (error) {
+        console.error('Erro ao atualizar plataforma:', error);
+        res.status(500).json({ error: error.message || 'Erro ao atualizar plataforma' });
+    }
+});
+
+// Deletar plataforma
+app.delete('/api/plataformas/:id', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const sucesso = await db.deletarPlataforma(req.userId, id);
+        if (!sucesso) {
+            return res.status(404).json({ error: 'Plataforma não encontrada' });
+        }
+        res.json({ message: 'Plataforma deletada com sucesso' });
+    } catch (error) {
+        console.error('Erro ao deletar plataforma:', error);
+        res.status(500).json({ error: 'Erro ao deletar plataforma' });
+    }
+});
+
+// Atualizar ordem das plataformas
+app.put('/api/plataformas/ordem', authenticateToken, async (req, res) => {
+    try {
+        const { plataformasIds } = req.body;
+        
+        if (!Array.isArray(plataformasIds)) {
+            return res.status(400).json({ error: 'plataformasIds deve ser um array' });
+        }
+        
+        await db.atualizarOrdemPlataformas(req.userId, plataformasIds);
+        res.json({ message: 'Ordem das plataformas atualizada com sucesso' });
+    } catch (error) {
+        console.error('Erro ao atualizar ordem das plataformas:', error);
+        res.status(500).json({ error: 'Erro ao atualizar ordem das plataformas' });
+    }
+});
+
+// ========== ENDPOINTS DE TUTORIAL ==========
+
+// Verificar se tutorial foi completado
+app.get('/api/tutorial/status', authenticateToken, async (req, res) => {
+    try {
+        const completed = await db.verificarTutorialCompleto(req.userId);
+        res.json({ completed });
+    } catch (error) {
+        console.error('Erro ao verificar status do tutorial:', error);
+        res.status(500).json({ error: 'Erro ao verificar status do tutorial' });
+    }
+});
+
+// Marcar tutorial como completo
+app.post('/api/tutorial/complete', authenticateToken, async (req, res) => {
+    try {
+        await db.marcarTutorialCompleto(req.userId);
+        res.json({ message: 'Tutorial marcado como completo' });
+    } catch (error) {
+        console.error('Erro ao marcar tutorial como completo:', error);
+        res.status(500).json({ error: 'Erro ao marcar tutorial como completo' });
+    }
+});
+
+// Limpar flag de tutorial completo (para re-exibir)
+app.post('/api/tutorial/reset', authenticateToken, async (req, res) => {
+    try {
+        await db.limparTutorialCompleto(req.userId);
+        res.json({ message: 'Flag de tutorial limpa com sucesso' });
+    } catch (error) {
+        console.error('Erro ao limpar tutorial completo:', error);
+        res.status(500).json({ error: 'Erro ao limpar tutorial completo' });
     }
 });
 

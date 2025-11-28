@@ -1,0 +1,192 @@
+.selecao-planos-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.planos-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.planos-header h1 {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+  color: #333;
+}
+
+.planos-header p {
+  font-size: 1.2rem;
+  color: #666;
+}
+
+.planos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.plano-card {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 2rem;
+  position: relative;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.plano-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.plano-destaque {
+  border-color: #4CAF50;
+  border-width: 3px;
+}
+
+.plano-badge {
+  position: absolute;
+  top: -12px;
+  right: 20px;
+  background: #4CAF50;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: bold;
+}
+
+.plano-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.plano-header h2 {
+  font-size: 1.8rem;
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.plano-preco {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.preco-valor {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #4CAF50;
+}
+
+.preco-periodo {
+  font-size: 1rem;
+  color: #666;
+}
+
+.plano-descricao {
+  font-size: 1rem;
+  color: #666;
+  margin-top: 0.5rem;
+}
+
+.plano-beneficios {
+  list-style: none;
+  padding: 0;
+  margin: 1.5rem 0;
+}
+
+.plano-beneficios li {
+  padding: 0.75rem 0;
+  font-size: 1rem;
+  color: #333;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.plano-beneficios li:last-child {
+  border-bottom: none;
+}
+
+.plano-beneficios li.texto-aviso {
+  color: #ff9800;
+  font-weight: 500;
+}
+
+.btn-plano {
+  width: 100%;
+  padding: 1rem;
+  font-size: 1.1rem;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 1rem;
+}
+
+.btn-plano-anual {
+  background: #4CAF50;
+  color: white;
+  font-size: 1.2rem;
+  padding: 1.2rem;
+}
+
+.btn-plano-anual:hover:not(:disabled) {
+  background: #45a049;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}
+
+.btn-plano-unico {
+  background: #757575;
+  color: white;
+}
+
+.btn-plano-unico:hover:not(:disabled) {
+  background: #616161;
+  transform: scale(1.02);
+}
+
+.btn-plano:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.plano-ativo {
+  text-align: center;
+  padding: 3rem;
+  background: #e8f5e9;
+  border-radius: 12px;
+  border: 2px solid #4CAF50;
+}
+
+.plano-ativo h2 {
+  color: #4CAF50;
+  margin-bottom: 1rem;
+}
+
+.plano-ativo p {
+  color: #666;
+  font-size: 1.1rem;
+}
+
+@media (max-width: 768px) {
+  .planos-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .planos-header h1 {
+    font-size: 2rem;
+  }
+
+  .preco-valor {
+    font-size: 2rem;
+  }
+}
+

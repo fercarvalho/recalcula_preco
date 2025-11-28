@@ -14,6 +14,8 @@ interface EditarItemModalProps {
   modoAdicionar?: boolean;
   onClose: () => void;
   onSave: () => void;
+  temAcesso?: boolean;
+  onAbrirModalPlanos?: () => void;
 }
 
 interface ItemLinha {
@@ -30,6 +32,8 @@ const EditarItemModal = ({
   modoAdicionar = false,
   onClose,
   onSave,
+  temAcesso = true,
+  onAbrirModalPlanos,
 }: EditarItemModalProps) => {
   const [modoMultiplo, setModoMultiplo] = useState(false);
   const [nome, setNome] = useState('');
@@ -78,6 +82,13 @@ const EditarItemModal = ({
   };
 
   const handleSalvar = async () => {
+    // Se estiver editando (não adicionando) e não tiver acesso, bloquear edição de valor
+    if (!modoAdicionar && !temAcesso) {
+      await mostrarAlert('Acesso Bloqueado', 'Para editar preços, é necessário ter acesso pago. Clique no botão abaixo para liberar acesso.');
+      onAbrirModalPlanos?.();
+      return;
+    }
+
     if (modoMultiplo) {
       // Modo múltiplo: adicionar vários itens
       const itensValidos = itensLinhas.filter(
@@ -101,8 +112,12 @@ const EditarItemModal = ({
               parseFloat(itemLinha.valor)
             );
             sucessos++;
-          } catch (error) {
+          } catch (error: any) {
             console.error('Erro ao adicionar item:', itemLinha, error);
+            // Se for erro de item duplicado, informar qual item
+            if (error.response?.status === 409 || error.response?.data?.codigo === 'ITEM_DUPLICADO') {
+              console.error(`Item duplicado: ${itemLinha.nome} na categoria ${itemLinha.categoria}`);
+            }
             erros++;
           }
         }
@@ -145,8 +160,21 @@ const EditarItemModal = ({
         }
         onSave();
         onClose();
-      } catch (error) {
-        await mostrarAlert('Erro', 'Erro ao salvar o item. Tente novamente.');
+      } catch (error: any) {
+        console.error('Erro completo ao salvar item:', error);
+        console.error('Response:', error.response);
+        console.error('Data:', error.response?.data);
+        
+        // Verificar se é erro de item duplicado
+        if (error.response?.status === 409 || error.response?.data?.codigo === 'ITEM_DUPLICADO') {
+          const mensagem = error.response?.data?.error || 'Já existe um item com este nome nesta categoria.';
+          await mostrarAlert('Item Duplicado', mensagem);
+        } else {
+          // Mostrar mensagem de erro mais detalhada
+          const mensagemErro = error.response?.data?.error || error.message || 'Erro ao salvar o item. Tente novamente.';
+          console.error('Mensagem de erro:', mensagemErro);
+          await mostrarAlert('Erro', mensagemErro);
+        }
       }
     }
   };
@@ -191,14 +219,28 @@ const EditarItemModal = ({
               </div>
               <div className="form-group valor">
                 <label>Valor (R$):</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={linha.valor}
-                  onChange={(e) => atualizarLinha(index, 'valor', e.target.value)}
-                  placeholder="0,00"
-                />
+                {!temAcesso ? (
+                  <div style={{
+                    padding: '8px',
+                    background: '#fff3cd',
+                    border: '2px solid #ffc107',
+                    borderRadius: '6px',
+                    textAlign: 'center',
+                    fontSize: '0.85em',
+                    color: '#856404',
+                  }}>
+                    🔒 Bloqueado
+                  </div>
+                ) : (
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={linha.valor}
+                    onChange={(e) => atualizarLinha(index, 'valor', e.target.value)}
+                    placeholder="0,00"
+                  />
+                )}
               </div>
               <div className="form-group categoria">
                 <label>Categoria:</label>
@@ -245,16 +287,48 @@ const EditarItemModal = ({
           </div>
           <div className="form-group">
             <label htmlFor="modal-editar-item-valor">Preço (R$):</label>
-            <input
-              type="number"
-              id="modal-editar-item-valor"
-              className="form-input"
-              step="0.01"
-              min="0"
-              value={valor}
-              onChange={(e) => setValor(e.target.value)}
-              placeholder="0,00"
-            />
+            {!modoAdicionar && !temAcesso ? (
+              <div style={{
+                padding: '10px',
+                background: '#fff3cd',
+                border: '2px solid #ffc107',
+                borderRadius: '6px',
+                textAlign: 'center',
+              }}>
+                <p style={{ margin: '0 0 10px 0', color: '#856404', fontSize: '0.9em' }}>
+                  🔒 Edição de preço bloqueada
+                </p>
+                <button
+                  onClick={() => {
+                    onAbrirModalPlanos?.();
+                  }}
+                  style={{
+                    background: '#4CAF50',
+                    color: 'white',
+                    border: 'none',
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '0.9em',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  Clique para liberar acesso
+                </button>
+              </div>
+            ) : (
+              <input
+                type="number"
+                id="modal-editar-item-valor"
+                className="form-input"
+                step="0.01"
+                min="0"
+                value={valor}
+                onChange={(e) => setValor(e.target.value)}
+                placeholder="0,00"
+                disabled={!modoAdicionar && !temAcesso}
+              />
+            )}
           </div>
           <div className="form-group">
             <label htmlFor="modal-editar-item-categoria">Categoria:</label>

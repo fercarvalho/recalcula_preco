@@ -50,9 +50,11 @@ const ConfirmacaoReajusteModal = ({
       <p className="modal-subtitle">Itens que serão reajustados:</p>
       <div className="modal-itens">
         {itens.map((item) => {
+          // Usar valorNovo como base se existir, caso contrário usar valor
+          const valorBase = item.valorNovo !== null && item.valorNovo !== undefined ? item.valorNovo : item.valor;
           const novoValor = tipoReajuste === 'fixo' 
-            ? item.valor + valorReajuste 
-            : item.valor * (1 + valorReajuste / 100);
+            ? valorBase + valorReajuste 
+            : valorBase * (1 + valorReajuste / 100);
           
           return (
             <div key={item.id} className="modal-item">
@@ -60,7 +62,7 @@ const ConfirmacaoReajusteModal = ({
                 <div className="modal-item-nome">{item.nome}</div>
                 <div className="modal-item-valores">
                   <span className="modal-item-valor-antigo">
-                    R$ {formatarValor(item.valor)}
+                    R$ {formatarValor(valorBase)}
                   </span>
                   <span className="modal-item-valor-novo">
                     → R$ {formatarValor(novoValor)}

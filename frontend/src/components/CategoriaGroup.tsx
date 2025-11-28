@@ -25,6 +25,8 @@ interface CategoriaGroupProps {
   onDragOver: (e: React.DragEvent, categoria: string) => void;
   onDrop: (e: React.DragEvent, categoria: string) => void;
   onDragLeave: (e: React.DragEvent) => void;
+  temAcesso?: boolean;
+  onAbrirModalPlanos?: () => void;
 }
 
 const CategoriaGroup = ({
@@ -42,6 +44,8 @@ const CategoriaGroup = ({
   onDragOver,
   onDrop,
   onDragLeave,
+  temAcesso = true,
+  onAbrirModalPlanos,
 }: CategoriaGroupProps) => {
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -272,6 +276,8 @@ const CategoriaGroup = ({
                   onEdit={() => handleEditarItem(item)}
                   onDelete={handleDeletarItem}
                   onItemUpdated={onItemUpdated}
+                  temAcesso={temAcesso}
+                  onAbrirModalPlanos={onAbrirModalPlanos}
                 />
               </div>
             ))}
@@ -284,6 +290,8 @@ const CategoriaGroup = ({
         categorias={categorias}
         categoriaAtual={categoria}
         modoAdicionar={!editingItem}
+        temAcesso={temAcesso}
+        onAbrirModalPlanos={onAbrirModalPlanos}
         onClose={() => {
           setShowEditModal(false);
           setEditingItem(null);

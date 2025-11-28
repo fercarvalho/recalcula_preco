@@ -13,6 +13,8 @@ interface ItensSectionProps {
   onToggleCategoria: (categoria: string) => void;
   onToggleCategoriaSelecionada: (categoria: string) => void;
   onItemUpdated: () => void;
+  temAcesso?: boolean;
+  onAbrirModalPlanos?: () => void;
 }
 
 const ItensSection = ({
@@ -23,6 +25,8 @@ const ItensSection = ({
   onToggleCategoria,
   onToggleCategoriaSelecionada,
   onItemUpdated,
+  temAcesso = true,
+  onAbrirModalPlanos,
 }: ItensSectionProps) => {
   const [categoriasOrdenadas, setCategoriasOrdenadas] = useState<string[]>(Object.keys(itensPorCategoria));
 
@@ -76,6 +80,8 @@ const ItensSection = ({
               onDragOver={(e) => categoriaDragDrop.handleDragOver(e, categoria)}
               onDrop={(e) => categoriaDragDrop.handleDrop(e, categoria)}
               onDragLeave={categoriaDragDrop.handleDragLeave}
+              temAcesso={temAcesso}
+              onAbrirModalPlanos={onAbrirModalPlanos}
             />
           );
         })}

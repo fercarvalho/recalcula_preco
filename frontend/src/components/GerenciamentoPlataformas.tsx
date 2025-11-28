@@ -1,17 +1,11 @@
 import { useState, useEffect } from 'react';
 import Modal from './Modal';
 import { mostrarAlert, mostrarConfirm } from '../utils/modals';
-import { carregarPlataformas, type Plataforma } from '../utils/plataformas';
+import { carregarPlataformas, salvarPlataformas, limparCachePlataformas, type Plataforma } from '../utils/plataformas';
+import { apiService } from '../services/api';
+import { getUser } from '../services/auth';
 import { FaStore, FaPlus, FaEdit, FaTrash, FaCheck, FaTimes } from 'react-icons/fa';
 import './GerenciamentoPlataformas.css';
-
-const PLATAFORMAS_STORAGE_KEY = 'calculadora_plataformas';
-
-const salvarPlataformas = (plataformas: Plataforma[]) => {
-  localStorage.setItem(PLATAFORMAS_STORAGE_KEY, JSON.stringify(plataformas));
-  // Disparar evento customizado para atualizar outros componentes
-  window.dispatchEvent(new CustomEvent('plataformas-updated', { detail: plataformas }));
-};
 
 interface GerenciamentoPlataformasProps {
   isOpen: boolean;
@@ -37,6 +31,8 @@ interface PlataformaLinha {
 }
 
 const GerenciamentoPlataformas = ({ isOpen, onClose }: GerenciamentoPlataformasProps) => {
+  const user = getUser();
+  const userId = user?.id;
   const [plataformas, setPlataformas] = useState<Plataforma[]>([]);
   const [editingPlataforma, setEditingPlataforma] = useState<Plataforma | null>(null);
   const [showFormModal, setShowFormModal] = useState(false);
@@ -58,9 +54,14 @@ const GerenciamentoPlataformas = ({ isOpen, onClose }: GerenciamentoPlataformasP
 
   useEffect(() => {
     if (isOpen) {
-      setPlataformas(carregarPlataformas());
+      carregarPlataformas(userId).then(plataformas => {
+        setPlataformas(plataformas);
+      }).catch(error => {
+        console.error('Erro ao carregar plataformas:', error);
+        setPlataformas([]);
+      });
     }
-  }, [isOpen]);
+  }, [isOpen, userId]);
 
   const handleAdicionar = () => {
     setEditingPlataforma(null);
@@ -207,25 +208,21 @@ const GerenciamentoPlataformas = ({ isOpen, onClose }: GerenciamentoPlataformasP
 
       try {
         const novasPlataformas = [...plataformas];
-        let novoId = plataformas.length > 0 
-          ? Math.max(...plataformas.map(p => p.id)) + 1 
-          : 1;
-
+        
+        // Criar plataformas no banco de dados
         for (const plataforma of plataformasValidas) {
-          novasPlataformas.push({ 
-            id: novoId++, 
-            nome: plataforma.nome, 
-            taxa: plataforma.taxa 
-          });
+          const novaPlataforma = await apiService.criarPlataforma(plataforma.nome, plataforma.taxa);
+          novasPlataformas.push(novaPlataforma);
         }
 
         setPlataformas(novasPlataformas);
-        salvarPlataformas(novasPlataformas);
+        limparCachePlataformas();
+        await salvarPlataformas(novasPlataformas, userId);
         setShowFormModal(false);
         setModoMultiplo(false);
         await mostrarAlert('Sucesso', `${plataformasValidas.length} plataforma(s) adicionada(s) com sucesso!`);
       } catch (error: any) {
-        await mostrarAlert('Erro', error.message || 'Erro ao adicionar plataformas.');
+        await mostrarAlert('Erro', error.response?.data?.error || error.message || 'Erro ao adicionar plataformas.');
       }
     } else {
       // Modo simples: adicionar ou editar uma plataforma
@@ -302,25 +299,31 @@ const GerenciamentoPlataformas = ({ isOpen, onClose }: GerenciamentoPlataformasP
         }
       }
 
-      const novasPlataformas = [...plataformas];
-      
-      if (editingPlataforma) {
-        const index = novasPlataformas.findIndex(p => p.id === editingPlataforma.id);
-        if (index !== -1) {
-          novasPlataformas[index] = { ...editingPlataforma, nome: formNome.trim(), taxa };
+      try {
+        if (editingPlataforma) {
+          // Atualizar plataforma existente
+          const plataformaAtualizada = await apiService.atualizarPlataforma(editingPlataforma.id, formNome.trim(), taxa);
+          const novasPlataformas = plataformas.map(p => 
+            p.id === editingPlataforma.id ? plataformaAtualizada : p
+          );
+          setPlataformas(novasPlataformas);
+          limparCachePlataformas();
+          await salvarPlataformas(novasPlataformas, userId);
+        } else {
+          // Criar nova plataforma
+          const novaPlataforma = await apiService.criarPlataforma(formNome.trim(), taxa);
+          const novasPlataformas = [...plataformas, novaPlataforma];
+          setPlataformas(novasPlataformas);
+          limparCachePlataformas();
+          await salvarPlataformas(novasPlataformas, userId);
         }
-      } else {
-        const novoId = plataformas.length > 0 
-          ? Math.max(...plataformas.map(p => p.id)) + 1 
-          : 1;
-        novasPlataformas.push({ id: novoId, nome: formNome.trim(), taxa });
+        
+        setShowFormModal(false);
+        setEditingPlataforma(null);
+        await mostrarAlert('Sucesso', `Plataforma ${editingPlataforma ? 'atualizada' : 'adicionada'} com sucesso!`);
+      } catch (error: any) {
+        await mostrarAlert('Erro', error.response?.data?.error || error.message || `Erro ao ${editingPlataforma ? 'atualizar' : 'adicionar'} plataforma.`);
       }
-
-      setPlataformas(novasPlataformas);
-      salvarPlataformas(novasPlataformas);
-      setShowFormModal(false);
-      setEditingPlataforma(null);
-      await mostrarAlert('Sucesso', `Plataforma ${editingPlataforma ? 'atualizada' : 'adicionada'} com sucesso!`);
     }
   };
 
@@ -331,10 +334,16 @@ const GerenciamentoPlataformas = ({ isOpen, onClose }: GerenciamentoPlataformasP
     );
 
     if (confirmado) {
-      const novasPlataformas = plataformas.filter(p => p.id !== plataforma.id);
-      setPlataformas(novasPlataformas);
-      salvarPlataformas(novasPlataformas);
-      await mostrarAlert('Sucesso', 'Plataforma deletada com sucesso!');
+      try {
+        await apiService.deletarPlataforma(plataforma.id);
+        const novasPlataformas = plataformas.filter(p => p.id !== plataforma.id);
+        setPlataformas(novasPlataformas);
+        limparCachePlataformas();
+        await salvarPlataformas(novasPlataformas, userId);
+        await mostrarAlert('Sucesso', 'Plataforma deletada com sucesso!');
+      } catch (error: any) {
+        await mostrarAlert('Erro', error.response?.data?.error || error.message || 'Erro ao deletar plataforma.');
+      }
     }
   };
 

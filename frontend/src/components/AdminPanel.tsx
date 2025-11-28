@@ -149,8 +149,14 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
           setUsuarioDetalhes(null);
         }
       } else {
-        const data = await response.json();
-        throw new Error(data.error || 'Erro ao deletar usuário');
+        let errorMessage = 'Erro ao deletar usuário';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = `Erro ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
     } catch (error: any) {
       console.error('Erro ao deletar usuário:', error);
@@ -199,8 +205,14 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
         await mostrarAlert('Sucesso', 'Item deletado com sucesso!');
         await carregarDetalhesUsuario(usuarioSelecionado);
       } else {
-        const data = await response.json();
-        throw new Error(data.error || 'Erro ao deletar item');
+        let errorMessage = 'Erro ao deletar item';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = `Erro ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
     } catch (error: any) {
       console.error('Erro ao deletar item:', error);
@@ -242,8 +254,14 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
         await mostrarAlert('Sucesso', 'Categoria deletada com sucesso!');
         await carregarDetalhesUsuario(usuarioSelecionado);
       } else {
-        const data = await response.json();
-        throw new Error(data.error || 'Erro ao deletar categoria');
+        let errorMessage = 'Erro ao deletar categoria';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = `Erro ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
     } catch (error: any) {
       console.error('Erro ao deletar categoria:', error);
@@ -278,8 +296,14 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
           setShowEditarCategoria(false);
           setCategoriaEditando('');
         } else {
-          const data = await response.json();
-          throw new Error(data.error || 'Erro ao atualizar categoria');
+          let errorMessage = 'Erro ao atualizar categoria';
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorMessage;
+          } catch {
+            errorMessage = `Erro ${response.status}: ${response.statusText}`;
+          }
+          throw new Error(errorMessage);
         }
       } else {
         // Criar nova categoria
@@ -300,8 +324,14 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
           await carregarDetalhesUsuario(usuarioSelecionado);
           setShowAdicionarCategoria(false);
         } else {
-          const data = await response.json();
-          throw new Error(data.error || 'Erro ao criar categoria');
+          let errorMessage = 'Erro ao criar categoria';
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorMessage;
+          } catch {
+            errorMessage = `Erro ${response.status}: ${response.statusText}`;
+          }
+          throw new Error(errorMessage);
         }
       }
     } catch (error: any) {
@@ -630,8 +660,14 @@ const EditarUsuarioModal = ({ isOpen, onClose, usuario, onUsuarioAtualizado }: E
         onUsuarioAtualizado();
         onClose();
       } else {
-        const data = await response.json();
-        throw new Error(data.error || 'Erro ao atualizar usuário');
+        let errorMessage = 'Erro ao atualizar usuário';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = `Erro ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
     } catch (error: any) {
       console.error('Erro ao atualizar usuário:', error);
@@ -807,8 +843,14 @@ const AdminEditarItemModal = ({
           await onSave();
           onClose();
         } else {
-          const data = await response.json();
-          throw new Error(data.error || 'Erro ao criar item');
+          let errorMessage = 'Erro ao criar item';
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorMessage;
+          } catch {
+            errorMessage = `Erro ${response.status}: ${response.statusText}`;
+          }
+          throw new Error(errorMessage);
         }
       } else if (item) {
         const response = await fetch(`${API_BASE}/api/admin/usuarios/${usuarioId}/itens/${item.id}`, {
@@ -829,8 +871,14 @@ const AdminEditarItemModal = ({
           await onSave();
           onClose();
         } else {
-          const data = await response.json();
-          throw new Error(data.error || 'Erro ao atualizar item');
+          let errorMessage = 'Erro ao atualizar item';
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorMessage;
+          } catch {
+            errorMessage = `Erro ${response.status}: ${response.statusText}`;
+          }
+          throw new Error(errorMessage);
         }
       }
     } catch (error: any) {

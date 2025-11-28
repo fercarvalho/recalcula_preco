@@ -37,11 +37,18 @@ const ResetarSenhaModal = ({ isOpen, onClose, token, onSuccess }: ResetarSenhaMo
         },
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Token inválido ou expirado');
+        let errorMessage = 'Token inválido ou expirado';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = `Erro ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
+
+      const data = await response.json();
 
       setUsername(data.username);
       setValidating(false);
@@ -86,11 +93,18 @@ const ResetarSenhaModal = ({ isOpen, onClose, token, onSuccess }: ResetarSenhaMo
         }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao resetar senha');
+        let errorMessage = 'Erro ao resetar senha';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = `Erro ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
+
+      await response.json();
 
       await mostrarAlert('Sucesso', 'Senha redefinida com sucesso! Você já pode fazer login com sua nova senha.');
       setNovaSenha('');

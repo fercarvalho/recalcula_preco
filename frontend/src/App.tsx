@@ -6,16 +6,29 @@ import ReajusteForm from './components/ReajusteForm';
 import ItensSection from './components/ItensSection';
 import AdicionarProdutoSection from './components/AdicionarProdutoSection';
 import ConfirmacaoReajusteModal from './components/ConfirmacaoReajusteModal';
-import PainelAdmin from './components/PainelAdmin';
+import PainelAdmin, { aplicarConfiguracoes, carregarConfiguracoes } from './components/PainelAdmin';
 import AdminPanel from './components/AdminPanel';
 import GerenciamentoPlataformas from './components/GerenciamentoPlataformas';
-import TutorialOnboarding, { isTutorialCompleted } from './components/TutorialOnboarding';
+import TutorialOnboarding, { isTutorialCompleted, isTutorialCompletedSync, limparCacheTutorial } from './components/TutorialOnboarding';
 import Login from './components/Login';
+import LandingPage from './components/LandingPage';
 import AdicionarCategoriaModal from './components/AdicionarCategoriaModal';
 import EditarItemModal from './components/EditarItemModal';
 import ResetarSenhaModal from './components/ResetarSenhaModal';
+import { SelecaoPlanos } from './components/SelecaoPlanos';
+import Modal from './components/Modal';
 import { isAuthenticated, getToken, getUser, saveAuth } from './services/auth';
-import { carregarPlataformas } from './utils/plataformas';
+import { carregarPlataformasSync, carregarPlataformas } from './utils/plataformas';
+
+// Função para aplicar configurações do usuário (cores e logo)
+const aplicarConfiguracoesUsuario = () => {
+  const user = getUser();
+  const userId = user?.id;
+  
+  // Carregar e aplicar configurações do usuário atual
+  const config = carregarConfiguracoes(userId);
+  aplicarConfiguracoes(config, userId);
+};
 import { mostrarAlert, mostrarConfirm } from './utils/modals';
 import './App.css';
 
@@ -39,6 +52,10 @@ function App() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [showResetarSenha, setShowResetarSenha] = useState(false);
   const [resetToken, setResetToken] = useState<string | null>(null);
+  const [temAcesso, setTemAcesso] = useState<boolean | null>(null);
+  const [verificandoPagamento, setVerificandoPagamento] = useState(true);
+  const [showModalPlanos, setShowModalPlanos] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
 
   useEffect(() => {
     // Verificar autenticação
@@ -59,15 +76,15 @@ function App() {
             // Atualizar dados do usuário no localStorage incluindo is_admin
             if (data.user) {
               saveAuth(getToken() || '', data.user);
+              // Aplicar configurações do usuário (cores e logo) após login
+              aplicarConfiguracoesUsuario();
             }
             setAuthenticated(true);
-            carregarItens();
-            // Verificar se é a primeira vez e mostrar tutorial
-            if (!isTutorialCompleted()) {
-              setShowTutorial(true);
-            }
+            // Verificar pagamento
+            await verificarPagamento();
           } else {
             setAuthenticated(false);
+            setVerificandoPagamento(false);
           }
         } catch (error) {
           console.error('Erro ao verificar autenticação:', error);
@@ -75,26 +92,160 @@ function App() {
         }
       } else {
         setAuthenticated(false);
+        setVerificandoPagamento(false);
       }
       setCheckingAuth(false);
     };
     
     checkAuth();
     
-    // Atualizar contagem de plataformas
-    setTotalPlataformas(carregarPlataformas().length);
-    
     // Listener para atualizar quando plataformas mudarem
     const handlePlataformasUpdate = () => {
-      setTotalPlataformas(carregarPlataformas().length);
+      const user = getUser();
+      if (user?.id) {
+        setTotalPlataformas(carregarPlataformasSync(user.id).length);
+      }
     };
     
     window.addEventListener('plataformas-updated', handlePlataformasUpdate);
+    
+    // Carregar plataformas após autenticação (será chamado dentro de verificarPagamento)
+    const carregarPlataformasUsuario = async () => {
+      const user = getUser();
+      if (user?.id) {
+        try {
+          await carregarPlataformas(user.id);
+          setTotalPlataformas(carregarPlataformasSync(user.id).length);
+        } catch (error) {
+          // Ignorar erro, usar localStorage como fallback
+          setTotalPlataformas(carregarPlataformasSync(user.id).length);
+        }
+      }
+    };
+    
+    // Carregar plataformas iniciais do localStorage (síncrono)
+    const user = getUser();
+    if (user?.id) {
+      setTotalPlataformas(carregarPlataformasSync(user.id).length);
+    }
     
     return () => {
       window.removeEventListener('plataformas-updated', handlePlataformasUpdate);
     };
   }, []);
+
+  // Detectar token de recuperação de senha na URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    
+    if (token) {
+      // Se houver token na URL, abrir modal de reset de senha
+      setResetToken(token);
+      setShowResetarSenha(true);
+      // Limpar a URL para não mostrar o token na barra de endereços
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, []);
+
+  const verificarPagamento = async () => {
+    try {
+      const user = getUser();
+      // Admins sempre têm acesso completo
+      if (user?.is_admin) {
+        setTemAcesso(true);
+        carregarItens();
+        // Carregar plataformas após autenticação
+        if (user?.id) {
+          carregarPlataformas(user.id).then(() => {
+            setTotalPlataformas(carregarPlataformasSync(user.id).length);
+          }).catch(() => {});
+        }
+        // Verificar status do tutorial via API
+        if (user?.id) {
+          isTutorialCompleted(user.id).then(completed => {
+            if (!completed) {
+              setShowTutorial(true);
+            }
+          }).catch(() => {
+            // Em caso de erro, usar versão síncrona (localStorage)
+            if (!isTutorialCompletedSync(user.id)) {
+              setShowTutorial(true);
+            }
+          });
+        }
+        setVerificandoPagamento(false);
+        return;
+      }
+
+      const status = await apiService.verificarStatusPagamento();
+      setTemAcesso(status.temAcesso);
+      // Sempre carregar itens, mesmo sem acesso pago (modo trial)
+      await carregarItens();
+      // Carregar plataformas após autenticação
+      if (user?.id) {
+        carregarPlataformas(user.id).then(() => {
+          setTotalPlataformas(carregarPlataformasSync(user.id).length);
+        }).catch(() => {});
+      }
+      // Mostrar tutorial na primeira entrada de qualquer usuário novo
+      // Aguardar um pouco para garantir que a página está carregada
+      if (user?.id) {
+        setTimeout(async () => {
+          try {
+            const completed = await isTutorialCompleted(user.id);
+            if (!completed) {
+              setShowTutorial(true);
+            }
+          } catch {
+            // Em caso de erro, usar versão síncrona (localStorage)
+            if (!isTutorialCompletedSync(user.id)) {
+              setShowTutorial(true);
+            }
+          }
+        }, 500);
+      }
+    } catch (error: any) {
+      const user = getUser();
+      // Se for admin, sempre tem acesso
+      if (user?.is_admin) {
+        setTemAcesso(true);
+        carregarItens();
+      } else {
+        // Se for erro de pagamento requerido, não tem acesso mas pode usar o sistema
+        if (error.response?.status === 403 && error.response?.data?.codigo === 'PAGAMENTO_REQUERIDO') {
+          setTemAcesso(false);
+          // Ainda assim, carregar itens para modo trial
+          carregarItens();
+        } else {
+          console.error('Erro ao verificar pagamento:', error);
+          setTemAcesso(false);
+          // Ainda assim, carregar itens para modo trial
+          carregarItens();
+        }
+        // Mostrar tutorial na primeira entrada de qualquer usuário novo, mesmo sem acesso pago
+        // Aguardar um pouco para garantir que a página está carregada
+        if (user?.id) {
+          setTimeout(async () => {
+            try {
+              const completed = await isTutorialCompleted(user.id);
+              if (!completed) {
+                setShowTutorial(true);
+              }
+            } catch {
+              // Em caso de erro, usar versão síncrona (localStorage)
+              if (!isTutorialCompletedSync(user.id)) {
+                setShowTutorial(true);
+              }
+            }
+          }, 500);
+        }
+      }
+    } finally {
+      setVerificandoPagamento(false);
+    }
+  };
 
   const carregarItens = async () => {
     try {
@@ -108,8 +259,19 @@ function App() {
         itensDaCategoria.forEach(item => todosIds.add(item.id));
       });
       setItensSelecionados(todosIds);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao carregar itens:', error);
+      // Se for erro de pagamento requerido, permitir modo trial com itens vazios
+      if (error.response?.status === 403 && error.response?.data?.codigo === 'PAGAMENTO_REQUERIDO') {
+        // Modo trial - permitir usar o sistema mesmo sem itens carregados
+        setItensPorCategoria({});
+        setItensSelecionados(new Set());
+      } else {
+        // Outros erros - mostrar mensagem
+        await mostrarAlert('Erro', 'Erro ao carregar itens. Você pode usar o sistema em modo trial.');
+        setItensPorCategoria({});
+        setItensSelecionados(new Set());
+      }
     } finally {
       setLoading(false);
     }
@@ -187,16 +349,18 @@ function App() {
 
     try {
       for (const item of itensParaReajustar) {
+        // Usar valorNovo como base se existir, caso contrário usar valor
+        const valorBase = item.valorNovo !== null && item.valorNovo !== undefined ? item.valorNovo : item.valor;
         let novoValor: number;
         
         if (tipoReajuste === 'fixo') {
-          novoValor = item.valor + valor;
+          novoValor = valorBase + valor;
         } else {
-          novoValor = item.valor * (1 + valor / 100);
+          novoValor = valorBase * (1 + valor / 100);
         }
 
-        // Salvar backup antes de aplicar
-        await apiService.salvarBackupValor(item.id, item.valor);
+        // Salvar backup do valor atual (valorNovo ou valor) antes de aplicar
+        await apiService.salvarBackupValor(item.id, valorBase);
         await apiService.atualizarValorNovo(item.id, novoValor);
       }
 
@@ -254,11 +418,18 @@ function App() {
         },
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao reiniciar sistema');
+        let errorMessage = 'Erro ao reiniciar sistema';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = `Erro ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
+
+      await response.json();
 
       await mostrarAlert('Sucesso', 'Sistema reiniciado com sucesso! Todos os dados foram apagados.');
       await carregarItens();
@@ -268,14 +439,31 @@ function App() {
     }
   };
 
-  const handleReexibirTutorial = () => {
-    // Limpar flag de tutorial completo
+  const handleReexibirTutorial = async () => {
+    // Limpar flag de tutorial completo para o usuário atual
+    const user = getUser();
+    if (user?.id) {
+      try {
+        await apiService.resetarTutorial();
+        limparCacheTutorial(user.id);
+        // Também limpar localStorage como backup
+        localStorage.removeItem(`calculadora_tutorial_completed_${user.id}`);
+        localStorage.removeItem(`calculadora_tutorial_step_${user.id}`);
+      } catch (error) {
+        console.error('Erro ao resetar tutorial, usando localStorage:', error);
+        // Fallback para localStorage
+        localStorage.removeItem(`calculadora_tutorial_completed_${user.id}`);
+        localStorage.removeItem(`calculadora_tutorial_step_${user.id}`);
+        limparCacheTutorial(user.id);
+      }
+    }
+    // Também limpar a chave antiga para compatibilidade
     localStorage.removeItem('calculadora_tutorial_completed');
     localStorage.removeItem('calculadora_tutorial_step');
     setShowTutorial(true);
   };
 
-  if (checkingAuth) {
+  if (checkingAuth || verificandoPagamento) {
     return (
       <div className="loading-container">
         <div className="loading-spinner"></div>
@@ -285,14 +473,20 @@ function App() {
   }
 
   if (!authenticated) {
-    return <Login onLoginSuccess={() => {
-      setAuthenticated(true);
-      carregarItens();
-      if (!isTutorialCompleted()) {
-        setShowTutorial(true);
-      }
-    }} />;
+    if (showLogin) {
+      return <Login onLoginSuccess={async () => {
+        setAuthenticated(true);
+        // Aplicar configurações do usuário (cores e logo) após login
+        aplicarConfiguracoesUsuario();
+        await verificarPagamento();
+        setShowLogin(false);
+      }} />;
+    }
+    return <LandingPage onLoginClick={() => setShowLogin(true)} />;
   }
+
+  // Não bloquear acesso - permitir modo trial
+  // Usuários sem acesso pago podem usar o sistema, mas não ver preços das plataformas
 
   if (loading) {
     return (
@@ -336,6 +530,8 @@ function App() {
             onDeselecionarTodos={deselecionarTodos}
             onAplicarReajuste={aplicarReajuste}
             onResetarValores={resetarValores}
+            temAcesso={temAcesso === true}
+            onAbrirModalPlanos={() => setShowModalPlanos(true)}
           />
 
           <AdicionarProdutoSection
@@ -361,6 +557,8 @@ function App() {
                 onToggleCategoria={toggleCategoria}
                 onToggleCategoriaSelecionada={toggleCategoriaSelecionada}
                 onItemUpdated={carregarItens}
+                temAcesso={temAcesso === true}
+                onAbrirModalPlanos={() => setShowModalPlanos(true)}
               />
         </div>
       </div>
@@ -473,6 +671,8 @@ function App() {
           carregarItens();
           setShowEditarItemModal(false);
         }}
+        temAcesso={temAcesso === true}
+        onAbrirModalPlanos={() => setShowModalPlanos(true)}
       />
 
       <TutorialOnboarding
@@ -514,10 +714,30 @@ function App() {
             setShowResetarSenha(false);
             setResetToken(null);
             setAuthenticated(false);
-            setCheckingAuth(true);
+            setCheckingAuth(false);
+            setVerificandoPagamento(false);
+            // Mostrar tela de login após reset bem-sucedido
+            setShowLogin(true);
           }}
         />
       )}
+
+      <Modal
+        isOpen={showModalPlanos}
+        onClose={() => setShowModalPlanos(false)}
+        title="Liberar Acesso Completo"
+        size="large"
+        footer={
+          <button onClick={() => setShowModalPlanos(false)} className="btn-secondary">
+            Fechar
+          </button>
+        }
+      >
+        <SelecaoPlanos onPagamentoSucesso={async () => {
+          await verificarPagamento();
+          setShowModalPlanos(false);
+        }} />
+      </Modal>
     </div>
   );
 }

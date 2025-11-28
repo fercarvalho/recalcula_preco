@@ -96,6 +96,16 @@
   margin: 4px 0;
 }
 
+.menu-usuario-item:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.menu-usuario-item:disabled:hover {
+  background: rgba(255, 255, 255, 0.05);
+  transform: none;
+}
+
 .menu-usuario-item {
   display: flex;
   align-items: center;

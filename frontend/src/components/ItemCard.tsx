@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Item } from '../types';
 import { apiService } from '../services/api';
-import { carregarPlataformas, calcularPrecoComPlataforma } from '../utils/plataformas';
+import { carregarPlataformasSync, calcularPrecoComPlataforma, carregarPlataformas } from '../utils/plataformas';
 import { mostrarAlert } from '../utils/modals';
 import { FaChevronUp, FaChevronDown, FaGripVertical, FaEdit, FaTrash } from 'react-icons/fa';
 import './ItemCard.css';
@@ -13,18 +13,33 @@ interface ItemCardProps {
   onEdit: () => void;
   onDelete: (itemId: number) => void;
   onItemUpdated?: () => void;
+  temAcesso?: boolean;
+  onAbrirModalPlanos?: () => void;
 }
 
-const ItemCard = ({ item, isSelected, onToggleSelect, onEdit, onDelete, onItemUpdated }: ItemCardProps) => {
-  const [plataformas, setPlataformas] = useState(carregarPlataformas());
+import { getUser } from '../services/auth';
+
+const ItemCard = ({ item, isSelected, onToggleSelect, onEdit, onDelete, onItemUpdated, temAcesso = true, onAbrirModalPlanos }: ItemCardProps) => {
+  const user = getUser();
+  const userId = user?.id;
+  const [plataformas, setPlataformas] = useState(carregarPlataformasSync(userId));
   const [showPlataformas, setShowPlataformas] = useState(true);
-  const [valor, setValor] = useState(item.valor.toString());
+  // Usar valorNovo se disponível, caso contrário usar valor
+  const valorExibido = item.valorNovo !== null && item.valorNovo !== undefined ? item.valorNovo : item.valor;
+  const [valor, setValor] = useState(valorExibido.toString());
   const [salvando, setSalvando] = useState(false);
   const valorInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Atualizar plataformas quando o componente montar
-    setPlataformas(carregarPlataformas());
+    // Carregar plataformas da API quando o componente montar
+    if (userId) {
+      carregarPlataformas(userId).then(plataformas => {
+        setPlataformas(plataformas);
+      }).catch(() => {
+        // Em caso de erro, usar versão síncrona (localStorage)
+        setPlataformas(carregarPlataformasSync(userId));
+      });
+    }
     
     // Ouvir atualizações de plataformas
     const handlePlataformasUpdated = (e: CustomEvent) => {
@@ -36,12 +51,13 @@ const ItemCard = ({ item, isSelected, onToggleSelect, onEdit, onDelete, onItemUp
     return () => {
       window.removeEventListener('plataformas-updated', handlePlataformasUpdated as EventListener);
     };
-  }, []);
+  }, [userId]);
 
-  // Atualizar valor quando o item mudar
+  // Atualizar valor quando o item mudar (usar valorNovo se disponível)
   useEffect(() => {
-    setValor(item.valor.toString());
-  }, [item.valor]);
+    const novoValorExibido = item.valorNovo !== null && item.valorNovo !== undefined ? item.valorNovo : item.valor;
+    setValor(novoValorExibido.toString());
+  }, [item.valor, item.valorNovo]);
 
   const formatarValor = (valor: number) => {
     return valor.toFixed(2).replace('.', ',');
@@ -53,15 +69,27 @@ const ItemCard = ({ item, isSelected, onToggleSelect, onEdit, onDelete, onItemUp
   };
 
   const salvarValor = async (novoValor: string) => {
-    const valorNumerico = parseFloat(formatarValorInput(novoValor));
-    
-    if (isNaN(valorNumerico) || valorNumerico < 0) {
-      // Valor inválido, restaurar
-      setValor(item.valor.toString());
+    // Verificar se tem acesso antes de salvar
+    if (!temAcesso) {
+      onAbrirModalPlanos?.();
+      // Restaurar valor exibido
+      const valorExibidoAtual = item.valorNovo !== null && item.valorNovo !== undefined ? item.valorNovo : item.valor;
+      setValor(valorExibidoAtual.toString());
       return;
     }
 
-    if (valorNumerico === item.valor) {
+    const valorNumerico = parseFloat(formatarValorInput(novoValor));
+    
+      if (isNaN(valorNumerico) || valorNumerico < 0) {
+      // Valor inválido, restaurar
+      const valorExibidoAtual = item.valorNovo !== null && item.valorNovo !== undefined ? item.valorNovo : item.valor;
+      setValor(valorExibidoAtual.toString());
+      return;
+    }
+
+    // Comparar com o valor exibido (valorNovo ou valor)
+    const valorAtualExibido = item.valorNovo !== null && item.valorNovo !== undefined ? item.valorNovo : item.valor;
+    if (valorNumerico === valorAtualExibido) {
       // Valor não mudou, não precisa salvar
       return;
     }
@@ -97,7 +125,8 @@ const ItemCard = ({ item, isSelected, onToggleSelect, onEdit, onDelete, onItemUp
     } catch (error: any) {
       console.error('Erro ao salvar valor:', error);
       console.error('Detalhes do erro:', error.response?.data || error.message);
-      setValor(item.valor.toString());
+      const valorExibidoAtual = item.valorNovo !== null && item.valorNovo !== undefined ? item.valorNovo : item.valor;
+      setValor(valorExibidoAtual.toString());
       if (valorInputRef.current) {
         valorInputRef.current.style.borderColor = '#dc3545';
         setTimeout(() => {
@@ -113,7 +142,8 @@ const ItemCard = ({ item, isSelected, onToggleSelect, onEdit, onDelete, onItemUp
     }
   };
 
-  const precoBase = item.valor;
+  // Usar valorNovo se disponível para cálculos de plataformas
+  const precoBase = item.valorNovo !== null && item.valorNovo !== undefined ? item.valorNovo : item.valor;
 
   return (
     <div className={`item-card ${isSelected ? 'selected' : ''}`}>
@@ -136,15 +166,34 @@ const ItemCard = ({ item, isSelected, onToggleSelect, onEdit, onDelete, onItemUp
                 min="0"
                 className="item-valor-input"
                 value={valor}
-                onChange={(e) => setValor(e.target.value)}
+                onChange={(e) => {
+                  if (temAcesso) {
+                    setValor(e.target.value);
+                  } else {
+                    onAbrirModalPlanos?.();
+                  }
+                }}
                 onBlur={(e) => salvarValor(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.currentTarget.blur();
                   }
                 }}
-                disabled={salvando}
+                disabled={salvando || !temAcesso}
+                title={!temAcesso ? 'Clique para liberar acesso e editar preços' : ''}
+                style={!temAcesso ? { cursor: 'not-allowed', opacity: 0.6 } : {}}
               />
+              {!temAcesso && (
+                <span style={{
+                  fontSize: '0.75em',
+                  color: '#ffc107',
+                  marginLeft: '5px',
+                  cursor: 'pointer',
+                  textDecoration: 'underline'
+                }} onClick={() => onAbrirModalPlanos?.()} title="Clique para liberar acesso">
+                  🔒
+                </span>
+              )}
             </span>
           </div>
           {plataformas.length > 0 && (
@@ -170,15 +219,53 @@ const ItemCard = ({ item, isSelected, onToggleSelect, onEdit, onDelete, onItemUp
                 </button>
               {showPlataformas && (
                 <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {plataformas.map((plataforma) => {
-                    const precoComTaxa = calcularPrecoComPlataforma(precoBase, plataforma.taxa);
-                    return (
-                      <div key={plataforma.id} className="item-preco-plataforma">
-                        <label>{plataforma.nome} ({plataforma.taxa.toFixed(2)}%):</label>
-                        <span className="preco-plataforma-valor">R$ {formatarValor(precoComTaxa)}</span>
-                      </div>
-                    );
-                  })}
+                  {temAcesso ? (
+                    plataformas.map((plataforma) => {
+                      const precoComTaxa = calcularPrecoComPlataforma(precoBase, plataforma.taxa);
+                      return (
+                        <div key={plataforma.id} className="item-preco-plataforma">
+                          <label>{plataforma.nome} ({plataforma.taxa.toFixed(2)}%):</label>
+                          <span className="preco-plataforma-valor">R$ {formatarValor(precoComTaxa)}</span>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div style={{
+                      padding: '15px',
+                      background: '#fff3cd',
+                      border: '2px solid #ffc107',
+                      borderRadius: '8px',
+                      textAlign: 'center',
+                    }}>
+                      <p style={{ margin: '0 0 10px 0', color: '#856404', fontWeight: '600' }}>
+                        🔒 Acesso aos preços bloqueado
+                      </p>
+                      <button
+                        onClick={() => onAbrirModalPlanos?.()}
+                        style={{
+                          background: '#4CAF50',
+                          color: 'white',
+                          border: 'none',
+                          padding: '10px 20px',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '0.95em',
+                          fontWeight: 'bold',
+                          transition: 'all 0.3s',
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.background = '#45a049';
+                          e.currentTarget.style.transform = 'scale(1.05)';
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.background = '#4CAF50';
+                          e.currentTarget.style.transform = 'scale(1)';
+                        }}
+                      >
+                        Clique para liberar acesso
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

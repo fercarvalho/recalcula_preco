@@ -119,6 +119,11 @@ async function inicializar() {
             // Ignorar erro se a constraint não existir
         }
         
+        // Adicionar coluna tutorial_completed se não existir
+        if (!(await colunaExiste('usuarios', 'tutorial_completed'))) {
+            await pool.query('ALTER TABLE usuarios ADD COLUMN tutorial_completed BOOLEAN DEFAULT FALSE');
+        }
+        
         // Adicionar coluna email se não existir
         if (!(await colunaExiste('usuarios', 'email'))) {
             await pool.query('ALTER TABLE usuarios ADD COLUMN email VARCHAR(255)');
@@ -161,6 +166,58 @@ async function inicializar() {
         // Adicionar coluna usuario_id se não existir
         if (!(await colunaExiste('itens', 'usuario_id'))) {
             await pool.query('ALTER TABLE itens ADD COLUMN usuario_id INTEGER REFERENCES usuarios(id) ON DELETE CASCADE');
+        }
+        
+        // Verificar e corrigir constraint UNIQUE se necessário
+        // A constraint antiga pode ser apenas (categoria, nome) sem usuario_id
+        try {
+            // Verificar se existe constraint antiga sem usuario_id
+            const constraintAntiga = await pool.query(`
+                SELECT constraint_name 
+                FROM information_schema.table_constraints 
+                WHERE table_name = 'itens' 
+                AND constraint_name = 'itens_categoria_nome_key'
+            `);
+            
+            if (constraintAntiga.rows.length > 0) {
+                console.log('[DB] Constraint antiga encontrada (sem usuario_id). Removendo...');
+                // Remover constraint antiga
+                await pool.query('ALTER TABLE itens DROP CONSTRAINT IF EXISTS itens_categoria_nome_key');
+                // Criar constraint correta com usuario_id
+                await pool.query(`
+                    ALTER TABLE itens 
+                    ADD CONSTRAINT itens_usuario_categoria_nome_unique 
+                    UNIQUE (usuario_id, categoria, nome)
+                `);
+                console.log('[DB] Constraint corrigida! Agora inclui usuario_id.');
+            } else {
+                // Verificar se a constraint correta já existe
+                const constraintCorreta = await pool.query(`
+                    SELECT constraint_name 
+                    FROM information_schema.table_constraints 
+                    WHERE table_name = 'itens' 
+                    AND constraint_name = 'itens_usuario_categoria_nome_unique'
+                `);
+                
+                if (constraintCorreta.rows.length === 0) {
+                    // Criar constraint correta
+                    await pool.query(`
+                        ALTER TABLE itens 
+                        ADD CONSTRAINT itens_usuario_categoria_nome_unique 
+                        UNIQUE (usuario_id, categoria, nome)
+                    `);
+                    console.log('[DB] Constraint UNIQUE criada com usuario_id.');
+                } else {
+                    console.log('[DB] Constraint UNIQUE correta já existe.');
+                }
+            }
+        } catch (error) {
+            // Se houver erro, apenas logar mas não bloquear inicialização
+            if (error.code === '42710') { // duplicate_object
+                console.log('[DB] Constraint já existe (ok)');
+            } else {
+                console.warn('[DB] Aviso ao verificar/criar constraint UNIQUE (continuando):', error.message);
+            }
         }
                 
         // Adicionar coluna valor_backup se não existir
@@ -259,6 +316,76 @@ async function inicializar() {
             WHERE expires_at < NOW() OR used = TRUE
         `);
         
+        // Criar tabela de assinaturas Stripe
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS assinaturas (
+                id SERIAL PRIMARY KEY,
+                usuario_id INTEGER REFERENCES usuarios(id) ON DELETE CASCADE,
+                stripe_subscription_id VARCHAR(255) UNIQUE,
+                stripe_customer_id VARCHAR(255),
+                plano_tipo VARCHAR(50) NOT NULL, -- 'anual' ou 'unico'
+                status VARCHAR(50) NOT NULL, -- 'active', 'canceled', 'past_due', 'trialing', etc.
+                current_period_start TIMESTAMP,
+                current_period_end TIMESTAMP,
+                cancel_at_period_end BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        // Criar índice para busca rápida por usuario_id
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_assinaturas_usuario_id 
+            ON assinaturas(usuario_id)
+        `);
+        
+        // Criar índice para busca rápida por stripe_subscription_id
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_assinaturas_stripe_subscription_id 
+            ON assinaturas(stripe_subscription_id)
+        `);
+        
+        // Criar tabela de pagamentos únicos
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS pagamentos_unicos (
+                id SERIAL PRIMARY KEY,
+                usuario_id INTEGER REFERENCES usuarios(id) ON DELETE CASCADE,
+                stripe_payment_intent_id VARCHAR(255) UNIQUE,
+                stripe_customer_id VARCHAR(255),
+                valor NUMERIC(10, 2) NOT NULL,
+                status VARCHAR(50) NOT NULL, -- 'succeeded', 'pending', 'failed', etc.
+                usado BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        // Criar índice para busca rápida por usuario_id
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_pagamentos_unicos_usuario_id 
+            ON pagamentos_unicos(usuario_id)
+        `);
+        
+        // Criar tabela de plataformas
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS plataformas (
+                id SERIAL PRIMARY KEY,
+                usuario_id INTEGER REFERENCES usuarios(id) ON DELETE CASCADE,
+                nome VARCHAR(255) NOT NULL,
+                taxa NUMERIC(10, 2) NOT NULL,
+                ordem INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(usuario_id, nome)
+            )
+        `);
+        
+        // Criar índice para busca rápida por usuario_id
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_plataformas_usuario_id 
+            ON plataformas(usuario_id)
+        `);
+        
         // Criar usuário admin padrão se não existir
         let adminPadrao = await pool.query('SELECT id FROM usuarios WHERE username = $1', ['admin']);
         if (adminPadrao.rows.length === 0) {
@@ -297,6 +424,64 @@ async function inicializar() {
             }
         }
         const usuarioId = usuarioPadrao.rows[0].id;
+        
+        // Criar assinatura anual para o usuário viralatas
+        try {
+            const assinaturaExistente = await pool.query(
+                'SELECT id FROM assinaturas WHERE usuario_id = $1',
+                [usuarioId]
+            );
+            
+            if (assinaturaExistente.rows.length === 0) {
+                // Criar assinatura anual ativa (sem Stripe, para uso interno)
+                const dataInicio = new Date();
+                const dataFim = new Date();
+                dataFim.setFullYear(dataFim.getFullYear() + 1); // 1 ano a partir de agora
+                
+                await criarOuAtualizarAssinatura(usuarioId, {
+                    stripe_subscription_id: null,
+                    stripe_customer_id: null,
+                    plano_tipo: 'anual',
+                    status: 'active',
+                    current_period_start: dataInicio,
+                    current_period_end: dataFim,
+                    cancel_at_period_end: false,
+                });
+                console.log('✅ Assinatura anual criada para o usuário "viralatas"');
+            } else {
+                // Verificar se a assinatura está ativa, se não, atualizar para ativa
+                const assinatura = await pool.query(
+                    'SELECT status, current_period_end FROM assinaturas WHERE usuario_id = $1',
+                    [usuarioId]
+                );
+                
+                if (assinatura.rows.length > 0) {
+                    const assinaturaAtual = assinatura.rows[0];
+                    const dataFim = new Date(assinaturaAtual.current_period_end || new Date());
+                    const agora = new Date();
+                    
+                    // Se a assinatura expirou ou não está ativa, renovar por mais 1 ano
+                    if (assinaturaAtual.status !== 'active' || dataFim < agora) {
+                        const novaDataFim = new Date();
+                        novaDataFim.setFullYear(novaDataFim.getFullYear() + 1);
+                        
+                        await criarOuAtualizarAssinatura(usuarioId, {
+                            stripe_subscription_id: null,
+                            stripe_customer_id: null,
+                            plano_tipo: 'anual',
+                            status: 'active',
+                            current_period_start: agora,
+                            current_period_end: novaDataFim,
+                            cancel_at_period_end: false,
+                        });
+                        console.log('✅ Assinatura anual renovada para o usuário "viralatas"');
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('⚠️  Erro ao criar/atualizar assinatura do viralatas:', error.message);
+            // Não bloquear a inicialização se houver erro na assinatura
+        }
         
         // Migrar dados existentes para o usuário viralatas
         const itensSemUsuario = await pool.query('SELECT COUNT(*) as count FROM itens WHERE usuario_id IS NULL');
@@ -503,7 +688,7 @@ async function verificarCredenciais(identificador, senha) {
 async function obterUsuarioPorId(id) {
     try {
         const result = await pool.query(
-            'SELECT id, username, email, is_admin FROM usuarios WHERE id = $1',
+            'SELECT id, username, email, is_admin, tutorial_completed FROM usuarios WHERE id = $1',
             [id]
         );
         
@@ -515,10 +700,58 @@ async function obterUsuarioPorId(id) {
             id: result.rows[0].id,
             username: result.rows[0].username,
             email: result.rows[0].email,
-            is_admin: result.rows[0].is_admin || false
+            is_admin: result.rows[0].is_admin || false,
+            tutorial_completed: result.rows[0].tutorial_completed || false
         };
     } catch (error) {
         console.error('Erro ao obter usuário:', error);
+        throw error;
+    }
+}
+
+// Verificar se tutorial foi completado
+async function verificarTutorialCompleto(usuarioId) {
+    try {
+        const result = await pool.query(
+            'SELECT tutorial_completed FROM usuarios WHERE id = $1',
+            [usuarioId]
+        );
+        
+        if (result.rows.length === 0) {
+            return false;
+        }
+        
+        return result.rows[0].tutorial_completed || false;
+    } catch (error) {
+        console.error('Erro ao verificar tutorial completo:', error);
+        return false; // Em caso de erro, retornar false para mostrar tutorial
+    }
+}
+
+// Marcar tutorial como completo
+async function marcarTutorialCompleto(usuarioId) {
+    try {
+        await pool.query(
+            'UPDATE usuarios SET tutorial_completed = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
+            [usuarioId]
+        );
+        return true;
+    } catch (error) {
+        console.error('Erro ao marcar tutorial como completo:', error);
+        throw error;
+    }
+}
+
+// Limpar flag de tutorial completo (para re-exibir)
+async function limparTutorialCompleto(usuarioId) {
+    try {
+        await pool.query(
+            'UPDATE usuarios SET tutorial_completed = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
+            [usuarioId]
+        );
+        return true;
+    } catch (error) {
+        console.error('Erro ao limpar tutorial completo:', error);
         throw error;
     }
 }
@@ -987,20 +1220,58 @@ async function obterItensPorCategoria(categoria, usuarioId) {
 // Criar novo item
 async function criarItem(categoria, nome, valor, usuarioId) {
     try {
+        // Normalizar nome e categoria (apenas trim)
+        const nomeNormalizado = nome.trim();
+        const categoriaNormalizada = categoria.trim();
+        
+        // Garantir que usuarioId é um número
+        const userId = parseInt(usuarioId);
+        if (isNaN(userId)) {
+            throw new Error('ID do usuário inválido');
+        }
+        
+        console.log('[DB] Criar item:', { 
+            userId, 
+            categoriaNormalizada, 
+            nomeNormalizado, 
+            valor
+        });
+        
+        // REMOVIDA verificação prévia de duplicata
+        // A constraint UNIQUE do banco (usuario_id, categoria, nome) já garante que não haverá duplicatas
+        // para o mesmo usuário. Diferentes usuários podem ter itens com o mesmo nome na mesma categoria.
+        // Deixar o banco de dados fazer a validação através da constraint é mais confiável.
+
         // Obter a maior ordem atual para esta categoria
         const maxResult = await pool.query(
             'SELECT MAX(ordem) as maxOrdem FROM itens WHERE categoria = $1 AND usuario_id = $2',
-            [categoria, usuarioId]
+            [categoriaNormalizada, userId]
         );
         const maxOrdem = maxResult.rows[0]?.maxordem;
         const novaOrdem = (maxOrdem !== null && maxOrdem !== undefined) ? maxOrdem + 1 : 0;
 
+        // Verificar se já existe um item com o mesmo nome na mesma categoria PARA ESTE USUÁRIO
+        // Isso evita erro de constraint e permite mensagem mais clara
+        const checkDuplicate = await pool.query(
+            'SELECT id FROM itens WHERE usuario_id = $1 AND categoria = $2 AND nome = $3',
+            [userId, categoriaNormalizada, nomeNormalizado]
+        );
+        
+        if (checkDuplicate.rows.length > 0) {
+            const erro = new Error(`Já existe um item com o nome "${nomeNormalizado}" na categoria "${categoriaNormalizada}".`);
+            erro.code = 'ITEM_DUPLICADO';
+            throw erro;
+        }
+        
+        // Tentar inserir - a constraint UNIQUE do banco vai validar como backup
         const result = await pool.query(
             'INSERT INTO itens (usuario_id, categoria, nome, valor, valor_backup, ordem) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-            [usuarioId, categoria, nome, valor, valor, novaOrdem]
+            [userId, categoriaNormalizada, nomeNormalizado, valor, valor, novaOrdem]
         );
 
         const row = result.rows[0];
+        console.log('[DB] Item criado com sucesso:', { id: row.id, usuario_id: row.usuario_id });
+        
         return {
             id: row.id,
             nome: row.nome,
@@ -1009,7 +1280,45 @@ async function criarItem(categoria, nome, valor, usuarioId) {
             ordem: row.ordem
         };
     } catch (error) {
-        console.error('Erro ao criar item:', error);
+        console.error('========== ERRO NO DATABASE - CRIAR ITEM ==========');
+        console.error('Erro completo:', error);
+        console.error('Stack:', error.stack);
+        
+        // Se for erro de constraint UNIQUE do PostgreSQL (código 23505)
+        if (error.code === '23505') {
+            console.error('[DB] Erro de constraint UNIQUE - item duplicado:', {
+                constraint: error.constraint,
+                detail: error.detail,
+                table: error.table
+            });
+            
+            // Verificar se a constraint é de itens
+            if (error.constraint && (error.constraint.includes('itens') || error.table === 'itens')) {
+                // Se a constraint não inclui usuario_id, é um problema - precisamos corrigir
+                if (error.constraint === 'itens_categoria_nome_key') {
+                    const erro = new Error('A constraint do banco de dados está incorreta. Por favor, contate o administrador.');
+                    erro.code = 'CONSTRAINT_INCORRETA';
+                    erro.constraint = error.constraint;
+                    erro.detail = 'A constraint atual não inclui usuario_id, impedindo que diferentes usuários tenham itens com o mesmo nome.';
+                    throw erro;
+                }
+                
+                const erro = new Error(`Já existe um item com o nome "${nomeNormalizado}" na categoria "${categoriaNormalizada}".`);
+                erro.code = 'ITEM_DUPLICADO';
+                erro.constraint = error.constraint;
+                erro.detail = error.detail;
+                throw erro;
+            }
+        }
+        
+        console.error('Detalhes do erro:', {
+            code: error.code,
+            message: error.message,
+            constraint: error.constraint,
+            detail: error.detail,
+            table: error.table
+        });
+        console.error('==================================================');
         throw error;
     }
 }
@@ -1575,6 +1884,354 @@ async function resetarSenhaComToken(token, novaSenha) {
     }
 }
 
+// ========== FUNÇÕES DE ASSINATURAS E PAGAMENTOS ==========
+
+// Criar ou atualizar assinatura
+async function criarOuAtualizarAssinatura(usuarioId, dadosAssinatura) {
+    try {
+        const {
+            stripe_subscription_id,
+            stripe_customer_id,
+            plano_tipo,
+            status,
+            current_period_start,
+            current_period_end,
+            cancel_at_period_end
+        } = dadosAssinatura;
+
+        // Verificar se já existe assinatura para este usuário
+        const existente = await pool.query(
+            'SELECT id FROM assinaturas WHERE usuario_id = $1',
+            [usuarioId]
+        );
+
+        if (existente.rows.length > 0) {
+            // Atualizar assinatura existente
+            const result = await pool.query(`
+                UPDATE assinaturas 
+                SET stripe_subscription_id = $1,
+                    stripe_customer_id = $2,
+                    plano_tipo = $3,
+                    status = $4,
+                    current_period_start = $5,
+                    current_period_end = $6,
+                    cancel_at_period_end = $7,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE usuario_id = $8
+                RETURNING *
+            `, [
+                stripe_subscription_id,
+                stripe_customer_id,
+                plano_tipo,
+                status,
+                current_period_start,
+                current_period_end,
+                cancel_at_period_end || false,
+                usuarioId
+            ]);
+
+            return result.rows[0];
+        } else {
+            // Criar nova assinatura
+            const result = await pool.query(`
+                INSERT INTO assinaturas (
+                    usuario_id, stripe_subscription_id, stripe_customer_id,
+                    plano_tipo, status, current_period_start, current_period_end,
+                    cancel_at_period_end
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                RETURNING *
+            `, [
+                usuarioId,
+                stripe_subscription_id,
+                stripe_customer_id,
+                plano_tipo,
+                status,
+                current_period_start,
+                current_period_end,
+                cancel_at_period_end || false
+            ]);
+
+            return result.rows[0];
+        }
+    } catch (error) {
+        console.error('Erro ao criar/atualizar assinatura:', error);
+        throw error;
+    }
+}
+
+// Obter assinatura do usuário
+async function obterAssinatura(usuarioId) {
+    try {
+        const result = await pool.query(
+            'SELECT * FROM assinaturas WHERE usuario_id = $1',
+            [usuarioId]
+        );
+
+        if (result.rows.length === 0) {
+            return null;
+        }
+
+        return result.rows[0];
+    } catch (error) {
+        console.error('Erro ao obter assinatura:', error);
+        throw error;
+    }
+}
+
+// Verificar se usuário tem acesso ativo
+async function verificarAcessoAtivo(usuarioId) {
+    try {
+        // Verificar se é o usuário viralatas (acesso vitalício)
+        const usuarioViralatas = await pool.query(
+            'SELECT id, username FROM usuarios WHERE id = $1 AND username = $2',
+            [usuarioId, 'viralatas']
+        );
+        
+        if (usuarioViralatas.rows.length > 0) {
+            // Usuário viralatas tem acesso vitalício
+            return {
+                temAcesso: true,
+                tipo: 'vitalicio',
+                assinatura: null
+            };
+        }
+        
+        // Verificar assinatura anual ativa
+        const assinatura = await pool.query(`
+            SELECT * FROM assinaturas 
+            WHERE usuario_id = $1 
+            AND plano_tipo = 'anual'
+            AND status IN ('active', 'trialing')
+            AND (current_period_end IS NULL OR current_period_end > NOW())
+        `, [usuarioId]);
+
+        if (assinatura.rows.length > 0) {
+            return {
+                temAcesso: true,
+                tipo: 'anual',
+                assinatura: assinatura.rows[0]
+            };
+        }
+
+        // Verificar pagamento único não usado e não expirado (24 horas)
+        const pagamentoUnico = await pool.query(`
+            SELECT * FROM pagamentos_unicos 
+            WHERE usuario_id = $1 
+            AND status = 'succeeded'
+            AND usado = FALSE
+            AND created_at > NOW() - INTERVAL '24 hours'
+        `, [usuarioId]);
+
+        if (pagamentoUnico.rows.length > 0) {
+            return {
+                temAcesso: true,
+                tipo: 'unico',
+                pagamento: pagamentoUnico.rows[0]
+            };
+        }
+
+        return {
+            temAcesso: false,
+            tipo: null
+        };
+    } catch (error) {
+        console.error('Erro ao verificar acesso:', error);
+        throw error;
+    }
+}
+
+// Criar pagamento único
+async function criarPagamentoUnico(usuarioId, dadosPagamento) {
+    try {
+        const {
+            stripe_payment_intent_id,
+            stripe_customer_id,
+            valor,
+            status
+        } = dadosPagamento;
+
+        const result = await pool.query(`
+            INSERT INTO pagamentos_unicos (
+                usuario_id, stripe_payment_intent_id, stripe_customer_id,
+                valor, status
+            ) VALUES ($1, $2, $3, $4, $5)
+            RETURNING *
+        `, [
+            usuarioId,
+            stripe_payment_intent_id,
+            stripe_customer_id,
+            valor,
+            status
+        ]);
+
+        return result.rows[0];
+    } catch (error) {
+        console.error('Erro ao criar pagamento único:', error);
+        throw error;
+    }
+}
+
+// Atualizar status do pagamento único
+async function atualizarPagamentoUnico(stripe_payment_intent_id, status) {
+    try {
+        const result = await pool.query(`
+            UPDATE pagamentos_unicos 
+            SET status = $1, updated_at = CURRENT_TIMESTAMP
+            WHERE stripe_payment_intent_id = $2
+            RETURNING *
+        `, [status, stripe_payment_intent_id]);
+
+        return result.rows.length > 0 ? result.rows[0] : null;
+    } catch (error) {
+        console.error('Erro ao atualizar pagamento único:', error);
+        throw error;
+    }
+}
+
+// Marcar pagamento único como usado
+async function marcarPagamentoUnicoComoUsado(usuarioId) {
+    try {
+        const result = await pool.query(`
+            UPDATE pagamentos_unicos 
+            SET usado = TRUE, updated_at = CURRENT_TIMESTAMP
+            WHERE usuario_id = $1 
+            AND status = 'succeeded'
+            AND usado = FALSE
+            RETURNING *
+        `, [usuarioId]);
+
+        return result.rows.length > 0 ? result.rows[0] : null;
+    } catch (error) {
+        console.error('Erro ao marcar pagamento como usado:', error);
+        throw error;
+    }
+}
+
+// Obter assinatura por stripe_subscription_id
+async function obterAssinaturaPorStripeId(stripe_subscription_id) {
+    try {
+        const result = await pool.query(
+            'SELECT * FROM assinaturas WHERE stripe_subscription_id = $1',
+            [stripe_subscription_id]
+        );
+
+        return result.rows.length > 0 ? result.rows[0] : null;
+    } catch (error) {
+        console.error('Erro ao obter assinatura por Stripe ID:', error);
+        throw error;
+    }
+}
+
+// ========== FUNÇÕES DE PLATAFORMAS ==========
+
+// Obter todas as plataformas de um usuário
+async function obterPlataformas(usuarioId) {
+    try {
+        const result = await pool.query(
+            'SELECT id, nome, taxa, ordem FROM plataformas WHERE usuario_id = $1 ORDER BY CASE WHEN ordem IS NULL THEN 1 ELSE 0 END, ordem, nome',
+            [usuarioId]
+        );
+        return result.rows.map(row => ({
+            id: row.id,
+            nome: row.nome,
+            taxa: parseFloat(row.taxa),
+            ordem: row.ordem !== null && row.ordem !== undefined ? row.ordem : 999
+        }));
+    } catch (error) {
+        console.error('Erro ao obter plataformas:', error);
+        throw error;
+    }
+}
+
+// Criar nova plataforma
+async function criarPlataforma(usuarioId, nome, taxa) {
+    try {
+        const result = await pool.query(
+            'INSERT INTO plataformas (usuario_id, nome, taxa) VALUES ($1, $2, $3) RETURNING id, nome, taxa',
+            [usuarioId, nome.trim(), taxa]
+        );
+        const row = result.rows[0];
+        return {
+            id: row.id,
+            nome: row.nome,
+            taxa: parseFloat(row.taxa)
+        };
+    } catch (error) {
+        if (error.code === '23505') { // unique_violation
+            throw new Error('Já existe uma plataforma com este nome');
+        }
+        console.error('Erro ao criar plataforma:', error);
+        throw error;
+    }
+}
+
+// Atualizar plataforma
+async function atualizarPlataforma(usuarioId, id, nome, taxa) {
+    try {
+        const result = await pool.query(
+            'UPDATE plataformas SET nome = $1, taxa = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 AND usuario_id = $4 RETURNING id, nome, taxa',
+            [nome.trim(), taxa, id, usuarioId]
+        );
+        if (result.rows.length === 0) {
+            return null;
+        }
+        const row = result.rows[0];
+        return {
+            id: row.id,
+            nome: row.nome,
+            taxa: parseFloat(row.taxa)
+        };
+    } catch (error) {
+        if (error.code === '23505') { // unique_violation
+            throw new Error('Já existe uma plataforma com este nome');
+        }
+        console.error('Erro ao atualizar plataforma:', error);
+        throw error;
+    }
+}
+
+// Deletar plataforma
+async function deletarPlataforma(usuarioId, id) {
+    try {
+        const result = await pool.query(
+            'DELETE FROM plataformas WHERE id = $1 AND usuario_id = $2',
+            [id, usuarioId]
+        );
+        return result.rowCount > 0;
+    } catch (error) {
+        console.error('Erro ao deletar plataforma:', error);
+        throw error;
+    }
+}
+
+// Atualizar ordem das plataformas
+async function atualizarOrdemPlataformas(usuarioId, plataformasIds) {
+    try {
+        // Usar transação para garantir consistência
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            
+            for (let i = 0; i < plataformasIds.length; i++) {
+                await client.query(
+                    'UPDATE plataformas SET ordem = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND usuario_id = $3',
+                    [i, plataformasIds[i], usuarioId]
+                );
+            }
+            
+            await client.query('COMMIT');
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
+    } catch (error) {
+        console.error('Erro ao atualizar ordem das plataformas:', error);
+        throw error;
+    }
+}
+
 // Fechar conexão
 async function fechar() {
     try {
@@ -1619,5 +2276,22 @@ module.exports = {
     criarTokenRecuperacao,
     validarTokenRecuperacao,
     resetarSenhaComToken,
+    criarOuAtualizarAssinatura,
+    obterAssinatura,
+    verificarAcessoAtivo,
+    criarPagamentoUnico,
+    atualizarPagamentoUnico,
+    marcarPagamentoUnicoComoUsado,
+    obterAssinaturaPorStripeId,
+    // Funções de plataformas
+    obterPlataformas,
+    criarPlataforma,
+    atualizarPlataforma,
+    deletarPlataforma,
+    atualizarOrdemPlataformas,
+    // Funções de tutorial
+    verificarTutorialCompleto,
+    marcarTutorialCompleto,
+    limparTutorialCompleto,
     fechar
 };

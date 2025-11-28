@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { getUser } from '../services/auth';
-import { FaUser, FaSignOutAlt, FaKey, FaUserEdit, FaRedo, FaGraduationCap, FaShieldAlt, FaEnvelope } from 'react-icons/fa';
+import { FaUser, FaSignOutAlt, FaKey, FaUserEdit, FaRedo, FaGraduationCap, FaShieldAlt, FaEnvelope, FaCreditCard } from 'react-icons/fa';
 import AlterarLoginModal from './AlterarLoginModal';
 import AlterarSenhaModal from './AlterarSenhaModal';
 import AlterarEmailModal from './AlterarEmailModal';
-import { mostrarConfirm } from '../utils/modals';
+import { mostrarConfirm, mostrarAlert } from '../utils/modals';
+import { apiService } from '../services/api';
 import './MenuUsuario.css';
 
 interface MenuUsuarioProps {
@@ -21,12 +22,36 @@ const MenuUsuario = ({ onLogout, onReiniciarSistema, onReexibirTutorial, onOpenA
   const [showAlterarSenha, setShowAlterarSenha] = useState(false);
   const [showAlterarEmail, setShowAlterarEmail] = useState(false);
   const [user, setUser] = useState(getUser());
+  const [statusPagamento, setStatusPagamento] = useState<{
+    temAcesso: boolean;
+    tipo: 'anual' | 'unico' | null;
+    assinatura: {
+      status: string;
+      plano_tipo: string;
+      current_period_end: string | null;
+      cancel_at_period_end: boolean;
+    } | null;
+  } | null>(null);
+  const [carregandoCancelar, setCarregandoCancelar] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Atualizar usuário quando o componente montar ou quando o login/email for alterado
   useEffect(() => {
     setUser(getUser());
   }, [showAlterarLogin, showAlterarEmail]);
+
+  // Verificar status de pagamento ao montar o componente
+  useEffect(() => {
+    const verificarStatus = async () => {
+      try {
+        const status = await apiService.verificarStatusPagamento();
+        setStatusPagamento(status);
+      } catch (error) {
+        console.error('Erro ao verificar status de pagamento:', error);
+      }
+    };
+    verificarStatus();
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -66,6 +91,30 @@ const MenuUsuario = ({ onLogout, onReiniciarSistema, onReexibirTutorial, onOpenA
   const handleReexibirTutorial = () => {
     onReexibirTutorial();
     setShowMenu(false);
+  };
+
+  const handleCancelarPlano = async () => {
+    // Verificar se é o usuário viralatas (assinatura vitalícia)
+    if (user?.username === 'viralatas' || statusPagamento?.assinatura?.plano_tipo === 'vitalicio') {
+      await mostrarAlert(
+        '🎉 Assinatura Vitalícia',
+        'Parabéns! Você possui uma assinatura vitalícia e tem acesso completo e permanente ao sistema. Não é necessário gerenciar pagamentos ou renovações - seu acesso é garantido para sempre! 🚀'
+      );
+      setShowMenu(false);
+      return;
+    }
+
+    try {
+      setCarregandoCancelar(true);
+      const { url } = await apiService.criarSessaoCustomerPortal();
+      window.location.href = url;
+    } catch (error: any) {
+      setCarregandoCancelar(false);
+      await mostrarAlert(
+        'Erro',
+        error.response?.data?.error || 'Erro ao acessar o portal de gerenciamento. Tente novamente.'
+      );
+    }
   };
 
   if (!user) return null;
@@ -153,6 +202,20 @@ const MenuUsuario = ({ onLogout, onReiniciarSistema, onReexibirTutorial, onOpenA
               <FaGraduationCap className="menu-icon" />
               <span>Re-exibir Tutorial</span>
             </button>
+
+            {statusPagamento?.tipo === 'anual' && statusPagamento?.temAcesso && (
+              <>
+                <div className="menu-usuario-divider"></div>
+                <button
+                  className="menu-usuario-item"
+                  onClick={handleCancelarPlano}
+                  disabled={carregandoCancelar}
+                >
+                  <FaCreditCard className="menu-icon" />
+                  <span>{carregandoCancelar ? 'Carregando...' : 'Gerenciar Assinatura'}</span>
+                </button>
+              </>
+            )}
 
             <div className="menu-usuario-divider"></div>
 

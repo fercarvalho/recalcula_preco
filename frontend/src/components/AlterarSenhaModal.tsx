@@ -64,11 +64,18 @@ const AlterarSenhaModal = ({ isOpen, onClose }: AlterarSenhaModalProps) => {
         }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao alterar senha');
+        let errorMessage = 'Erro ao alterar senha';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = `Erro ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
+
+      await response.json();
 
       await mostrarAlert('Sucesso', 'Senha alterada com sucesso!');
       setSenhaAtual('');

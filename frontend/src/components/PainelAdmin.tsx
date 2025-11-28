@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Modal from './Modal';
 import { mostrarAlert, mostrarConfirm } from '../utils/modals';
+import { getUser } from '../services/auth';
 import { FaUndo, FaSave, FaImage, FaPalette, FaTrash } from 'react-icons/fa';
 import './PainelAdmin.css';
 
@@ -11,13 +12,31 @@ interface ConfiguracoesAdmin {
   logoUrl: string | null;
 }
 
-const CONFIG_STORAGE_KEY = 'calculadora_admin_config';
+const getConfigKey = (userId?: number | null): string => {
+  if (userId) {
+    return `calculadora_admin_config_${userId}`;
+  }
+  // Fallback para compatibilidade com versão antiga
+  return 'calculadora_admin_config';
+};
 
-const carregarConfiguracoes = (): ConfiguracoesAdmin => {
-  const saved = localStorage.getItem(CONFIG_STORAGE_KEY);
+export const carregarConfiguracoes = (userId?: number | null): ConfiguracoesAdmin => {
+  // Se não foi passado userId, tentar obter do usuário atual
+  if (!userId) {
+    const user = getUser();
+    userId = user?.id;
+  }
+  
+  const key = getConfigKey(userId);
+  const saved = localStorage.getItem(key);
   if (saved) {
     try {
-      return JSON.parse(saved);
+      const config = JSON.parse(saved);
+      // Garantir que logoUrl seja null se estiver vazio ou undefined
+      if (config.logoUrl === '' || config.logoUrl === undefined) {
+        config.logoUrl = null;
+      }
+      return config;
     } catch {
       // Fallback para valores padrão
     }
@@ -30,29 +49,41 @@ const carregarConfiguracoes = (): ConfiguracoesAdmin => {
   };
 };
 
-const salvarConfiguracoes = (config: ConfiguracoesAdmin) => {
-  localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(config));
+const salvarConfiguracoes = (config: ConfiguracoesAdmin, userId?: number | null) => {
+  // Se não foi passado userId, tentar obter do usuário atual
+  if (!userId) {
+    const user = getUser();
+    userId = user?.id;
+  }
+  
+  const key = getConfigKey(userId);
+  localStorage.setItem(key, JSON.stringify(config));
 };
 
-const aplicarConfiguracoes = (config: ConfiguracoesAdmin) => {
+export const aplicarConfiguracoes = (config: ConfiguracoesAdmin, userId?: number | null) => {
   const root = document.documentElement;
   root.style.setProperty('--cor-primaria', config.corPrimaria);
   root.style.setProperty('--cor-secundaria', config.corSecundaria);
   root.style.setProperty('--cor-fundo', config.corFundo);
   
-  if (config.logoUrl) {
-    const logoImg = document.querySelector('.logo') as HTMLImageElement;
-    if (logoImg) {
+  const logoImg = document.querySelector('.logo') as HTMLImageElement;
+  if (logoImg) {
+    if (config.logoUrl) {
+      // Se houver logo customizada, usar ela
       logoImg.src = config.logoUrl;
+    } else {
+      // Se não houver logo customizada, verificar se é viralatas
+      const user = getUser();
+      logoImg.src = user?.username === 'viralatas' ? '/logo.png' : '/logo_nova.png';
     }
   }
+  
+  // Disparar evento para atualizar o Header
+  window.dispatchEvent(new CustomEvent('config-updated', { detail: { config, userId } }));
 };
 
-// Aplicar configurações ao carregar
-if (typeof window !== 'undefined') {
-  const config = carregarConfiguracoes();
-  aplicarConfiguracoes(config);
-}
+// Aplicar configurações ao carregar (será aplicado quando o usuário fizer login)
+// Removido da inicialização global para evitar aplicar configurações de outro usuário
 
 interface PainelAdminProps {
   isOpen: boolean;
@@ -60,9 +91,23 @@ interface PainelAdminProps {
 }
 
 const PainelAdmin = ({ isOpen, onClose }: PainelAdminProps) => {
-  const [config, setConfig] = useState<ConfiguracoesAdmin>(carregarConfiguracoes());
-  const [logoPreview, setLogoPreview] = useState<string | null>(config.logoUrl);
+  const user = getUser();
+  const userId = user?.id;
+  const configInicial = carregarConfiguracoes(userId);
+  const [config, setConfig] = useState<ConfiguracoesAdmin>(configInicial);
+  const [logoPreview, setLogoPreview] = useState<string | null>(configInicial.logoUrl || null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      // Recarregar configurações do usuário atual quando abrir o modal
+      const configAtual = carregarConfiguracoes(userId);
+      setConfig(configAtual);
+      // Se houver logoUrl salva, usar ela; caso contrário, usar null para mostrar fallback correto
+      setLogoPreview(configAtual.logoUrl || null);
+      aplicarConfiguracoes(configAtual);
+    }
+  }, [isOpen, userId]);
 
   useEffect(() => {
     if (isOpen) {
@@ -104,7 +149,8 @@ const PainelAdmin = ({ isOpen, onClose }: PainelAdminProps) => {
     
     const logoImg = document.querySelector('.logo') as HTMLImageElement;
     if (logoImg) {
-      logoImg.src = '/logo.png';
+      // Usar logo_nova.png como padrão (logo.png é apenas para viralatas)
+      logoImg.src = '/logo_nova.png';
     }
   };
 
@@ -124,11 +170,16 @@ const PainelAdmin = ({ isOpen, onClose }: PainelAdminProps) => {
       setConfig(configPadrao);
       setLogoPreview(null);
       aplicarConfiguracoes(configPadrao);
-      localStorage.removeItem(CONFIG_STORAGE_KEY);
+      
+      // Remover configurações do usuário atual
+      const key = getConfigKey(userId);
+      localStorage.removeItem(key);
       
       const logoImg = document.querySelector('.logo') as HTMLImageElement;
       if (logoImg) {
-        logoImg.src = '/logo.png';
+        // Usar logo_nova.png como padrão (logo.png é apenas para viralatas)
+        const user = getUser();
+        logoImg.src = user?.username === 'viralatas' ? '/logo.png' : '/logo_nova.png';
       }
       
       await mostrarAlert('Sucesso', 'Configurações resetadas para os valores padrão!');
@@ -136,7 +187,7 @@ const PainelAdmin = ({ isOpen, onClose }: PainelAdminProps) => {
   };
 
   const handleSalvar = () => {
-    salvarConfiguracoes(config);
+    salvarConfiguracoes(config, userId);
     aplicarConfiguracoes(config);
     mostrarAlert('Sucesso', 'Configurações salvas com sucesso!');
     onClose();
@@ -180,7 +231,7 @@ const PainelAdmin = ({ isOpen, onClose }: PainelAdminProps) => {
           <label>Preview da Logo:</label>
           <div className="logo-preview">
             <img
-              src={logoPreview || '/logo.png'}
+              src={logoPreview || (user?.username === 'viralatas' ? '/logo.png' : '/logo_nova.png')}
               alt="Preview Logo"
               style={{ maxWidth: '200px', maxHeight: '200px', borderRadius: '50%' }}
             />
