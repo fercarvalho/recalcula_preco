@@ -63,9 +63,9 @@ git push -u origin main
 ssh seu-usuario@seu-ip-vps
 
 # Criar diretório (se não existir)
-sudo mkdir -p /www/recalcula_preço
-sudo chown -R $USER:$USER /www/recalcula_preço
-cd /www/recalcula_preço
+sudo mkdir -p /www/recalcula_preco
+sudo chown -R $USER:$USER /www/recalcula_preco
+cd /www/recalcula_preco
 
 # Clonar o repositório
 git clone https://github.com/seu-usuario/calculadora-reajuste.git .
@@ -94,7 +94,7 @@ ls -la
 
 ```bash
 # Na VPS, dentro do diretório do projeto
-cd /www/recalcula_preço
+cd /www/recalcula_preco
 git pull origin main
 
 # Depois executar deploy
@@ -160,23 +160,23 @@ ls -la
 
 ```bash
 # Upload completo do diretório
-scp -r /caminho/local/calculadora-reajuste/* seu-usuario@seu-ip-vps:/www/recalcula_preço/
+scp -r /caminho/local/calculadora-reajuste/* seu-usuario@seu-ip-vps:/www/recalcula_preco/
 
 # OU se quiser incluir arquivos ocultos (.env.example, etc.):
-scp -r /caminho/local/calculadora-reajuste/. seu-usuario@seu-ip-vps:/www/recalcula_preço/
+scp -r /caminho/local/calculadora-reajuste/. seu-usuario@seu-ip-vps:/www/recalcula_preco/
 ```
 
 **Exemplo real:**
 ```bash
 # Se seu projeto está em ~/projetos/calculadora-reajuste
-scp -r ~/projetos/calculadora-reajuste/* fernando@192.168.1.100:/www/recalcula_preço/
+scp -r ~/projetos/calculadora-reajuste/* fernando@192.168.1.100:/www/recalcula_preco/
 ```
 
 #### 3. Com Porta Customizada
 
 ```bash
 # Se a VPS usa porta SSH diferente (não 22)
-scp -P 2222 -r /caminho/local/calculadora-reajuste/* usuario@vps:/www/recalcula_preço/
+scp -P 2222 -r /caminho/local/calculadora-reajuste/* usuario@vps:/www/recalcula_preco/
 ```
 
 #### 4. Excluir node_modules (Opcional)
@@ -186,7 +186,7 @@ scp -P 2222 -r /caminho/local/calculadora-reajuste/* usuario@vps:/www/recalcula_
 scp -r --exclude='node_modules' \
     --exclude='.git' \
     /caminho/local/calculadora-reajuste/* \
-    usuario@vps:/www/recalcula_preço/
+    usuario@vps:/www/recalcula_preco/
 ```
 
 **OU usar rsync (melhor para excluir arquivos):**
@@ -201,14 +201,14 @@ rsync -avz --exclude='node_modules' \
           --exclude='.git' \
           --exclude='.env' \
           /caminho/local/calculadora-reajuste/ \
-          usuario@vps:/www/recalcula_preço/
+          usuario@vps:/www/recalcula_preco/
 ```
 
 ### 🔐 SCP com Chave SSH
 
 ```bash
 # Usar chave SSH específica
-scp -i ~/.ssh/id_rsa -r projeto/* usuario@vps:/www/recalcula_preço/
+scp -i ~/.ssh/id_rsa -r projeto/* usuario@vps:/www/recalcula_preco/
 ```
 
 ---
@@ -255,7 +255,7 @@ scp -i ~/.ssh/id_rsa -r projeto/* usuario@vps:/www/recalcula_preço/
    - Selecionar todos os arquivos
 
 2. **Lado direito (VPS):**
-   - Navegar até `/www/recalcula_preço`
+   - Navegar até `/www/recalcula_preco`
    - Se não existir, criar a pasta
 
 3. **Arrastar e soltar:**
@@ -311,7 +311,7 @@ scp -i ~/.ssh/id_rsa -r projeto/* usuario@vps:/www/recalcula_preço/
 
 **Sempre use Git** - muito mais fácil:
 ```bash
-cd /www/recalcula_preço
+cd /www/recalcula_preco
 git pull
 ./deploy.sh
 ```
@@ -327,9 +327,9 @@ git pull
 **Solução:**
 ```bash
 # Na VPS
-sudo mkdir -p /www/recalcula_preço
-sudo chown -R $USER:$USER /www/recalcula_preço
-sudo chmod 755 /www/recalcula_preço
+sudo mkdir -p /www/recalcula_preco
+sudo chown -R $USER:$USER /www/recalcula_preco
+sudo chmod 755 /www/recalcula_preco
 ```
 
 ### Problema 2: Upload Muito Lento
@@ -343,8 +343,8 @@ sudo chmod 755 /www/recalcula_preço
   tar -czf projeto.tar.gz calculadora-reajuste/
   scp projeto.tar.gz usuario@vps:/tmp/
   
-  # Na VPS
-  cd /www/recalcula_preço
+# Na VPS
+cd /www/recalcula_preco
   tar -xzf /tmp/projeto.tar.gz
   ```
 
@@ -355,7 +355,7 @@ sudo chmod 755 /www/recalcula_preço
 **Solução:**
 ```bash
 # Na VPS, criar .env a partir do exemplo
-cd /www/recalcula_preço
+cd /www/recalcula_preco
 cp .env.example .env
 nano .env  # Editar com suas credenciais
 ```
@@ -406,7 +406,7 @@ rsync -avz --progress \
     --exclude='.git' \
     --exclude='.env' \
     /caminho/local/calculadora-reajuste/ \
-    usuario@vps:/www/recalcula_preço/
+    usuario@vps:/www/recalcula_preco/
 ```
 
 ### Script de Upload Automatizado
@@ -423,7 +423,7 @@ rsync -avz --progress \
     --exclude='.env' \
     --exclude='logs' \
     ./ \
-    usuario@vps:/www/recalcula_preço/
+    usuario@vps:/www/recalcula_preco/
 
 echo "✅ Upload concluído!"
 echo "Agora na VPS, execute: ./deploy.sh"

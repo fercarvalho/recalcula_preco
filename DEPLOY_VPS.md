@@ -5,8 +5,7 @@ Este guia detalha como fazer o deploy da Calculadora de Reajuste na sua VPS da H
 ## 📍 Diretório do Projeto
 
 O projeto será instalado em:
-- **`/www/recalcula_preço`** (se a VPS aceitar UTF-8)
-- **`/www/recalcula_preco`** (se não aceitar UTF-8)
+- **`/www/recalcula_preco`** (sem "ç" - compatível com GitHub e VPS)
 
 ---
 
@@ -25,7 +24,7 @@ O projeto será instalado em:
 O projeto será instalado no diretório:
 
 ```
-/www/recalcula_preço/  # (ou /www/recalcula_preco se não aceitar UTF-8)
+/www/recalcula_preco/
 ├── server.js
 ├── package.json
 ├── .env
@@ -33,9 +32,10 @@ O projeto será instalado no diretório:
 └── ...
 ```
 
-**⚠️ Nota sobre o nome do diretório:**
-- Se a VPS aceitar UTF-8: `/www/recalcula_preço`
-- Se não aceitar UTF-8: `/www/recalcula_preco`
+**📝 Nota:** Usamos `recalcula_preco` (sem "ç") porque:
+- ✅ GitHub não aceita "ç" no nome de repositórios
+- ✅ Compatível com todas as VPS
+- ✅ Evita problemas de encoding
 
 **Cada projeto terá:**
 - ✅ Seu próprio diretório
@@ -60,15 +60,9 @@ ssh seu-usuario@seu-dominio.com
 
 ```bash
 # Criar diretório do projeto
-# Tente primeiro com UTF-8 (ç)
-sudo mkdir -p /www/recalcula_preço
-sudo chown -R $USER:$USER /www/recalcula_preço
-cd /www/recalcula_preço
-
-# Se der erro com UTF-8, use sem acento:
-# sudo mkdir -p /www/recalcula_preco
-# sudo chown -R $USER:$USER /www/recalcula_preco
-# cd /www/recalcula_preco
+sudo mkdir -p /www/recalcula_preco
+sudo chown -R $USER:$USER /www/recalcula_preco
+cd /www/recalcula_preco
 ```
 
 ### 1.3 Verificar Instalações
@@ -108,7 +102,7 @@ sudo apt install postgresql postgresql-contrib
 
 ```bash
 # Na VPS, dentro do diretório do projeto
-cd /www/recalcula_preço  # ou /www/recalcula_preco
+cd /www/recalcula_preco
 
 # Clonar o repositório (se usar Git)
 git clone https://github.com/seu-usuario/calculadora-reajuste.git .
@@ -121,9 +115,7 @@ git pull origin main
 
 ```bash
 # Do seu computador local
-scp -r /caminho/local/calculadora-reajuste/* seu-usuario@seu-ip-vps:/www/recalcula_preço/
-# ou se não aceitar UTF-8:
-# scp -r /caminho/local/calculadora-reajuste/* seu-usuario@seu-ip-vps:/www/recalcula_preco/
+scp -r /caminho/local/calculadora-reajuste/* seu-usuario@seu-ip-vps:/www/recalcula_preco/
 ```
 
 ### Opção C: Usando SFTP
@@ -167,7 +159,7 @@ psql -U calculadora_user -d calculadora_reajuste -h localhost
 ### 4.1 Criar Arquivo .env
 
 ```bash
-cd /www/recalcula_preço  # ou /www/recalcula_preco
+cd /www/recalcula_preco
 
 # Copiar exemplo
 cp .env.example .env
@@ -225,7 +217,7 @@ STRIPE_WEBHOOK_SECRET=whsec_xxxxx
 ### 5.1 Instalar Dependências
 
 ```bash
-cd /www/recalcula_preço  # ou /www/recalcula_preco
+cd /www/recalcula_preco
 
 # Instalar dependências do backend
 npm install --production
@@ -250,7 +242,7 @@ mkdir -p logs
 ### 6.1 Iniciar com PM2
 
 ```bash
-cd /www/recalcula_preço  # ou /www/recalcula_preco
+cd /www/recalcula_preco
 
 # Iniciar aplicação
 pm2 start ecosystem.config.js
@@ -446,7 +438,7 @@ sudo tail -f /var/log/nginx/error.log
 ### Atualizar Aplicação
 
 ```bash
-cd /www/recalcula_preço  # ou /www/recalcula_preco
+cd /www/recalcula_preco
 
 # Se usar Git
 git pull origin main

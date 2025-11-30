@@ -41,15 +41,15 @@ Se todos os projetos estiverem no mesmo diretório com as mesmas permissões, um
 /www/
 ├── projeto1/  (dono: usuario1)
 ├── projeto2/  (dono: usuario2)
-└── recalcula_preço/  (dono: seu-usuario)
+└── recalcula_preco/  (dono: seu-usuario)
 ```
 
 **Configurar permissões:**
 ```bash
 # Dar permissão apenas ao dono do projeto
-sudo chown -R seu-usuario:seu-usuario /www/recalcula_preço
-sudo chmod 755 /www/recalcula_preço
-sudo chmod 600 /www/recalcula_preço/.env  # Arquivo sensível
+sudo chown -R seu-usuario:seu-usuario /www/recalcula_preco
+sudo chmod 755 /www/recalcula_preco
+sudo chmod 600 /www/recalcula_preco/.env  # Arquivo sensível
 ```
 
 ### 2. **Isolamento de Processos**
@@ -65,7 +65,7 @@ pm2 start /www/projeto1/server.js --name projeto1
 pm2 start /www/projeto2/server.js --name projeto2
 
 # Calculadora Reajuste
-pm2 start /www/recalcula_preço/server.js --name calculadora-reajuste
+pm2 start /www/recalcula_preco/server.js --name calculadora-reajuste
 ```
 
 ### 3. **Variáveis de Ambiente**
@@ -77,7 +77,7 @@ Cada projeto deve ter seu próprio `.env`:
 /www/
 ├── projeto1/.env  (variáveis do projeto 1)
 ├── projeto2/.env  (variáveis do projeto 2)
-└── recalcula_preço/.env  (variáveis deste projeto)
+└── recalcula_preco/.env  (variáveis deste projeto)
 ```
 
 **❌ NUNCA:**
@@ -118,7 +118,7 @@ CREATE DATABASE calculadora_reajuste;
 │   ├── .env
 │   ├── package.json
 │   └── ...
-└── recalcula_preço/
+└── recalcula_preco/
     ├── server.js
     ├── .env
     ├── package.json
@@ -139,7 +139,7 @@ CREATE DATABASE calculadora_reajuste;
 ├── dominio2.com/
 │   └── projeto2/
 └── calculadora.dominio.com/
-    └── recalcula_preço/
+    └── recalcula_preco/
 ```
 
 **Vantagens:**
@@ -157,7 +157,7 @@ CREATE DATABASE calculadora_reajuste;
 │   ├── site-projeto1/
 │   └── site-projeto2/
 └── calculadoras/
-    └── recalcula_preço/
+    └── recalcula_preco/
 ```
 
 **Vantagens:**
@@ -173,9 +173,9 @@ CREATE DATABASE calculadora_reajuste;
 1. **Permissões Corretas**
    ```bash
    # Cada projeto com seu dono
-   sudo chown -R usuario:usuario /www/recalcula_preço
-   sudo chmod 755 /www/recalcula_preço
-   sudo chmod 600 /www/recalcula_preço/.env
+   sudo chown -R usuario:usuario /www/recalcula_preco
+   sudo chmod 755 /www/recalcula_preco
+   sudo chmod 600 /www/recalcula_preco/.env
    ```
 
 2. **Arquivos Sensíveis Protegidos**
@@ -204,7 +204,7 @@ CREATE DATABASE calculadora_reajuste;
    # Cada projeto com seu .env
    /www/projeto1/.env
    /www/projeto2/.env
-   /www/recalcula_preço/.env
+   /www/recalcula_preco/.env
    ```
 
 ### ❌ O Que NÃO Fazer
@@ -270,7 +270,7 @@ Cada projeto pode ter sua própria configuração:
 /www/
 ├── projeto1/
 ├── projeto2/
-└── recalcula_preço/
+└── recalcula_preco/
 ```
 
 **Vantagens:**
@@ -321,7 +321,7 @@ Cada projeto pode ter sua própria configuração:
 /www/
 ├── projeto1/          # Seu primeiro projeto
 ├── projeto2/          # Seu segundo projeto
-└── recalcula_preço/   # Este projeto (ou recalcula_preco)
+└── recalcula_preco/   # Este projeto (ou recalcula_preco)
     ├── server.js
     ├── .env
     ├── package.json
@@ -347,8 +347,8 @@ Cada projeto pode ter sua própria configuração:
 
 **Solução:**
 ```bash
-sudo chown -R $USER:$USER /www/recalcula_preço
-sudo chmod 755 /www/recalcula_preço
+sudo chown -R $USER:$USER /www/recalcula_preco
+sudo chmod 755 /www/recalcula_preco
 ```
 
 ### Problema 2: Projetos Acessando Arquivos de Outros
@@ -358,8 +358,8 @@ sudo chmod 755 /www/recalcula_preço
 **Solução:**
 ```bash
 # Restringir permissões
-chmod 750 /www/recalcula_preço
-chmod 600 /www/recalcula_preço/.env
+chmod 750 /www/recalcula_preco
+chmod 600 /www/recalcula_preco/.env
 ```
 
 ### Problema 3: Conflito de Portas

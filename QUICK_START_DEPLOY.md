@@ -7,8 +7,7 @@ Este guia rápido te ajuda a fazer o deploy na VPS da Hostinger em **5 minutos**
 ## 📍 Diretório do Projeto
 
 O projeto será instalado em:
-- **`/www/recalcula_preço`** (se a VPS aceitar UTF-8)
-- **`/www/recalcula_preco`** (se não aceitar UTF-8)
+- **`/www/recalcula_preco`** (sem "ç" - compatível com GitHub e VPS)
 
 ---
 
@@ -18,15 +17,9 @@ O projeto será instalado em:
 
 ```bash
 # Criar diretório
-# Tente primeiro com UTF-8 (ç)
-sudo mkdir -p /www/recalcula_preço
-sudo chown -R $USER:$USER /www/recalcula_preço
-cd /www/recalcula_preço
-
-# Se der erro com UTF-8, use sem acento:
-# sudo mkdir -p /www/recalcula_preco
-# sudo chown -R $USER:$USER /www/recalcula_preco
-# cd /www/recalcula_preco
+sudo mkdir -p /www/recalcula_preco
+sudo chown -R $USER:$USER /www/recalcula_preco
+cd /www/recalcula_preco
 
 # Fazer upload dos arquivos (Git, SCP ou SFTP)
 # ...

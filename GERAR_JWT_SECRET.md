@@ -85,7 +85,7 @@ openssl rand -hex 32
 
 ```bash
 # No diretório do projeto
-cd /www/recalcula_preço  # ou /www/recalcula_preco
+cd /www/recalcula_preco
 
 # Editar o arquivo .env
 nano .env
@@ -168,7 +168,7 @@ openssl rand -hex 32
 
 ```bash
 # Verificar se a variável está sendo lida
-cd /www/recalcula_preço
+cd /www/recalcula_preco
 grep JWT_SECRET .env
 ```
 
