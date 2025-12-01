@@ -499,6 +499,17 @@
 .whatsapp-feature-card p {
   color: rgba(255, 255, 255, 0.8);
   line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.whatsapp-tag {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(37, 211, 102, 0.15);
+  color: #25D366;
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
 .whatsapp-icon-inline {

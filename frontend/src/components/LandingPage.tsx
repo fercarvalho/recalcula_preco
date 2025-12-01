@@ -292,6 +292,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
                   Quando o cliente pedir o cardápio, a IA envia automaticamente uma imagem atualizada do seu cardápio direto no WhatsApp,
                   usando os dados cadastrados na Recalcula Preço.
                 </p>
+                <span className="whatsapp-tag">Em breve</span>
               </div>
               <div className="whatsapp-feature-card">
                 <div className="whatsapp-icon-inline-wrapper">
@@ -302,6 +303,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
                   Você poderá alterar e ajustar informações do sistema conversando com a IA pelo WhatsApp, sem precisar abrir o computador:
                   atualização de preços, categorias e muito mais na palma da mão.
                 </p>
+                <span className="whatsapp-tag">Em breve</span>
               </div>
               <div className="whatsapp-feature-card">
                 <div className="whatsapp-icon-inline-wrapper">
@@ -312,6 +314,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
                   A IA vai receber o pedido do seu cliente pelo WhatsApp e encaminhar automaticamente para a impressora do estabelecimento,
                   ajudando a organizar a fila de produção e reduzir erros.
                 </p>
+                <span className="whatsapp-tag">Em breve</span>
               </div>
             </div>
           </div>
