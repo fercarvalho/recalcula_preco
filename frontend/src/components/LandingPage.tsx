@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FaCheck, FaChevronDown, FaChevronUp, FaCalculator, FaChartLine, FaMobileAlt, FaShieldAlt, FaSync, FaUsers, FaRocket } from 'react-icons/fa';
+import { FaCheck, FaChevronDown, FaChevronUp, FaCalculator, FaChartLine, FaMobileAlt, FaShieldAlt, FaSync, FaUsers, FaRocket, FaQrcode, FaMoneyBillWave, FaFileAlt, FaWhatsapp } from 'react-icons/fa';
 import RegistroModal from './RegistroModal';
 import './LandingPage.css';
 
@@ -89,6 +89,39 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
     }
   ];
 
+  const roadmapItens = [
+    {
+      icone: <FaQrcode />,
+      titulo: 'Pagamentos via PIX avançados',
+      descricao: 'Estamos preparando uma experiência completa de pagamento: PIX para o acesso único, pagamento à vista do plano anual, pagamento à vista do anual via PIX e PIX parcelado para facilitar ainda mais a sua assinatura.'
+    },
+    {
+      icone: <FaMoneyBillWave />,
+      titulo: 'Pagamento à vista do plano anual',
+      descricao: 'Além das parcelas mensais, você poderá garantir o plano anual com pagamento à vista, com condições diferenciadas e pensado para quem quer resolver tudo de uma vez.'
+    },
+    {
+      icone: <FaCalculator />,
+      titulo: 'PIX no plano anual (à vista e parcelado)',
+      descricao: 'Para quem ama PIX, o plano anual também poderá ser pago com PIX à vista ou em formato parcelado, mantendo a segurança e a praticidade que você já conhece.'
+    },
+    {
+      icone: <FaMobileAlt />,
+      titulo: 'Modo Cardápio',
+      descricao: 'Um modo especial para exibir seus produtos e preços como um cardápio digital, ideal para mostrar no estabelecimento ou compartilhar online com seus clientes.'
+    },
+    {
+      icone: <FaFileAlt />,
+      titulo: 'Compartilhamento de Cardápio',
+      descricao: 'Gere seu cardápio em PDF ou PNG em poucos cliques e compartilhe facilmente em redes sociais, impressos ou com seu time.'
+    },
+    {
+      icone: <FaWhatsapp />,
+      titulo: 'Integração com WhatsApp',
+      descricao: 'Uma área dedicada para você conectar seus cardápios e ofertas diretamente ao WhatsApp, facilitando o contato com seus clientes e o fechamento de pedidos.'
+    }
+  ];
+
   return (
     <div className="landing-page">
       {/* Header */}
@@ -103,6 +136,10 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
               e.preventDefault();
               document.getElementById('funcionalidades')?.scrollIntoView({ behavior: 'smooth' });
             }}>Funcionalidades</a>
+            <a href="#roadmap" onClick={(e) => {
+              e.preventDefault();
+              document.getElementById('roadmap')?.scrollIntoView({ behavior: 'smooth' });
+            }}>O que vem por aí</a>
             <a href="#planos" onClick={(e) => {
               e.preventDefault();
               document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' });
@@ -162,6 +199,66 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
                 <p>{beneficio.descricao}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Roadmap – O que vem por aí */}
+      <section id="roadmap" className="roadmap-section">
+        <div className="container">
+          <h2 className="section-title">O que vem por aí <span className="roadmap-subtitle">(funcionalidades em desenvolvimento)</span></h2>
+          <p className="roadmap-intro">
+            Estamos sempre evoluindo a Calculadora de Reajuste para deixar o seu dia a dia ainda mais simples.
+            Confira algumas das próximas novidades que estamos preparando para você.
+          </p>
+          <div className="roadmap-grid">
+            {roadmapItens.map((item, index) => (
+              <div key={index} className="roadmap-card">
+                <div className="roadmap-icon">{item.icone}</div>
+                <h3>{item.titulo}</h3>
+                <p>{item.descricao}</p>
+                <span className="roadmap-tag">Em breve</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Integração com o WhatsApp – No Forno */}
+      <section id="whatsapp-integracao" className="whatsapp-section">
+        <div className="container">
+          <h2 className="section-title">
+            Integração com Inteligência Artificial <span className="roadmap-subtitle">(pelo WhatsApp) - Em breve (No Forno)</span>
+          </h2>
+          <p className="whatsapp-intro">
+            Estamos preparando uma área especial para conectar sua Calculadora de Reajuste diretamente ao WhatsApp,
+            trazendo automações inteligentes para o seu atendimento, cardápio e recebimento de pedidos.
+          </p>
+          <div className="whatsapp-placeholder">
+            <FaWhatsapp className="whatsapp-icon" />
+            <div className="whatsapp-features">
+              <div className="whatsapp-feature-card">
+                <h3>Modo Cardápio no WhatsApp</h3>
+                <p>
+                  Quando o cliente pedir o cardápio, a IA envia automaticamente uma imagem atualizada do seu cardápio direto no WhatsApp,
+                  usando os dados cadastrados na Calculadora de Reajuste.
+                </p>
+              </div>
+              <div className="whatsapp-feature-card">
+                <h3>Controle do sistema pelo WhatsApp</h3>
+                <p>
+                  Você poderá alterar e ajustar informações do sistema conversando com a IA pelo WhatsApp, sem precisar abrir o computador:
+                  atualização de preços, categorias e muito mais na palma da mão.
+                </p>
+              </div>
+              <div className="whatsapp-feature-card">
+                <h3>Recebimento de pedidos automatizado</h3>
+                <p>
+                  A IA vai receber o pedido do seu cliente pelo WhatsApp e encaminhar automaticamente para a impressora do estabelecimento,
+                  ajudando a organizar a fila de produção e reduzir erros.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -287,6 +384,10 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
                 e.preventDefault();
                 document.getElementById('funcionalidades')?.scrollIntoView({ behavior: 'smooth' });
               }}>Funcionalidades</a>
+              <a href="#roadmap" onClick={(e) => {
+                e.preventDefault();
+                document.getElementById('roadmap')?.scrollIntoView({ behavior: 'smooth' });
+              }}>O que vem por aí</a>
               <a href="#planos" onClick={(e) => {
                 e.preventDefault();
                 document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' });

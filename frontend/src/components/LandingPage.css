@@ -264,6 +264,141 @@
   line-height: 1.6;
 }
 
+/* Roadmap */
+.roadmap-section {
+  padding: 5rem 2rem;
+  background: var(--cor-fundo, #1a1a1a);
+}
+
+.roadmap-section .container {
+  background: transparent !important;
+}
+
+.roadmap-subtitle {
+  display: block;
+  font-size: 1rem;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 0.5rem;
+}
+
+.roadmap-intro {
+  max-width: 700px;
+  margin: 0 auto 3rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.6;
+}
+
+.roadmap-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 2rem;
+}
+
+.roadmap-card {
+  background: var(--cor-secundaria, #2a2a2a);
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 107, 53, 0.2);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s;
+}
+
+.roadmap-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 16px rgba(255, 107, 53, 0.3);
+  border-color: var(--cor-primaria, #FF6B35);
+}
+
+.roadmap-icon {
+  font-size: 2.5rem;
+  color: var(--cor-primaria, #FF6B35);
+  margin-bottom: 1rem;
+}
+
+.roadmap-card h3 {
+  font-size: 1.4rem;
+  margin-bottom: 0.75rem;
+  color: white;
+}
+
+.roadmap-card p {
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+
+.roadmap-tag {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(255, 107, 53, 0.15);
+  color: var(--cor-primaria, #FF6B35);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* Integração com WhatsApp */
+.whatsapp-section {
+  padding: 4rem 2rem 5rem;
+  background: var(--cor-secundaria, #2a2a2a);
+  border-top: 1px solid rgba(255, 107, 53, 0.2);
+}
+
+.whatsapp-section .container {
+  background: transparent !important;
+}
+
+.whatsapp-intro {
+  max-width: 700px;
+  margin: 0 auto 2.5rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.6;
+}
+
+.whatsapp-placeholder {
+  max-width: 700px;
+  margin: 0 auto;
+  background: var(--cor-fundo, #1a1a1a);
+  border-radius: 12px;
+  padding: 2.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(37, 211, 102, 0.4);
+  text-align: center;
+}
+
+.whatsapp-icon {
+  font-size: 3rem;
+  color: #25D366;
+  margin-bottom: 1rem;
+}
+
+.whatsapp-placeholder p {
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.6;
+}
+
+.whatsapp-features {
+  margin-top: 1.5rem;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.whatsapp-feature-card h3 {
+  font-size: 1.3rem;
+  margin-bottom: 0.5rem;
+  color: white;
+}
+
+.whatsapp-feature-card p {
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.6;
+}
+
 /* Planos */
 .planos-section {
   padding: 5rem 2rem;
