@@ -1,7 +1,6 @@
-# Calculadora de Reajuste de Preços - Vira-Latas
+# Calculadora de Reajuste de Preços
 
-Sistema de cálculo de reajuste de preços para o estabelecimento Vira-Latas Hotdogs e Lanches.
-
+Sistema de cálculo de reajuste de preços para lanchonetes.
 ## Autor
 
 **Fernando Carvalho**
