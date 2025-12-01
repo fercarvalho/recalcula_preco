@@ -128,8 +128,8 @@ async function inicializar() {
         if (!(await colunaExiste('usuarios', 'email'))) {
             await pool.query('ALTER TABLE usuarios ADD COLUMN email VARCHAR(255)');
             // Atualizar emails dos usuários padrão primeiro
-            await pool.query(`UPDATE usuarios SET email = 'fercarvalho10@gmail.com' WHERE username = 'admin' AND (email IS NULL OR email = '')`);
-            await pool.query(`UPDATE usuarios SET email = 'viralataslanchonete@gmail.com' WHERE username = 'viralatas' AND (email IS NULL OR email = '')`);
+            await pool.query(`UPDATE usuarios SET email = 'admin@exemplo.com' WHERE username = 'admin' AND (email IS NULL OR email = '')`);
+            await pool.query(`UPDATE usuarios SET email = 'viralatas@exemplo.com' WHERE username = 'viralatas' AND (email IS NULL OR email = '')`);
             // Para outros usuários sem email, gerar um email temporário baseado no username
             const usuariosSemEmail = await pool.query('SELECT id, username FROM usuarios WHERE email IS NULL OR email = \'\'');
             for (const usuario of usuariosSemEmail.rows) {
@@ -392,17 +392,17 @@ async function inicializar() {
             const senhaHashAdmin = await bcrypt.hash('admin123', 10);
             const resultAdmin = await pool.query(
                 'INSERT INTO usuarios (username, email, senha_hash, is_admin) VALUES ($1, $2, $3, $4) RETURNING id',
-                ['admin', 'fercarvalho10@gmail.com', senhaHashAdmin, true]
+                ['admin', 'admin@exemplo.com', senhaHashAdmin, true]
             );
             adminPadrao = resultAdmin;
-            console.log('Usuário admin padrão "admin" criado (senha: admin123, email: fercarvalho10@gmail.com)');
+            console.log('Usuário admin padrão "admin" criado (senha: admin123, email: admin@exemplo.com)');
         } else {
             // Garantir que o admin existente tenha is_admin = true e email
             await pool.query('UPDATE usuarios SET is_admin = true WHERE username = $1', ['admin']);
             // Atualizar email do admin se não tiver
             const adminAtual = await pool.query('SELECT email FROM usuarios WHERE username = $1', ['admin']);
             if (!adminAtual.rows[0]?.email) {
-                await pool.query('UPDATE usuarios SET email = $1 WHERE username = $2', ['fercarvalho10@gmail.com', 'admin']);
+                await pool.query('UPDATE usuarios SET email = $1 WHERE username = $2', ['admin@exemplo.com', 'admin']);
             }
         }
         
@@ -412,15 +412,15 @@ async function inicializar() {
             const senhaHash = await bcrypt.hash('edulili123', 10);
             const result = await pool.query(
                 'INSERT INTO usuarios (username, email, senha_hash, is_admin) VALUES ($1, $2, $3, $4) RETURNING id',
-                ['viralatas', 'viralataslanchonete@gmail.com', senhaHash, false]
+                ['viralatas', 'viralatas@exemplo.com', senhaHash, false]
             );
             usuarioPadrao = result;
-            console.log('Usuário padrão "viralatas" criado (email: viralataslanchonete@gmail.com)');
+            console.log('Usuário padrão "viralatas" criado (email: viralatas@exemplo.com)');
         } else {
             // Atualizar email do viralatas se não tiver
             const viralatasAtual = await pool.query('SELECT email FROM usuarios WHERE username = $1', ['viralatas']);
             if (!viralatasAtual.rows[0]?.email) {
-                await pool.query('UPDATE usuarios SET email = $1 WHERE username = $2', ['viralataslanchonete@gmail.com', 'viralatas']);
+                await pool.query('UPDATE usuarios SET email = $1 WHERE username = $2', ['viralatas@exemplo.com', 'viralatas']);
             }
         }
         const usuarioId = usuarioPadrao.rows[0].id;

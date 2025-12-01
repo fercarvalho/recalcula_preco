@@ -1,6 +1,7 @@
 node_modules/
 database.sqlite
 .env
+.env.bak
 *.log
 .DS_Store
 logs/
@@ -12,4 +13,9 @@ logs/
 *.dump
 backup_*.sql
 backup_*.dump
+
+# Ignorar todos os arquivos .md, exceto README.md
+*.md
+!README.md
+!**/README.md
 

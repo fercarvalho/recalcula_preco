@@ -2,6 +2,17 @@
 
 Sistema de cálculo de reajuste de preços para o estabelecimento Vira-Latas Hotdogs e Lanches.
 
+## Autor
+
+**Fernando Carvalho**
+
+Este projeto é uma homenagem ao Vira-Latas Hotdogs e Lanches, lanchonete do meu pai.
+
+Feito com ❤️ por aí
+
+- 📧 Email: desenvolvimento@fercarvalho.com
+- 📱 Instagram: [@cadeofer](https://instagram.com/cadeofer)
+
 ## Tecnologias
 
 - **Frontend**: HTML, CSS, JavaScript (Vanilla)
