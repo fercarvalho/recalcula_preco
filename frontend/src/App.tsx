@@ -109,20 +109,6 @@ function App() {
     
     window.addEventListener('plataformas-updated', handlePlataformasUpdate);
     
-    // Carregar plataformas após autenticação (será chamado dentro de verificarPagamento)
-    const carregarPlataformasUsuario = async () => {
-      const user = getUser();
-      if (user?.id) {
-        try {
-          await carregarPlataformas(user.id);
-          setTotalPlataformas(carregarPlataformasSync(user.id).length);
-        } catch (error) {
-          // Ignorar erro, usar localStorage como fallback
-          setTotalPlataformas(carregarPlataformasSync(user.id).length);
-        }
-      }
-    };
-    
     // Carregar plataformas iniciais do localStorage (síncrono)
     const user = getUser();
     if (user?.id) {

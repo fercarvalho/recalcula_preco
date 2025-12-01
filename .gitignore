@@ -7,3 +7,9 @@ logs/
 .env.local
 .env.*.local
 
+# Backups de banco de dados
+*.sql
+*.dump
+backup_*.sql
+backup_*.dump
+
