@@ -41,7 +41,141 @@ const createTransporter = async () => {
   });
 };
 
-// Enviar email de recuperação de senha
+// Enviar email de recuperação de senha para múltiplos usuários
+const enviarEmailRecuperacaoMultiplos = async (email, usuariosComTokens) => {
+  try {
+    const transporter = await createTransporter();
+    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+    
+    // Criar lista de usuários com seus links
+    const usuariosList = usuariosComTokens.map((item, index) => `
+      <div style="background-color: #fff; padding: 15px; margin: 10px 0; border-left: 4px solid #FF6B35; border-radius: 4px;">
+        <p style="margin: 0 0 10px 0;"><strong>Usuário ${index + 1}: ${item.username}</strong></p>
+        <div style="text-align: center; margin: 15px 0;">
+          <a href="${baseUrl}/reset-password?token=${item.token}" style="display: inline-block; padding: 10px 25px; background-color: #FF6B35; color: white; text-decoration: none; border-radius: 5px;">Redefinir Senha para ${item.username}</a>
+        </div>
+        <p style="font-size: 12px; color: #666; margin: 10px 0 0 0; word-break: break-all;">Link: ${baseUrl}/reset-password?token=${item.token}</p>
+      </div>
+    `).join('');
+
+    const mailOptions = {
+      from: process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@calculadora.com',
+      to: email,
+      subject: 'Recuperação de Senha - Múltiplas Contas - Calculadora de Reajuste',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              line-height: 1.6;
+              color: #333;
+            }
+            .container {
+              max-width: 600px;
+              margin: 0 auto;
+              padding: 20px;
+            }
+            .header {
+              background-color: #FF6B35;
+              color: white;
+              padding: 20px;
+              text-align: center;
+              border-radius: 5px 5px 0 0;
+            }
+            .content {
+              background-color: #f9f9f9;
+              padding: 30px;
+              border-radius: 0 0 5px 5px;
+            }
+            .footer {
+              margin-top: 20px;
+              font-size: 12px;
+              color: #666;
+              text-align: center;
+            }
+            .warning {
+              background-color: #fff3cd;
+              border-left: 4px solid #ffc107;
+              padding: 15px;
+              margin: 20px 0;
+              border-radius: 4px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Recuperação de Senha</h1>
+            </div>
+            <div class="content">
+              <p>Olá!</p>
+              <p>Recebemos uma solicitação para redefinir a senha. Encontramos <strong>${usuariosComTokens.length} conta(s)</strong> associada(s) a este email.</p>
+              
+              <div class="warning">
+                <p><strong>⚠️ Selecione a conta que deseja recuperar:</strong></p>
+              </div>
+              
+              ${usuariosList}
+              
+              <p style="margin-top: 30px;"><strong>⚠️ Importante:</strong></p>
+              <ul>
+                <li>Cada link é único e só funciona para a conta específica</li>
+                <li>Os links expiram em 1 hora</li>
+                <li>Se você não solicitou esta recuperação, ignore este email</li>
+              </ul>
+            </div>
+            <div class="footer">
+              <p>Este é um email automático, por favor não responda.</p>
+              <p>&copy; ${new Date().getFullYear()} Calculadora de Reajuste</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `
+        Recuperação de Senha - Múltiplas Contas
+        
+        Encontramos ${usuariosComTokens.length} conta(s) associada(s) a este email.
+        
+        Selecione a conta que deseja recuperar:
+        
+        ${usuariosComTokens.map((item, index) => `
+        ${index + 1}. Usuário: ${item.username}
+           Link: ${baseUrl}/reset-password?token=${item.token}
+        `).join('\n')}
+        
+        Cada link é único e expira em 1 hora.
+        Se você não solicitou esta recuperação, ignore este email.
+      `
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    
+    if (!process.env.SMTP_HOST && !process.env.SMTP_USER) {
+      const previewUrl = nodemailer.getTestMessageUrl(info);
+      console.log('\n═══════════════════════════════════════════════════════');
+      console.log('📧 EMAIL DE RECUPERAÇÃO (MÚLTIPLOS USUÁRIOS) - MODO DESENVOLVIMENTO');
+      console.log('═══════════════════════════════════════════════════════');
+      console.log('Para:', email);
+      console.log('Usuários encontrados:', usuariosComTokens.length);
+      console.log('\n🔗 LINK DE PREVIEW (clique para ver o email):');
+      console.log(previewUrl);
+      console.log('═══════════════════════════════════════════════════════\n');
+    } else {
+      console.log(`✅ Email de recuperação (múltiplos usuários) enviado para: ${email} (${usuariosComTokens.length} conta(s))`);
+    }
+    
+    return info;
+  } catch (error) {
+    console.error('Erro ao enviar email de recuperação (múltiplos usuários):', error);
+    throw error;
+  }
+};
+
+// Enviar email de recuperação de senha (usuário único)
 const enviarEmailRecuperacao = async (email, token, username) => {
   try {
     const transporter = await createTransporter();
@@ -171,6 +305,7 @@ const enviarEmailRecuperacao = async (email, token, username) => {
 };
 
 module.exports = {
-  enviarEmailRecuperacao
+  enviarEmailRecuperacao,
+  enviarEmailRecuperacaoMultiplos
 };
 

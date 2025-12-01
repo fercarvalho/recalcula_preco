@@ -5,7 +5,7 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const db = require('./database');
 const { authenticateToken, requireAdmin, requirePayment, generateToken } = require('./middleware/auth');
-const { enviarEmailRecuperacao } = require('./services/email');
+const { enviarEmailRecuperacao, enviarEmailRecuperacaoMultiplos } = require('./services/email');
 const stripeService = require('./services/stripe');
 
 const app = express();
@@ -318,44 +318,103 @@ app.post('/api/auth/reiniciar-sistema', authenticateToken, async (req, res) => {
 // Solicitar recuperação de senha
 app.post('/api/auth/recuperar-senha', async (req, res) => {
     try {
-        const { email } = req.body;
+        const { email, username } = req.body;
         
-        if (!email || !email.trim()) {
-            return res.status(400).json({ error: 'Email é obrigatório' });
+        // Validar que pelo menos um campo foi fornecido
+        if ((!email || !email.trim()) && (!username || !username.trim())) {
+            return res.status(400).json({ error: 'Email ou nome de usuário é obrigatório' });
         }
 
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email.trim())) {
-            return res.status(400).json({ error: 'Email inválido' });
-        }
+        let usuario = null;
+        let usuarios = [];
 
-        // Buscar usuários com este email
-        const usuarios = await db.obterUsuariosPorEmail(email.trim().toLowerCase());
-        
-        if (usuarios.length === 0) {
-            // Por segurança, não revelar se o email existe ou não
-            return res.json({ 
-                message: 'Se o email estiver cadastrado, você receberá um link de recuperação.' 
-            });
-        }
-
-        // Criar token para cada usuário com este email
-        const tokensCriados = [];
-        for (const usuario of usuarios) {
-            try {
-                const tokenData = await db.criarTokenRecuperacao(usuario.id);
-                await enviarEmailRecuperacao(usuario.email, tokenData.token, usuario.username);
-                tokensCriados.push(usuario.username);
-                console.log(`✅ Token de recuperação criado e email enviado para: ${usuario.username} (${usuario.email})`);
-            } catch (error) {
-                console.error(`❌ Erro ao processar recuperação para usuário ${usuario.username}:`, error.message);
-                // Continuar com os outros usuários mesmo se um falhar
+        // Se ambos email e username foram fornecidos, validar que o username pertence ao email
+        if (email && email.trim() && username && username.trim()) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email.trim())) {
+                return res.status(400).json({ error: 'Email inválido' });
             }
+
+            // Buscar usuário por username
+            usuario = await db.obterUsuarioPorUsername(username.trim());
+            
+            if (!usuario) {
+                // Por segurança, não revelar se o username existe ou não
+                return res.json({ 
+                    message: 'Se o email/nome de usuário estiver cadastrado, você receberá um link de recuperação.' 
+                });
+            }
+
+            // Validar que o email do usuário corresponde ao email fornecido
+            if (usuario.email.toLowerCase() !== email.trim().toLowerCase()) {
+                return res.status(400).json({ 
+                    error: 'O nome de usuário informado não está associado a este email.' 
+                });
+            }
+        }
+        // Se apenas username foi fornecido, buscar por username (único)
+        else if (username && username.trim()) {
+            usuario = await db.obterUsuarioPorUsername(username.trim());
+            
+            if (!usuario) {
+                // Por segurança, não revelar se o username existe ou não
+                return res.json({ 
+                    message: 'Se o email/nome de usuário estiver cadastrado, você receberá um link de recuperação.' 
+                });
+            }
+        } 
+        // Se apenas email foi fornecido
+        else if (email && email.trim()) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email.trim())) {
+                return res.status(400).json({ error: 'Email inválido' });
+            }
+
+            // Buscar usuários com este email
+            usuarios = await db.obterUsuariosPorEmail(email.trim().toLowerCase());
+            
+            if (usuarios.length === 0) {
+                // Por segurança, não revelar se o email existe ou não
+                return res.json({ 
+                    message: 'Se o email/nome de usuário estiver cadastrado, você receberá um link de recuperação.' 
+                });
+            }
+
+            // Se houver múltiplos usuários com o mesmo email, pedir o username
+            if (usuarios.length > 1) {
+                return res.status(400).json({ 
+                    error: 'MULTIPLE_USERS',
+                    message: 'Este email está associado a múltiplas contas. Por favor, informe também o nome de usuário.',
+                    usuarios: usuarios.map(u => u.username) // Lista de usernames para ajudar o usuário
+                });
+            }
+
+            // Se houver apenas 1 usuário, usar ele
+            usuario = usuarios[0];
+        }
+
+        // Se chegou aqui, temos um usuário específico
+        if (!usuario) {
+            return res.status(400).json({ error: 'Usuário não encontrado' });
+        }
+
+        // Criar token de recuperação para o usuário específico
+        try {
+            const tokenData = await db.criarTokenRecuperacao(usuario.id);
+            await enviarEmailRecuperacao(
+                usuario.email,
+                tokenData.token,
+                usuario.username
+            );
+            console.log(`✅ Email de recuperação enviado para: ${usuario.username} (${usuario.email})`);
+        } catch (error) {
+            console.error(`❌ Erro ao enviar email para ${usuario.username}:`, error.message);
+            throw error;
         }
 
         // Por segurança, sempre retornar a mesma mensagem
         return res.json({ 
-            message: 'Se o email estiver cadastrado, você receberá um link de recuperação.' 
+            message: 'Se o email/nome de usuário estiver cadastrado, você receberá um link de recuperação.' 
         });
     } catch (error) {
         console.error('Erro ao solicitar recuperação de senha:', error);

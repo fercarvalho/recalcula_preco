@@ -1777,6 +1777,25 @@ async function obterUsuariosPorEmail(email) {
     }
 }
 
+// Obter usuário por username (único)
+async function obterUsuarioPorUsername(username) {
+    try {
+        const result = await pool.query(
+            'SELECT id, username, email FROM usuarios WHERE username = $1',
+            [username.trim()]
+        );
+        
+        if (result.rows.length === 0) {
+            return null;
+        }
+        
+        return result.rows[0];
+    } catch (error) {
+        console.error('Erro ao obter usuário por username:', error);
+        throw error;
+    }
+}
+
 // Criar token de recuperação de senha
 async function criarTokenRecuperacao(usuarioId) {
     try {
@@ -2273,6 +2292,7 @@ module.exports = {
     obterIconeCategoria,
     deletarCategoria,
     obterUsuariosPorEmail,
+    obterUsuarioPorUsername,
     criarTokenRecuperacao,
     validarTokenRecuperacao,
     resetarSenhaComToken,
