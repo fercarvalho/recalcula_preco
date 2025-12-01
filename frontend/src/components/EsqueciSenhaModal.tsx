@@ -12,7 +12,6 @@ const EsqueciSenhaModal = ({ isOpen, onClose }: EsqueciSenhaModalProps) => {
   const [emailOuUsername, setEmailOuUsername] = useState('');
   const [username, setUsername] = useState('');
   const [mostrarUsername, setMostrarUsername] = useState(false);
-  const [usuariosDisponiveis, setUsuariosDisponiveis] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -68,7 +67,6 @@ const EsqueciSenhaModal = ({ isOpen, onClose }: EsqueciSenhaModalProps) => {
         // Se for erro de múltiplos usuários, mostrar campo de username
         if (data.error === 'MULTIPLE_USERS') {
           setMostrarUsername(true);
-          setUsuariosDisponiveis(data.usuarios || []);
           await mostrarAlert(
             'Atenção',
             data.message || 'Este email está associado a múltiplas contas. Por favor, informe também o nome de usuário.'
@@ -87,7 +85,6 @@ const EsqueciSenhaModal = ({ isOpen, onClose }: EsqueciSenhaModalProps) => {
       setEmailOuUsername('');
       setUsername('');
       setMostrarUsername(false);
-      setUsuariosDisponiveis([]);
       onClose();
     } catch (error: any) {
       console.error('Erro ao solicitar recuperação:', error);
@@ -150,11 +147,6 @@ const EsqueciSenhaModal = ({ isOpen, onClose }: EsqueciSenhaModalProps) => {
               disabled={loading}
               required
             />
-            {usuariosDisponiveis.length > 0 && (
-              <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
-                Contas encontradas: {usuariosDisponiveis.join(', ')}
-              </p>
-            )}
           </div>
         )}
       </form>

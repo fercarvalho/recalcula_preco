@@ -384,8 +384,7 @@ app.post('/api/auth/recuperar-senha', async (req, res) => {
             if (usuarios.length > 1) {
                 return res.status(400).json({ 
                     error: 'MULTIPLE_USERS',
-                    message: 'Este email está associado a múltiplas contas. Por favor, informe também o nome de usuário.',
-                    usuarios: usuarios.map(u => u.username) // Lista de usernames para ajudar o usuário
+                    message: 'Este email está associado a múltiplas contas. Por favor, informe também o nome de usuário.'
                 });
             }
 
