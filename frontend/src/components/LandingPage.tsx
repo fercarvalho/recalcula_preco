@@ -304,7 +304,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
             </div>
           </div>
           <div className="footer-bottom">
-            <p>&copy; 2024 Calculadora de Reajuste. Todos os direitos reservados.</p>
+            <p>&copy; 2026 Calculadora de Reajuste. Todos os direitos reservados.</p>
           </div>
         </div>
       </footer>
