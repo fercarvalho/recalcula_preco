@@ -109,7 +109,7 @@ const Header = ({ onReiniciarSistema, onReexibirTutorial, onOpenAdminPanel, isAd
       </div>
       <div className="header-content">
         <div>
-          <h1>Calculadora de Reajuste de Preços</h1>
+          <h1>Recalcula Preço de Preços</h1>
           <p>Selecione os itens e defina o tipo de reajuste</p>
         </div>
         <div className="header-user">

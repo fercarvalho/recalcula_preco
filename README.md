@@ -1,4 +1,4 @@
-# Calculadora de Reajuste de Preços
+# Recalcula Preço de Preços
 
 Sistema de cálculo de reajuste de preços para lanchonetes.
 ## Autor

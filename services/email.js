@@ -61,7 +61,7 @@ const enviarEmailRecuperacaoMultiplos = async (email, usuariosComTokens) => {
     const mailOptions = {
       from: process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@calculadora.com',
       to: email,
-      subject: 'Recuperação de Senha - Múltiplas Contas - Calculadora de Reajuste',
+      subject: 'Recuperação de Senha - Múltiplas Contas - Recalcula Preço',
       html: `
         <!DOCTYPE html>
         <html>
@@ -129,7 +129,7 @@ const enviarEmailRecuperacaoMultiplos = async (email, usuariosComTokens) => {
             </div>
             <div class="footer">
               <p>Este é um email automático, por favor não responda.</p>
-              <p>&copy; ${new Date().getFullYear()} Calculadora de Reajuste</p>
+              <p>&copy; ${new Date().getFullYear()} Recalcula Preço</p>
             </div>
           </div>
         </body>
@@ -186,7 +186,7 @@ const enviarEmailRecuperacao = async (email, token, username) => {
     const mailOptions = {
       from: process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@calculadora.com',
       to: email,
-      subject: 'Recuperação de Senha - Calculadora de Reajuste',
+      subject: 'Recuperação de Senha - Recalcula Preço',
       html: `
         <!DOCTYPE html>
         <html>
@@ -259,7 +259,7 @@ const enviarEmailRecuperacao = async (email, token, username) => {
             </div>
             <div class="footer">
               <p>Este é um email automático, por favor não responda.</p>
-              <p>&copy; ${new Date().getFullYear()} Calculadora de Reajuste</p>
+              <p>&copy; ${new Date().getFullYear()} Recalcula Preço</p>
             </div>
           </div>
         </body>

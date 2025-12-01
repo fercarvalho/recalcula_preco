@@ -23,8 +23,8 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
 
   const faqs = [
     {
-      pergunta: 'Como funciona a Calculadora de Reajuste?',
-      resposta: 'A Calculadora de Reajuste é uma ferramenta completa para gerenciar seus produtos e aplicar reajustes de preços de forma automática. Você cadastra seus produtos por categoria, define os preços e pode aplicar reajustes fixos ou percentuais em massa. O sistema também calcula automaticamente os preços ajustados considerando as taxas das plataformas de delivery.'
+      pergunta: 'Como funciona a Recalcula Preço?',
+      resposta: 'A Recalcula Preço é uma ferramenta completa para gerenciar seus produtos e aplicar reajustes de preços de forma automática. Você cadastra seus produtos por categoria, define os preços e pode aplicar reajustes fixos ou percentuais em massa. O sistema também calcula automaticamente os preços ajustados considerando as taxas das plataformas de delivery.'
     },
     {
       pergunta: 'Preciso instalar algum aplicativo?',
@@ -43,7 +43,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
       resposta: 'Com o plano anual você tem acesso ilimitado a todas as funcionalidades: cadastro ilimitado de produtos, reajustes automáticos, cálculo de preços com taxas de plataformas, organização por categorias, backup automático dos valores e muito mais.'
     },
     {
-      pergunta: 'Para quem é a Calculadora de Reajuste?',
+      pergunta: 'Para quem é a Recalcula Preço?',
       resposta: 'É ideal para restaurantes, lanchonetes, food trucks e qualquer estabelecimento que precise gerenciar cardápios e aplicar reajustes de preços de forma eficiente. Perfeito para quem trabalha com delivery e precisa calcular preços considerando as taxas das plataformas.'
     },
     {
@@ -129,9 +129,13 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
         <div className="landing-header-content">
           <div className="landing-logo">
             <img src="/logo_nova.png" alt="Logo" />
-            <span>Calculadora de Reajuste</span>
+            <span>Recalcula Preço</span>
           </div>
           <nav className="landing-nav">
+            <a href="#sobre" onClick={(e) => {
+              e.preventDefault();
+              document.getElementById('sobre')?.scrollIntoView({ behavior: 'smooth' });
+            }}>Sobre</a>
             <a href="#funcionalidades" onClick={(e) => {
               e.preventDefault();
               document.getElementById('funcionalidades')?.scrollIntoView({ behavior: 'smooth' });
@@ -187,6 +191,49 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
         </div>
       </section>
 
+      {/* Nossa História / Por que existe */}
+      <section id="sobre" className="sobre-section">
+        <div className="container">
+          <h2 className="section-title">Por que criamos este sistema?</h2>
+          <div className="sobre-content">
+            <div className="sobre-text">
+              <p className="sobre-intro">
+                Prazer, me chamo <strong>Fernando Carvalho</strong> e a Recalcula Preço nasceu de uma necessidade real: 
+                a dificuldade de gerenciar preços em múltiplas plataformas de delivery.
+              </p>
+              <p>
+                Este sistema foi criado inicialmente para a <strong>lanchonete Vira-Latas</strong>, localizada em <strong>Tupã, interior de São Paulo</strong>, 
+                estabelecimento do meu pai. Ao observar as dificuldades que ele enfrentava no dia a dia, percebi um problema comum a muitos empreendedores do setor.
+              </p>
+              <p>
+                Cada plataforma de delivery cobra taxas diferentes e calcula percentuais de formas distintas. Isso torna extremamente difícil para o dono de restaurante 
+                ou lanchonete criar uma estratégia de preços harmoniosa, que funcione em todas as plataformas sem gerar prejuízo ou desequilíbrio financeiro.
+              </p>
+              <p>
+                Ao ver essa dor de perto, decidi criar uma solução que tornasse esse processo <strong>mais fácil, mais leve e mais prático</strong>. 
+                O sistema foi testado e validado na prática, comprovando que realmente resolve essa necessidade.
+              </p>
+              <p>
+                Por isso, resolvi disponibilizar esta ferramenta por um <strong>preço acessível e justo</strong>, para ajudar todos os donos de lanchonetes e restaurantes 
+                que enfrentam a mesma dificuldade: gerenciar diferentes preços em diferentes plataformas de delivery de forma <strong>justa, democrática, de fácil entendimento</strong>, 
+                tornando esse processo mais <strong>rápido, habitual e eficiente</strong>.
+              </p>
+              <p className="sobre-conclusao">
+                Este sistema foi feito com <strong>muito amor</strong> por mim, como uma homenagem aos meus pais. Através de trabalho duro, muito esforço e suor, 
+                eles conseguiram me criar e me tornar um ser humano funcional. <strong>Aos meus pais, muito obrigado.</strong>
+              </p>
+              <p className="sobre-conclusao-final">
+                E a você, espero que este sistema, assim como foi para eles, torne sua vida mais fácil. 
+                <br />
+                <strong>Um abraço! ❤️</strong>
+                <br />
+                <span className="sobre-assinatura">Te vejo do outro lado! 🚀</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Funcionalidades */}
       <section id="funcionalidades" className="funcionalidades-section">
         <div className="container">
@@ -208,7 +255,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
         <div className="container">
           <h2 className="section-title">O que vem por aí <span className="roadmap-subtitle">(funcionalidades em desenvolvimento)</span></h2>
           <p className="roadmap-intro">
-            Estamos sempre evoluindo a Calculadora de Reajuste para deixar o seu dia a dia ainda mais simples.
+            Estamos sempre evoluindo a Recalcula Preço para deixar o seu dia a dia ainda mais simples.
             Confira algumas das próximas novidades que estamos preparando para você.
           </p>
           <div className="roadmap-grid">
@@ -231,7 +278,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
             Integração com Inteligência Artificial <span className="roadmap-subtitle">(pelo WhatsApp) - Em breve (No Forno)</span>
           </h2>
           <p className="whatsapp-intro">
-            Estamos preparando uma área especial para conectar sua Calculadora de Reajuste diretamente ao WhatsApp,
+            Estamos preparando uma área especial para conectar sua Recalcula Preço diretamente ao WhatsApp,
             trazendo automações inteligentes para o seu atendimento, cardápio e recebimento de pedidos.
           </p>
           <div className="whatsapp-placeholder">
@@ -243,7 +290,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
                 <h3>Modo Cardápio no WhatsApp</h3>
                 <p>
                   Quando o cliente pedir o cardápio, a IA envia automaticamente uma imagem atualizada do seu cardápio direto no WhatsApp,
-                  usando os dados cadastrados na Calculadora de Reajuste.
+                  usando os dados cadastrados na Recalcula Preço.
                 </p>
               </div>
               <div className="whatsapp-feature-card">
@@ -341,7 +388,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
       <section id="faq" className="faq-section">
         <div className="container">
           <h2 className="section-title">FAQ – Perguntas Frequentes</h2>
-          <p className="faq-subtitle">Tudo que você precisa saber sobre a Calculadora de Reajuste</p>
+          <p className="faq-subtitle">Tudo que você precisa saber sobre a Recalcula Preço</p>
           
           <div className="faq-list">
             {faqs.map((faq, index) => (
@@ -383,11 +430,15 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
         <div className="container">
           <div className="footer-content">
             <div className="footer-section">
-              <h4>Calculadora de Reajuste</h4>
+              <h4>Recalcula Preço</h4>
               <p>Sua ferramenta completa para gerenciar preços e aplicar reajustes de forma inteligente.</p>
             </div>
             <div className="footer-section">
               <h4>Links</h4>
+              <a href="#sobre" onClick={(e) => {
+                e.preventDefault();
+                document.getElementById('sobre')?.scrollIntoView({ behavior: 'smooth' });
+              }}>Sobre</a>
               <a href="#funcionalidades" onClick={(e) => {
                 e.preventDefault();
                 document.getElementById('funcionalidades')?.scrollIntoView({ behavior: 'smooth' });
@@ -413,7 +464,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
             </div>
           </div>
           <div className="footer-bottom">
-            <p>&copy; 2026 Calculadora de Reajuste. Todos os direitos reservados.</p>
+            <p>&copy; 2026 Recalcula Preço. Todos os direitos reservados.</p>
           </div>
         </div>
       </footer>

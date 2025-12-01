@@ -66,7 +66,7 @@ const Login = ({ onLoginSuccess }: LoginProps) => {
       <div className="login-box">
         <div className="login-header">
           <img src="/logo_nova.png" alt="Logo" className="login-logo" />
-          <h1>Calculadora de Reajuste</h1>
+          <h1>Recalcula Preço</h1>
           <p>Faça login para continuar</p>
         </div>
         <form onSubmit={handleSubmit} className="login-form">

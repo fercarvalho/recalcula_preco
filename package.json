@@ -1,7 +1,7 @@
 {
   "name": "calculadora-reajuste",
   "version": "1.0.0",
-  "description": "Calculadora de Reajuste de Preços - Vira-Latas",
+  "description": "Recalcula Preço de Preços - Vira-Latas",
   "main": "server.js",
   "scripts": {
     "build:frontend": "cd frontend && npm install && npm run build",
