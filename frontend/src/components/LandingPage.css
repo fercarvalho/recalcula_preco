@@ -226,6 +226,11 @@
   color: white;
 }
 
+/* Título maior especificamente na seção de WhatsApp */
+.whatsapp-section .section-title {
+  font-size: 2.8rem;
+}
+
 .beneficios-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -280,6 +285,13 @@
   font-weight: 600;
   color: rgba(255, 255, 255, 0.7);
   margin-top: 0.5rem;
+}
+
+/* Subtítulo da seção de WhatsApp ~40% menor que o título dela */
+.whatsapp-section .roadmap-subtitle {
+  font-size: 1.7rem;
+  font-weight: 600;
+  margin-top: 0.75rem;
 }
 
 .roadmap-intro {
@@ -361,14 +373,10 @@
 }
 
 .whatsapp-placeholder {
-  max-width: 700px;
+  max-width: 1200px;
   margin: 0 auto;
-  background: var(--cor-fundo, #1a1a1a);
-  border-radius: 12px;
-  padding: 2.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(37, 211, 102, 0.4);
-  text-align: center;
+  padding: 0;
+  text-align: left;
 }
 
 .whatsapp-icon {
@@ -386,6 +394,7 @@
   margin-top: 1.5rem;
   display: grid;
   gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
 .whatsapp-feature-card {
@@ -395,6 +404,7 @@
   border: 1px solid rgba(37, 211, 102, 0.35);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   transition: all 0.3s;
+  text-align: left;
 }
 
 .whatsapp-feature-card:hover {
@@ -412,6 +422,15 @@
 .whatsapp-feature-card p {
   color: rgba(255, 255, 255, 0.8);
   line-height: 1.6;
+}
+
+.whatsapp-icon-inline {
+  font-size: 3rem;
+  color: #25D366;
+}
+
+.whatsapp-icon-inline-wrapper {
+  margin-bottom: 0.5rem;
 }
 
 /* Planos */

@@ -235,9 +235,11 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
             trazendo automações inteligentes para o seu atendimento, cardápio e recebimento de pedidos.
           </p>
           <div className="whatsapp-placeholder">
-            <FaWhatsapp className="whatsapp-icon" />
             <div className="whatsapp-features">
               <div className="whatsapp-feature-card">
+                <div className="whatsapp-icon-inline-wrapper">
+                  <FaWhatsapp className="whatsapp-icon-inline" />
+                </div>
                 <h3>Modo Cardápio no WhatsApp</h3>
                 <p>
                   Quando o cliente pedir o cardápio, a IA envia automaticamente uma imagem atualizada do seu cardápio direto no WhatsApp,
@@ -245,6 +247,9 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
                 </p>
               </div>
               <div className="whatsapp-feature-card">
+                <div className="whatsapp-icon-inline-wrapper">
+                  <FaWhatsapp className="whatsapp-icon-inline" />
+                </div>
                 <h3>Controle do sistema pelo WhatsApp</h3>
                 <p>
                   Você poderá alterar e ajustar informações do sistema conversando com a IA pelo WhatsApp, sem precisar abrir o computador:
@@ -252,6 +257,9 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
                 </p>
               </div>
               <div className="whatsapp-feature-card">
+                <div className="whatsapp-icon-inline-wrapper">
+                  <FaWhatsapp className="whatsapp-icon-inline" />
+                </div>
                 <h3>Recebimento de pedidos automatizado</h3>
                 <p>
                   A IA vai receber o pedido do seu cliente pelo WhatsApp e encaminhar automaticamente para a impressora do estabelecimento,
