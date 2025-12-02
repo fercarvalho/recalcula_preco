@@ -81,14 +81,15 @@
 
   .landing-header-first-line {
     margin-bottom: 0;
-    justify-content: space-between;
+    justify-content: flex-start;
     flex-wrap: nowrap;
     align-items: center;
+    position: relative;
   }
 
   .landing-header-buttons {
     position: absolute;
-    left: 50%;
+    left: 40%;
     top: 50%;
     transform: translate(-50%, -50%);
     margin: 0;
@@ -96,7 +97,7 @@
 
   .landing-nav {
     position: absolute;
-    right: calc((100% - 1200px) / 2);
+    right: 0;
     top: 50%;
     transform: translateY(-50%);
     margin: 0;
