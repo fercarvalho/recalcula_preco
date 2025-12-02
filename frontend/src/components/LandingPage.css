@@ -18,6 +18,24 @@
   box-sizing: border-box;
 }
 
+/* Mobile - mantém sticky */
+@media (max-width: 768px) {
+  .landing-header {
+    position: sticky;
+  }
+}
+
+/* Desktop - header fixo */
+@media (min-width: 769px) {
+  .landing-header {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+  }
+}
+
 .landing-header-first-line {
   display: flex;
   justify-content: center;
