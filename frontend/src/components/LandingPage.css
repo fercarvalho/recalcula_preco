@@ -3,10 +3,16 @@
   background: var(--cor-fundo, #1a1a1a);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   color: white;
-  margin: 0;
-  padding: 0;
+  margin: 0 !important;
+  padding: 0 !important;
   overflow-x: hidden;
-  width: 100%;
+  width: 100vw !important;
+  max-width: 100vw !important;
+  position: relative;
+  margin-left: calc(-50vw + 50%) !important;
+  margin-right: calc(-50vw + 50%) !important;
+  left: 0;
+  right: 0;
 }
 
 .landing-page > header {
@@ -16,16 +22,21 @@
   right: 50%;
   margin-left: -50vw;
   margin-right: -50vw;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 /* Header */
 .landing-header {
   background: var(--cor-primaria, #FF6B35);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border: none !important;
+  border-bottom: none !important;
+  outline: none !important;
   position: sticky;
   top: 0;
   z-index: 1000;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: none !important;
   width: 100%;
   padding: 1rem 0;
   margin: 0;
@@ -225,11 +236,12 @@
 .hero-section {
   background: linear-gradient(135deg, var(--cor-fundo, #1a1a1a) 0%, var(--cor-secundaria, #2a2a2a) 100%);
   color: white;
-  padding: 4rem 2rem;
+  padding: 4rem 0;
   min-height: 80vh;
   display: flex;
   align-items: center;
   border-bottom: 1px solid rgba(255, 107, 53, 0.2);
+  width: 100%;
 }
 
 .hero-content {
@@ -239,6 +251,8 @@
   grid-template-columns: 1fr 1fr;
   gap: 4rem;
   align-items: center;
+  padding: 0 2rem;
+  box-sizing: border-box;
 }
 
 .hero-title {
@@ -329,8 +343,9 @@
 
 /* Sobre / Por que existe */
 .sobre-section {
-  padding: 5rem 2rem;
+  padding: 5rem 0;
   background: var(--cor-fundo, #1a1a1a);
+  width: 100%;
 }
 
 .sobre-section .container {
@@ -340,6 +355,8 @@
 .sobre-content {
   max-width: 900px;
   margin: 0 auto;
+  padding: 0 2rem;
+  box-sizing: border-box;
 }
 
 .sobre-text {
@@ -406,8 +423,9 @@
 
 /* Funcionalidades */
 .funcionalidades-section {
-  padding: 5rem 2rem;
+  padding: 5rem 0;
   background: var(--cor-secundaria, #2a2a2a);
+  width: 100%;
 }
 
 .funcionalidades-section .container {
@@ -421,6 +439,8 @@
   border-radius: 0 !important;
   box-shadow: none !important;
   overflow: visible !important;
+  padding: 0 2rem;
+  box-sizing: border-box;
 }
 
 .section-title {
@@ -476,8 +496,9 @@
 
 /* Roadmap */
 .roadmap-section {
-  padding: 5rem 2rem;
+  padding: 5rem 0;
   background: var(--cor-fundo, #1a1a1a);
+  width: 100%;
 }
 
 .roadmap-section .container {
@@ -560,9 +581,10 @@
 
 /* Integração com WhatsApp */
 .whatsapp-section {
-  padding: 4rem 2rem 5rem;
+  padding: 4rem 0 5rem;
   background: var(--cor-secundaria, #2a2a2a);
   border-top: 1px solid rgba(255, 107, 53, 0.2);
+  width: 100%;
 }
 
 .whatsapp-section .container {
@@ -651,8 +673,9 @@
 
 /* Planos */
 .planos-section {
-  padding: 5rem 2rem;
+  padding: 5rem 0;
   background: var(--cor-fundo, #1a1a1a);
+  width: 100%;
 }
 
 .planos-section .container {
@@ -665,6 +688,8 @@
   gap: 2rem;
   max-width: 900px;
   margin: 0 auto 2rem;
+  padding: 0 2rem;
+  box-sizing: border-box;
 }
 
 .plano-card-landing {
@@ -817,8 +842,9 @@
 
 /* FAQ */
 .faq-section {
-  padding: 5rem 2rem;
+  padding: 5rem 0;
   background: var(--cor-secundaria, #2a2a2a);
+  width: 100%;
 }
 
 .faq-section .container {
@@ -836,6 +862,8 @@
   max-width: 800px;
   margin: 0 auto;
   background: transparent;
+  padding: 0 2rem;
+  box-sizing: border-box;
 }
 
 .faq-item {
@@ -879,16 +907,19 @@
 
 /* CTA Final */
 .cta-final-section {
-  padding: 5rem 2rem;
+  padding: 5rem 0;
   background: linear-gradient(135deg, var(--cor-fundo, #1a1a1a) 0%, var(--cor-secundaria, #2a2a2a) 100%);
   color: white;
   text-align: center;
   border-top: 1px solid rgba(255, 107, 53, 0.2);
+  width: 100%;
 }
 
 .cta-final-content {
   max-width: 800px;
   margin: 0 auto;
+  padding: 0 2rem;
+  box-sizing: border-box;
 }
 
 .cta-icon {

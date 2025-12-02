@@ -19,6 +19,12 @@ body {
   position: relative;
 }
 
+body:has(.landing-page) {
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow-x: hidden;
+}
+
 .app {
   position: relative;
 }
