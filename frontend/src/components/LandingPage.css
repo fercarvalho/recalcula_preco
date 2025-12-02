@@ -49,7 +49,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 1.5rem;
+  font-size: 1.6rem;
   font-weight: bold;
   color: white;
   white-space: nowrap;
@@ -1052,26 +1052,21 @@
 /* Telas de 8 a 12 polegadas (768px - 1279px) - duas linhas: logo+botões / menu */
 @media (min-width: 768px) and (max-width: 1279px) {
   .landing-header-first-line {
+    display: flex;
     flex-direction: row;
-    flex-wrap: wrap;
     justify-content: center;
     align-items: center;
-    gap: 1rem;
-  }
-
-  .landing-header-first-line .landing-logo {
-    order: 1;
-  }
-
-  .landing-header-first-line .landing-header-buttons {
-    order: 2;
+    gap: 2rem;
+    flex-wrap: nowrap;
+    margin-bottom: 1rem;
   }
 
   .landing-nav {
-    order: 3;
     width: 100%;
-    margin-top: 0;
-    padding-top: 1rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    box-sizing: border-box;
     display: flex;
     justify-content: center;
   }
