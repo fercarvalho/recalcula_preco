@@ -40,6 +40,11 @@
   box-sizing: border-box;
 }
 
+.landing-header-first-line .landing-logo {
+  flex-shrink: 0;
+  min-width: fit-content;
+}
+
 .landing-logo {
   display: flex;
   align-items: center;
@@ -116,7 +121,21 @@
   box-sizing: border-box;
 }
 
-/* Telas acima de 11 polegadas - menu na mesma linha, ao lado direito dos botões */
+/* Telas de 10 a 12 polegadas (1280px - 1400px) - tudo em uma linha */
+@media (min-width: 1280px) and (max-width: 1399px) {
+  .landing-header-first-line {
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    margin-bottom: 0;
+  }
+
+  .landing-nav {
+    margin-top: 0;
+    padding-bottom: 0;
+  }
+}
+
+/* Telas acima de 11 polegadas (>= 1400px) - menu na mesma linha, ao lado direito dos botões */
 @media (min-width: 1400px) {
   .landing-header {
     position: relative;
@@ -1030,12 +1049,55 @@
   color: #999;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
+/* Telas de 8 a 12 polegadas (768px - 1279px) - duas linhas: logo+botões / menu */
+@media (min-width: 768px) and (max-width: 1279px) {
+  .landing-header-first-line {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .landing-header-first-line .landing-logo {
+    order: 1;
+  }
+
+  .landing-header-first-line .landing-header-buttons {
+    order: 2;
+  }
+
+  .landing-nav {
+    order: 3;
+    width: 100%;
+    margin-top: 0;
+    padding-top: 1rem;
+    display: flex;
+    justify-content: center;
+  }
+}
+
+/* Smartphones (< 768px) - três linhas */
+@media (max-width: 767px) {
   .landing-header-first-line {
     flex-direction: column;
     gap: 1rem;
     align-items: center;
+    justify-content: center;
+  }
+
+  .landing-header-first-line .landing-logo {
+    order: 1;
+  }
+
+  .landing-header-first-line .landing-header-buttons {
+    order: 2;
+  }
+
+  .landing-nav {
+    order: 3;
+    width: 100%;
+    margin-top: 0;
   }
 
   .landing-header-buttons {
