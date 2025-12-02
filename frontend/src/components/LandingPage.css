@@ -43,10 +43,41 @@
 .landing-logo {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 4px;
   font-size: 1.5rem;
   font-weight: bold;
   color: white;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: fit-content;
+}
+
+.landing-logo span {
+  white-space: nowrap !important;
+  display: inline !important;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+/* Reduzir tamanho da fonte em telas médias para evitar quebra */
+@media (max-width: 600px) and (min-width: 481px) {
+  .landing-logo {
+    font-size: 1.2rem;
+  }
+}
+
+/* Quebra de linha apenas em telas muito pequenas (< 7 polegadas / smartphones) */
+@media (max-width: 480px) {
+  .landing-logo {
+    white-space: normal;
+    flex-wrap: wrap;
+    font-size: 1rem;
+  }
+  
+  .landing-logo span {
+    white-space: normal !important;
+    display: block !important;
+  }
 }
 
 .landing-logo img {
