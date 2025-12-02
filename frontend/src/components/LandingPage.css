@@ -97,7 +97,7 @@
 
   .landing-nav {
     position: absolute;
-    right: 0;
+    left: 60%;
     top: 50%;
     transform: translateY(-50%);
     margin: 0;
@@ -106,6 +106,7 @@
     width: auto;
     display: flex;
     align-items: center;
+    justify-content: flex-start;
     gap: 2rem;
     overflow: visible;
   }
