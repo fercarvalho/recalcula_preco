@@ -1086,7 +1086,7 @@
   .landing-header-first-line .landing-logo {
     order: 1;
     width: 100%;
-    max-width: 100%;
+    max-width: 90%;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -1095,7 +1095,7 @@
     flex-wrap: nowrap;
     box-sizing: border-box;
     padding: 0;
-    margin: 0;
+    margin: 0 auto;
     min-width: 0;
     flex-shrink: 1;
   }
@@ -1117,8 +1117,8 @@
     justify-content: center;
     align-items: center;
     width: 100%;
-    max-width: 100%;
-    margin: 0;
+    max-width: 90%;
+    margin: 0 auto;
     padding: 0;
     box-sizing: border-box;
   }
@@ -1139,17 +1139,19 @@
     flex-wrap: nowrap;
     gap: 0.75rem;
     width: 100%;
-    max-width: 100%;
-    justify-content: center;
+    max-width: 90%;
+    justify-content: stretch;
     align-items: center;
     display: flex;
+    margin: 0 auto;
   }
 
   .landing-header-buttons button {
     white-space: nowrap;
     padding: 0.5rem 1rem;
     font-size: 0.9rem;
-    min-width: fit-content;
+    flex: 1;
+    min-width: 0;
   }
 
   .landing-nav {
