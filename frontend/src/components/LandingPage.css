@@ -28,6 +28,7 @@
   max-width: 1200px;
   margin-left: auto;
   margin-right: auto;
+  position: relative;
 }
 
 .landing-logo {
@@ -70,6 +71,43 @@
   max-width: 1200px;
   margin-left: auto;
   margin-right: auto;
+}
+
+/* Telas acima de 11 polegadas - menu na mesma linha, ao lado direito dos botões */
+@media (min-width: 1400px) {
+  .landing-header {
+    position: relative;
+  }
+
+  .landing-header-first-line {
+    margin-bottom: 0;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+
+  .landing-header-buttons {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
+  }
+
+  .landing-nav {
+    position: absolute;
+    right: calc((100% - 1200px) / 2);
+    top: 50%;
+    transform: translateY(-50%);
+    margin: 0;
+    padding: 0;
+    max-width: none;
+    width: auto;
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    overflow: visible;
+  }
 }
 
 .landing-nav::-webkit-scrollbar {
