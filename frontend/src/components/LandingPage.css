@@ -64,24 +64,10 @@
   overflow-wrap: normal;
 }
 
-/* Reduzir tamanho da fonte em telas médias para evitar quebra */
-@media (max-width: 600px) and (min-width: 481px) {
+/* Reduzir tamanho da fonte em telas pequenas para evitar quebra */
+@media (max-width: 600px) {
   .landing-logo {
-    font-size: 1.2rem;
-  }
-}
-
-/* Quebra de linha apenas em telas muito pequenas (< 7 polegadas / smartphones) */
-@media (max-width: 480px) {
-  .landing-logo {
-    white-space: normal;
-    flex-wrap: wrap;
-    font-size: 1rem;
-  }
-  
-  .landing-logo span {
-    white-space: normal !important;
-    display: block !important;
+    font-size: clamp(1.1rem, 4vw, 1.8rem);
   }
 }
 
@@ -105,6 +91,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0 2rem;
+  box-sizing: border-box;
   gap: 2rem;
   flex-wrap: nowrap;
   overflow-x: auto;
@@ -1074,33 +1062,87 @@
 
 /* Smartphones (< 768px) - três linhas */
 @media (max-width: 767px) {
+  .landing-header {
+    padding: 1rem 0 !important;
+    width: 100vw !important;
+    left: 0 !important;
+    right: 0 !important;
+    margin: 0 !important;
+  }
+
   .landing-header-first-line {
     flex-direction: column;
     gap: 1rem;
     align-items: center;
     justify-content: center;
+    padding: 0 !important;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
   }
 
   .landing-header-first-line .landing-logo {
     order: 1;
+    width: 100%;
+    max-width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2rem;
+    white-space: nowrap;
+    flex-wrap: nowrap;
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+    min-width: 0;
+    flex-shrink: 1;
+  }
+
+  .landing-header-first-line .landing-logo span {
+    white-space: nowrap !important;
+    display: inline !important;
+  }
+
+  .landing-logo img {
+    width: 50px;
+    height: 50px;
+    flex-shrink: 0;
   }
 
   .landing-header-first-line .landing-header-buttons {
     order: 2;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
   }
 
   .landing-nav {
     order: 3;
     width: 100%;
-    margin-top: 0;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    justify-content: center;
+    display: flex;
   }
 
   .landing-header-buttons {
     flex-direction: row;
     flex-wrap: nowrap;
     gap: 0.75rem;
-    width: auto;
+    width: 100%;
     max-width: 100%;
+    justify-content: center;
+    align-items: center;
+    display: flex;
   }
 
   .landing-header-buttons button {
