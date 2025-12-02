@@ -126,39 +126,41 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
     <div className="landing-page">
       {/* Header */}
       <header className="landing-header">
-        <div className="landing-header-content">
+        <div className="landing-header-first-line">
           <div className="landing-logo">
             <img src="/logo_nova.png" alt="Logo" />
             <span>Recalcula Preço</span>
           </div>
-          <nav className="landing-nav">
-            <a href="#sobre" onClick={(e) => {
-              e.preventDefault();
-              document.getElementById('sobre')?.scrollIntoView({ behavior: 'smooth' });
-            }}>Sobre</a>
-            <a href="#funcionalidades" onClick={(e) => {
-              e.preventDefault();
-              document.getElementById('funcionalidades')?.scrollIntoView({ behavior: 'smooth' });
-            }}>Funcionalidades</a>
-            <a href="#roadmap" onClick={(e) => {
-              e.preventDefault();
-              document.getElementById('roadmap')?.scrollIntoView({ behavior: 'smooth' });
-            }}>O que vem por aí</a>
-            <a href="#planos" onClick={(e) => {
-              e.preventDefault();
-              document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' });
-            }}>Planos</a>
-            <a href="#faq" onClick={(e) => {
-              e.preventDefault();
-              document.getElementById('faq')?.scrollIntoView({ behavior: 'smooth' });
-            }}>FAQ</a>
+          <div className="landing-header-buttons">
             <button onClick={onLoginClick} className="btn-login-header">Login</button>
             <button onClick={(e) => {
               e.preventDefault();
               document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' });
             }} className="btn-assinar-header">Assinar agora</button>
-          </nav>
+          </div>
         </div>
+        <nav className="landing-nav">
+          <a href="#sobre" onClick={(e) => {
+            e.preventDefault();
+            document.getElementById('sobre')?.scrollIntoView({ behavior: 'smooth' });
+          }}>Sobre</a>
+          <a href="#funcionalidades" onClick={(e) => {
+            e.preventDefault();
+            document.getElementById('funcionalidades')?.scrollIntoView({ behavior: 'smooth' });
+          }}>Funcionalidades</a>
+          <a href="#roadmap" onClick={(e) => {
+            e.preventDefault();
+            document.getElementById('roadmap')?.scrollIntoView({ behavior: 'smooth' });
+          }}>O que vem por aí</a>
+          <a href="#planos" onClick={(e) => {
+            e.preventDefault();
+            document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' });
+          }}>Planos</a>
+          <a href="#faq" onClick={(e) => {
+            e.preventDefault();
+            document.getElementById('faq')?.scrollIntoView({ behavior: 'smooth' });
+          }}>FAQ</a>
+        </nav>
       </header>
 
       {/* Hero Section */}

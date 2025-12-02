@@ -13,15 +13,21 @@
   top: 0;
   z-index: 1000;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  width: 100%;
+  padding: 1rem 2rem;
+  box-sizing: border-box;
 }
 
-.landing-header-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 1rem 2rem;
+.landing-header-first-line {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
+  gap: 2rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .landing-logo {
@@ -41,10 +47,46 @@
   border-radius: 50%;
 }
 
+.landing-header-buttons {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+
 .landing-nav {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 2rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+  padding-bottom: 0.5rem;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.landing-nav::-webkit-scrollbar {
+  height: 6px;
+}
+
+.landing-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.landing-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+.landing-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
 }
 
 .landing-nav a {
@@ -53,6 +95,8 @@
   font-weight: 500;
   transition: color 0.3s;
   opacity: 0.9;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .landing-nav a:hover {
@@ -69,6 +113,8 @@
   cursor: pointer;
   font-weight: 600;
   transition: all 0.3s;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .btn-login-header:hover {
@@ -86,6 +132,8 @@
   cursor: pointer;
   font-weight: 600;
   transition: all 0.3s;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .btn-assinar-header:hover {
@@ -866,15 +914,34 @@
 
 /* Responsive */
 @media (max-width: 768px) {
-  .landing-header-content {
+  .landing-header-first-line {
     flex-direction: column;
     gap: 1rem;
+    align-items: center;
+  }
+
+  .landing-header-buttons {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 0.75rem;
+    width: auto;
+    max-width: 100%;
+  }
+
+  .landing-header-buttons button {
+    white-space: nowrap;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    min-width: fit-content;
   }
 
   .landing-nav {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: center;
-    gap: 1rem;
+    gap: 1.5rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
   }
 
   .hero-content {
