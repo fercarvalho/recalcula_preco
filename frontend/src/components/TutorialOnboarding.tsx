@@ -386,7 +386,7 @@ const TutorialOnboarding = ({
                   transform: step.position === 'bottom' ? 'translateX(-50%)' : undefined,
                 }
               : {
-                  top: isSmallScreen ? '20%' : '50%',
+                  top: isSmallScreen ? '5%' : '50%',
                   left: '50%',
                   transform: isSmallScreen ? 'translate(-50%, 0)' : 'translate(-50%, -50%)',
                 }

@@ -382,14 +382,15 @@
 /* Telas menores de 7 polegadas - modal mais para cima */
 @media (max-width: 600px), (max-height: 600px) {
   .tutorial-tooltip {
-    top: 20% !important;
+    top: 5% !important;
     transform: translate(-50%, 0) !important;
-    max-height: 70vh;
+    max-height: 85vh;
+    min-height: 70vh;
     overflow-y: auto;
   }
 
   .tutorial-tooltip-center {
-    top: 20% !important;
+    top: 5% !important;
     transform: translate(-50%, 0) !important;
   }
 }
