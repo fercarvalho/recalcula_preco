@@ -261,3 +261,58 @@
   }
 }
 
+/* Telas menores de 7 polegadas */
+@media (max-width: 600px), (max-height: 600px) {
+  .itens-section {
+    padding: 15px;
+  }
+
+  .itens-section h2 {
+    font-size: 1.4em;
+    margin-bottom: 15px;
+  }
+
+  .categoria-header {
+    padding: 10px 12px;
+    font-size: 1em;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .categoria-header h3 {
+    font-size: 0.95em;
+    flex: 1;
+    min-width: 0;
+    overflow: visible;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .categoria-header-left {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .categoria-actions {
+    gap: 5px;
+  }
+
+  .btn-icone-categoria,
+  .btn-editar-categoria,
+  .btn-adicionar-item,
+  .btn-deletar-categoria {
+    padding: 4px 6px;
+    font-size: 0.8em;
+  }
+
+  .categoria-count {
+    font-size: 0.7em;
+  }
+
+  .itens-grid {
+    padding: 12px;
+    gap: 10px;
+  }
+}
+

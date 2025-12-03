@@ -212,6 +212,10 @@ const ItemCard = ({ item, isSelected, onToggleSelect, onEdit, onDelete, onItemUp
                     display: 'flex',
                     alignItems: 'center',
                     gap: '5px',
+                    wordBreak: 'break-word',
+                    whiteSpace: 'normal',
+                    textAlign: 'left',
+                    width: '100%',
                   }}
                 >
                   {showPlataformas ? <FaChevronUp /> : <FaChevronDown />}

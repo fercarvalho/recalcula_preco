@@ -200,6 +200,73 @@
   transform: scale(0.95);
 }
 
+/* Telas menores de 7 polegadas */
+@media (max-width: 600px), (max-height: 600px) {
+  .item-card {
+    padding: 10px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .item-info h4 {
+    font-size: 0.95em;
+    margin-bottom: 6px;
+  }
+
+  .item-valores {
+    gap: 6px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+
+  .item-valor-input {
+    width: 80px;
+    padding: 6px;
+    font-size: 0.9em;
+  }
+
+  .item-precos-plataformas {
+    margin-top: 10px;
+    padding-top: 10px;
+    gap: 6px;
+  }
+
+  .item-preco-plataforma {
+    padding: 6px 8px;
+    flex-wrap: wrap;
+  }
+
+  .item-preco-plataforma label {
+    font-size: 0.75em;
+    word-break: break-word;
+  }
+
+  .preco-plataforma-valor {
+    font-size: 0.85em;
+  }
+
+  .btn-toggle-plataformas {
+    font-size: 0.75em !important;
+    white-space: normal;
+    word-break: break-word;
+    text-align: left;
+    line-height: 1.3;
+  }
+
+  .item-actions {
+    gap: 5px;
+    flex-wrap: wrap;
+  }
+
+  .btn-edit,
+  .btn-delete {
+    padding: 4px 6px;
+    font-size: 0.75em;
+    min-width: 24px;
+    height: 24px;
+  }
+}
+
 .item-edit-form {
   display: flex;
   flex-direction: column;

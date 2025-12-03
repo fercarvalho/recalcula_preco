@@ -19,6 +19,12 @@ body {
   position: relative;
 }
 
+@media (max-width: 600px), (max-height: 600px) {
+  body {
+    padding: 10px;
+  }
+}
+
 body:has(.landing-page) {
   padding: 0 !important;
   margin: 0 !important;
@@ -86,6 +92,12 @@ body:has(.landing-page) {
 
 .main-content {
   padding: 30px;
+}
+
+@media (max-width: 600px), (max-height: 600px) {
+  .main-content {
+    padding: 15px;
+  }
 }
 
 .loading-container {
