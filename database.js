@@ -396,6 +396,9 @@ async function inicializar() {
             )
         `);
         
+        // Inicializar funções padrão se não existirem
+        await inicializarFuncoesPadrao();
+        
         // Criar índice para busca rápida por usuario_id
         await pool.query(`
             CREATE INDEX IF NOT EXISTS idx_plataformas_usuario_id 
@@ -2288,6 +2291,143 @@ async function obterFuncoes() {
     } catch (error) {
         console.error('Erro ao obter funções:', error);
         throw error;
+    }
+}
+
+// Inicializar funções padrão
+async function inicializarFuncoesPadrao() {
+    try {
+        // Verificar se já existem funções
+        const countResult = await pool.query('SELECT COUNT(*) as count FROM funcoes');
+        const count = parseInt(countResult.rows[0].count);
+        
+        // Se já existem funções, não fazer nada
+        if (count > 0) {
+            return;
+        }
+        
+        // Funções padrão ativas (benefícios)
+        const funcoesAtivas = [
+            {
+                titulo: 'Reajustes Automáticos',
+                descricao: 'Aplique reajustes fixos ou percentuais em todos os seus produtos de uma vez, economizando horas de trabalho manual.',
+                icone: 'FaCalculator',
+                ativa: true,
+                eh_ia: false,
+                ordem: 0
+            },
+            {
+                titulo: 'Cálculo com Taxas de Plataformas',
+                descricao: 'Veja automaticamente como ficam seus preços nas principais plataformas de delivery, considerando as taxas de cada uma.',
+                icone: 'FaChartLine',
+                ativa: true,
+                eh_ia: false,
+                ordem: 1
+            },
+            {
+                titulo: 'Acesso de Qualquer Lugar',
+                descricao: 'Acesse sua calculadora de qualquer dispositivo, a qualquer momento. Seus dados ficam sincronizados na nuvem.',
+                icone: 'FaMobileAlt',
+                ativa: true,
+                eh_ia: false,
+                ordem: 2
+            },
+            {
+                titulo: 'Backup Automático',
+                descricao: 'Seus valores originais são salvos automaticamente. Você pode reverter reajustes quando quiser, sem perder dados.',
+                icone: 'FaShieldAlt',
+                ativa: true,
+                eh_ia: false,
+                ordem: 3
+            },
+            {
+                titulo: 'Organização por Categorias',
+                descricao: 'Organize seus produtos em categorias personalizadas e gerencie tudo de forma visual e intuitiva.',
+                icone: 'FaSync',
+                ativa: true,
+                eh_ia: false,
+                ordem: 4
+            },
+            {
+                titulo: 'Fácil de Usar',
+                descricao: 'Interface simples e intuitiva. Você não precisa ser expert em planilhas ou sistemas complexos para usar.',
+                icone: 'FaUsers',
+                ativa: true,
+                eh_ia: false,
+                ordem: 5
+            }
+        ];
+        
+        // Funções inativas (em breve)
+        const funcoesEmBreve = [
+            {
+                titulo: 'Pagamentos via PIX avançados',
+                descricao: 'Estamos preparando uma experiência completa de pagamento: PIX para o acesso único, pagamento à vista do plano anual, pagamento à vista do anual via PIX e PIX parcelado para facilitar ainda mais a sua assinatura.',
+                icone: 'FaQrcode',
+                ativa: false,
+                eh_ia: false,
+                ordem: 6
+            },
+            {
+                titulo: 'Pagamento à vista do plano anual',
+                descricao: 'Além das parcelas mensais, você poderá garantir o plano anual com pagamento à vista, com condições diferenciadas e pensado para quem quer resolver tudo de uma vez.',
+                icone: 'FaMoneyBillWave',
+                ativa: false,
+                eh_ia: false,
+                ordem: 7
+            },
+            {
+                titulo: 'PIX no plano anual (à vista e parcelado)',
+                descricao: 'Para quem ama PIX, o plano anual também poderá ser pago com PIX à vista ou em formato parcelado, mantendo a segurança e a praticidade que você já conhece.',
+                icone: 'FaCalculator',
+                ativa: false,
+                eh_ia: false,
+                ordem: 8
+            },
+            {
+                titulo: 'Modo Cardápio',
+                descricao: 'Um modo especial para exibir seus produtos e preços como um cardápio digital, ideal para mostrar no estabelecimento ou compartilhar online com seus clientes.',
+                icone: 'FaMobileAlt',
+                ativa: false,
+                eh_ia: false,
+                ordem: 9
+            },
+            {
+                titulo: 'Compartilhamento de Cardápio',
+                descricao: 'Gere seu cardápio em PDF ou PNG em poucos cliques e compartilhe facilmente em redes sociais, impressos ou com seu time.',
+                icone: 'FaFileAlt',
+                ativa: false,
+                eh_ia: false,
+                ordem: 10
+            },
+            {
+                titulo: 'Integração com WhatsApp',
+                descricao: 'Uma área dedicada para você conectar seus cardápios e ofertas diretamente ao WhatsApp, facilitando o contato com seus clientes e o fechamento de pedidos.',
+                icone: 'FaWhatsapp',
+                ativa: false,
+                eh_ia: false,
+                ordem: 11
+            }
+        ];
+        
+        // Inserir todas as funções
+        const todasFuncoes = [...funcoesAtivas, ...funcoesEmBreve];
+        for (const funcao of todasFuncoes) {
+            await criarFuncao(
+                funcao.titulo,
+                funcao.descricao,
+                funcao.icone,
+                null,
+                funcao.ativa,
+                funcao.eh_ia,
+                funcao.ordem
+            );
+        }
+        
+        console.log(`${todasFuncoes.length} funções padrão inicializadas`);
+    } catch (error) {
+        console.error('Erro ao inicializar funções padrão:', error);
+        // Não lançar erro para não impedir a inicialização do banco
     }
 }
 

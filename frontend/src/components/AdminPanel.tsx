@@ -368,10 +368,7 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
               Gerencie as funções exibidas na landing page. Configure quais funções estão ativas e quais são de IA.
             </p>
             <button 
-              onClick={() => {
-                console.log('Botão clicado, abrindo modal de funções');
-                setShowGerenciamentoFuncoes(true);
-              }}
+              onClick={() => setShowGerenciamentoFuncoes(true)}
               className="btn-primary"
               style={{ marginTop: '10px' }}
             >

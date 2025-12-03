@@ -31,7 +31,6 @@ const GerenciamentoFuncoes = ({ isOpen, onClose }: GerenciamentoFuncoesProps) =>
   const [showIconeModal, setShowIconeModal] = useState(false);
 
   useEffect(() => {
-    console.log('GerenciamentoFuncoes - isOpen mudou para:', isOpen);
     if (isOpen) {
       carregarFuncoes();
     }
