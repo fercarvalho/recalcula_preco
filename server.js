@@ -1280,6 +1280,93 @@ app.post('/api/tutorial/reset', authenticateToken, async (req, res) => {
     }
 });
 
+// ========== ROTAS DE FUNÇÕES DA LANDING PAGE ==========
+
+// Obter todas as funções (público para landing page)
+app.get('/api/funcoes', async (req, res) => {
+    try {
+        const funcoes = await db.obterFuncoes();
+        res.json(funcoes);
+    } catch (error) {
+        console.error('Erro ao obter funções:', error);
+        res.status(500).json({ error: 'Erro ao obter funções' });
+    }
+});
+
+// Criar função (apenas admin)
+app.post('/api/funcoes', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { titulo, descricao, icone, icone_upload, ativa, eh_ia, ordem } = req.body;
+        
+        if (!titulo || !descricao) {
+            return res.status(400).json({ error: 'Título e descrição são obrigatórios' });
+        }
+
+        const funcao = await db.criarFuncao(
+            titulo.trim(),
+            descricao.trim(),
+            icone || null,
+            icone_upload || null,
+            ativa !== undefined ? ativa : true,
+            eh_ia !== undefined ? eh_ia : false,
+            ordem || 0
+        );
+        res.json(funcao);
+    } catch (error) {
+        console.error('Erro ao criar função:', error);
+        res.status(500).json({ error: 'Erro ao criar função' });
+    }
+});
+
+// Atualizar função (apenas admin)
+app.put('/api/funcoes/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { titulo, descricao, icone, icone_upload, ativa, eh_ia, ordem } = req.body;
+        
+        if (!titulo || !descricao) {
+            return res.status(400).json({ error: 'Título e descrição são obrigatórios' });
+        }
+
+        const funcao = await db.atualizarFuncao(
+            parseInt(id),
+            titulo.trim(),
+            descricao.trim(),
+            icone || null,
+            icone_upload || null,
+            ativa !== undefined ? ativa : true,
+            eh_ia !== undefined ? eh_ia : false,
+            ordem || 0
+        );
+        
+        if (!funcao) {
+            return res.status(404).json({ error: 'Função não encontrada' });
+        }
+        
+        res.json(funcao);
+    } catch (error) {
+        console.error('Erro ao atualizar função:', error);
+        res.status(500).json({ error: 'Erro ao atualizar função' });
+    }
+});
+
+// Deletar função (apenas admin)
+app.delete('/api/funcoes/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const deletado = await db.deletarFuncao(parseInt(id));
+        
+        if (!deletado) {
+            return res.status(404).json({ error: 'Função não encontrada' });
+        }
+        
+        res.json({ message: 'Função deletada com sucesso' });
+    } catch (error) {
+        console.error('Erro ao deletar função:', error);
+        res.status(500).json({ error: 'Erro ao deletar função' });
+    }
+});
+
 // Servir arquivos estáticos do frontend React (DEPOIS das rotas da API)
 const frontendPath = path.join(__dirname, 'frontend', 'dist');
 app.use(express.static(frontendPath));

@@ -8,9 +8,10 @@ interface ModalProps {
   children: React.ReactNode;
   footer?: React.ReactNode;
   size?: 'small' | 'medium' | 'large';
+  className?: string;
 }
 
-const Modal = ({ isOpen, onClose, title, children, footer, size = 'medium' }: ModalProps) => {
+const Modal = ({ isOpen, onClose, title, children, footer, size = 'medium', className = '' }: ModalProps) => {
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
@@ -32,7 +33,7 @@ const Modal = ({ isOpen, onClose, title, children, footer, size = 'medium' }: Mo
   if (!isOpen) return null;
 
   return (
-    <div className="modal show" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div className={`modal show ${className}`} onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className={`modal-content modal-${size}`}>
         <div className="modal-header">
           <h2>{title}</h2>

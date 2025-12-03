@@ -374,6 +374,7 @@ const SelecionarIconeModal = ({ isOpen, iconeAtual, onClose, onSelect }: Selecio
       }}
       title="Selecione o ícone"
       size="large"
+      className="modal-selecionar-icone"
     >
       <div className="selecionar-icone-container">
         <div className="busca-icone-wrapper">

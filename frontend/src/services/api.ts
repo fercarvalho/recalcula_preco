@@ -197,5 +197,25 @@ export const apiService = {
   async resetarTutorial(): Promise<void> {
     await api.post('/api/tutorial/reset');
   },
+
+  // Funções
+  async obterFuncoes(): Promise<any[]> {
+    const response = await api.get('/api/funcoes');
+    return response.data;
+  },
+
+  async criarFuncao(funcao: any): Promise<any> {
+    const response = await api.post('/api/funcoes', funcao);
+    return response.data;
+  },
+
+  async atualizarFuncao(id: number, funcao: any): Promise<any> {
+    const response = await api.put(`/api/funcoes/${id}`, funcao);
+    return response.data;
+  },
+
+  async deletarFuncao(id: number): Promise<void> {
+    await api.delete(`/api/funcoes/${id}`);
+  },
 };
 

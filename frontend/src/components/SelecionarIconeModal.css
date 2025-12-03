@@ -1,3 +1,12 @@
+/* Garantir que o modal de SelecionarIcone apareça acima de outros modais */
+.modal-selecionar-icone {
+  z-index: 1003 !important;
+}
+
+.modal-selecionar-icone.show {
+  z-index: 1003 !important;
+}
+
 .selecionar-icone-container {
   display: flex;
   flex-direction: column;

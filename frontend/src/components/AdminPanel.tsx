@@ -4,7 +4,8 @@ import { mostrarAlert, mostrarConfirm } from '../utils/modals';
 import { getToken } from '../services/auth';
 import AdicionarCategoriaModal from './AdicionarCategoriaModal';
 import SelecionarIconeModal from './SelecionarIconeModal';
-import { FaUser, FaEdit, FaTrash, FaShieldAlt, FaChevronRight, FaChevronDown, FaFolder, FaEye, FaEyeSlash, FaPlus, FaTimes } from 'react-icons/fa';
+import GerenciamentoFuncoes from './GerenciamentoFuncoes';
+import { FaUser, FaEdit, FaTrash, FaShieldAlt, FaChevronRight, FaChevronDown, FaFolder, FaEye, FaEyeSlash, FaPlus, FaTimes, FaCog } from 'react-icons/fa';
 import * as FaIcons from 'react-icons/fa';
 import './AdminPanel.css';
 
@@ -43,6 +44,7 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
   const [showAdicionarCategoria, setShowAdicionarCategoria] = useState(false);
   const [showEditarCategoria, setShowEditarCategoria] = useState(false);
   const [categoriaEditando, setCategoriaEditando] = useState<string>('');
+  const [showGerenciamentoFuncoes, setShowGerenciamentoFuncoes] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -349,6 +351,10 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
 
   return (
     <>
+      <GerenciamentoFuncoes
+        isOpen={showGerenciamentoFuncoes}
+        onClose={() => setShowGerenciamentoFuncoes(false)}
+      />
       <Modal
         isOpen={isOpen}
         onClose={onClose}
@@ -356,6 +362,23 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
         size="large"
       >
         <div className="admin-panel">
+          <div className="admin-section" style={{ marginBottom: '30px', paddingBottom: '30px', borderBottom: '2px solid #e9ecef' }}>
+            <h3><FaCog /> Gerenciamento de Funções da Landing Page</h3>
+            <p style={{ marginBottom: '15px', color: '#666' }}>
+              Gerencie as funções exibidas na landing page. Configure quais funções estão ativas e quais são de IA.
+            </p>
+            <button 
+              onClick={() => {
+                console.log('Botão clicado, abrindo modal de funções');
+                setShowGerenciamentoFuncoes(true);
+              }}
+              className="btn-primary"
+              style={{ marginTop: '10px' }}
+            >
+              <FaCog /> Gerenciar Funções
+            </button>
+          </div>
+
           <div className="admin-usuarios-list">
             <h3>Usuários do Sistema</h3>
             <div className="usuarios-list">

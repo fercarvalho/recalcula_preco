@@ -1,11 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FaCheck, FaChevronDown, FaChevronUp, FaCalculator, FaChartLine, FaMobileAlt, FaShieldAlt, FaSync, FaUsers, FaRocket, FaQrcode, FaMoneyBillWave, FaFileAlt, FaWhatsapp } from 'react-icons/fa';
+import * as FaIcons from 'react-icons/fa';
 import RegistroModal from './RegistroModal';
+import { apiService } from '../services/api';
+import type { Funcao } from './GerenciamentoFuncoes';
 import './LandingPage.css';
 
 const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
   const [showRegistro, setShowRegistro] = useState(false);
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
+  const [funcoes, setFuncoes] = useState<Funcao[]>([]);
 
   const toggleFaq = (index: number) => {
     setFaqOpen(faqOpen === index ? null : index);
@@ -19,6 +23,34 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
   const handlePlanoUnico = () => {
     // Redirecionar para login
     onLoginClick();
+  };
+
+  useEffect(() => {
+    carregarFuncoes();
+  }, []);
+
+  const carregarFuncoes = async () => {
+    try {
+      const funcoesCarregadas = await apiService.obterFuncoes();
+      setFuncoes(funcoesCarregadas);
+    } catch (error) {
+      console.error('Erro ao carregar funções:', error);
+      // Em caso de erro, usar funções padrão
+      setFuncoes([]);
+    }
+  };
+
+  const renderIcone = (funcao: Funcao) => {
+    if (funcao.icone_upload) {
+      return <img src={funcao.icone_upload} alt={funcao.titulo} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />;
+    }
+    if (funcao.icone) {
+      const IconComponent = FaIcons[funcao.icone as keyof typeof FaIcons] as React.ComponentType<any>;
+      if (IconComponent) {
+        return <IconComponent />;
+      }
+    }
+    return <FaCalculator />;
   };
 
   const faqs = [
@@ -56,7 +88,8 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
     }
   ];
 
-  const beneficios = [
+  // Funções padrão (fallback se não houver funções no banco)
+  const beneficiosPadrao = [
     {
       icone: <FaCalculator />,
       titulo: 'Reajustes Automáticos',
@@ -89,7 +122,18 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
     }
   ];
 
-  const roadmapItens = [
+  // Filtrar funções ativas e não-IA para a seção de funcionalidades
+  const funcoesAtivas = funcoes.filter(f => f.ativa && !f.eh_ia);
+  const beneficios = funcoesAtivas.length > 0 
+    ? funcoesAtivas.map(f => ({
+        icone: renderIcone(f),
+        titulo: f.titulo,
+        descricao: f.descricao
+      }))
+    : beneficiosPadrao;
+
+  // Funções padrão para roadmap (fallback)
+  const roadmapItensPadrao = [
     {
       icone: <FaQrcode />,
       titulo: 'Pagamentos via PIX avançados',
@@ -121,6 +165,19 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
       descricao: 'Uma área dedicada para você conectar seus cardápios e ofertas diretamente ao WhatsApp, facilitando o contato com seus clientes e o fechamento de pedidos.'
     }
   ];
+
+  // Filtrar funções inativas (não-IA) para a seção "em breve"
+  const funcoesEmBreve = funcoes.filter(f => !f.ativa && !f.eh_ia);
+  const roadmapItens = funcoesEmBreve.length > 0
+    ? funcoesEmBreve.map(f => ({
+        icone: renderIcone(f),
+        titulo: f.titulo,
+        descricao: f.descricao
+      }))
+    : roadmapItensPadrao;
+
+  // Filtrar funções de IA para a seção WhatsApp
+  const funcoesIA = funcoes.filter(f => f.eh_ia);
 
   return (
     <div className="landing-page">
@@ -275,53 +332,97 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
 
       {/* Integração com o WhatsApp – No Forno */}
       <section id="whatsapp-integracao" className="whatsapp-section">
-        <div className="container">
-          <h2 className="section-title">
-            Integração com Inteligência Artificial <span className="roadmap-subtitle">(pelo WhatsApp) - Em breve (No Forno)</span>
-          </h2>
-          <p className="whatsapp-intro">
-            Estamos preparando uma área especial para conectar sua Recalcula Preço diretamente ao WhatsApp,
-            trazendo automações inteligentes para o seu atendimento, cardápio e recebimento de pedidos.
-          </p>
-          <div className="whatsapp-placeholder">
-            <div className="whatsapp-features">
-              <div className="whatsapp-feature-card">
-                <div className="whatsapp-icon-inline-wrapper">
-                  <FaWhatsapp className="whatsapp-icon-inline" />
-                </div>
-                <h3>Modo Cardápio no WhatsApp</h3>
-                <p>
-                  Quando o cliente pedir o cardápio, a IA envia automaticamente uma imagem atualizada do seu cardápio direto no WhatsApp,
-                  usando os dados cadastrados na Recalcula Preço.
-                </p>
-                <span className="whatsapp-tag">Em breve</span>
-              </div>
-              <div className="whatsapp-feature-card">
-                <div className="whatsapp-icon-inline-wrapper">
-                  <FaWhatsapp className="whatsapp-icon-inline" />
-                </div>
-                <h3>Controle do sistema pelo WhatsApp</h3>
-                <p>
-                  Você poderá alterar e ajustar informações do sistema conversando com a IA pelo WhatsApp, sem precisar abrir o computador:
-                  atualização de preços, categorias e muito mais na palma da mão.
-                </p>
-                <span className="whatsapp-tag">Em breve</span>
-              </div>
-              <div className="whatsapp-feature-card">
-                <div className="whatsapp-icon-inline-wrapper">
-                  <FaWhatsapp className="whatsapp-icon-inline" />
-                </div>
-                <h3>Recebimento de pedidos automatizado</h3>
-                <p>
-                  A IA vai receber o pedido do seu cliente pelo WhatsApp e encaminhar automaticamente para a impressora do estabelecimento,
-                  ajudando a organizar a fila de produção e reduzir erros.
-                </p>
-                <span className="whatsapp-tag">Em breve</span>
+          <div className="container">
+            <h2 className="section-title">
+              Integração com Inteligência Artificial <span className="roadmap-subtitle">(pelo WhatsApp) - Em breve (No Forno)</span>
+            </h2>
+            <p className="whatsapp-intro">
+              Estamos preparando uma área especial para conectar sua Recalcula Preço diretamente ao WhatsApp,
+              trazendo automações inteligentes para o seu atendimento, cardápio e recebimento de pedidos.
+            </p>
+            <div className="whatsapp-placeholder">
+              <div className="whatsapp-features">
+                {/* Funções de IA ativas */}
+                {funcoesIA.filter(f => f.ativa).map((funcao) => (
+                  <div key={funcao.id} className="whatsapp-feature-card">
+                    <div className="whatsapp-icon-inline-wrapper">
+                      {funcao.icone_upload ? (
+                        <img src={funcao.icone_upload} alt={funcao.titulo} style={{ width: '48px', height: '48px' }} />
+                      ) : funcao.icone ? (
+                        (() => {
+                          const IconComponent = FaIcons[funcao.icone as keyof typeof FaIcons] as React.ComponentType<any>;
+                          return IconComponent ? <IconComponent className="whatsapp-icon-inline" /> : <FaWhatsapp className="whatsapp-icon-inline" />;
+                        })()
+                      ) : (
+                        <FaWhatsapp className="whatsapp-icon-inline" />
+                      )}
+                    </div>
+                    <h3>{funcao.titulo}</h3>
+                    <p>{funcao.descricao}</p>
+                  </div>
+                ))}
+                {/* Funções de IA inativas (em breve) */}
+                {funcoesIA.filter(f => !f.ativa).map((funcao) => (
+                  <div key={funcao.id} className="whatsapp-feature-card">
+                    <div className="whatsapp-icon-inline-wrapper">
+                      {funcao.icone_upload ? (
+                        <img src={funcao.icone_upload} alt={funcao.titulo} style={{ width: '48px', height: '48px' }} />
+                      ) : funcao.icone ? (
+                        (() => {
+                          const IconComponent = FaIcons[funcao.icone as keyof typeof FaIcons] as React.ComponentType<any>;
+                          return IconComponent ? <IconComponent className="whatsapp-icon-inline" /> : <FaWhatsapp className="whatsapp-icon-inline" />;
+                        })()
+                      ) : (
+                        <FaWhatsapp className="whatsapp-icon-inline" />
+                      )}
+                    </div>
+                    <h3>{funcao.titulo}</h3>
+                    <p>{funcao.descricao}</p>
+                    <span className="whatsapp-tag">Em breve</span>
+                  </div>
+                ))}
+                {/* Se não houver funções de IA, mostrar cards padrão */}
+                {funcoesIA.length === 0 && (
+                  <>
+                    <div className="whatsapp-feature-card">
+                      <div className="whatsapp-icon-inline-wrapper">
+                        <FaWhatsapp className="whatsapp-icon-inline" />
+                      </div>
+                      <h3>Modo Cardápio no WhatsApp</h3>
+                      <p>
+                        Quando o cliente pedir o cardápio, a IA envia automaticamente uma imagem atualizada do seu cardápio direto no WhatsApp,
+                        usando os dados cadastrados na Recalcula Preço.
+                      </p>
+                      <span className="whatsapp-tag">Em breve</span>
+                    </div>
+                    <div className="whatsapp-feature-card">
+                      <div className="whatsapp-icon-inline-wrapper">
+                        <FaWhatsapp className="whatsapp-icon-inline" />
+                      </div>
+                      <h3>Controle do sistema pelo WhatsApp</h3>
+                      <p>
+                        Você poderá alterar e ajustar informações do sistema conversando com a IA pelo WhatsApp, sem precisar abrir o computador:
+                        atualização de preços, categorias e muito mais na palma da mão.
+                      </p>
+                      <span className="whatsapp-tag">Em breve</span>
+                    </div>
+                    <div className="whatsapp-feature-card">
+                      <div className="whatsapp-icon-inline-wrapper">
+                        <FaWhatsapp className="whatsapp-icon-inline" />
+                      </div>
+                      <h3>Recebimento de pedidos automatizado</h3>
+                      <p>
+                        A IA vai receber o pedido do seu cliente pelo WhatsApp e encaminhar automaticamente para a impressora do estabelecimento,
+                        ajudando a organizar a fila de produção e reduzir erros.
+                      </p>
+                      <span className="whatsapp-tag">Em breve</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
       {/* Planos */}
       <section id="planos" className="planos-section">

@@ -379,6 +379,22 @@ async function inicializar() {
                 UNIQUE(usuario_id, nome)
             )
         `);
+
+        // Criar tabela de funções da landing page
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS funcoes (
+                id SERIAL PRIMARY KEY,
+                titulo VARCHAR(255) NOT NULL,
+                descricao TEXT NOT NULL,
+                icone VARCHAR(100),
+                icone_upload TEXT,
+                ativa BOOLEAN DEFAULT TRUE,
+                eh_ia BOOLEAN DEFAULT FALSE,
+                ordem INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
         
         // Criar índice para busca rápida por usuario_id
         await pool.query(`
@@ -2251,6 +2267,100 @@ async function atualizarOrdemPlataformas(usuarioId, plataformasIds) {
     }
 }
 
+// ========== FUNÇÕES DE FUNÇÕES DA LANDING PAGE ==========
+
+// Obter todas as funções
+async function obterFuncoes() {
+    try {
+        const result = await pool.query(
+            'SELECT * FROM funcoes ORDER BY ordem, id'
+        );
+        return result.rows.map(row => ({
+            id: row.id,
+            titulo: row.titulo,
+            descricao: row.descricao,
+            icone: row.icone,
+            icone_upload: row.icone_upload,
+            ativa: row.ativa,
+            eh_ia: row.eh_ia,
+            ordem: row.ordem
+        }));
+    } catch (error) {
+        console.error('Erro ao obter funções:', error);
+        throw error;
+    }
+}
+
+// Criar função
+async function criarFuncao(titulo, descricao, icone, icone_upload, ativa, eh_ia, ordem) {
+    try {
+        const result = await pool.query(
+            `INSERT INTO funcoes (titulo, descricao, icone, icone_upload, ativa, eh_ia, ordem, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+             RETURNING *`,
+            [titulo, descricao, icone || null, icone_upload || null, ativa, eh_ia, ordem || 0]
+        );
+        const row = result.rows[0];
+        return {
+            id: row.id,
+            titulo: row.titulo,
+            descricao: row.descricao,
+            icone: row.icone,
+            icone_upload: row.icone_upload,
+            ativa: row.ativa,
+            eh_ia: row.eh_ia,
+            ordem: row.ordem
+        };
+    } catch (error) {
+        console.error('Erro ao criar função:', error);
+        throw error;
+    }
+}
+
+// Atualizar função
+async function atualizarFuncao(id, titulo, descricao, icone, icone_upload, ativa, eh_ia, ordem) {
+    try {
+        const result = await pool.query(
+            `UPDATE funcoes 
+             SET titulo = $1, descricao = $2, icone = $3, icone_upload = $4, ativa = $5, eh_ia = $6, ordem = $7, updated_at = CURRENT_TIMESTAMP
+             WHERE id = $8
+             RETURNING *`,
+            [titulo, descricao, icone || null, icone_upload || null, ativa, eh_ia, ordem || 0, id]
+        );
+        if (result.rows.length === 0) {
+            return null;
+        }
+        const row = result.rows[0];
+        return {
+            id: row.id,
+            titulo: row.titulo,
+            descricao: row.descricao,
+            icone: row.icone,
+            icone_upload: row.icone_upload,
+            ativa: row.ativa,
+            eh_ia: row.eh_ia,
+            ordem: row.ordem
+        };
+    } catch (error) {
+        console.error('Erro ao atualizar função:', error);
+        throw error;
+    }
+}
+
+// Deletar função
+async function deletarFuncao(id) {
+    try {
+        const result = await pool.query(
+            'DELETE FROM funcoes WHERE id = $1',
+            [id]
+        );
+        return result.rowCount > 0;
+    } catch (error) {
+        console.error('Erro ao deletar função:', error);
+        throw error;
+    }
+}
+
 // Fechar conexão
 async function fechar() {
     try {
@@ -2313,5 +2423,10 @@ module.exports = {
     verificarTutorialCompleto,
     marcarTutorialCompleto,
     limparTutorialCompleto,
+    // Funções de funções da landing page
+    obterFuncoes,
+    criarFuncao,
+    atualizarFuncao,
+    deletarFuncao,
     fechar
 };

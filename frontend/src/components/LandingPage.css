@@ -245,6 +245,7 @@
   background: linear-gradient(135deg, var(--cor-fundo, #1a1a1a) 0%, var(--cor-secundaria, #2a2a2a) 100%);
   color: white;
   padding: 4rem 0;
+  padding-top: 200px;
   min-height: 80vh;
   display: flex;
   align-items: center;
@@ -255,21 +256,28 @@
 /* Telas menores que 11 polegadas - espaçamento do header fixo */
 @media (max-width: 1399px) {
   .hero-section {
-    padding-top: calc(4rem + 180px);
+    padding-top: 200px;
   }
 }
 
 /* Telas de 7 a 11 polegadas (768px - 1399px) - reduzir espaçamento */
 @media (min-width: 768px) and (max-width: 1399px) {
   .hero-section {
-    padding-top: calc(4rem + 120px);
+    padding-top: 180px;
   }
 }
 
-/* Telas maiores que 11 polegadas - pequeno espaçamento após header */
+/* Telas maiores que 11 polegadas - header menor */
 @media (min-width: 1400px) {
   .hero-section {
-    padding-top: 2rem;
+    padding-top: 120px;
+  }
+}
+
+/* Telas pequenas - ajustar espaçamento */
+@media (max-width: 767px) {
+  .hero-section {
+    padding-top: 220px;
   }
 }
 
