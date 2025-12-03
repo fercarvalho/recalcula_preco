@@ -1398,6 +1398,102 @@ app.put('/api/configuracoes-menu', authenticateToken, requireAdmin, async (req, 
     }
 });
 
+// ========== PLANOS ==========
+
+// Obter todos os planos (público - usado na landing page)
+app.get('/api/planos', async (req, res) => {
+    try {
+        const planos = await db.obterPlanos();
+        // Retornar apenas planos ativos para a landing page
+        const planosAtivos = planos.filter(p => p.ativo);
+        res.json(planosAtivos);
+    } catch (error) {
+        console.error('Erro ao obter planos:', error);
+        res.status(500).json({ error: 'Erro ao obter planos' });
+    }
+});
+
+// Obter todos os planos (incluindo inativos - apenas admin)
+app.get('/api/admin/planos', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const planos = await db.obterPlanos();
+        res.json(planos);
+    } catch (error) {
+        console.error('Erro ao obter planos:', error);
+        res.status(500).json({ error: 'Erro ao obter planos' });
+    }
+});
+
+// Obter plano por ID (apenas admin)
+app.get('/api/admin/planos/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const plano = await db.obterPlanoPorId(parseInt(id));
+        
+        if (!plano) {
+            return res.status(404).json({ error: 'Plano não encontrado' });
+        }
+        
+        res.json(plano);
+    } catch (error) {
+        console.error('Erro ao obter plano:', error);
+        res.status(500).json({ error: 'Erro ao obter plano' });
+    }
+});
+
+// Criar plano (apenas admin)
+app.post('/api/admin/planos', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const plano = req.body;
+        
+        if (!plano.nome || !plano.tipo || plano.valor === undefined) {
+            return res.status(400).json({ error: 'Nome, tipo e valor são obrigatórios' });
+        }
+
+        const novoPlano = await db.criarPlano(plano);
+        res.json(novoPlano);
+    } catch (error) {
+        console.error('Erro ao criar plano:', error);
+        res.status(500).json({ error: 'Erro ao criar plano' });
+    }
+});
+
+// Atualizar plano (apenas admin)
+app.put('/api/admin/planos/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const plano = req.body;
+        
+        const planoAtualizado = await db.atualizarPlano(parseInt(id), plano);
+        
+        if (!planoAtualizado) {
+            return res.status(404).json({ error: 'Plano não encontrado' });
+        }
+        
+        res.json(planoAtualizado);
+    } catch (error) {
+        console.error('Erro ao atualizar plano:', error);
+        res.status(500).json({ error: 'Erro ao atualizar plano' });
+    }
+});
+
+// Deletar plano (apenas admin)
+app.delete('/api/admin/planos/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const deletado = await db.deletarPlano(parseInt(id));
+        
+        if (!deletado) {
+            return res.status(404).json({ error: 'Plano não encontrado' });
+        }
+        
+        res.json({ message: 'Plano deletado com sucesso' });
+    } catch (error) {
+        console.error('Erro ao deletar plano:', error);
+        res.status(500).json({ error: 'Erro ao deletar plano' });
+    }
+});
+
 // Servir arquivos estáticos do frontend React (DEPOIS das rotas da API)
 const frontendPath = path.join(__dirname, 'frontend', 'dist');
 app.use(express.static(frontendPath));

@@ -228,5 +228,113 @@ export const apiService = {
     const response = await api.put<Array<{ id: string; nome: string; ativa: boolean; ordem: number }>>('/api/configuracoes-menu', { configuracoes });
     return response.data;
   },
+
+  // Planos
+  async obterPlanos(): Promise<Array<{
+    id: number;
+    nome: string;
+    tipo: string;
+    valor: number;
+    valor_parcelado: number | null;
+    valor_total: number | null;
+    periodo: string | null;
+    desconto_percentual: number;
+    desconto_valor: number;
+    mais_popular: boolean;
+    mostrar_valor_total: boolean;
+    mostrar_valor_parcelado: boolean;
+    ativo: boolean;
+    ordem: number;
+    beneficios: string[];
+  }>> {
+    const response = await api.get('/api/planos');
+    return response.data;
+  },
+
+  async obterPlanosAdmin(): Promise<Array<{
+    id: number;
+    nome: string;
+    tipo: string;
+    valor: number;
+    valor_parcelado: number | null;
+    valor_total: number | null;
+    periodo: string | null;
+    desconto_percentual: number;
+    desconto_valor: number;
+    mais_popular: boolean;
+    mostrar_valor_total: boolean;
+    mostrar_valor_parcelado: boolean;
+    ativo: boolean;
+    ordem: number;
+    beneficios: string[];
+  }>> {
+    const response = await api.get('/api/admin/planos');
+    return response.data;
+  },
+
+  async obterPlanoPorId(id: number): Promise<{
+    id: number;
+    nome: string;
+    tipo: string;
+    valor: number;
+    valor_parcelado: number | null;
+    valor_total: number | null;
+    periodo: string | null;
+    desconto_percentual: number;
+    desconto_valor: number;
+    mais_popular: boolean;
+    mostrar_valor_total: boolean;
+    mostrar_valor_parcelado: boolean;
+    ativo: boolean;
+    ordem: number;
+    beneficios: string[];
+  }> {
+    const response = await api.get(`/api/admin/planos/${id}`);
+    return response.data;
+  },
+
+  async criarPlano(plano: {
+    nome: string;
+    tipo: string;
+    valor: number;
+    valor_parcelado?: number | null;
+    valor_total?: number | null;
+    periodo?: string | null;
+    desconto_percentual?: number;
+    desconto_valor?: number;
+    mais_popular?: boolean;
+    mostrar_valor_total?: boolean;
+    mostrar_valor_parcelado?: boolean;
+    ativo?: boolean;
+    ordem?: number;
+    beneficios?: string[];
+  }): Promise<any> {
+    const response = await api.post('/api/admin/planos', plano);
+    return response.data;
+  },
+
+  async atualizarPlano(id: number, plano: {
+    nome: string;
+    tipo: string;
+    valor: number;
+    valor_parcelado?: number | null;
+    valor_total?: number | null;
+    periodo?: string | null;
+    desconto_percentual?: number;
+    desconto_valor?: number;
+    mais_popular?: boolean;
+    mostrar_valor_total?: boolean;
+    mostrar_valor_parcelado?: boolean;
+    ativo?: boolean;
+    ordem?: number;
+    beneficios?: string[];
+  }): Promise<any> {
+    const response = await api.put(`/api/admin/planos/${id}`, plano);
+    return response.data;
+  },
+
+  async deletarPlano(id: number): Promise<void> {
+    await api.delete(`/api/admin/planos/${id}`);
+  },
 };
 

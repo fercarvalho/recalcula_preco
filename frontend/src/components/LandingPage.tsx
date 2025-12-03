@@ -5,6 +5,7 @@ import RegistroModal from './RegistroModal';
 import { apiService } from '../services/api';
 import type { Funcao } from './GerenciamentoFuncoes';
 import { obterSecoesMenuAtivas } from './GerenciamentoMenu';
+import type { Plano } from './GerenciamentoPlanos';
 import './LandingPage.css';
 
 const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
@@ -12,35 +13,56 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
   const [funcoes, setFuncoes] = useState<Funcao[]>([]);
   const [secoesMenuAtivas, setSecoesMenuAtivas] = useState<string[]>([]);
+  const [planos, setPlanos] = useState<Plano[]>([]);
 
   const toggleFaq = (index: number) => {
     setFaqOpen(faqOpen === index ? null : index);
   };
 
-  const handlePlanoAnual = () => {
+  const handlePlanoClick = () => {
     // Redirecionar para login
     onLoginClick();
   };
 
-  const handlePlanoUnico = () => {
-    // Redirecionar para login
-    onLoginClick();
+  const formatarValor = (valor: number): string => {
+    return valor.toFixed(2).replace('.', ',');
+  };
+
+  const formatarPeriodo = (tipo: string, periodo: string | null | undefined, valorParcelado: number | null | undefined): string => {
+    if (tipo === 'unico') {
+      return periodo || 'pagamento único';
+    }
+    if (tipo === 'parcelado' && valorParcelado) {
+      return '/mês em parcelas';
+    }
+    if (tipo === 'recorrente') {
+      return periodo ? `/${periodo}` : '/mês';
+    }
+    return '';
   };
 
   useEffect(() => {
     carregarFuncoes();
     carregarSecoesMenu();
+    carregarPlanos();
     
     // Ouvir atualizações de configuração do menu
     const handleMenuConfigUpdate = () => {
       carregarSecoesMenu();
     };
     
+    // Ouvir atualizações de planos
+    const handlePlanosUpdate = () => {
+      carregarPlanos();
+    };
+    
     window.addEventListener('menu-config-updated', handleMenuConfigUpdate);
+    window.addEventListener('planos-updated', handlePlanosUpdate);
     
     // Também ouvir quando a página ganha foco (quando o usuário volta para a landing page)
     const handleFocus = () => {
       carregarSecoesMenu();
+      carregarPlanos();
     };
     
     window.addEventListener('focus', handleFocus);
@@ -49,6 +71,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         carregarSecoesMenu();
+        carregarPlanos();
       }
     };
     
@@ -56,6 +79,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
     
     return () => {
       window.removeEventListener('menu-config-updated', handleMenuConfigUpdate);
+      window.removeEventListener('planos-updated', handlePlanosUpdate);
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
@@ -69,6 +93,40 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
       console.error('Erro ao carregar seções do menu:', error);
       // Em caso de erro, mostrar todas as seções como padrão
       setSecoesMenuAtivas(['sobre', 'funcionalidades', 'roadmap', 'planos', 'faq']);
+    }
+  };
+
+  const carregarPlanos = async () => {
+    try {
+      const planosCarregados = await apiService.obterPlanos();
+      // Converter para o tipo Plano e ordenar por ordem e depois por mais popular
+      const planosConvertidos: Plano[] = planosCarregados.map(p => ({
+        id: p.id,
+        nome: p.nome,
+        tipo: p.tipo as Plano['tipo'],
+        valor: p.valor,
+        valor_parcelado: p.valor_parcelado,
+        valor_total: p.valor_total,
+        periodo: p.periodo,
+        desconto_percentual: p.desconto_percentual,
+        desconto_valor: p.desconto_valor,
+        mais_popular: p.mais_popular,
+        mostrar_valor_total: p.mostrar_valor_total,
+        mostrar_valor_parcelado: p.mostrar_valor_parcelado,
+        ativo: p.ativo,
+        ordem: p.ordem,
+        beneficios: p.beneficios
+      }));
+      
+      const planosOrdenados = planosConvertidos.sort((a, b) => {
+        if (a.mais_popular && !b.mais_popular) return -1;
+        if (!a.mais_popular && b.mais_popular) return 1;
+        return (a.ordem || 0) - (b.ordem || 0);
+      });
+      setPlanos(planosOrdenados);
+    } catch (error) {
+      console.error('Erro ao carregar planos:', error);
+      setPlanos([]);
     }
   };
 
@@ -392,70 +450,72 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
       )}
 
       {/* Planos */}
-      <section id="planos" className="planos-section">
-        <div className="container">
-          <h2 className="section-title">Escolha o plano ideal para você</h2>
+      {planos.length > 0 && (
+        <section id="planos" className="planos-section">
+          <div className="container">
+            <h2 className="section-title">Escolha o plano ideal para você</h2>
 
-          <div className="planos-grid-landing">
-            {/* Plano Anual */}
-            <div className="plano-card-landing plano-destaque-landing">
-              <div className="plano-badge-landing">Mais Popular</div>
-              <div className="plano-header-landing">
-                <h3>Plano Anual</h3>
-                <div className="plano-preco-landing">
-                  <span className="preco-valor-landing">R$ 19,90</span>
-                  <span className="preco-periodo-landing">/mês em 12x</span>
-                </div>
-                <p className="economia-texto">💰 Total: R$ 238,80 por ano</p>
-              </div>
-              <ul className="plano-beneficios-landing">
-                <li><FaCheck /> Cadastro ilimitado de produtos</li>
-                <li><FaCheck /> Reajustes automáticos (fixo ou percentual)</li>
-                <li><FaCheck /> Cálculo com taxas de plataformas</li>
-                <li><FaCheck /> Organização por categorias</li>
-                <li><FaCheck /> Acesso de qualquer dispositivo</li>
-                <li><FaCheck /> Backup automático de valores</li>
-                <li><FaCheck /> Suporte prioritário</li>
-              </ul>
-              <button 
-                onClick={handlePlanoAnual} 
-                className="btn-plano-landing"
-              >
-                Assinar agora
-              </button>
+            <div className="planos-grid-landing">
+              {planos.map((plano) => {
+                const valorComDesconto = plano.desconto_percentual 
+                  ? plano.valor * (1 - plano.desconto_percentual / 100)
+                  : plano.desconto_valor
+                  ? plano.valor - plano.desconto_valor
+                  : plano.valor;
+
+                return (
+                  <div 
+                    key={plano.id} 
+                    className={`plano-card-landing ${plano.mais_popular ? 'plano-destaque-landing' : ''}`}
+                  >
+                    {plano.mais_popular && (
+                      <div className="plano-badge-landing">Mais Popular</div>
+                    )}
+                    <div className="plano-header-landing">
+                      <h3>{plano.nome}</h3>
+                      <div className="plano-preco-landing">
+                        <span className="preco-valor-landing">
+                          R$ {formatarValor(valorComDesconto)}
+                        </span>
+                        <span className="preco-periodo-landing">
+                          {formatarPeriodo(plano.tipo, plano.periodo || null, plano.valor_parcelado || null)}
+                        </span>
+                      </div>
+                      {plano.valor_total && plano.mostrar_valor_total && (
+                        <p className="economia-texto">
+                          💰 Total: R$ {formatarValor(plano.valor_total)}
+                          {plano.tipo === 'recorrente' && plano.periodo === 'mensal' && ' por ano'}
+                        </p>
+                      )}
+                      {plano.periodo && plano.tipo === 'unico' && (
+                        <p className="plano-descricao-landing">Acesso por {plano.periodo}</p>
+                      )}
+                    </div>
+                    <ul className="plano-beneficios-landing">
+                      {plano.beneficios && plano.beneficios.map((beneficio, index) => (
+                        <li 
+                          key={index}
+                          className={beneficio.startsWith('⚠️') ? 'texto-aviso' : ''}
+                        >
+                          {!beneficio.startsWith('⚠️') && <FaCheck />} {beneficio}
+                        </li>
+                      ))}
+                    </ul>
+                    <button 
+                      onClick={handlePlanoClick} 
+                      className={`btn-plano-landing ${!plano.mais_popular ? 'btn-plano-secundario' : ''}`}
+                    >
+                      {plano.tipo === 'unico' ? 'Comprar acesso único' : 'Assinar agora'}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
 
-            {/* Acesso Único */}
-            <div className="plano-card-landing">
-              <div className="plano-header-landing">
-                <h3>Acesso Único</h3>
-                <div className="plano-preco-landing">
-                  <span className="preco-valor-landing">R$ 199,00</span>
-                  <span className="preco-periodo-landing">pagamento único</span>
-                </div>
-                <p className="plano-descricao-landing">Acesso por 24 horas</p>
-              </div>
-              <ul className="plano-beneficios-landing">
-                <li><FaCheck /> Cadastro ilimitado de produtos</li>
-                <li><FaCheck /> Reajustes automáticos (fixo ou percentual)</li>
-                <li><FaCheck /> Cálculo com taxas de plataformas</li>
-                <li><FaCheck /> Organização por categorias</li>
-                <li><FaCheck /> Acesso de qualquer dispositivo</li>
-                <li className="texto-aviso">⚠️ Válido por 24 horas após o pagamento</li>
-                <li className="texto-aviso">⚠️ Dados não são salvos permanentemente</li>
-              </ul>
-              <button 
-                onClick={handlePlanoUnico} 
-                className="btn-plano-landing btn-plano-secundario"
-              >
-                Comprar acesso único
-              </button>
-            </div>
+            <p className="garantia-texto">7 dias de garantia ou seu dinheiro de volta</p>
           </div>
-
-          <p className="garantia-texto">7 dias de garantia ou seu dinheiro de volta</p>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* FAQ */}
       <section id="faq" className="faq-section">

@@ -6,7 +6,8 @@ import AdicionarCategoriaModal from './AdicionarCategoriaModal';
 import SelecionarIconeModal from './SelecionarIconeModal';
 import GerenciamentoFuncoes from './GerenciamentoFuncoes';
 import GerenciamentoMenu from './GerenciamentoMenu';
-import { FaUser, FaEdit, FaTrash, FaShieldAlt, FaChevronRight, FaChevronDown, FaFolder, FaEye, FaEyeSlash, FaPlus, FaTimes, FaCog, FaBars } from 'react-icons/fa';
+import GerenciamentoPlanos from './GerenciamentoPlanos';
+import { FaUser, FaEdit, FaTrash, FaShieldAlt, FaChevronRight, FaChevronDown, FaFolder, FaEye, FaEyeSlash, FaPlus, FaTimes, FaCog, FaBars, FaCreditCard } from 'react-icons/fa';
 import * as FaIcons from 'react-icons/fa';
 import './AdminPanel.css';
 
@@ -47,6 +48,7 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
   const [categoriaEditando, setCategoriaEditando] = useState<string>('');
   const [showGerenciamentoFuncoes, setShowGerenciamentoFuncoes] = useState(false);
   const [showGerenciamentoMenu, setShowGerenciamentoMenu] = useState(false);
+  const [showGerenciamentoPlanos, setShowGerenciamentoPlanos] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -357,6 +359,10 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
     setShowGerenciamentoMenu(false);
   }, []);
 
+  const handleCloseGerenciamentoPlanos = useCallback(() => {
+    setShowGerenciamentoPlanos(false);
+  }, []);
+
   if (!isOpen) return null;
 
   return (
@@ -368,6 +374,10 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
       <GerenciamentoMenu
         isOpen={showGerenciamentoMenu}
         onClose={handleCloseGerenciamentoMenu}
+      />
+      <GerenciamentoPlanos
+        isOpen={showGerenciamentoPlanos}
+        onClose={handleCloseGerenciamentoPlanos}
       />
       <Modal
         isOpen={isOpen}
@@ -402,16 +412,27 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
                   Escolha quais seções da landing page aparecem no menu de navegação do header.
                 </p>
               <button 
-                onClick={() => {
-                  console.log('Clicou em Gerenciar Menu');
-                  setShowGerenciamentoMenu(true);
-                  console.log('showGerenciamentoMenu definido como:', true);
-                }}
+                onClick={() => setShowGerenciamentoMenu(true)}
                 className="btn-primary"
                 style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left' }}
               >
                 <FaBars /> Gerenciar Menu
               </button>
+              </div>
+              <div>
+                <h4 style={{ marginBottom: '8px', fontSize: '16px', fontWeight: '500' }}>
+                  <FaCreditCard /> Gerenciamento de Planos
+                </h4>
+                <p style={{ marginBottom: '12px', color: '#666', fontSize: '14px' }}>
+                  Gerencie os planos de pagamento: valores, benefícios, descontos, tipo de pagamento e outras configurações.
+                </p>
+                <button 
+                  onClick={() => setShowGerenciamentoPlanos(true)}
+                  className="btn-primary"
+                  style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left' }}
+                >
+                  <FaCreditCard /> Gerenciar Planos
+                </button>
               </div>
             </div>
           </div>

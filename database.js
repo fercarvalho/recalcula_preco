@@ -412,6 +412,32 @@ async function inicializar() {
         // Inicializar configurações padrão do menu se não existirem
         await inicializarConfiguracoesMenuPadrao();
         
+        // Criar tabela de planos
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS planos (
+                id SERIAL PRIMARY KEY,
+                nome VARCHAR(255) NOT NULL,
+                tipo VARCHAR(50) NOT NULL,
+                valor DECIMAL(10, 2) NOT NULL,
+                valor_parcelado DECIMAL(10, 2),
+                valor_total DECIMAL(10, 2),
+                periodo VARCHAR(50),
+                desconto_percentual DECIMAL(5, 2) DEFAULT 0,
+                desconto_valor DECIMAL(10, 2) DEFAULT 0,
+                mais_popular BOOLEAN DEFAULT FALSE,
+                mostrar_valor_total BOOLEAN DEFAULT TRUE,
+                mostrar_valor_parcelado BOOLEAN DEFAULT TRUE,
+                ativo BOOLEAN DEFAULT TRUE,
+                ordem INTEGER DEFAULT 0,
+                beneficios TEXT[],
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        // Inicializar planos padrão se não existirem
+        await inicializarPlanosPadrao();
+        
         // Criar índice para busca rápida por usuario_id
         await pool.query(`
             CREATE INDEX IF NOT EXISTS idx_plataformas_usuario_id 
@@ -2669,6 +2695,312 @@ async function atualizarConfiguracoesMenu(configuracoes) {
     }
 }
 
+// Inicializar planos padrão
+async function inicializarPlanosPadrao() {
+    try {
+        const countResult = await pool.query('SELECT COUNT(*) as count FROM planos');
+        const count = parseInt(countResult.rows[0].count);
+        
+        // Se já existem planos, atualizar a ordem de todos para serem sequenciais começando em 1
+        if (count > 0) {
+            // Buscar todos os planos ordenados por ordem atual (ou id se ordem for null/0)
+            const planosExistentes = await pool.query(`
+                SELECT id, nome, ordem 
+                FROM planos 
+                ORDER BY 
+                    CASE WHEN ordem IS NULL OR ordem = 0 THEN 999999 ELSE ordem END,
+                    id ASC
+            `);
+            let ordemAtual = 1;
+            for (const plano of planosExistentes.rows) {
+                await pool.query('UPDATE planos SET ordem = $1 WHERE id = $2', [ordemAtual, plano.id]);
+                ordemAtual++;
+            }
+            return; // Já existem planos
+        }
+        
+        const planosPadrao = [
+            {
+                nome: 'Plano Anual',
+                tipo: 'recorrente',
+                valor: 19.90,
+                valor_parcelado: 19.90,
+                valor_total: 238.80,
+                periodo: 'mensal',
+                desconto_percentual: 0,
+                desconto_valor: 0,
+                mais_popular: true,
+                mostrar_valor_total: true,
+                mostrar_valor_parcelado: true,
+                ativo: true,
+                ordem: 1,
+                beneficios: [
+                    'Cadastro ilimitado de produtos',
+                    'Reajustes automáticos (fixo ou percentual)',
+                    'Cálculo com taxas de plataformas',
+                    'Organização por categorias',
+                    'Acesso de qualquer dispositivo',
+                    'Backup automático de valores',
+                    'Suporte prioritário'
+                ]
+            },
+            {
+                nome: 'Acesso Único',
+                tipo: 'unico',
+                valor: 199.00,
+                valor_parcelado: null,
+                valor_total: 199.00,
+                periodo: '24 horas',
+                desconto_percentual: 0,
+                desconto_valor: 0,
+                mais_popular: false,
+                mostrar_valor_total: true,
+                mostrar_valor_parcelado: false,
+                ativo: true,
+                ordem: 2,
+                beneficios: [
+                    'Cadastro ilimitado de produtos',
+                    'Reajustes automáticos (fixo ou percentual)',
+                    'Cálculo com taxas de plataformas',
+                    'Organização por categorias',
+                    'Acesso de qualquer dispositivo',
+                    '⚠️ Válido por 24 horas após o pagamento',
+                    '⚠️ Dados não são salvos permanentemente'
+                ]
+            }
+        ];
+        
+        for (const plano of planosPadrao) {
+            await pool.query(
+                `INSERT INTO planos (
+                    nome, tipo, valor, valor_parcelado, valor_total, periodo,
+                    desconto_percentual, desconto_valor, mais_popular,
+                    mostrar_valor_total, mostrar_valor_parcelado, ativo, ordem, beneficios,
+                    created_at, updated_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+                [
+                    plano.nome,
+                    plano.tipo,
+                    plano.valor,
+                    plano.valor_parcelado,
+                    plano.valor_total,
+                    plano.periodo,
+                    plano.desconto_percentual,
+                    plano.desconto_valor,
+                    plano.mais_popular,
+                    plano.mostrar_valor_total,
+                    plano.mostrar_valor_parcelado,
+                    plano.ativo,
+                    plano.ordem,
+                    plano.beneficios
+                ]
+            );
+        }
+        
+        console.log(`${planosPadrao.length} planos padrão inicializados`);
+    } catch (error) {
+        console.error('Erro ao inicializar planos padrão:', error);
+        throw error;
+    }
+}
+
+// Obter todos os planos
+async function obterPlanos() {
+    try {
+        const result = await pool.query(
+            'SELECT * FROM planos ORDER BY ordem ASC, id ASC'
+        );
+        return result.rows.map(row => ({
+            id: row.id,
+            nome: row.nome,
+            tipo: row.tipo,
+            valor: parseFloat(row.valor),
+            valor_parcelado: row.valor_parcelado ? parseFloat(row.valor_parcelado) : null,
+            valor_total: row.valor_total ? parseFloat(row.valor_total) : null,
+            periodo: row.periodo,
+            desconto_percentual: row.desconto_percentual ? parseFloat(row.desconto_percentual) : 0,
+            desconto_valor: row.desconto_valor ? parseFloat(row.desconto_valor) : 0,
+            mais_popular: row.mais_popular,
+            mostrar_valor_total: row.mostrar_valor_total,
+            mostrar_valor_parcelado: row.mostrar_valor_parcelado,
+            ativo: row.ativo,
+            ordem: row.ordem,
+            beneficios: row.beneficios || []
+        }));
+    } catch (error) {
+        console.error('Erro ao obter planos:', error);
+        throw error;
+    }
+}
+
+// Obter plano por ID
+async function obterPlanoPorId(id) {
+    try {
+        const result = await pool.query('SELECT * FROM planos WHERE id = $1', [id]);
+        if (result.rows.length === 0) {
+            return null;
+        }
+        const row = result.rows[0];
+        return {
+            id: row.id,
+            nome: row.nome,
+            tipo: row.tipo,
+            valor: parseFloat(row.valor),
+            valor_parcelado: row.valor_parcelado ? parseFloat(row.valor_parcelado) : null,
+            valor_total: row.valor_total ? parseFloat(row.valor_total) : null,
+            periodo: row.periodo,
+            desconto_percentual: row.desconto_percentual ? parseFloat(row.desconto_percentual) : 0,
+            desconto_valor: row.desconto_valor ? parseFloat(row.desconto_valor) : 0,
+            mais_popular: row.mais_popular,
+            mostrar_valor_total: row.mostrar_valor_total,
+            mostrar_valor_parcelado: row.mostrar_valor_parcelado,
+            ativo: row.ativo,
+            ordem: row.ordem,
+            beneficios: row.beneficios || []
+        };
+    } catch (error) {
+        console.error('Erro ao obter plano por ID:', error);
+        throw error;
+    }
+}
+
+// Criar plano
+async function criarPlano(plano) {
+    try {
+        const result = await pool.query(
+            `INSERT INTO planos (
+                nome, tipo, valor, valor_parcelado, valor_total, periodo,
+                desconto_percentual, desconto_valor, mais_popular,
+                mostrar_valor_total, mostrar_valor_parcelado, ativo, ordem, beneficios,
+                created_at, updated_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            RETURNING *`,
+            [
+                plano.nome,
+                plano.tipo,
+                plano.valor,
+                plano.valor_parcelado || null,
+                plano.valor_total || null,
+                plano.periodo || null,
+                plano.desconto_percentual || 0,
+                plano.desconto_valor || 0,
+                plano.mais_popular || false,
+                plano.mostrar_valor_total !== undefined ? plano.mostrar_valor_total : true,
+                plano.mostrar_valor_parcelado !== undefined ? plano.mostrar_valor_parcelado : true,
+                plano.ativo !== undefined ? plano.ativo : true,
+                plano.ordem || 0,
+                plano.beneficios || []
+            ]
+        );
+        const row = result.rows[0];
+        return {
+            id: row.id,
+            nome: row.nome,
+            tipo: row.tipo,
+            valor: parseFloat(row.valor),
+            valor_parcelado: row.valor_parcelado ? parseFloat(row.valor_parcelado) : null,
+            valor_total: row.valor_total ? parseFloat(row.valor_total) : null,
+            periodo: row.periodo,
+            desconto_percentual: row.desconto_percentual ? parseFloat(row.desconto_percentual) : 0,
+            desconto_valor: row.desconto_valor ? parseFloat(row.desconto_valor) : 0,
+            mais_popular: row.mais_popular,
+            mostrar_valor_total: row.mostrar_valor_total,
+            mostrar_valor_parcelado: row.mostrar_valor_parcelado,
+            ativo: row.ativo,
+            ordem: row.ordem,
+            beneficios: row.beneficios || []
+        };
+    } catch (error) {
+        console.error('Erro ao criar plano:', error);
+        throw error;
+    }
+}
+
+// Atualizar plano
+async function atualizarPlano(id, plano) {
+    try {
+        // Se marcar como mais popular, desmarcar os outros
+        if (plano.mais_popular) {
+            await pool.query('UPDATE planos SET mais_popular = FALSE WHERE id != $1', [id]);
+        }
+        
+        const result = await pool.query(
+            `UPDATE planos SET
+                nome = $1,
+                tipo = $2,
+                valor = $3,
+                valor_parcelado = $4,
+                valor_total = $5,
+                periodo = $6,
+                desconto_percentual = $7,
+                desconto_valor = $8,
+                mais_popular = $9,
+                mostrar_valor_total = $10,
+                mostrar_valor_parcelado = $11,
+                ativo = $12,
+                ordem = $13,
+                beneficios = $14,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $15
+            RETURNING *`,
+            [
+                plano.nome,
+                plano.tipo,
+                plano.valor,
+                plano.valor_parcelado || null,
+                plano.valor_total || null,
+                plano.periodo || null,
+                plano.desconto_percentual || 0,
+                plano.desconto_valor || 0,
+                plano.mais_popular || false,
+                plano.mostrar_valor_total !== undefined ? plano.mostrar_valor_total : true,
+                plano.mostrar_valor_parcelado !== undefined ? plano.mostrar_valor_parcelado : true,
+                plano.ativo !== undefined ? plano.ativo : true,
+                plano.ordem || 0,
+                plano.beneficios || [],
+                id
+            ]
+        );
+        
+        if (result.rows.length === 0) {
+            return null;
+        }
+        
+        const row = result.rows[0];
+        return {
+            id: row.id,
+            nome: row.nome,
+            tipo: row.tipo,
+            valor: parseFloat(row.valor),
+            valor_parcelado: row.valor_parcelado ? parseFloat(row.valor_parcelado) : null,
+            valor_total: row.valor_total ? parseFloat(row.valor_total) : null,
+            periodo: row.periodo,
+            desconto_percentual: row.desconto_percentual ? parseFloat(row.desconto_percentual) : 0,
+            desconto_valor: row.desconto_valor ? parseFloat(row.desconto_valor) : 0,
+            mais_popular: row.mais_popular,
+            mostrar_valor_total: row.mostrar_valor_total,
+            mostrar_valor_parcelado: row.mostrar_valor_parcelado,
+            ativo: row.ativo,
+            ordem: row.ordem,
+            beneficios: row.beneficios || []
+        };
+    } catch (error) {
+        console.error('Erro ao atualizar plano:', error);
+        throw error;
+    }
+}
+
+// Deletar plano
+async function deletarPlano(id) {
+    try {
+        const result = await pool.query('DELETE FROM planos WHERE id = $1', [id]);
+        return result.rowCount > 0;
+    } catch (error) {
+        console.error('Erro ao deletar plano:', error);
+        throw error;
+    }
+}
+
 // Fechar conexão
 async function fechar() {
     try {
@@ -2739,5 +3071,11 @@ module.exports = {
     // Funções de configurações do menu
     obterConfiguracoesMenu,
     atualizarConfiguracoesMenu,
+    // Funções de planos
+    obterPlanos,
+    obterPlanoPorId,
+    criarPlano,
+    atualizarPlano,
+    deletarPlano,
     fechar
 };
