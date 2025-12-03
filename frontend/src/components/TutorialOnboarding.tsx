@@ -516,6 +516,33 @@ const TutorialOnboarding = ({
             // Manter a classe hidden para que não volte a aparecer
             e.currentTarget.classList.add('hidden');
           }}
+          onTouchStart={(e) => {
+            // Prevenir comportamento padrão e parar propagação
+            e.preventDefault();
+            e.stopPropagation();
+            // Quando tocar, esconder imediatamente
+            const target = e.currentTarget;
+            // Se já estiver escondido, não fazer nada
+            if (target.classList.contains('hidden')) return;
+            
+            // Primeiro bloquear o overlay para evitar cliques nos botões
+            const overlay = target.closest('.tutorial-overlay');
+            if (overlay) {
+              overlay.classList.add('instruction-hovering');
+            }
+            // Adicionar classe hidden imediatamente
+            target.classList.add('hidden');
+          }}
+          onTouchEnd={(e) => {
+            // Prevenir que o toque se propague quando terminar
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            // Prevenir clique também (para dispositivos que simulam clique após touch)
+            e.preventDefault();
+            e.stopPropagation();
+          }}
         >
           <p>{modalInstruction}</p>
         </div>
