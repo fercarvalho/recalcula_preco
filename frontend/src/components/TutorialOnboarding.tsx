@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { FaCheck, FaTimes, FaArrowRight, FaArrowLeft, FaFolderPlus, FaPlusCircle, FaStore } from 'react-icons/fa';
+import { FaCheck, FaTimes, FaArrowRight, FaArrowLeft, FaFolderPlus, FaPlusCircle, FaStore, FaPalette } from 'react-icons/fa';
 import { getUser } from '../services/auth';
 import './TutorialOnboarding.css';
 
@@ -138,7 +138,8 @@ interface TutorialOnboardingProps {
   onOpenAdicionarCategoria?: () => void;
   onOpenAdicionarItem?: () => void;
   onOpenPlataformas?: () => void;
-  modalAberto?: 'categoria' | 'item' | 'plataformas' | null;
+  onOpenPainelAdmin?: () => void;
+  modalAberto?: 'categoria' | 'item' | 'plataformas' | 'personalizacao' | null;
 }
 
 type TutorialStep = {
@@ -182,13 +183,21 @@ const tutorialSteps: TutorialStep[] = [
     {
       id: 3,
       title: 'Etapa 3: Configurar Plataformas',
-      description: 'Por fim, vamos configurar as plataformas de delivery (como iFood, Uber Eats, etc.) com suas respectivas taxas. Clique no botão abaixo para abrir o gerenciamento de plataformas.',
+      description: 'Agora vamos configurar as plataformas de delivery (como iFood, Uber Eats, etc.) com suas respectivas taxas. Clique no botão abaixo para abrir o gerenciamento de plataformas.',
       targetSelector: 'button-with-store',
       position: 'bottom',
       requirements: { plataformas: 1 },
     },
+    {
+      id: 4,
+      title: 'Etapa 4: Personalizar Sistema',
+      description: 'Por fim, vamos personalizar o sistema! Você pode alterar as cores do sistema e fazer upload de uma logo personalizada. Clique no botão abaixo para abrir o painel de personalização.',
+      targetSelector: null,
+      position: 'center',
+      requirements: {},
+    },
   {
-    id: 4,
+    id: 5,
     title: 'Configuração Completa!',
     description: 'Parabéns! Você completou a configuração inicial do sistema. Agora você pode usar todas as funcionalidades para calcular reajustes de preços.',
     targetSelector: null,
@@ -208,6 +217,7 @@ const TutorialOnboarding = ({
   onOpenAdicionarCategoria,
   onOpenAdicionarItem,
   onOpenPlataformas,
+  onOpenPainelAdmin,
   modalAberto,
 }: TutorialOnboardingProps) => {
   const user = getUser();
@@ -339,6 +349,9 @@ const TutorialOnboarding = ({
     if (modalAberto === 'plataformas') {
       return 'Adicione as plataformas de delivery com suas taxas. Clique em "Salvar" quando terminar.';
     }
+    if (modalAberto === 'personalizacao') {
+      return 'Altere as cores do sistema (cor primária, secundária e de fundo) e, se desejar, faça upload de uma logo personalizada. Clique em "Salvar Configurações" quando terminar.';
+    }
     return null;
   };
 
@@ -434,6 +447,14 @@ const TutorialOnboarding = ({
                     <FaStore /> Gerenciar Plataformas
                   </button>
                 )}
+                {currentStep === 4 && onOpenPainelAdmin && (
+                  <button
+                    className="btn-adicionar-produto btn-personalizacao"
+                    onClick={onOpenPainelAdmin}
+                  >
+                    <FaPalette /> Personalizar Sistema
+                  </button>
+                )}
               </div>
             </>
           )}
@@ -470,7 +491,29 @@ const TutorialOnboarding = ({
         </div>
       )}
       {modalInstruction && (
-        <div className="tutorial-modal-instruction">
+        <div 
+          className="tutorial-modal-instruction"
+          onMouseEnter={(e) => {
+            // Quando o mouse entrar, adicionar classe ao overlay para desabilitar pointer-events
+            const overlay = e.currentTarget.closest('.tutorial-overlay');
+            if (overlay) {
+              overlay.classList.add('instruction-hovering');
+            }
+            // Adicionar classe hidden após a transição completar (600ms)
+            setTimeout(() => {
+              e.currentTarget.classList.add('hidden');
+            }, 600);
+          }}
+          onMouseLeave={(e) => {
+            // Quando o mouse sair, remover a classe do overlay
+            const overlay = e.currentTarget.closest('.tutorial-overlay');
+            if (overlay) {
+              overlay.classList.remove('instruction-hovering');
+            }
+            // Manter a classe hidden para que não volte a aparecer
+            e.currentTarget.classList.add('hidden');
+          }}
+        >
           <p>{modalInstruction}</p>
         </div>
       )}

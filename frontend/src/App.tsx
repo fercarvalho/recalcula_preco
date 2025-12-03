@@ -561,6 +561,7 @@ function App() {
       <PainelAdmin
         isOpen={showPainelAdmin}
         onClose={() => setShowPainelAdmin(false)}
+        scrollToColors={showTutorial && showPainelAdmin}
       />
 
       <AdminPanel
@@ -680,11 +681,12 @@ function App() {
           setShowEditarItemModal(true);
         }}
         onOpenPlataformas={() => setShowPlataformas(true)}
+        onOpenPainelAdmin={() => setShowPainelAdmin(true)}
         modalAberto={
           showAdicionarCategoriaModal ? 'categoria' :
           showEditarItemModal ? 'item' :
           showPlataformas ? 'plataformas' :
-          null
+          showPainelAdmin ? 'personalizacao' : null
         }
       />
 

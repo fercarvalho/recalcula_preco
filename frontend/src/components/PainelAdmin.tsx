@@ -88,9 +88,10 @@ export const aplicarConfiguracoes = (config: ConfiguracoesAdmin, userId?: number
 interface PainelAdminProps {
   isOpen: boolean;
   onClose: () => void;
+  scrollToColors?: boolean;
 }
 
-const PainelAdmin = ({ isOpen, onClose }: PainelAdminProps) => {
+const PainelAdmin = ({ isOpen, onClose, scrollToColors = false }: PainelAdminProps) => {
   const user = getUser();
   const userId = user?.id;
   const configInicial = carregarConfiguracoes(userId);
@@ -112,8 +113,17 @@ const PainelAdmin = ({ isOpen, onClose }: PainelAdminProps) => {
   useEffect(() => {
     if (isOpen) {
       aplicarConfiguracoes(config);
+      // Se scrollToColors for true, fazer scroll para a seção de cores após um pequeno delay
+      if (scrollToColors) {
+        setTimeout(() => {
+          const coresSection = document.getElementById('cores-sistema');
+          if (coresSection) {
+            coresSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 300);
+      }
     }
-  }, [isOpen, config]);
+  }, [isOpen, config, scrollToColors]);
 
   const handleCorChange = (campo: keyof ConfiguracoesAdmin, valor: string) => {
     const novoConfig = { ...config, [campo]: valor };
@@ -242,7 +252,7 @@ const PainelAdmin = ({ isOpen, onClose }: PainelAdminProps) => {
         </div>
       </div>
 
-      <div className="admin-section">
+      <div className="admin-section" id="cores-sistema">
         <h3><FaPalette /> Cores do Sistema</h3>
         <div className="color-picker-group">
           <div className="form-group">
