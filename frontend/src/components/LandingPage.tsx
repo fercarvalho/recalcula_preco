@@ -88,96 +88,25 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
     }
   ];
 
-  // Funções padrão (fallback se não houver funções no banco)
-  const beneficiosPadrao = [
-    {
-      icone: <FaCalculator />,
-      titulo: 'Reajustes Automáticos',
-      descricao: 'Aplique reajustes fixos ou percentuais em todos os seus produtos de uma vez, economizando horas de trabalho manual.'
-    },
-    {
-      icone: <FaChartLine />,
-      titulo: 'Cálculo com Taxas de Plataformas',
-      descricao: 'Veja automaticamente como ficam seus preços nas principais plataformas de delivery, considerando as taxas de cada uma.'
-    },
-    {
-      icone: <FaMobileAlt />,
-      titulo: 'Acesso de Qualquer Lugar',
-      descricao: 'Acesse sua calculadora de qualquer dispositivo, a qualquer momento. Seus dados ficam sincronizados na nuvem.'
-    },
-    {
-      icone: <FaShieldAlt />,
-      titulo: 'Backup Automático',
-      descricao: 'Seus valores originais são salvos automaticamente. Você pode reverter reajustes quando quiser, sem perder dados.'
-    },
-    {
-      icone: <FaSync />,
-      titulo: 'Organização por Categorias',
-      descricao: 'Organize seus produtos em categorias personalizadas e gerencie tudo de forma visual e intuitiva.'
-    },
-    {
-      icone: <FaUsers />,
-      titulo: 'Fácil de Usar',
-      descricao: 'Interface simples e intuitiva. Você não precisa ser expert em planilhas ou sistemas complexos para usar.'
-    }
-  ];
-
   // Filtrar funções ativas e não-IA para a seção de funcionalidades
   const funcoesAtivas = funcoes.filter(f => f.ativa && !f.eh_ia);
-  const beneficios = funcoesAtivas.length > 0 
-    ? funcoesAtivas.map(f => ({
-        icone: renderIcone(f),
-        titulo: f.titulo,
-        descricao: f.descricao
-      }))
-    : beneficiosPadrao;
-
-  // Funções padrão para roadmap (fallback)
-  const roadmapItensPadrao = [
-    {
-      icone: <FaQrcode />,
-      titulo: 'Pagamentos via PIX avançados',
-      descricao: 'Estamos preparando uma experiência completa de pagamento: PIX para o acesso único, pagamento à vista do plano anual, pagamento à vista do anual via PIX e PIX parcelado para facilitar ainda mais a sua assinatura.'
-    },
-    {
-      icone: <FaMoneyBillWave />,
-      titulo: 'Pagamento à vista do plano anual',
-      descricao: 'Além das parcelas mensais, você poderá garantir o plano anual com pagamento à vista, com condições diferenciadas e pensado para quem quer resolver tudo de uma vez.'
-    },
-    {
-      icone: <FaCalculator />,
-      titulo: 'PIX no plano anual (à vista e parcelado)',
-      descricao: 'Para quem ama PIX, o plano anual também poderá ser pago com PIX à vista ou em formato parcelado, mantendo a segurança e a praticidade que você já conhece.'
-    },
-    {
-      icone: <FaMobileAlt />,
-      titulo: 'Modo Cardápio',
-      descricao: 'Um modo especial para exibir seus produtos e preços como um cardápio digital, ideal para mostrar no estabelecimento ou compartilhar online com seus clientes.'
-    },
-    {
-      icone: <FaFileAlt />,
-      titulo: 'Compartilhamento de Cardápio',
-      descricao: 'Gere seu cardápio em PDF ou PNG em poucos cliques e compartilhe facilmente em redes sociais, impressos ou com seu time.'
-    },
-    {
-      icone: <FaWhatsapp />,
-      titulo: 'Integração com WhatsApp',
-      descricao: 'Uma área dedicada para você conectar seus cardápios e ofertas diretamente ao WhatsApp, facilitando o contato com seus clientes e o fechamento de pedidos.'
-    }
-  ];
+  const beneficios = funcoesAtivas.map(f => ({
+    icone: renderIcone(f),
+    titulo: f.titulo,
+    descricao: f.descricao
+  }));
 
   // Filtrar funções inativas (não-IA) para a seção "em breve"
   const funcoesEmBreve = funcoes.filter(f => !f.ativa && !f.eh_ia);
-  const roadmapItens = funcoesEmBreve.length > 0
-    ? funcoesEmBreve.map(f => ({
-        icone: renderIcone(f),
-        titulo: f.titulo,
-        descricao: f.descricao
-      }))
-    : roadmapItensPadrao;
+  const roadmapItens = funcoesEmBreve.map(f => ({
+    icone: renderIcone(f),
+    titulo: f.titulo,
+    descricao: f.descricao
+  }));
 
   // Filtrar funções de IA para a seção WhatsApp
   const funcoesIA = funcoes.filter(f => f.eh_ia);
+  const funcoesIAAtivas = funcoes.filter(f => f.eh_ia && f.ativa);
 
   return (
     <div className="landing-page">
@@ -294,56 +223,36 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
       </section>
 
       {/* Funcionalidades */}
-      <section id="funcionalidades" className="funcionalidades-section">
-        <div className="container">
-          <h2 className="section-title">Funcionalidades</h2>
-          <div className="beneficios-grid">
-            {beneficios.map((beneficio, index) => (
-              <div key={index} className="beneficio-card">
-                <div className="beneficio-icon">{beneficio.icone}</div>
-                <h3>{beneficio.titulo}</h3>
-                <p>{beneficio.descricao}</p>
-              </div>
-            ))}
+      {beneficios.length > 0 && (
+        <section id="funcionalidades" className="funcionalidades-section">
+          <div className="container">
+            <h2 className="section-title">Funcionalidades</h2>
+            <div className="beneficios-grid">
+              {beneficios.map((beneficio, index) => (
+                <div key={index} className="beneficio-card">
+                  <div className="beneficio-icon">{beneficio.icone}</div>
+                  <h3>{beneficio.titulo}</h3>
+                  <p>{beneficio.descricao}</p>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
-      {/* Roadmap – O que vem por aí */}
-      <section id="roadmap" className="roadmap-section">
-        <div className="container">
-          <h2 className="section-title">O que vem por aí <span className="roadmap-subtitle">(funcionalidades em desenvolvimento)</span></h2>
-          <p className="roadmap-intro">
-            Estamos sempre evoluindo a Recalcula Preço para deixar o seu dia a dia ainda mais simples.
-            Confira algumas das próximas novidades que estamos preparando para você.
-          </p>
-          <div className="roadmap-grid">
-            {roadmapItens.map((item, index) => (
-              <div key={index} className="roadmap-card">
-                <div className="roadmap-icon">{item.icone}</div>
-                <h3>{item.titulo}</h3>
-                <p>{item.descricao}</p>
-                <span className="roadmap-tag">Em breve</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Integração com o WhatsApp – No Forno */}
-      <section id="whatsapp-integracao" className="whatsapp-section">
+      {/* Integração com Inteligência Artificial (pelo WhatsApp) - Funções Ativas */}
+      {funcoesIAAtivas.length > 0 && (
+        <section id="whatsapp-ia-ativas" className="whatsapp-section">
           <div className="container">
             <h2 className="section-title">
-              Integração com Inteligência Artificial <span className="roadmap-subtitle">(pelo WhatsApp) - Em breve (No Forno)</span>
+              Integração com Inteligência Artificial <span className="roadmap-subtitle">(pelo WhatsApp)</span>
             </h2>
             <p className="whatsapp-intro">
-              Estamos preparando uma área especial para conectar sua Recalcula Preço diretamente ao WhatsApp,
-              trazendo automações inteligentes para o seu atendimento, cardápio e recebimento de pedidos.
+              Conecte sua Recalcula Preço diretamente ao WhatsApp com automações inteligentes para o seu atendimento, cardápio e recebimento de pedidos.
             </p>
             <div className="whatsapp-placeholder">
               <div className="whatsapp-features">
-                {/* Funções de IA ativas */}
-                {funcoesIA.filter(f => f.ativa).map((funcao) => (
+                {funcoesIAAtivas.map((funcao) => (
                   <div key={funcao.id} className="whatsapp-feature-card">
                     <div className="whatsapp-icon-inline-wrapper">
                       {funcao.icone_upload ? (
@@ -361,6 +270,48 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
                     <p>{funcao.descricao}</p>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Roadmap – O que vem por aí */}
+      {roadmapItens.length > 0 && (
+        <section id="roadmap" className="roadmap-section">
+          <div className="container">
+            <h2 className="section-title">O que vem por aí <span className="roadmap-subtitle">(funcionalidades em desenvolvimento)</span></h2>
+            <p className="roadmap-intro">
+              Estamos sempre evoluindo a Recalcula Preço para deixar o seu dia a dia ainda mais simples.
+              Confira algumas das próximas novidades que estamos preparando para você.
+            </p>
+            <div className="roadmap-grid">
+              {roadmapItens.map((item, index) => (
+                <div key={index} className="roadmap-card">
+                  <div className="roadmap-icon">{item.icone}</div>
+                  <h3>{item.titulo}</h3>
+                  <p>{item.descricao}</p>
+                  <span className="roadmap-tag">Em breve</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Integração com o WhatsApp – No Forno */}
+      {funcoesIA.filter(f => !f.ativa).length > 0 && (
+        <section id="whatsapp-integracao" className="whatsapp-section">
+          <div className="container">
+            <h2 className="section-title">
+              Integração com Inteligência Artificial <span className="roadmap-subtitle">(pelo WhatsApp) - Em breve (No Forno)</span>
+            </h2>
+            <p className="whatsapp-intro">
+              Estamos preparando uma área especial para conectar sua Recalcula Preço diretamente ao WhatsApp,
+              trazendo automações inteligentes para o seu atendimento, cardápio e recebimento de pedidos.
+            </p>
+            <div className="whatsapp-placeholder">
+              <div className="whatsapp-features">
                 {/* Funções de IA inativas (em breve) */}
                 {funcoesIA.filter(f => !f.ativa).map((funcao) => (
                   <div key={funcao.id} className="whatsapp-feature-card">
@@ -381,48 +332,11 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
                     <span className="whatsapp-tag">Em breve</span>
                   </div>
                 ))}
-                {/* Se não houver funções de IA, mostrar cards padrão */}
-                {funcoesIA.length === 0 && (
-                  <>
-                    <div className="whatsapp-feature-card">
-                      <div className="whatsapp-icon-inline-wrapper">
-                        <FaWhatsapp className="whatsapp-icon-inline" />
-                      </div>
-                      <h3>Modo Cardápio no WhatsApp</h3>
-                      <p>
-                        Quando o cliente pedir o cardápio, a IA envia automaticamente uma imagem atualizada do seu cardápio direto no WhatsApp,
-                        usando os dados cadastrados na Recalcula Preço.
-                      </p>
-                      <span className="whatsapp-tag">Em breve</span>
-                    </div>
-                    <div className="whatsapp-feature-card">
-                      <div className="whatsapp-icon-inline-wrapper">
-                        <FaWhatsapp className="whatsapp-icon-inline" />
-                      </div>
-                      <h3>Controle do sistema pelo WhatsApp</h3>
-                      <p>
-                        Você poderá alterar e ajustar informações do sistema conversando com a IA pelo WhatsApp, sem precisar abrir o computador:
-                        atualização de preços, categorias e muito mais na palma da mão.
-                      </p>
-                      <span className="whatsapp-tag">Em breve</span>
-                    </div>
-                    <div className="whatsapp-feature-card">
-                      <div className="whatsapp-icon-inline-wrapper">
-                        <FaWhatsapp className="whatsapp-icon-inline" />
-                      </div>
-                      <h3>Recebimento de pedidos automatizado</h3>
-                      <p>
-                        A IA vai receber o pedido do seu cliente pelo WhatsApp e encaminhar automaticamente para a impressora do estabelecimento,
-                        ajudando a organizar a fila de produção e reduzir erros.
-                      </p>
-                      <span className="whatsapp-tag">Em breve</span>
-                    </div>
-                  </>
-                )}
               </div>
             </div>
           </div>
         </section>
+      )}
 
       {/* Planos */}
       <section id="planos" className="planos-section">

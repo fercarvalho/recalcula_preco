@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Modal from './Modal';
 import { mostrarAlert, mostrarConfirm } from '../utils/modals';
 import { getToken } from '../services/auth';
@@ -347,13 +347,17 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
     return null;
   };
 
+  const handleCloseGerenciamentoFuncoes = useCallback(() => {
+    setShowGerenciamentoFuncoes(false);
+  }, []);
+
   if (!isOpen) return null;
 
   return (
     <>
       <GerenciamentoFuncoes
         isOpen={showGerenciamentoFuncoes}
-        onClose={() => setShowGerenciamentoFuncoes(false)}
+        onClose={handleCloseGerenciamentoFuncoes}
       />
       <Modal
         isOpen={isOpen}

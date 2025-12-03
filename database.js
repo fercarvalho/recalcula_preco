@@ -396,9 +396,6 @@ async function inicializar() {
             )
         `);
         
-        // Inicializar funções padrão se não existirem
-        await inicializarFuncoesPadrao();
-        
         // Criar índice para busca rápida por usuario_id
         await pool.query(`
             CREATE INDEX IF NOT EXISTS idx_plataformas_usuario_id 
@@ -528,6 +525,14 @@ async function inicializar() {
             // Inicializar ordem de categorias e itens se necessário
             await inicializarOrdemCategorias(usuarioId);
             await inicializarOrdemItens(usuarioId);
+        }
+        
+        // Inicializar funções padrão se não existirem (após todas as outras inicializações)
+        try {
+            await inicializarFuncoesPadrao();
+        } catch (error) {
+            console.error('Erro ao inicializar funções padrão (não crítico):', error);
+            // Não lançar erro para não impedir a inicialização do banco
         }
     } catch (error) {
         console.error('Erro ao inicializar banco de dados:', error);
@@ -2301,8 +2306,54 @@ async function inicializarFuncoesPadrao() {
         const countResult = await pool.query('SELECT COUNT(*) as count FROM funcoes');
         const count = parseInt(countResult.rows[0].count);
         
-        // Se já existem funções, não fazer nada
+        // Se já existem funções, verificar se as funções de IA existem
         if (count > 0) {
+            const funcoesIA = await pool.query('SELECT COUNT(*) as count FROM funcoes WHERE eh_ia = true');
+            const countIA = parseInt(funcoesIA.rows[0].count);
+            
+            // Se não existem funções de IA, criar apenas elas
+            if (countIA === 0) {
+                const funcoesIAInativas = [
+                    {
+                        titulo: 'Modo Cardápio no WhatsApp',
+                        descricao: 'Quando o cliente pedir o cardápio, a IA envia automaticamente uma imagem atualizada do seu cardápio direto no WhatsApp, usando os dados cadastrados na Recalcula Preço.',
+                        icone: 'FaWhatsapp',
+                        ativa: false,
+                        eh_ia: true,
+                        ordem: 12
+                    },
+                    {
+                        titulo: 'Controle do sistema pelo WhatsApp',
+                        descricao: 'Você poderá alterar e ajustar informações do sistema conversando com a IA pelo WhatsApp, sem precisar abrir o computador: atualização de preços, categorias e muito mais na palma da mão.',
+                        icone: 'FaWhatsapp',
+                        ativa: false,
+                        eh_ia: true,
+                        ordem: 13
+                    },
+                    {
+                        titulo: 'Recebimento de pedidos automatizado',
+                        descricao: 'A IA vai receber o pedido do seu cliente pelo WhatsApp e encaminhar automaticamente para a impressora do estabelecimento, ajudando a organizar a fila de produção e reduzir erros.',
+                        icone: 'FaWhatsapp',
+                        ativa: false,
+                        eh_ia: true,
+                        ordem: 14
+                    }
+                ];
+                
+                for (const funcao of funcoesIAInativas) {
+                    await criarFuncao(
+                        funcao.titulo,
+                        funcao.descricao,
+                        funcao.icone,
+                        null,
+                        funcao.ativa,
+                        funcao.eh_ia,
+                        funcao.ordem
+                    );
+                }
+                
+                console.log(`${funcoesIAInativas.length} funções de IA inicializadas`);
+            }
             return;
         }
         
@@ -2410,8 +2461,36 @@ async function inicializarFuncoesPadrao() {
             }
         ];
         
+        // Funções de IA inativas (em breve)
+        const funcoesIAInativas = [
+            {
+                titulo: 'Modo Cardápio no WhatsApp',
+                descricao: 'Quando o cliente pedir o cardápio, a IA envia automaticamente uma imagem atualizada do seu cardápio direto no WhatsApp, usando os dados cadastrados na Recalcula Preço.',
+                icone: 'FaWhatsapp',
+                ativa: false,
+                eh_ia: true,
+                ordem: 12
+            },
+            {
+                titulo: 'Controle do sistema pelo WhatsApp',
+                descricao: 'Você poderá alterar e ajustar informações do sistema conversando com a IA pelo WhatsApp, sem precisar abrir o computador: atualização de preços, categorias e muito mais na palma da mão.',
+                icone: 'FaWhatsapp',
+                ativa: false,
+                eh_ia: true,
+                ordem: 13
+            },
+            {
+                titulo: 'Recebimento de pedidos automatizado',
+                descricao: 'A IA vai receber o pedido do seu cliente pelo WhatsApp e encaminhar automaticamente para a impressora do estabelecimento, ajudando a organizar a fila de produção e reduzir erros.',
+                icone: 'FaWhatsapp',
+                ativa: false,
+                eh_ia: true,
+                ordem: 14
+            }
+        ];
+        
         // Inserir todas as funções
-        const todasFuncoes = [...funcoesAtivas, ...funcoesEmBreve];
+        const todasFuncoes = [...funcoesAtivas, ...funcoesEmBreve, ...funcoesIAInativas];
         for (const funcao of todasFuncoes) {
             await criarFuncao(
                 funcao.titulo,

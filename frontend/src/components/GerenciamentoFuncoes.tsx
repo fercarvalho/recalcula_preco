@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { FaPlus, FaEdit, FaTrash, FaToggleOn, FaToggleOff } from 'react-icons/fa';
 import * as FaIcons from 'react-icons/fa';
 import Modal from './Modal';
@@ -29,53 +29,99 @@ const GerenciamentoFuncoes = ({ isOpen, onClose }: GerenciamentoFuncoesProps) =>
   const [showModalAdicionar, setShowModalAdicionar] = useState(false);
   const [funcaoEditando, setFuncaoEditando] = useState<Funcao | null>(null);
   const [showIconeModal, setShowIconeModal] = useState(false);
+  const carregandoRef = useRef(false);
+  const jaCarregouRef = useRef(false);
+
+  const carregarFuncoes = useCallback(async () => {
+    // Evitar múltiplas chamadas simultâneas usando ref
+    if (carregandoRef.current) {
+      return;
+    }
+    
+    try {
+      carregandoRef.current = true;
+      setLoading(true);
+      const funcoesCarregadas = await apiService.obterFuncoes();
+      // Garantir que sempre seja um array
+      if (Array.isArray(funcoesCarregadas)) {
+        // Atualizar sempre, mas usar uma comparação simples
+        console.log('Funções carregadas:', funcoesCarregadas);
+        console.log('Funções de IA:', funcoesCarregadas.filter(f => f.eh_ia));
+        console.log('Funções de IA inativas:', funcoesCarregadas.filter(f => f.eh_ia && !f.ativa));
+        setFuncoes(funcoesCarregadas);
+      } else {
+        console.warn('Resposta da API não é um array:', funcoesCarregadas);
+        setFuncoes([]);
+      }
+    } catch (error: any) {
+      console.error('Erro ao carregar funções:', error);
+      // Não mostrar alert durante carregamento inicial para evitar piscar
+      // Apenas logar o erro
+      setFuncoes([]); // Garantir que a lista fique vazia em caso de erro
+    } finally {
+      setLoading(false);
+      // Usar setTimeout para garantir que o ref seja resetado após o render
+      setTimeout(() => {
+        carregandoRef.current = false;
+      }, 100);
+    }
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
-      carregarFuncoes();
+      // Só carregar uma vez quando o modal abrir
+      if (!jaCarregouRef.current && !carregandoRef.current) {
+        jaCarregouRef.current = true;
+        carregarFuncoes();
+      }
+    } else {
+      // Limpar quando o modal fechar
+      setFuncoes([]);
+      carregandoRef.current = false;
+      jaCarregouRef.current = false;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
-
-  const carregarFuncoes = async () => {
-    try {
-      setLoading(true);
-      const funcoesCarregadas = await apiService.obterFuncoes();
-      setFuncoes(funcoesCarregadas);
-    } catch (error) {
-      console.error('Erro ao carregar funções:', error);
-      await mostrarAlert('Erro', 'Erro ao carregar funções. Tente novamente.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleToggleAtiva = async (funcao: Funcao) => {
     try {
-      const funcaoAtualizada: Funcao = {
-        ...funcao,
-        ativa: !funcao.ativa,
-        eh_ia: funcao.eh_ia
+      const novaAtiva = !funcao.ativa;
+      const funcaoAtualizada = {
+        titulo: funcao.titulo,
+        descricao: funcao.descricao,
+        icone: funcao.icone || null,
+        icone_upload: funcao.icone_upload || null,
+        ativa: novaAtiva,
+        // Manter o eh_ia como está - não resetar automaticamente
+        eh_ia: funcao.eh_ia,
+        ordem: funcao.ordem || 0
       };
       await apiService.atualizarFuncao(funcao.id!, funcaoAtualizada);
       await carregarFuncoes();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao atualizar função:', error);
-      await mostrarAlert('Erro', 'Erro ao atualizar função. Tente novamente.');
+      const mensagem = error.response?.data?.error || error.message || 'Erro ao atualizar função. Tente novamente.';
+      await mostrarAlert('Erro', mensagem);
     }
   };
 
   const handleToggleIA = async (funcao: Funcao) => {
     try {
-      const funcaoAtualizada: Funcao = {
-        ...funcao,
+      const funcaoAtualizada = {
+        titulo: funcao.titulo,
+        descricao: funcao.descricao,
+        icone: funcao.icone || null,
+        icone_upload: funcao.icone_upload || null,
         ativa: funcao.ativa,
-        eh_ia: !funcao.eh_ia
+        eh_ia: !funcao.eh_ia,
+        ordem: funcao.ordem || 0
       };
       await apiService.atualizarFuncao(funcao.id!, funcaoAtualizada);
       await carregarFuncoes();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao atualizar função:', error);
-      await mostrarAlert('Erro', 'Erro ao atualizar função. Tente novamente.');
+      const mensagem = error.response?.data?.error || error.message || 'Erro ao atualizar função. Tente novamente.';
+      await mostrarAlert('Erro', mensagem);
     }
   };
 
@@ -164,7 +210,12 @@ const GerenciamentoFuncoes = ({ isOpen, onClose }: GerenciamentoFuncoesProps) =>
                       )}
                     </div>
                     <div className="funcao-info">
-                      <h3>{funcao.titulo}</h3>
+                      <h3>
+                        {funcao.titulo}
+                        {funcao.eh_ia && (
+                          <span className="funcao-ia-badge" title="Função de IA">🤖 IA</span>
+                        )}
+                      </h3>
                       <p>{funcao.descricao}</p>
                     </div>
                   </div>
@@ -173,7 +224,11 @@ const GerenciamentoFuncoes = ({ isOpen, onClose }: GerenciamentoFuncoesProps) =>
                       <label>
                         <span>Função Ativa</span>
                         <button
-                          onClick={() => handleToggleAtiva(funcao)}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleToggleAtiva(funcao);
+                          }}
                           className={`switch-btn ${funcao.ativa ? 'active' : ''}`}
                         >
                           {funcao.ativa ? <FaToggleOn /> : <FaToggleOff />}
@@ -184,9 +239,12 @@ const GerenciamentoFuncoes = ({ isOpen, onClose }: GerenciamentoFuncoesProps) =>
                       <label>
                         <span>É função de IA?</span>
                         <button
-                          onClick={() => handleToggleIA(funcao)}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleToggleIA(funcao);
+                          }}
                           className={`switch-btn ${funcao.eh_ia ? 'active' : ''}`}
-                          disabled={!funcao.ativa}
                         >
                           {funcao.eh_ia ? <FaToggleOn /> : <FaToggleOff />}
                         </button>
@@ -342,23 +400,26 @@ const ModalAdicionarFuncao = ({ funcao, onClose, onSave }: ModalAdicionarFuncaoP
             >
               Selecionar React Icon
             </button>
-            <span>ou</span>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleFileUpload}
-              className="form-input"
-            />
+            <span className="icone-separator">ou</span>
+            <label className="file-upload-label">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileUpload}
+                className="file-input"
+              />
+              <span className="file-upload-text">Enviar Imagem</span>
+            </label>
           </div>
           {(icone || iconeUpload) && (
             <div className="icone-preview">
               {iconeUpload ? (
-                <img src={iconeUpload} alt="Preview" style={{ width: '48px', height: '48px' }} />
+                <img src={iconeUpload} alt="Preview" />
               ) : icone ? (
                 (() => {
                   try {
                     const IconComponent = (FaIcons as any)[icone];
-                    return IconComponent ? <IconComponent style={{ fontSize: '48px' }} /> : null;
+                    return IconComponent ? <IconComponent /> : null;
                   } catch {
                     return null;
                   }
@@ -368,27 +429,39 @@ const ModalAdicionarFuncao = ({ funcao, onClose, onSave }: ModalAdicionarFuncaoP
           )}
         </div>
 
-        <div className="form-group">
-          <label>
-            <input
-              type="checkbox"
-              checked={ativa}
-              onChange={(e) => setAtiva(e.target.checked)}
-            />
-            Função Ativa
-          </label>
-        </div>
-
-        <div className="form-group">
-          <label>
-            <input
-              type="checkbox"
-              checked={ehIA}
-              onChange={(e) => setEhIA(e.target.checked)}
-              disabled={!ativa}
-            />
-            É função de IA?
-          </label>
+        <div className="form-group switches-container">
+          <div className="switch-group">
+            <label>
+              <span>Função Ativa</span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setAtiva(!ativa);
+                }}
+                className={`switch-btn ${ativa ? 'active' : ''}`}
+              >
+                {ativa ? <FaToggleOn /> : <FaToggleOff />}
+              </button>
+            </label>
+          </div>
+          <div className="switch-group">
+            <label>
+              <span>É função de IA?</span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setEhIA(!ehIA);
+                }}
+                className={`switch-btn ${ehIA ? 'active' : ''}`}
+              >
+                {ehIA ? <FaToggleOn /> : <FaToggleOff />}
+              </button>
+            </label>
+          </div>
         </div>
       </Modal>
 

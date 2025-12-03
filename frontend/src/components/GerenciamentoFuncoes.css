@@ -70,6 +70,23 @@
   margin: 0 0 8px 0;
   color: #333;
   font-size: 1.3em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.funcao-ia-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.65em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
 }
 
 .funcao-info p {
@@ -96,9 +113,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  cursor: pointer;
+  cursor: default;
   font-weight: 500;
   color: #333;
+  user-select: none;
 }
 
 .switch-btn {
@@ -111,6 +129,12 @@
   padding: 0;
   display: flex;
   align-items: center;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.switch-btn:focus {
+  outline: none;
 }
 
 .switch-btn.active {
@@ -181,6 +205,208 @@
   background: #f8f9fa;
   border-radius: 6px;
   display: inline-block;
+}
+
+/* Estilos para o formulário de adicionar/editar função */
+.modal-adicionar-funcao .form-group {
+  margin-bottom: 20px;
+}
+
+.modal-adicionar-funcao .form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #333;
+  font-size: 0.95em;
+}
+
+.modal-adicionar-funcao .form-input {
+  width: 100%;
+  padding: 12px 15px;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  font-size: 1em;
+  transition: all 0.3s;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.modal-adicionar-funcao .form-input:focus {
+  outline: none;
+  border-color: var(--cor-primaria, #FF6B35);
+  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+}
+
+.modal-adicionar-funcao .form-input::placeholder {
+  color: #999;
+}
+
+.modal-adicionar-funcao textarea.form-input {
+  resize: vertical;
+  min-height: 100px;
+  font-family: inherit;
+}
+
+.modal-adicionar-funcao .switches-container {
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 2px solid #e9ecef;
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.modal-adicionar-funcao .switches-container .switch-group {
+  flex: 1;
+  min-width: 200px;
+}
+
+.modal-adicionar-funcao .switches-container .switch-group label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: default;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 0;
+  user-select: none;
+}
+
+.modal-adicionar-funcao .switches-container .switch-btn {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  color: #ccc;
+  transition: color 0.3s;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.modal-adicionar-funcao .switches-container .switch-btn:focus {
+  outline: none;
+}
+
+.modal-adicionar-funcao .switches-container .switch-btn.active {
+  color: var(--cor-primaria, #FF6B35);
+}
+
+.modal-adicionar-funcao .switches-container .switch-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.modal-adicionar-funcao .icone-options {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+
+.modal-adicionar-funcao .icone-options button {
+  padding: 10px 20px;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  background: white;
+  color: #333;
+  cursor: pointer;
+  font-size: 0.95em;
+  transition: all 0.3s;
+  font-weight: 500;
+}
+
+.modal-adicionar-funcao .icone-options button:hover {
+  border-color: var(--cor-primaria, #FF6B35);
+  color: var(--cor-primaria, #FF6B35);
+  background: rgba(255, 107, 53, 0.05);
+}
+
+.modal-adicionar-funcao .icone-separator {
+  color: #666;
+  font-size: 0.9em;
+  font-weight: 500;
+}
+
+.modal-adicionar-funcao .file-upload-label {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+}
+
+.modal-adicionar-funcao .file-input {
+  position: absolute;
+  width: 0.1px;
+  height: 0.1px;
+  opacity: 0;
+  overflow: hidden;
+  z-index: -1;
+}
+
+.modal-adicionar-funcao .file-upload-text {
+  display: inline-block;
+  padding: 10px 20px;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  background: white;
+  color: #333;
+  font-size: 0.95em;
+  transition: all 0.3s;
+  font-weight: 500;
+}
+
+.modal-adicionar-funcao .file-upload-label:hover .file-upload-text {
+  border-color: var(--cor-primaria, #FF6B35);
+  color: var(--cor-primaria, #FF6B35);
+  background: rgba(255, 107, 53, 0.05);
+}
+
+.modal-adicionar-funcao .icone-preview {
+  margin-top: 15px;
+  padding: 15px;
+  background: white;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 80px;
+  min-height: 80px;
+}
+
+.modal-adicionar-funcao .icone-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.modal-adicionar-funcao .icone-preview svg {
+  font-size: 3rem;
+  color: var(--cor-primaria, #FF6B35);
+}
+
+@media (max-width: 600px) {
+  .modal-adicionar-funcao .switches-container {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .modal-adicionar-funcao .switches-container .switch-group {
+    min-width: 100%;
+  }
+
+  .modal-adicionar-funcao .icone-options {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .modal-adicionar-funcao .icone-options span {
+    text-align: center;
+  }
 }
 
 @media (max-width: 600px) {
