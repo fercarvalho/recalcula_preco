@@ -56,6 +56,12 @@
   gap: 10px;
 }
 
+.categoria-header-second-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .categoria-checkbox {
   width: 20px;
   height: 20px;
@@ -275,8 +281,17 @@
   .categoria-header {
     padding: 10px 12px;
     font-size: 1em;
-    flex-wrap: wrap;
-    gap: 5px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .categoria-header-left {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
   }
 
   .categoria-header h3 {
@@ -286,16 +301,23 @@
     overflow: visible;
     white-space: normal;
     word-break: break-word;
+    margin: 0;
+    order: 1;
   }
 
-  .categoria-header-left {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
+  .categoria-header-second-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    margin-left: 0;
+    padding-left: 35px;
+    order: 2;
   }
 
   .categoria-actions {
     gap: 5px;
+    margin-left: auto;
   }
 
   .btn-icone-categoria,
@@ -308,6 +330,11 @@
 
   .categoria-count {
     font-size: 0.7em;
+    margin-left: 0;
+  }
+
+  .btn-editar-categoria {
+    margin-left: 0;
   }
 
   .itens-grid {

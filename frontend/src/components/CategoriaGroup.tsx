@@ -224,17 +224,19 @@ const CategoriaGroup = ({
               </button>
               {categoria}
             </h3>
-            <button
-              className="btn-editar-categoria"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleRenomearCategoria();
-              }}
-              title="Editar nome da categoria"
-            >
-              <FaPencilAlt />
-            </button>
-            <span className="categoria-count">({itens.length})</span>
+            <div className="categoria-header-second-line">
+              <button
+                className="btn-editar-categoria"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRenomearCategoria();
+                }}
+                title="Editar nome da categoria"
+              >
+                <FaPencilAlt />
+              </button>
+              <span className="categoria-count">({itens.length})</span>
+            </div>
           </div>
           <div className="categoria-actions" onClick={(e) => e.stopPropagation()}>
             <button
