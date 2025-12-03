@@ -12,7 +12,7 @@ const AlertModal = ({ title, message, onClose }: { title: string; message: strin
   }, [onClose]);
 
   return (
-    <div className="modal show" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="modal show modal-alert" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal-content modal-small">
         <div className="modal-header">
           <h2>{title}</h2>
@@ -45,7 +45,7 @@ const ConfirmModal = ({ title, message, onConfirm, onCancel }: {
   }, [onCancel]);
 
   return (
-    <div className="modal show" onClick={(e) => e.target === e.currentTarget && onCancel()}>
+    <div className="modal show modal-alert" onClick={(e) => e.target === e.currentTarget && onCancel()}>
       <div className="modal-content modal-small">
         <div className="modal-header">
           <h2>{title}</h2>
@@ -102,7 +102,7 @@ const PromptModal = ({
   }, [value, onConfirm, onCancel]);
 
   return (
-    <div className="modal show" onClick={(e) => e.target === e.currentTarget && onCancel()}>
+    <div className="modal show modal-alert" onClick={(e) => e.target === e.currentTarget && onCancel()}>
       <div className="modal-content modal-small">
         <div className="modal-header">
           <h2>{title}</h2>

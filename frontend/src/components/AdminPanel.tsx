@@ -5,7 +5,8 @@ import { getToken } from '../services/auth';
 import AdicionarCategoriaModal from './AdicionarCategoriaModal';
 import SelecionarIconeModal from './SelecionarIconeModal';
 import GerenciamentoFuncoes from './GerenciamentoFuncoes';
-import { FaUser, FaEdit, FaTrash, FaShieldAlt, FaChevronRight, FaChevronDown, FaFolder, FaEye, FaEyeSlash, FaPlus, FaTimes, FaCog } from 'react-icons/fa';
+import GerenciamentoMenu from './GerenciamentoMenu';
+import { FaUser, FaEdit, FaTrash, FaShieldAlt, FaChevronRight, FaChevronDown, FaFolder, FaEye, FaEyeSlash, FaPlus, FaTimes, FaCog, FaBars } from 'react-icons/fa';
 import * as FaIcons from 'react-icons/fa';
 import './AdminPanel.css';
 
@@ -45,6 +46,7 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
   const [showEditarCategoria, setShowEditarCategoria] = useState(false);
   const [categoriaEditando, setCategoriaEditando] = useState<string>('');
   const [showGerenciamentoFuncoes, setShowGerenciamentoFuncoes] = useState(false);
+  const [showGerenciamentoMenu, setShowGerenciamentoMenu] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -351,6 +353,10 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
     setShowGerenciamentoFuncoes(false);
   }, []);
 
+  const handleCloseGerenciamentoMenu = useCallback(() => {
+    setShowGerenciamentoMenu(false);
+  }, []);
+
   if (!isOpen) return null;
 
   return (
@@ -358,6 +364,10 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
       <GerenciamentoFuncoes
         isOpen={showGerenciamentoFuncoes}
         onClose={handleCloseGerenciamentoFuncoes}
+      />
+      <GerenciamentoMenu
+        isOpen={showGerenciamentoMenu}
+        onClose={handleCloseGerenciamentoMenu}
       />
       <Modal
         isOpen={isOpen}
@@ -367,17 +377,43 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
       >
         <div className="admin-panel">
           <div className="admin-section" style={{ marginBottom: '30px', paddingBottom: '30px', borderBottom: '2px solid #e9ecef' }}>
-            <h3><FaCog /> Gerenciamento de Funções da Landing Page</h3>
-            <p style={{ marginBottom: '15px', color: '#666' }}>
-              Gerencie as funções exibidas na landing page. Configure quais funções estão ativas e quais são de IA.
-            </p>
-            <button 
-              onClick={() => setShowGerenciamentoFuncoes(true)}
-              className="btn-primary"
-              style={{ marginTop: '10px' }}
-            >
-              <FaCog /> Gerenciar Funções
-            </button>
+            <h3>Gerenciamento da Landing Page</h3>
+            <div className="admin-buttons-list" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div>
+                <h4 style={{ marginBottom: '8px', fontSize: '16px', fontWeight: '500' }}>
+                  <FaCog /> Gerenciamento de Funções da Landing Page
+                </h4>
+                <p style={{ marginBottom: '12px', color: '#666', fontSize: '14px' }}>
+                  Gerencie as funções exibidas na landing page. Configure quais funções estão ativas e quais são de IA.
+                </p>
+                <button 
+                  onClick={() => setShowGerenciamentoFuncoes(true)}
+                  className="btn-primary"
+                  style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left' }}
+                >
+                  <FaCog /> Gerenciar Funções
+                </button>
+              </div>
+              <div>
+                <h4 style={{ marginBottom: '8px', fontSize: '16px', fontWeight: '500' }}>
+                  <FaBars /> Gerenciamento de Menu
+                </h4>
+                <p style={{ marginBottom: '12px', color: '#666', fontSize: '14px' }}>
+                  Escolha quais seções da landing page aparecem no menu de navegação do header.
+                </p>
+              <button 
+                onClick={() => {
+                  console.log('Clicou em Gerenciar Menu');
+                  setShowGerenciamentoMenu(true);
+                  console.log('showGerenciamentoMenu definido como:', true);
+                }}
+                className="btn-primary"
+                style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left' }}
+              >
+                <FaBars /> Gerenciar Menu
+              </button>
+              </div>
+            </div>
           </div>
 
           <div className="admin-usuarios-list">

@@ -4,12 +4,14 @@ import * as FaIcons from 'react-icons/fa';
 import RegistroModal from './RegistroModal';
 import { apiService } from '../services/api';
 import type { Funcao } from './GerenciamentoFuncoes';
+import { obterSecoesMenuAtivas } from './GerenciamentoMenu';
 import './LandingPage.css';
 
 const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
   const [showRegistro, setShowRegistro] = useState(false);
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
   const [funcoes, setFuncoes] = useState<Funcao[]>([]);
+  const [secoesMenuAtivas, setSecoesMenuAtivas] = useState<string[]>([]);
 
   const toggleFaq = (index: number) => {
     setFaqOpen(faqOpen === index ? null : index);
@@ -27,7 +29,48 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
 
   useEffect(() => {
     carregarFuncoes();
+    carregarSecoesMenu();
+    
+    // Ouvir atualizações de configuração do menu
+    const handleMenuConfigUpdate = () => {
+      carregarSecoesMenu();
+    };
+    
+    window.addEventListener('menu-config-updated', handleMenuConfigUpdate);
+    
+    // Também ouvir quando a página ganha foco (quando o usuário volta para a landing page)
+    const handleFocus = () => {
+      carregarSecoesMenu();
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    
+    // Recarregar quando a visibilidade da página mudar
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        carregarSecoesMenu();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      window.removeEventListener('menu-config-updated', handleMenuConfigUpdate);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
+  
+  const carregarSecoesMenu = async () => {
+    try {
+      const secoesAtivas = await obterSecoesMenuAtivas();
+      setSecoesMenuAtivas(secoesAtivas);
+    } catch (error) {
+      console.error('Erro ao carregar seções do menu:', error);
+      // Em caso de erro, mostrar todas as seções como padrão
+      setSecoesMenuAtivas(['sobre', 'funcionalidades', 'roadmap', 'planos', 'faq']);
+    }
+  };
 
   const carregarFuncoes = async () => {
     try {
@@ -126,26 +169,36 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
           </div>
         </div>
         <nav className="landing-nav">
-          <a href="#sobre" onClick={(e) => {
-            e.preventDefault();
-            document.getElementById('sobre')?.scrollIntoView({ behavior: 'smooth' });
-          }}>Sobre</a>
-          <a href="#funcionalidades" onClick={(e) => {
-            e.preventDefault();
-            document.getElementById('funcionalidades')?.scrollIntoView({ behavior: 'smooth' });
-          }}>Funcionalidades</a>
-          <a href="#roadmap" onClick={(e) => {
-            e.preventDefault();
-            document.getElementById('roadmap')?.scrollIntoView({ behavior: 'smooth' });
-          }}>O que vem por aí</a>
-          <a href="#planos" onClick={(e) => {
-            e.preventDefault();
-            document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' });
-          }}>Planos</a>
-          <a href="#faq" onClick={(e) => {
-            e.preventDefault();
-            document.getElementById('faq')?.scrollIntoView({ behavior: 'smooth' });
-          }}>FAQ</a>
+          {secoesMenuAtivas.includes('sobre') && (
+            <a href="#sobre" onClick={(e) => {
+              e.preventDefault();
+              document.getElementById('sobre')?.scrollIntoView({ behavior: 'smooth' });
+            }}>Sobre</a>
+          )}
+          {secoesMenuAtivas.includes('funcionalidades') && (
+            <a href="#funcionalidades" onClick={(e) => {
+              e.preventDefault();
+              document.getElementById('funcionalidades')?.scrollIntoView({ behavior: 'smooth' });
+            }}>Funcionalidades</a>
+          )}
+          {secoesMenuAtivas.includes('roadmap') && (
+            <a href="#roadmap" onClick={(e) => {
+              e.preventDefault();
+              document.getElementById('roadmap')?.scrollIntoView({ behavior: 'smooth' });
+            }}>O que vem por aí</a>
+          )}
+          {secoesMenuAtivas.includes('planos') && (
+            <a href="#planos" onClick={(e) => {
+              e.preventDefault();
+              document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' });
+            }}>Planos</a>
+          )}
+          {secoesMenuAtivas.includes('faq') && (
+            <a href="#faq" onClick={(e) => {
+              e.preventDefault();
+              document.getElementById('faq')?.scrollIntoView({ behavior: 'smooth' });
+            }}>FAQ</a>
+          )}
         </nav>
       </header>
 

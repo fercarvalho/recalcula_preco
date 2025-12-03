@@ -1367,6 +1367,37 @@ app.delete('/api/funcoes/:id', authenticateToken, requireAdmin, async (req, res)
     }
 });
 
+// ========== CONFIGURAÇÕES DO MENU ==========
+
+// Obter configurações do menu (público - usado na landing page)
+app.get('/api/configuracoes-menu', async (req, res) => {
+    try {
+        const configuracoes = await db.obterConfiguracoesMenu();
+        res.json(configuracoes);
+    } catch (error) {
+        console.error('Erro ao obter configurações do menu:', error);
+        res.status(500).json({ error: 'Erro ao obter configurações do menu' });
+    }
+});
+
+// Atualizar configurações do menu (apenas admin)
+app.put('/api/configuracoes-menu', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { configuracoes } = req.body;
+        
+        if (!Array.isArray(configuracoes)) {
+            return res.status(400).json({ error: 'Configurações devem ser um array' });
+        }
+
+        await db.atualizarConfiguracoesMenu(configuracoes);
+        const configuracoesAtualizadas = await db.obterConfiguracoesMenu();
+        res.json(configuracoesAtualizadas);
+    } catch (error) {
+        console.error('Erro ao atualizar configurações do menu:', error);
+        res.status(500).json({ error: 'Erro ao atualizar configurações do menu' });
+    }
+});
+
 // Servir arquivos estáticos do frontend React (DEPOIS das rotas da API)
 const frontendPath = path.join(__dirname, 'frontend', 'dist');
 app.use(express.static(frontendPath));

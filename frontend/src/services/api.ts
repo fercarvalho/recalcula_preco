@@ -217,5 +217,16 @@ export const apiService = {
   async deletarFuncao(id: number): Promise<void> {
     await api.delete(`/api/funcoes/${id}`);
   },
+
+  // Configurações do Menu
+  async obterConfiguracoesMenu(): Promise<Array<{ id: string; nome: string; ativa: boolean; ordem: number }>> {
+    const response = await api.get<Array<{ id: string; nome: string; ativa: boolean; ordem: number }>>('/api/configuracoes-menu');
+    return response.data;
+  },
+
+  async atualizarConfiguracoesMenu(configuracoes: Array<{ id: string; ativa: boolean }>): Promise<Array<{ id: string; nome: string; ativa: boolean; ordem: number }>> {
+    const response = await api.put<Array<{ id: string; nome: string; ativa: boolean; ordem: number }>>('/api/configuracoes-menu', { configuracoes });
+    return response.data;
+  },
 };
 

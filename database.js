@@ -396,6 +396,22 @@ async function inicializar() {
             )
         `);
         
+        // Criar tabela de configurações do menu
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS configuracoes_menu (
+                id SERIAL PRIMARY KEY,
+                secao_id VARCHAR(50) UNIQUE NOT NULL,
+                nome VARCHAR(255) NOT NULL,
+                ativa BOOLEAN DEFAULT TRUE,
+                ordem INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        // Inicializar configurações padrão do menu se não existirem
+        await inicializarConfiguracoesMenuPadrao();
+        
         // Criar índice para busca rápida por usuario_id
         await pool.query(`
             CREATE INDEX IF NOT EXISTS idx_plataformas_usuario_id 
@@ -2580,6 +2596,79 @@ async function deletarFuncao(id) {
     }
 }
 
+// Inicializar configurações padrão do menu
+async function inicializarConfiguracoesMenuPadrao() {
+    try {
+        const secoesPadrao = [
+            { secao_id: 'sobre', nome: 'Sobre', ativa: true, ordem: 0 },
+            { secao_id: 'funcionalidades', nome: 'Funcionalidades', ativa: true, ordem: 1 },
+            { secao_id: 'roadmap', nome: 'O que vem por aí', ativa: true, ordem: 2 },
+            { secao_id: 'planos', nome: 'Planos', ativa: true, ordem: 3 },
+            { secao_id: 'faq', nome: 'FAQ', ativa: true, ordem: 4 }
+        ];
+
+        for (const secao of secoesPadrao) {
+            const existe = await pool.query(
+                'SELECT id FROM configuracoes_menu WHERE secao_id = $1',
+                [secao.secao_id]
+            );
+            
+            if (existe.rows.length === 0) {
+                await pool.query(
+                    `INSERT INTO configuracoes_menu (secao_id, nome, ativa, ordem, created_at, updated_at)
+                     VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+                    [secao.secao_id, secao.nome, secao.ativa, secao.ordem]
+                );
+            }
+        }
+    } catch (error) {
+        console.error('Erro ao inicializar configurações do menu:', error);
+        throw error;
+    }
+}
+
+// Obter todas as configurações do menu
+async function obterConfiguracoesMenu() {
+    try {
+        const result = await pool.query(
+            'SELECT * FROM configuracoes_menu ORDER BY ordem ASC'
+        );
+        return result.rows.map(row => ({
+            id: row.secao_id,
+            nome: row.nome,
+            ativa: row.ativa,
+            ordem: row.ordem
+        }));
+    } catch (error) {
+        console.error('Erro ao obter configurações do menu:', error);
+        throw error;
+    }
+}
+
+// Atualizar configurações do menu
+async function atualizarConfiguracoesMenu(configuracoes) {
+    try {
+        // Usar transação para garantir consistência
+        await pool.query('BEGIN');
+        
+        for (const config of configuracoes) {
+            await pool.query(
+                `UPDATE configuracoes_menu 
+                 SET ativa = $1, updated_at = CURRENT_TIMESTAMP
+                 WHERE secao_id = $2`,
+                [config.ativa, config.id]
+            );
+        }
+        
+        await pool.query('COMMIT');
+        return true;
+    } catch (error) {
+        await pool.query('ROLLBACK');
+        console.error('Erro ao atualizar configurações do menu:', error);
+        throw error;
+    }
+}
+
 // Fechar conexão
 async function fechar() {
     try {
@@ -2647,5 +2736,8 @@ module.exports = {
     criarFuncao,
     atualizarFuncao,
     deletarFuncao,
+    // Funções de configurações do menu
+    obterConfiguracoesMenu,
+    atualizarConfiguracoesMenu,
     fechar
 };
