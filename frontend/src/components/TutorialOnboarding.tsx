@@ -357,6 +357,9 @@ const TutorialOnboarding = ({
 
   const modalInstruction = getModalInstruction();
 
+  // Detectar telas menores de 7 polegadas (aproximadamente 600px)
+  const isSmallScreen = typeof window !== 'undefined' && (window.innerWidth <= 600 || window.innerHeight <= 600);
+
   return (
     <div className={`tutorial-overlay ${modalAberto ? 'modal-open' : ''}`} ref={overlayRef}>
       {!modalAberto && hasTarget && highlightedElement && (
@@ -383,9 +386,9 @@ const TutorialOnboarding = ({
                   transform: step.position === 'bottom' ? 'translateX(-50%)' : undefined,
                 }
               : {
-                  top: '50%',
+                  top: isSmallScreen ? '20%' : '50%',
                   left: '50%',
-                  transform: 'translate(-50%, -50%)',
+                  transform: isSmallScreen ? 'translate(-50%, 0)' : 'translate(-50%, -50%)',
                 }
           }
         >
