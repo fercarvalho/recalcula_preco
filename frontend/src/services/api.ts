@@ -371,5 +371,64 @@ export const apiService = {
   async atualizarOrdemBeneficios(planoId: number, beneficiosIds: number[]): Promise<void> {
     await api.put(`/api/admin/planos/${planoId}/beneficios/ordem`, { beneficiosIds });
   },
+
+  // ========== FAQ ==========
+  async obterFAQ(): Promise<Array<{
+    id: number;
+    pergunta: string;
+    resposta: string;
+    ordem: number;
+  }>> {
+    const response = await api.get('/api/faq');
+    return response.data;
+  },
+
+  async obterFAQAdmin(): Promise<Array<{
+    id: number;
+    pergunta: string;
+    resposta: string;
+    ordem: number;
+  }>> {
+    const response = await api.get('/api/admin/faq');
+    return response.data;
+  },
+
+  async obterFAQPorId(id: number): Promise<{
+    id: number;
+    pergunta: string;
+    resposta: string;
+    ordem: number;
+  }> {
+    const response = await api.get(`/api/admin/faq/${id}`);
+    return response.data;
+  },
+
+  async criarFAQ(pergunta: string, resposta: string, ordem?: number): Promise<{
+    id: number;
+    pergunta: string;
+    resposta: string;
+    ordem: number;
+  }> {
+    const response = await api.post('/api/admin/faq', { pergunta, resposta, ordem });
+    return response.data;
+  },
+
+  async atualizarFAQ(id: number, pergunta: string, resposta: string): Promise<{
+    id: number;
+    pergunta: string;
+    resposta: string;
+    ordem: number;
+  }> {
+    const response = await api.put(`/api/admin/faq/${id}`, { pergunta, resposta });
+    return response.data;
+  },
+
+  async deletarFAQ(id: number): Promise<void> {
+    await api.delete(`/api/admin/faq/${id}`);
+  },
+
+  async atualizarOrdemFAQ(faqIds: number[]): Promise<void> {
+    await api.put('/api/admin/faq/ordem', { faqIds });
+  },
 };
 

@@ -7,7 +7,8 @@ import SelecionarIconeModal from './SelecionarIconeModal';
 import GerenciamentoFuncoes from './GerenciamentoFuncoes';
 import GerenciamentoMenu from './GerenciamentoMenu';
 import GerenciamentoPlanos from './GerenciamentoPlanos';
-import { FaUser, FaEdit, FaTrash, FaShieldAlt, FaChevronRight, FaChevronDown, FaFolder, FaEye, FaEyeSlash, FaPlus, FaTimes, FaCog, FaBars, FaCreditCard } from 'react-icons/fa';
+import GerenciamentoFAQ from './GerenciamentoFAQ';
+import { FaUser, FaEdit, FaTrash, FaShieldAlt, FaChevronRight, FaChevronDown, FaFolder, FaEye, FaEyeSlash, FaPlus, FaTimes, FaCog, FaBars, FaCreditCard, FaQuestionCircle } from 'react-icons/fa';
 import * as FaIcons from 'react-icons/fa';
 import './AdminPanel.css';
 
@@ -49,6 +50,7 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
   const [showGerenciamentoFuncoes, setShowGerenciamentoFuncoes] = useState(false);
   const [showGerenciamentoMenu, setShowGerenciamentoMenu] = useState(false);
   const [showGerenciamentoPlanos, setShowGerenciamentoPlanos] = useState(false);
+  const [showGerenciamentoFAQ, setShowGerenciamentoFAQ] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -363,6 +365,10 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
     setShowGerenciamentoPlanos(false);
   }, []);
 
+  const handleCloseGerenciamentoFAQ = useCallback(() => {
+    setShowGerenciamentoFAQ(false);
+  }, []);
+
   if (!isOpen) return null;
 
   return (
@@ -378,6 +384,10 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
       <GerenciamentoPlanos
         isOpen={showGerenciamentoPlanos}
         onClose={handleCloseGerenciamentoPlanos}
+      />
+      <GerenciamentoFAQ
+        isOpen={showGerenciamentoFAQ}
+        onClose={handleCloseGerenciamentoFAQ}
       />
       <Modal
         isOpen={isOpen}
@@ -432,6 +442,21 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
                   style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left' }}
                 >
                   <FaCreditCard /> Gerenciar Planos
+                </button>
+              </div>
+              <div>
+                <h4 style={{ marginBottom: '8px', fontSize: '16px', fontWeight: '500' }}>
+                  <FaQuestionCircle /> Gerenciamento de FAQ
+                </h4>
+                <p style={{ marginBottom: '12px', color: '#666', fontSize: '14px' }}>
+                  Gerencie as perguntas frequentes (FAQ) exibidas na landing page.
+                </p>
+                <button 
+                  onClick={() => setShowGerenciamentoFAQ(true)}
+                  className="btn-primary"
+                  style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left' }}
+                >
+                  <FaQuestionCircle /> Gerenciar FAQ
                 </button>
               </div>
             </div>

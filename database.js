@@ -490,6 +490,21 @@ async function inicializar() {
             END $$;
         `);
         
+        // Criar tabela de FAQ
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS faq (
+                id SERIAL PRIMARY KEY,
+                pergunta TEXT NOT NULL,
+                resposta TEXT NOT NULL,
+                ordem INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        // Inicializar FAQ padrão se não existir
+        await inicializarFAQPadrao();
+        
         // Criar tabela de relacionamento plano_beneficios (many-to-many)
         await pool.query(`
             CREATE TABLE IF NOT EXISTS plano_beneficios (
@@ -2752,6 +2767,218 @@ async function obterConfiguracoesMenu() {
     }
 }
 
+// ========== FUNÇÕES DE FAQ ==========
+
+// Inicializar FAQ padrão
+async function inicializarFAQPadrao() {
+    try {
+        const countResult = await pool.query('SELECT COUNT(*) as count FROM faq');
+        const count = parseInt(countResult.rows[0].count);
+        
+        if (count > 0) {
+            return; // Já existem perguntas
+        }
+        
+        const faqPadrao = [
+            {
+                pergunta: 'O que é a Recalcula Preço?',
+                resposta: 'A Recalcula Preço é uma calculadora inteligente desenvolvida especificamente para restaurantes e lanchonetes. Ela ajuda você a gerenciar seus produtos, aplicar reajustes de preços de forma automática e calcular valores considerando as taxas das plataformas de delivery.'
+            },
+            {
+                pergunta: 'Como funciona a calculadora?',
+                resposta: 'Nossa calculadora foi desenvolvida especificamente para restaurantes e lanchonetes. Ela entende as necessidades do seu negócio: cálculo automático de preços com taxas de plataformas, reajustes em massa, organização por categorias e muito mais. Tudo de forma simples e intuitiva.'
+            },
+            {
+                pergunta: 'Quais recursos estão incluídos no plano?',
+                resposta: 'Com o plano anual você tem acesso ilimitado a todas as funcionalidades: cadastro ilimitado de produtos, reajustes automáticos, cálculo de preços com taxas de plataformas, organização por categorias, backup automático dos valores e muito mais.'
+            },
+            {
+                pergunta: 'Para quem é a Recalcula Preço?',
+                resposta: 'É ideal para restaurantes, lanchonetes, food trucks e qualquer estabelecimento que precise gerenciar cardápios e aplicar reajustes de preços de forma eficiente. Perfeito para quem trabalha com delivery e precisa calcular preços considerando as taxas das plataformas.'
+            },
+            {
+                pergunta: 'Posso testar antes de assinar?',
+                resposta: 'Sim! Você pode criar uma conta gratuita e testar o sistema. No modo trial, você pode criar categorias e produtos, mas algumas funcionalidades avançadas como reajustes automáticos e visualização de preços com taxas requerem assinatura.'
+            },
+            {
+                pergunta: 'Meus dados estão seguros?',
+                resposta: 'Sim! Utilizamos criptografia e seguimos as melhores práticas de segurança. Seus dados são armazenados de forma segura e não compartilhamos informações com terceiros.'
+            }
+        ];
+        
+        for (let i = 0; i < faqPadrao.length; i++) {
+            await pool.query(
+                'INSERT INTO faq (pergunta, resposta, ordem) VALUES ($1, $2, $3)',
+                [faqPadrao[i].pergunta, faqPadrao[i].resposta, i + 1]
+            );
+        }
+        
+        console.log(`${faqPadrao.length} perguntas FAQ padrão inicializadas`);
+    } catch (error) {
+        console.error('Erro ao inicializar FAQ padrão:', error);
+        // Não lançar erro para não impedir a inicialização
+    }
+}
+
+// Obter todas as perguntas FAQ
+async function obterFAQ() {
+    try {
+        const result = await pool.query(
+            'SELECT * FROM faq ORDER BY ordem ASC, id ASC'
+        );
+        return result.rows.map(row => ({
+            id: row.id,
+            pergunta: row.pergunta,
+            resposta: row.resposta,
+            ordem: row.ordem
+        }));
+    } catch (error) {
+        console.error('Erro ao obter FAQ:', error);
+        throw error;
+    }
+}
+
+// Obter pergunta FAQ por ID
+async function obterFAQPorId(id) {
+    try {
+        const result = await pool.query('SELECT * FROM faq WHERE id = $1', [id]);
+        if (result.rows.length === 0) {
+            return null;
+        }
+        const row = result.rows[0];
+        return {
+            id: row.id,
+            pergunta: row.pergunta,
+            resposta: row.resposta,
+            ordem: row.ordem
+        };
+    } catch (error) {
+        console.error('Erro ao obter FAQ por ID:', error);
+        throw error;
+    }
+}
+
+// Criar pergunta FAQ
+async function criarFAQ(pergunta, resposta, ordem = null) {
+    try {
+        // Se ordem não for fornecida, usar a próxima ordem disponível
+        if (ordem === null) {
+            const maxOrdem = await pool.query('SELECT MAX(ordem) as max FROM faq');
+            ordem = (maxOrdem.rows[0].max || 0) + 1;
+        }
+        
+        const result = await pool.query(
+            'INSERT INTO faq (pergunta, resposta, ordem) VALUES ($1, $2, $3) RETURNING *',
+            [pergunta.trim(), resposta.trim(), ordem]
+        );
+        
+        const row = result.rows[0];
+        return {
+            id: row.id,
+            pergunta: row.pergunta,
+            resposta: row.resposta,
+            ordem: row.ordem
+        };
+    } catch (error) {
+        console.error('Erro ao criar FAQ:', error);
+        throw error;
+    }
+}
+
+// Atualizar pergunta FAQ
+async function atualizarFAQ(id, pergunta, resposta) {
+    try {
+        const result = await pool.query(
+            'UPDATE faq SET pergunta = $1, resposta = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 RETURNING *',
+            [pergunta.trim(), resposta.trim(), id]
+        );
+        
+        if (result.rows.length === 0) {
+            return null;
+        }
+        
+        const row = result.rows[0];
+        return {
+            id: row.id,
+            pergunta: row.pergunta,
+            resposta: row.resposta,
+            ordem: row.ordem
+        };
+    } catch (error) {
+        console.error('Erro ao atualizar FAQ:', error);
+        throw error;
+    }
+}
+
+// Deletar pergunta FAQ
+async function deletarFAQ(id) {
+    try {
+        const result = await pool.query('DELETE FROM faq WHERE id = $1', [id]);
+        return result.rowCount > 0;
+    } catch (error) {
+        console.error('Erro ao deletar FAQ:', error);
+        throw error;
+    }
+}
+
+// Atualizar ordem das perguntas FAQ
+async function atualizarOrdemFAQ(faqIds) {
+    try {
+        if (!Array.isArray(faqIds) || faqIds.length === 0) {
+            console.log('atualizarOrdemFAQ: faqIds vazio ou não é array');
+            return;
+        }
+
+        // Validar e converter IDs para números
+        const idsValidos = faqIds
+            .map(id => {
+                const numId = typeof id === 'string' ? parseInt(id, 10) : id;
+                return isNaN(numId) ? null : numId;
+            })
+            .filter(id => id !== null);
+
+        if (idsValidos.length === 0) {
+            throw new Error('Nenhum ID de FAQ válido fornecido');
+        }
+
+        console.log('Atualizando ordem das perguntas FAQ:', idsValidos);
+
+        // Usar transação para garantir consistência
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+
+            for (let i = 0; i < idsValidos.length; i++) {
+                const ordem = i + 1; // Ordem começa em 1
+                const faqId = idsValidos[i];
+
+                console.log(`Atualizando FAQ ID ${faqId} para ordem ${ordem}`);
+
+                const result = await client.query(
+                    'UPDATE faq SET ordem = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+                    [ordem, faqId]
+                );
+
+                if (result.rowCount === 0) {
+                    console.warn(`FAQ com ID ${faqId} não encontrado`);
+                }
+            }
+
+            await client.query('COMMIT');
+            console.log('Ordem das perguntas FAQ atualizada com sucesso');
+        } catch (error) {
+            await client.query('ROLLBACK');
+            console.error('Erro na transação ao atualizar ordem das perguntas FAQ:', error);
+            throw error;
+        } finally {
+            client.release();
+        }
+    } catch (error) {
+        console.error('Erro ao atualizar ordem das perguntas FAQ:', error);
+        throw error;
+    }
+}
+
 // Atualizar configurações do menu
 async function atualizarConfiguracoesMenu(configuracoes) {
     try {
@@ -3702,5 +3929,12 @@ module.exports = {
     atualizarBeneficio,
     deletarBeneficio,
     atualizarOrdemBeneficios,
+    // Funções de FAQ
+    obterFAQ,
+    obterFAQPorId,
+    criarFAQ,
+    atualizarFAQ,
+    deletarFAQ,
+    atualizarOrdemFAQ,
     fechar
 };

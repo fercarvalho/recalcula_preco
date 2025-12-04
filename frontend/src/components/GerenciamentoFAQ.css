@@ -1,0 +1,243 @@
+/* Estilos específicos apenas para o modal de gerenciamento - não afeta a landing page */
+.gerenciamento-faq.faq-container {
+  padding: 20px 0;
+  background: transparent !important;
+}
+
+.gerenciamento-faq-list.faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  background: transparent !important;
+}
+
+/* Aplicar apenas dentro do modal de gerenciamento - não afeta landing page */
+.gerenciamento-faq-item.faq-item {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 12px !important;
+  padding: 20px !important;
+  background: #fff !important;
+  border-radius: 8px !important;
+  border: 2px solid #e9ecef !important;
+  transition: all 0.2s;
+  color: #333 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+  margin-bottom: 0 !important;
+  cursor: move;
+  position: relative;
+}
+
+.gerenciamento-faq-item.faq-item.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.gerenciamento-faq-item.faq-item.drag-over {
+  border-color: var(--cor-primaria, #FF6B35) !important;
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3) !important;
+}
+
+.gerenciamento-faq-item.faq-item.drag-over-top::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--cor-primaria, #FF6B35);
+  border-radius: 2px;
+}
+
+.gerenciamento-faq-item.faq-item.drag-over-bottom::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--cor-primaria, #FF6B35);
+  border-radius: 2px;
+}
+
+.gerenciamento-faq-item.faq-item:hover {
+  border-color: var(--cor-primaria, #FF6B35) !important;
+  box-shadow: 0 2px 8px rgba(255, 107, 53, 0.1) !important;
+  background: #fff !important;
+}
+
+.faq-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6c757d;
+  cursor: grab;
+  padding: 4px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.faq-drag-handle:active {
+  cursor: grabbing;
+}
+
+.gerenciamento-faq-item.faq-item:hover .faq-drag-handle {
+  color: var(--cor-primaria, #FF6B35);
+}
+
+.gerenciamento-faq-item .faq-content {
+  flex: 1;
+  margin-right: 15px;
+  min-width: 0;
+}
+
+.gerenciamento-faq-item .faq-pergunta {
+  font-size: 1.1rem;
+  margin-bottom: 10px;
+  color: #333 !important;
+}
+
+.gerenciamento-faq-item .faq-pergunta strong {
+  color: var(--cor-primaria, #FF6B35);
+  font-weight: 600;
+}
+
+.gerenciamento-faq-item .faq-resposta {
+  font-size: 0.95rem;
+  color: #666 !important;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.gerenciamento-faq-item .faq-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.btn-edit-faq {
+  background: var(--cor-primaria, #FF6B35);
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  min-width: 40px;
+  height: 40px;
+}
+
+.btn-edit-faq:hover:not(:disabled) {
+  background: rgba(255, 107, 53, 0.9);
+}
+
+.btn-edit-faq:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-delete-faq {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  min-width: 40px;
+  height: 40px;
+}
+
+.btn-delete-faq:hover:not(:disabled) {
+  background: #c82333;
+}
+
+.btn-delete-faq:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.faq-form {
+  padding: 0;
+}
+
+.faq-form .form-group {
+  margin-bottom: 20px;
+}
+
+.faq-form .form-group:last-child {
+  margin-bottom: 0;
+}
+
+.faq-form label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #333;
+}
+
+.faq-form .form-input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+.faq-form .form-textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-family: inherit;
+  resize: vertical;
+  box-sizing: border-box;
+  line-height: 1.5;
+}
+
+.faq-form .form-input:focus,
+.faq-form .form-textarea:focus {
+  outline: none;
+  border-color: var(--cor-primaria, #FF6B35);
+  box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.25);
+}
+
+.faq-form .form-input:disabled,
+.faq-form .form-textarea:disabled {
+  background: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #666;
+}
+
+.empty-state p {
+  font-size: 1.1rem;
+}
+
+.loading {
+  text-align: center;
+  padding: 40px 20px;
+  color: #666;
+  font-size: 1.1rem;
+}
+
+/* Garantir que o modal apareça acima de outros modais */
+.modal-nested {
+  z-index: 2000 !important;
+}
+
+.modal-nested.show {
+  z-index: 2000 !important;
+}

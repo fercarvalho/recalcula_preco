@@ -1611,6 +1611,132 @@ app.put('/api/admin/planos/:planoId/beneficios/ordem', authenticateToken, requir
     }
 });
 
+// ========== ENDPOINTS DE FAQ ==========
+
+// Obter todas as perguntas FAQ (público)
+app.get('/api/faq', async (req, res) => {
+    try {
+        const faq = await db.obterFAQ();
+        res.json(faq);
+    } catch (error) {
+        console.error('Erro ao obter FAQ:', error);
+        res.status(500).json({ error: 'Erro ao obter FAQ' });
+    }
+});
+
+// Obter todas as perguntas FAQ (admin)
+app.get('/api/admin/faq', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const faq = await db.obterFAQ();
+        res.json(faq);
+    } catch (error) {
+        console.error('Erro ao obter FAQ:', error);
+        res.status(500).json({ error: 'Erro ao obter FAQ' });
+    }
+});
+
+// Obter pergunta FAQ por ID (admin)
+app.get('/api/admin/faq/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const pergunta = await db.obterFAQPorId(parseInt(id));
+        if (!pergunta) {
+            return res.status(404).json({ error: 'Pergunta não encontrada' });
+        }
+        res.json(pergunta);
+    } catch (error) {
+        console.error('Erro ao obter FAQ por ID:', error);
+        res.status(500).json({ error: 'Erro ao obter FAQ' });
+    }
+});
+
+// Criar pergunta FAQ (admin)
+app.post('/api/admin/faq', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { pergunta, resposta, ordem } = req.body;
+        
+        if (!pergunta || !pergunta.trim()) {
+            return res.status(400).json({ error: 'A pergunta é obrigatória' });
+        }
+        
+        if (!resposta || !resposta.trim()) {
+            return res.status(400).json({ error: 'A resposta é obrigatória' });
+        }
+        
+        const novaPergunta = await db.criarFAQ(pergunta, resposta, ordem);
+        res.json(novaPergunta);
+    } catch (error) {
+        console.error('Erro ao criar FAQ:', error);
+        res.status(500).json({ error: 'Erro ao criar FAQ' });
+    }
+});
+
+// Atualizar ordem das perguntas FAQ (DEVE VIR ANTES DA ROTA /:id)
+app.put('/api/admin/faq/ordem', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { faqIds } = req.body;
+        
+        console.log('Recebido para atualizar ordem das perguntas FAQ:', faqIds);
+        
+        if (!Array.isArray(faqIds)) {
+            console.error('faqIds não é um array:', typeof faqIds, faqIds);
+            return res.status(400).json({ error: 'faqIds deve ser um array' });
+        }
+        
+        if (faqIds.length === 0) {
+            console.error('faqIds está vazio');
+            return res.status(400).json({ error: 'faqIds não pode estar vazio' });
+        }
+        
+        await db.atualizarOrdemFAQ(faqIds);
+        res.json({ message: 'Ordem das perguntas FAQ atualizada com sucesso' });
+    } catch (error) {
+        console.error('Erro ao atualizar ordem das perguntas FAQ:', error);
+        console.error('Stack trace:', error.stack);
+        res.status(500).json({ error: 'Erro ao atualizar ordem das perguntas FAQ', details: error.message });
+    }
+});
+
+// Atualizar pergunta FAQ (admin)
+app.put('/api/admin/faq/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { pergunta, resposta } = req.body;
+        
+        if (!pergunta || !pergunta.trim()) {
+            return res.status(400).json({ error: 'A pergunta é obrigatória' });
+        }
+        
+        if (!resposta || !resposta.trim()) {
+            return res.status(400).json({ error: 'A resposta é obrigatória' });
+        }
+        
+        const perguntaAtualizada = await db.atualizarFAQ(parseInt(id), pergunta, resposta);
+        if (!perguntaAtualizada) {
+            return res.status(404).json({ error: 'Pergunta não encontrada' });
+        }
+        res.json(perguntaAtualizada);
+    } catch (error) {
+        console.error('Erro ao atualizar FAQ:', error);
+        res.status(500).json({ error: 'Erro ao atualizar FAQ' });
+    }
+});
+
+// Deletar pergunta FAQ (admin)
+app.delete('/api/admin/faq/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const deletado = await db.deletarFAQ(parseInt(id));
+        if (!deletado) {
+            return res.status(404).json({ error: 'Pergunta não encontrada' });
+        }
+        res.json({ message: 'Pergunta deletada com sucesso' });
+    } catch (error) {
+        console.error('Erro ao deletar FAQ:', error);
+        res.status(500).json({ error: 'Erro ao deletar FAQ' });
+    }
+});
+
 // Servir arquivos estáticos do frontend React (DEPOIS das rotas da API)
 const frontendPath = path.join(__dirname, 'frontend', 'dist');
 app.use(express.static(frontendPath));

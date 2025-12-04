@@ -14,9 +14,10 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
   const [funcoes, setFuncoes] = useState<Funcao[]>([]);
   const [secoesMenuAtivas, setSecoesMenuAtivas] = useState<string[]>([]);
   const [planos, setPlanos] = useState<Plano[]>([]);
+  const [faqs, setFaqs] = useState<Array<{ id: number; pergunta: string; resposta: string }>>([]);
 
-  const toggleFaq = (index: number) => {
-    setFaqOpen(faqOpen === index ? null : index);
+  const toggleFaq = (id: number) => {
+    setFaqOpen(faqOpen === id ? null : id);
   };
 
   const handlePlanoClick = () => {
@@ -52,6 +53,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
     carregarFuncoes();
     carregarSecoesMenu();
     carregarPlanos();
+    carregarFAQ();
     
     // Ouvir atualizações de configuração do menu
     const handleMenuConfigUpdate = () => {
@@ -63,13 +65,20 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
       carregarPlanos();
     };
     
+    // Ouvir atualizações de FAQ
+    const handleFAQUpdate = () => {
+      carregarFAQ();
+    };
+    
     window.addEventListener('menu-config-updated', handleMenuConfigUpdate);
     window.addEventListener('planos-updated', handlePlanosUpdate);
+    window.addEventListener('faq-updated', handleFAQUpdate);
     
     // Também ouvir quando a página ganha foco (quando o usuário volta para a landing page)
     const handleFocus = () => {
       carregarSecoesMenu();
       carregarPlanos();
+      carregarFAQ();
     };
     
     window.addEventListener('focus', handleFocus);
@@ -79,6 +88,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
       if (!document.hidden) {
         carregarSecoesMenu();
         carregarPlanos();
+        carregarFAQ();
       }
     };
     
@@ -87,6 +97,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
     return () => {
       window.removeEventListener('menu-config-updated', handleMenuConfigUpdate);
       window.removeEventListener('planos-updated', handlePlanosUpdate);
+      window.removeEventListener('faq-updated', handleFAQUpdate);
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
@@ -170,40 +181,15 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
     return <FaCalculator />;
   };
 
-  const faqs = [
-    {
-      pergunta: 'Como funciona a Recalcula Preço?',
-      resposta: 'A Recalcula Preço é uma ferramenta completa para gerenciar seus produtos e aplicar reajustes de preços de forma automática. Você cadastra seus produtos por categoria, define os preços e pode aplicar reajustes fixos ou percentuais em massa. O sistema também calcula automaticamente os preços ajustados considerando as taxas das plataformas de delivery.'
-    },
-    {
-      pergunta: 'Preciso instalar algum aplicativo?',
-      resposta: 'Não! Tudo funciona diretamente no navegador. Basta criar sua conta e começar a usar imediatamente. Seus dados ficam salvos na nuvem e você pode acessar de qualquer dispositivo.'
-    },
-    {
-      pergunta: 'Como cancelar minha assinatura?',
-      resposta: 'O cancelamento pode ser feito a qualquer momento através do seu painel de usuário. Não há multas ou taxas de cancelamento. Você continuará tendo acesso até o final do período pago.'
-    },
-    {
-      pergunta: 'O que diferencia esta calculadora de outras ferramentas?',
-      resposta: 'Nossa calculadora foi desenvolvida especificamente para restaurantes e lanchonetes. Ela entende as necessidades do seu negócio: cálculo automático de preços com taxas de plataformas, reajustes em massa, organização por categorias e muito mais. Tudo de forma simples e intuitiva.'
-    },
-    {
-      pergunta: 'Quais recursos estão incluídos no plano?',
-      resposta: 'Com o plano anual você tem acesso ilimitado a todas as funcionalidades: cadastro ilimitado de produtos, reajustes automáticos, cálculo de preços com taxas de plataformas, organização por categorias, backup automático dos valores e muito mais.'
-    },
-    {
-      pergunta: 'Para quem é a Recalcula Preço?',
-      resposta: 'É ideal para restaurantes, lanchonetes, food trucks e qualquer estabelecimento que precise gerenciar cardápios e aplicar reajustes de preços de forma eficiente. Perfeito para quem trabalha com delivery e precisa calcular preços considerando as taxas das plataformas.'
-    },
-    {
-      pergunta: 'Posso testar antes de assinar?',
-      resposta: 'Sim! Você pode criar uma conta gratuita e testar o sistema. No modo trial, você pode criar categorias e produtos, mas algumas funcionalidades avançadas como reajustes automáticos e visualização de preços com taxas requerem assinatura.'
-    },
-    {
-      pergunta: 'Meus dados estão seguros?',
-      resposta: 'Sim! Utilizamos criptografia e seguimos as melhores práticas de segurança. Seus dados são armazenados de forma segura e não compartilhamos informações com terceiros.'
+  const carregarFAQ = async () => {
+    try {
+      const faqCarregado = await apiService.obterFAQ();
+      setFaqs(faqCarregado);
+    } catch (error) {
+      console.error('Erro ao carregar FAQ:', error);
+      setFaqs([]);
     }
-  ];
+  };
 
   // Filtrar funções ativas e não-IA para a seção de funcionalidades
   const funcoesAtivas = funcoes.filter(f => f.ativa && !f.eh_ia);
@@ -584,16 +570,16 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
           <p className="faq-subtitle">Tudo que você precisa saber sobre a Recalcula Preço</p>
           
           <div className="faq-list">
-            {faqs.map((faq, index) => (
-              <div key={index} className="faq-item">
+            {faqs.map((faq) => (
+              <div key={faq.id} className="faq-item">
                 <button
-                  className={`faq-question ${faqOpen === index ? 'open' : ''}`}
-                  onClick={() => toggleFaq(index)}
+                  className={`faq-question ${faqOpen === faq.id ? 'open' : ''}`}
+                  onClick={() => toggleFaq(faq.id)}
                 >
                   <span>{faq.pergunta}</span>
-                  {faqOpen === index ? <FaChevronUp /> : <FaChevronDown />}
+                  {faqOpen === faq.id ? <FaChevronUp /> : <FaChevronDown />}
                 </button>
-                {faqOpen === index && (
+                {faqOpen === faq.id && (
                   <div className="faq-answer">
                     <p>{faq.resposta}</p>
                   </div>
