@@ -231,15 +231,41 @@
 
 .beneficio-item {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   padding: 10px;
   background: #f8f9fa;
   border-radius: 4px;
+  gap: 8px;
 }
 
 .beneficio-item span {
   flex: 1;
+  word-break: break-word;
+}
+
+.btn-edit-beneficio {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  min-width: 32px;
+  height: 32px;
+}
+
+.btn-edit-beneficio:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.btn-edit-beneficio:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .btn-remove-beneficio {

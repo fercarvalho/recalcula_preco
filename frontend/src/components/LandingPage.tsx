@@ -24,7 +24,8 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
     onLoginClick();
   };
 
-  const formatarValor = (valor: number): string => {
+  const formatarValor = (valor: number | null | undefined): string => {
+    if (valor === null || valor === undefined || isNaN(valor) || valor <= 0) return '0,00';
     return valor.toFixed(2).replace('.', ',');
   };
 
@@ -32,11 +33,17 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
     if (tipo === 'unico') {
       return periodo || 'pagamento único';
     }
-    if (tipo === 'parcelado' && valorParcelado) {
-      return '/mês em parcelas';
+    if (tipo === 'parcelado') {
+      if (valorParcelado && valorParcelado > 0) {
+        return '/mês em parcelas';
+      }
+      return '';
     }
     if (tipo === 'recorrente') {
-      return periodo ? `/${periodo}` : '/mês';
+      if (periodo && periodo.trim() !== '') {
+        return `/${periodo}`;
+      }
+      return '/mês';
     }
     return '';
   };
@@ -457,9 +464,13 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
 
             <div className="planos-grid-landing">
               {planos.map((plano) => {
-                const valorComDesconto = plano.desconto_percentual 
+                const temDescontoPercentual = !!(plano.desconto_percentual && plano.desconto_percentual > 0);
+                const temDescontoValor = !!(plano.desconto_valor && plano.desconto_valor > 0);
+                const temDesconto = temDescontoPercentual || temDescontoValor;
+                
+                const valorComDesconto = temDescontoPercentual
                   ? plano.valor * (1 - plano.desconto_percentual / 100)
-                  : plano.desconto_valor
+                  : temDescontoValor
                   ? plano.valor - plano.desconto_valor
                   : plano.valor;
 
@@ -471,17 +482,44 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
                     {plano.mais_popular && (
                       <div className="plano-badge-landing">Mais Popular</div>
                     )}
+                    {temDescontoPercentual && (
+                      <div className="plano-badge-desconto-landing">
+                        {plano.desconto_percentual}% OFF
+                      </div>
+                    )}
+                    {temDescontoValor && !temDescontoPercentual && (
+                      <div className="plano-badge-desconto-landing">
+                        R$ {formatarValor(plano.desconto_valor!)} OFF
+                      </div>
+                    )}
                     <div className="plano-header-landing">
                       <h3>{plano.nome}</h3>
                       <div className="plano-preco-landing">
+                        {temDesconto && (
+                          <div className="preco-original-landing">
+                            <span className="preco-original-texto">De: R$ {formatarValor(plano.valor)}</span>
+                          </div>
+                        )}
                         <span className="preco-valor-landing">
                           R$ {formatarValor(valorComDesconto)}
                         </span>
-                        <span className="preco-periodo-landing">
-                          {formatarPeriodo(plano.tipo, plano.periodo || null, plano.valor_parcelado || null)}
-                        </span>
+                        {formatarPeriodo(plano.tipo, plano.periodo || null, plano.valor_parcelado || null) && (
+                          <span className="preco-periodo-landing">
+                            {formatarPeriodo(plano.tipo, plano.periodo || null, plano.valor_parcelado || null)}
+                          </span>
+                        )}
+                        {temDescontoPercentual && (
+                          <p className="desconto-info-landing">
+                            Economize {plano.desconto_percentual}%
+                          </p>
+                        )}
+                        {temDescontoValor && !temDescontoPercentual && (
+                          <p className="desconto-info-landing">
+                            Economize R$ {formatarValor(plano.desconto_valor!)}
+                          </p>
+                        )}
                       </div>
-                      {plano.valor_total && plano.mostrar_valor_total && (
+                      {plano.valor_total && plano.valor_total > 0 && plano.mostrar_valor_total && (
                         <p className="economia-texto">
                           💰 Total: R$ {formatarValor(plano.valor_total)}
                           {plano.tipo === 'recorrente' && plano.periodo === 'mensal' && ' por ano'}
@@ -492,14 +530,27 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
                       )}
                     </div>
                     <ul className="plano-beneficios-landing">
-                      {plano.beneficios && plano.beneficios.map((beneficio, index) => (
-                        <li 
-                          key={index}
-                          className={beneficio.startsWith('⚠️') ? 'texto-aviso' : ''}
-                        >
-                          {!beneficio.startsWith('⚠️') && <FaCheck />} {beneficio}
-                        </li>
-                      ))}
+                      {plano.beneficios && plano.beneficios.map((beneficio, index) => {
+                        const texto = typeof beneficio === 'string' ? beneficio : beneficio.texto;
+                        const ehAviso = typeof beneficio === 'string' 
+                          ? texto.startsWith('⚠️')
+                          : (beneficio.eh_aviso || false);
+                        const textoLimpo = typeof beneficio === 'string' && texto.startsWith('⚠️')
+                          ? texto.substring(1).trim()
+                          : texto;
+                        return (
+                          <li 
+                            key={typeof beneficio === 'string' ? index : (beneficio.id || index)}
+                            className={ehAviso ? 'texto-aviso' : ''}
+                          >
+                            {ehAviso ? (
+                              <>⚠️ {textoLimpo}</>
+                            ) : (
+                              <><FaCheck /> {textoLimpo}</>
+                            )}
+                          </li>
+                        );
+                      })}
                     </ul>
                     <button 
                       onClick={handlePlanoClick} 

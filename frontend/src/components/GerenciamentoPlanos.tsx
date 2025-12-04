@@ -5,6 +5,13 @@ import { mostrarAlert, mostrarConfirm } from '../utils/modals';
 import { apiService } from '../services/api';
 import './GerenciamentoPlanos.css';
 
+export interface Beneficio {
+  id?: number;
+  texto: string;
+  ordem?: number;
+  eh_aviso?: boolean;
+}
+
 export interface Plano {
   id?: number;
   nome: string;
@@ -20,7 +27,7 @@ export interface Plano {
   mostrar_valor_parcelado?: boolean;
   ativo?: boolean;
   ordem?: number;
-  beneficios?: string[];
+  beneficios?: Beneficio[] | string[];
 }
 
 interface GerenciamentoPlanosProps {
@@ -263,8 +270,24 @@ const ModalPlano = ({ plano, onClose, onSave }: ModalPlanoProps) => {
   const [mostrarValorParcelado, setMostrarValorParcelado] = useState(plano?.mostrar_valor_parcelado !== undefined ? plano.mostrar_valor_parcelado : true);
   const [ativo, setAtivo] = useState(plano?.ativo !== undefined ? plano.ativo : true);
   const [ordem, setOrdem] = useState(plano?.ordem?.toString() || '1');
-  const [beneficios, setBeneficios] = useState<string[]>(plano?.beneficios || []);
+  const [beneficios, setBeneficios] = useState<Beneficio[]>(() => {
+    if (!plano?.beneficios) return [];
+    // Converter string[] para Beneficio[] se necessário
+    return plano.beneficios.map((b, index) => {
+      if (typeof b === 'string') {
+        const ehAviso = b.startsWith('⚠️');
+        return { 
+          texto: ehAviso ? b.substring(1).trim() : b, 
+          ordem: index + 1,
+          eh_aviso: ehAviso
+        };
+      }
+      return b;
+    });
+  });
   const [novoBeneficio, setNovoBeneficio] = useState('');
+  const [beneficioEditando, setBeneficioEditando] = useState<number | null>(null);
+  const [textoEditando, setTextoEditando] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -289,19 +312,105 @@ const ModalPlano = ({ plano, onClose, onSave }: ModalPlanoProps) => {
       setMostrarValorParcelado(plano.mostrar_valor_parcelado !== undefined ? plano.mostrar_valor_parcelado : true);
       setAtivo(plano.ativo !== undefined ? plano.ativo : true);
       setOrdem(plano.ordem?.toString() || '1');
-      setBeneficios(plano.beneficios || []);
+      // Converter benefícios para formato Beneficio[]
+      const beneficiosFormatados = (plano.beneficios || []).map((b, index) => {
+        if (typeof b === 'string') {
+          const ehAviso = b.startsWith('⚠️');
+          return { 
+            texto: ehAviso ? b.substring(1).trim() : b, 
+            ordem: index + 1,
+            eh_aviso: ehAviso
+          };
+        }
+        return b;
+      });
+      setBeneficios(beneficiosFormatados);
     }
   }, [plano]);
 
   const handleAdicionarBeneficio = () => {
     if (novoBeneficio.trim()) {
-      setBeneficios([...beneficios, novoBeneficio.trim()]);
+      const texto = novoBeneficio.trim();
+      const ehAviso = texto.startsWith('⚠️');
+      const novo: Beneficio = {
+        texto: ehAviso ? texto.substring(1).trim() : texto,
+        ordem: beneficios.length + 1,
+        eh_aviso: ehAviso
+      };
+      setBeneficios([...beneficios, novo]);
       setNovoBeneficio('');
     }
   };
 
-  const handleRemoverBeneficio = (index: number) => {
-    setBeneficios(beneficios.filter((_, i) => i !== index));
+  const handleRemoverBeneficio = async (beneficio: Beneficio) => {
+    if (!beneficio.id) {
+      // Se não tem ID, é um benefício novo que ainda não foi salvo
+      setBeneficios(beneficios.filter(b => b !== beneficio));
+      return;
+    }
+    
+    const confirmado = await mostrarConfirm(
+      'Confirmar Exclusão',
+      `Tem certeza que deseja deletar este benefício?`
+    );
+    
+    if (!confirmado) return;
+    
+    try {
+      await apiService.deletarBeneficio(beneficio.id);
+      setBeneficios(beneficios.filter(b => b.id !== beneficio.id));
+      await mostrarAlert('Sucesso', 'Benefício deletado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao deletar benefício:', error);
+      await mostrarAlert('Erro', 'Erro ao deletar benefício. Tente novamente.');
+    }
+  };
+
+  const handleIniciarEdicao = (beneficio: Beneficio) => {
+    setBeneficioEditando(beneficio.id || null);
+    setTextoEditando(beneficio.eh_aviso ? `⚠️ ${beneficio.texto}` : beneficio.texto);
+  };
+
+  const handleCancelarEdicao = () => {
+    setBeneficioEditando(null);
+    setTextoEditando('');
+  };
+
+  const handleSalvarEdicao = async (beneficio: Beneficio) => {
+    if (!textoEditando.trim()) {
+      await mostrarAlert('Erro', 'O texto do benefício não pode estar vazio.');
+      return;
+    }
+    
+    const texto = textoEditando.trim();
+    const ehAviso = texto.startsWith('⚠️');
+    const textoLimpo = ehAviso ? texto.substring(1).trim() : texto;
+    
+    if (!beneficio.id) {
+      // Se não tem ID, é um benefício novo - apenas atualizar localmente
+      setBeneficios(beneficios.map(b => 
+        b === beneficio ? { ...b, texto: textoLimpo, eh_aviso: ehAviso } : b
+      ));
+      setBeneficioEditando(null);
+      setTextoEditando('');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const beneficioAtualizado = await apiService.atualizarBeneficio(beneficio.id, textoLimpo, ehAviso);
+      setBeneficios(beneficios.map(b => 
+        b.id === beneficio.id ? beneficioAtualizado : b
+      ));
+      setBeneficioEditando(null);
+      setTextoEditando('');
+      await mostrarAlert('Sucesso', 'Benefício atualizado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao atualizar benefício:', error);
+      await mostrarAlert('Erro', 'Erro ao atualizar benefício. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSalvar = async () => {
@@ -751,16 +860,98 @@ const ModalPlano = ({ plano, onClose, onSave }: ModalPlanoProps) => {
           <label>Benefícios:</label>
           <div className="beneficios-list">
             {beneficios.map((beneficio, index) => (
-              <div key={index} className="beneficio-item">
-                <span>{beneficio}</span>
-                <button
-                  type="button"
-                  onClick={() => handleRemoverBeneficio(index)}
-                  className="btn-remove-beneficio"
-                  disabled={loading}
-                >
-                  <FaTrash />
-                </button>
+              <div key={beneficio.id || index} className="beneficio-item">
+                {beneficioEditando === beneficio.id ? (
+                  <>
+                    <input
+                      type="text"
+                      value={textoEditando}
+                      onChange={(e) => setTextoEditando(e.target.value)}
+                      className="form-input"
+                      style={{ flex: 1, marginRight: '8px' }}
+                      disabled={loading}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          handleSalvarEdicao(beneficio);
+                        } else if (e.key === 'Escape') {
+                          handleCancelarEdicao();
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleSalvarEdicao(beneficio)}
+                      className="btn-secondary"
+                      disabled={loading}
+                      title="Salvar"
+                    >
+                      <FaSave />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCancelarEdicao}
+                      className="btn-secondary"
+                      disabled={loading}
+                      title="Cancelar"
+                    >
+                      ✕
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span style={{ color: beneficio.eh_aviso ? '#ffc107' : 'inherit' }}>
+                      {beneficio.eh_aviso ? '⚠️ ' : ''}{beneficio.texto}
+                    </span>
+                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={beneficio.eh_aviso || false}
+                          onChange={(e) => {
+                            if (beneficio.id) {
+                              // Se tem ID, atualizar no banco
+                              apiService.atualizarBeneficio(beneficio.id, beneficio.texto, e.target.checked)
+                                .then(beneficioAtualizado => {
+                                  setBeneficios(beneficios.map(b => 
+                                    b.id === beneficio.id ? beneficioAtualizado : b
+                                  ));
+                                })
+                                .catch(error => {
+                                  console.error('Erro ao atualizar benefício:', error);
+                                  mostrarAlert('Erro', 'Erro ao atualizar benefício. Tente novamente.');
+                                });
+                            } else {
+                              // Se não tem ID, apenas atualizar localmente
+                              setBeneficios(beneficios.map(b => 
+                                b === beneficio ? { ...b, eh_aviso: e.target.checked } : b
+                              ));
+                            }
+                          }}
+                          disabled={loading}
+                        />
+                        Aviso
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => handleIniciarEdicao(beneficio)}
+                        className="btn-edit-beneficio"
+                        disabled={loading}
+                        title="Editar"
+                      >
+                        <FaEdit />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoverBeneficio(beneficio)}
+                        className="btn-remove-beneficio"
+                        disabled={loading}
+                        title="Excluir"
+                      >
+                        <FaTrash />
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
           </div>

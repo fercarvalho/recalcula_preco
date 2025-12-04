@@ -336,5 +336,21 @@ export const apiService = {
   async deletarPlano(id: number): Promise<void> {
     await api.delete(`/api/admin/planos/${id}`);
   },
+
+  // ========== BENEFÍCIOS ==========
+  async atualizarBeneficio(id: number, texto: string, eh_aviso?: boolean): Promise<{
+    id: number;
+    plano_id: number;
+    texto: string;
+    ordem: number;
+    eh_aviso: boolean;
+  }> {
+    const response = await api.put(`/api/admin/beneficios/${id}`, { texto, eh_aviso });
+    return response.data;
+  },
+
+  async deletarBeneficio(id: number): Promise<void> {
+    await api.delete(`/api/admin/beneficios/${id}`);
+  },
 };
 

@@ -1494,6 +1494,44 @@ app.delete('/api/admin/planos/:id', authenticateToken, requireAdmin, async (req,
     }
 });
 
+// ========== ENDPOINTS DE BENEFÍCIOS ==========
+
+// Atualizar benefício
+app.put('/api/admin/beneficios/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { texto, eh_aviso } = req.body;
+        
+        if (!texto || texto.trim() === '') {
+            return res.status(400).json({ error: 'Texto do benefício é obrigatório' });
+        }
+        
+        const beneficio = await db.atualizarBeneficio(parseInt(id), texto.trim(), eh_aviso !== undefined ? eh_aviso : null);
+        if (!beneficio) {
+            return res.status(404).json({ error: 'Benefício não encontrado' });
+        }
+        res.json(beneficio);
+    } catch (error) {
+        console.error('Erro ao atualizar benefício:', error);
+        res.status(500).json({ error: 'Erro ao atualizar benefício' });
+    }
+});
+
+// Deletar benefício
+app.delete('/api/admin/beneficios/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const deletado = await db.deletarBeneficio(parseInt(id));
+        if (!deletado) {
+            return res.status(404).json({ error: 'Benefício não encontrado' });
+        }
+        res.json({ message: 'Benefício deletado com sucesso' });
+    } catch (error) {
+        console.error('Erro ao deletar benefício:', error);
+        res.status(500).json({ error: 'Erro ao deletar benefício' });
+    }
+});
+
 // Servir arquivos estáticos do frontend React (DEPOIS das rotas da API)
 const frontendPath = path.join(__dirname, 'frontend', 'dist');
 app.use(express.static(frontendPath));

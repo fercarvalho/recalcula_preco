@@ -761,6 +761,40 @@
   border-radius: 20px;
   font-size: 0.9rem;
   font-weight: bold;
+  z-index: 1;
+}
+
+.plano-badge-desconto-landing {
+  position: absolute;
+  top: -15px;
+  left: 20px;
+  background: #4CAF50;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: bold;
+  z-index: 1;
+  animation: pulse 2s infinite;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4);
+}
+
+/* Quando há ambos os badges, ajustar posição */
+.plano-card-landing:has(.plano-badge-landing):has(.plano-badge-desconto-landing) .plano-badge-landing {
+  right: 20px;
+}
+
+.plano-card-landing:has(.plano-badge-landing):has(.plano-badge-desconto-landing) .plano-badge-desconto-landing {
+  left: 20px;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
 }
 
 .plano-header-landing {
@@ -792,6 +826,24 @@
 .preco-periodo-landing {
   font-size: 1rem;
   color: rgba(255, 255, 255, 0.7);
+}
+
+.preco-original-landing {
+  margin-bottom: 0.5rem;
+}
+
+.preco-original-texto {
+  font-size: 1.2rem;
+  color: rgba(255, 255, 255, 0.5);
+  text-decoration: line-through;
+  font-weight: normal;
+}
+
+.desconto-info-landing {
+  margin-top: 0.5rem;
+  color: #4CAF50;
+  font-weight: 600;
+  font-size: 0.9rem;
 }
 
 .economia-texto {

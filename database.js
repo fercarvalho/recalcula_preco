@@ -435,6 +435,34 @@ async function inicializar() {
             )
         `);
         
+        // Criar tabela de benefícios
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS beneficios (
+                id SERIAL PRIMARY KEY,
+                plano_id INTEGER NOT NULL REFERENCES planos(id) ON DELETE CASCADE,
+                texto TEXT NOT NULL,
+                ordem INTEGER DEFAULT 0,
+                eh_aviso BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        // Adicionar coluna eh_aviso se não existir (para tabelas já criadas)
+        await pool.query(`
+            ALTER TABLE beneficios 
+            ADD COLUMN IF NOT EXISTS eh_aviso BOOLEAN DEFAULT FALSE
+        `);
+        
+        // Criar índice para busca rápida por plano_id
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_beneficios_plano_id 
+            ON beneficios(plano_id)
+        `);
+        
+        // Migrar benefícios existentes da coluna TEXT[] para a nova tabela
+        await migrarBeneficiosParaTabela();
+        
         // Inicializar planos padrão se não existirem
         await inicializarPlanosPadrao();
         
@@ -2695,6 +2723,52 @@ async function atualizarConfiguracoesMenu(configuracoes) {
     }
 }
 
+// Migrar benefícios da coluna TEXT[] para a tabela beneficios
+async function migrarBeneficiosParaTabela() {
+    try {
+        // Verificar se já existem benefícios na nova tabela
+        const countBeneficios = await pool.query('SELECT COUNT(*) as count FROM beneficios');
+        if (parseInt(countBeneficios.rows[0].count) > 0) {
+            // Atualizar benefícios existentes que começam com ⚠️ para marcar como aviso
+            await pool.query(`
+                UPDATE beneficios 
+                SET eh_aviso = TRUE 
+                WHERE texto LIKE '⚠️%' AND (eh_aviso IS NULL OR eh_aviso = FALSE)
+            `);
+            // Remover o emoji ⚠️ do texto se existir
+            await pool.query(`
+                UPDATE beneficios 
+                SET texto = TRIM(SUBSTRING(texto FROM 2)) 
+                WHERE texto LIKE '⚠️%'
+            `);
+            return; // Já foram migrados
+        }
+        
+        // Buscar todos os planos que têm benefícios na coluna TEXT[]
+        const planos = await pool.query('SELECT id, beneficios FROM planos WHERE beneficios IS NOT NULL AND array_length(beneficios, 1) > 0');
+        
+        for (const plano of planos.rows) {
+            if (plano.beneficios && Array.isArray(plano.beneficios)) {
+                for (let i = 0; i < plano.beneficios.length; i++) {
+                    const textoOriginal = plano.beneficios[i];
+                    const ehAviso = textoOriginal.startsWith('⚠️');
+                    const textoLimpo = ehAviso ? textoOriginal.substring(1).trim() : textoOriginal;
+                    
+                    await pool.query(
+                        'INSERT INTO beneficios (plano_id, texto, ordem, eh_aviso) VALUES ($1, $2, $3, $4)',
+                        [plano.id, textoLimpo, i + 1, ehAviso]
+                    );
+                }
+            }
+        }
+        
+        console.log('Migração de benefícios concluída');
+    } catch (error) {
+        console.error('Erro ao migrar benefícios:', error);
+        // Não lançar erro para não impedir a inicialização
+    }
+}
+
 // Inicializar planos padrão
 async function inicializarPlanosPadrao() {
     try {
@@ -2771,13 +2845,13 @@ async function inicializarPlanosPadrao() {
         ];
         
         for (const plano of planosPadrao) {
-            await pool.query(
+            const result = await pool.query(
                 `INSERT INTO planos (
                     nome, tipo, valor, valor_parcelado, valor_total, periodo,
                     desconto_percentual, desconto_valor, mais_popular,
-                    mostrar_valor_total, mostrar_valor_parcelado, ativo, ordem, beneficios,
+                    mostrar_valor_total, mostrar_valor_parcelado, ativo, ordem,
                     created_at, updated_at
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) RETURNING id`,
                 [
                     plano.nome,
                     plano.tipo,
@@ -2791,10 +2865,30 @@ async function inicializarPlanosPadrao() {
                     plano.mostrar_valor_total,
                     plano.mostrar_valor_parcelado,
                     plano.ativo,
-                    plano.ordem,
-                    plano.beneficios
+                    plano.ordem
                 ]
             );
+            
+            const planoId = result.rows[0].id;
+            
+            // Inserir benefícios na nova tabela
+            if (plano.beneficios && Array.isArray(plano.beneficios)) {
+                for (let i = 0; i < plano.beneficios.length; i++) {
+                    const beneficio = plano.beneficios[i];
+                    const texto = typeof beneficio === 'string' ? beneficio : (beneficio.texto || beneficio);
+                    const ehAviso = typeof beneficio === 'string' 
+                        ? texto.startsWith('⚠️') 
+                        : (beneficio.eh_aviso || false);
+                    const textoLimpo = typeof beneficio === 'string' && texto.startsWith('⚠️')
+                        ? texto.substring(1).trim()
+                        : texto;
+                    
+                    await pool.query(
+                        'INSERT INTO beneficios (plano_id, texto, ordem, eh_aviso) VALUES ($1, $2, $3, $4)',
+                        [planoId, textoLimpo, i + 1, ehAviso]
+                    );
+                }
+            }
         }
         
         console.log(`${planosPadrao.length} planos padrão inicializados`);
@@ -2805,28 +2899,51 @@ async function inicializarPlanosPadrao() {
 }
 
 // Obter todos os planos
-async function obterPlanos() {
+async function obterPlanos(apenasAtivos = false) {
     try {
-        const result = await pool.query(
-            'SELECT * FROM planos ORDER BY ordem ASC, id ASC'
-        );
-        return result.rows.map(row => ({
-            id: row.id,
-            nome: row.nome,
-            tipo: row.tipo,
-            valor: parseFloat(row.valor),
-            valor_parcelado: row.valor_parcelado ? parseFloat(row.valor_parcelado) : null,
-            valor_total: row.valor_total ? parseFloat(row.valor_total) : null,
-            periodo: row.periodo,
-            desconto_percentual: row.desconto_percentual ? parseFloat(row.desconto_percentual) : 0,
-            desconto_valor: row.desconto_valor ? parseFloat(row.desconto_valor) : 0,
-            mais_popular: row.mais_popular,
-            mostrar_valor_total: row.mostrar_valor_total,
-            mostrar_valor_parcelado: row.mostrar_valor_parcelado,
-            ativo: row.ativo,
-            ordem: row.ordem,
-            beneficios: row.beneficios || []
-        }));
+        let query = 'SELECT * FROM planos';
+        if (apenasAtivos) {
+            query += ' WHERE ativo = TRUE';
+        }
+        query += ' ORDER BY ordem ASC, id ASC';
+        
+        const result = await pool.query(query);
+        const planos = [];
+        
+        for (const row of result.rows) {
+            // Buscar benefícios da nova tabela
+            const beneficiosResult = await pool.query(
+                'SELECT id, texto, ordem, eh_aviso FROM beneficios WHERE plano_id = $1 ORDER BY ordem ASC, id ASC',
+                [row.id]
+            );
+            
+            const beneficios = beneficiosResult.rows.map(b => ({
+                id: b.id,
+                texto: b.texto,
+                ordem: b.ordem,
+                eh_aviso: b.eh_aviso || false
+            }));
+            
+            planos.push({
+                id: row.id,
+                nome: row.nome,
+                tipo: row.tipo,
+                valor: parseFloat(row.valor),
+                valor_parcelado: row.valor_parcelado ? parseFloat(row.valor_parcelado) : null,
+                valor_total: row.valor_total ? parseFloat(row.valor_total) : null,
+                periodo: row.periodo,
+                desconto_percentual: row.desconto_percentual ? parseFloat(row.desconto_percentual) : 0,
+                desconto_valor: row.desconto_valor ? parseFloat(row.desconto_valor) : 0,
+                mais_popular: row.mais_popular,
+                mostrar_valor_total: row.mostrar_valor_total,
+                mostrar_valor_parcelado: row.mostrar_valor_parcelado,
+                ativo: row.ativo,
+                ordem: row.ordem,
+                beneficios: beneficios
+            });
+        }
+        
+        return planos;
     } catch (error) {
         console.error('Erro ao obter planos:', error);
         throw error;
@@ -2841,6 +2958,20 @@ async function obterPlanoPorId(id) {
             return null;
         }
         const row = result.rows[0];
+        
+        // Buscar benefícios da nova tabela
+        const beneficiosResult = await pool.query(
+            'SELECT id, texto, ordem, eh_aviso FROM beneficios WHERE plano_id = $1 ORDER BY ordem ASC, id ASC',
+            [id]
+        );
+        
+        const beneficios = beneficiosResult.rows.map(b => ({
+            id: b.id,
+            texto: b.texto,
+            ordem: b.ordem,
+            eh_aviso: b.eh_aviso || false
+        }));
+        
         return {
             id: row.id,
             nome: row.nome,
@@ -2856,7 +2987,7 @@ async function obterPlanoPorId(id) {
             mostrar_valor_parcelado: row.mostrar_valor_parcelado,
             ativo: row.ativo,
             ordem: row.ordem,
-            beneficios: row.beneficios || []
+            beneficios: beneficios
         };
     } catch (error) {
         console.error('Erro ao obter plano por ID:', error);
@@ -2871,9 +3002,9 @@ async function criarPlano(plano) {
             `INSERT INTO planos (
                 nome, tipo, valor, valor_parcelado, valor_total, periodo,
                 desconto_percentual, desconto_valor, mais_popular,
-                mostrar_valor_total, mostrar_valor_parcelado, ativo, ordem, beneficios,
+                mostrar_valor_total, mostrar_valor_parcelado, ativo, ordem,
                 created_at, updated_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             RETURNING *`,
             [
                 plano.nome,
@@ -2888,11 +3019,40 @@ async function criarPlano(plano) {
                 plano.mostrar_valor_total !== undefined ? plano.mostrar_valor_total : true,
                 plano.mostrar_valor_parcelado !== undefined ? plano.mostrar_valor_parcelado : true,
                 plano.ativo !== undefined ? plano.ativo : true,
-                plano.ordem || 0,
-                plano.beneficios || []
+                plano.ordem || 0
             ]
         );
         const row = result.rows[0];
+        const planoId = row.id;
+        
+        // Inserir benefícios na nova tabela
+        const beneficios = [];
+        if (plano.beneficios && Array.isArray(plano.beneficios)) {
+            for (let i = 0; i < plano.beneficios.length; i++) {
+                const beneficio = plano.beneficios[i];
+                // Se for objeto com id, texto, ordem, usar esses valores
+                const texto = typeof beneficio === 'string' ? beneficio : (beneficio.texto || beneficio);
+                const ordem = typeof beneficio === 'string' ? (i + 1) : (beneficio.ordem || i + 1);
+                const ehAviso = typeof beneficio === 'string' 
+                    ? texto.startsWith('⚠️')
+                    : (beneficio.eh_aviso || false);
+                const textoLimpo = typeof beneficio === 'string' && texto.startsWith('⚠️')
+                    ? texto.substring(1).trim()
+                    : texto;
+                
+                const beneficioResult = await pool.query(
+                    'INSERT INTO beneficios (plano_id, texto, ordem, eh_aviso) VALUES ($1, $2, $3, $4) RETURNING id, texto, ordem, eh_aviso',
+                    [planoId, textoLimpo, ordem, ehAviso]
+                );
+                beneficios.push({
+                    id: beneficioResult.rows[0].id,
+                    texto: beneficioResult.rows[0].texto,
+                    ordem: beneficioResult.rows[0].ordem,
+                    eh_aviso: beneficioResult.rows[0].eh_aviso || false
+                });
+            }
+        }
+        
         return {
             id: row.id,
             nome: row.nome,
@@ -2908,7 +3068,7 @@ async function criarPlano(plano) {
             mostrar_valor_parcelado: row.mostrar_valor_parcelado,
             ativo: row.ativo,
             ordem: row.ordem,
-            beneficios: row.beneficios || []
+            beneficios: beneficios
         };
     } catch (error) {
         console.error('Erro ao criar plano:', error);
@@ -2939,9 +3099,8 @@ async function atualizarPlano(id, plano) {
                 mostrar_valor_parcelado = $11,
                 ativo = $12,
                 ordem = $13,
-                beneficios = $14,
                 updated_at = CURRENT_TIMESTAMP
-            WHERE id = $15
+            WHERE id = $14
             RETURNING *`,
             [
                 plano.nome,
@@ -2957,16 +3116,55 @@ async function atualizarPlano(id, plano) {
                 plano.mostrar_valor_parcelado !== undefined ? plano.mostrar_valor_parcelado : true,
                 plano.ativo !== undefined ? plano.ativo : true,
                 plano.ordem || 0,
-                plano.beneficios || [],
                 id
             ]
         );
+        
+        // Sincronizar benefícios
+        if (plano.beneficios !== undefined) {
+            // Deletar todos os benefícios existentes
+            await pool.query('DELETE FROM beneficios WHERE plano_id = $1', [id]);
+            
+            // Inserir os novos benefícios
+            if (Array.isArray(plano.beneficios) && plano.beneficios.length > 0) {
+                for (let i = 0; i < plano.beneficios.length; i++) {
+                    const beneficio = plano.beneficios[i];
+                    const texto = typeof beneficio === 'string' ? beneficio : (beneficio.texto || beneficio);
+                    const ordem = typeof beneficio === 'string' ? (i + 1) : (beneficio.ordem || i + 1);
+                    const ehAviso = typeof beneficio === 'string' 
+                        ? texto.startsWith('⚠️')
+                        : (beneficio.eh_aviso || false);
+                    const textoLimpo = typeof beneficio === 'string' && texto.startsWith('⚠️')
+                        ? texto.substring(1).trim()
+                        : texto;
+                    
+                    await pool.query(
+                        'INSERT INTO beneficios (plano_id, texto, ordem, eh_aviso) VALUES ($1, $2, $3, $4)',
+                        [id, textoLimpo, ordem, ehAviso]
+                    );
+                }
+            }
+        }
         
         if (result.rows.length === 0) {
             return null;
         }
         
         const row = result.rows[0];
+        
+        // Buscar benefícios atualizados
+        const beneficiosResult = await pool.query(
+            'SELECT id, texto, ordem, eh_aviso FROM beneficios WHERE plano_id = $1 ORDER BY ordem ASC, id ASC',
+            [id]
+        );
+        
+        const beneficios = beneficiosResult.rows.map(b => ({
+            id: b.id,
+            texto: b.texto,
+            ordem: b.ordem,
+            eh_aviso: b.eh_aviso || false
+        }));
+        
         return {
             id: row.id,
             nome: row.nome,
@@ -2982,7 +3180,7 @@ async function atualizarPlano(id, plano) {
             mostrar_valor_parcelado: row.mostrar_valor_parcelado,
             ativo: row.ativo,
             ordem: row.ordem,
-            beneficios: row.beneficios || []
+            beneficios: beneficios
         };
     } catch (error) {
         console.error('Erro ao atualizar plano:', error);
@@ -2997,6 +3195,50 @@ async function deletarPlano(id) {
         return result.rowCount > 0;
     } catch (error) {
         console.error('Erro ao deletar plano:', error);
+        throw error;
+    }
+}
+
+// ========== FUNÇÕES DE BENEFÍCIOS ==========
+
+// Atualizar benefício
+async function atualizarBeneficio(id, texto, ehAviso = null) {
+    try {
+        let query = 'UPDATE beneficios SET texto = $1, updated_at = CURRENT_TIMESTAMP';
+        const params = [texto, id];
+        
+        if (ehAviso !== null) {
+            query += ', eh_aviso = $3';
+            params.push(ehAviso);
+        }
+        
+        query += ' WHERE id = $2 RETURNING *';
+        
+        const result = await pool.query(query, params);
+        if (result.rows.length === 0) {
+            return null;
+        }
+        const row = result.rows[0];
+        return {
+            id: row.id,
+            plano_id: row.plano_id,
+            texto: row.texto,
+            ordem: row.ordem,
+            eh_aviso: row.eh_aviso || false
+        };
+    } catch (error) {
+        console.error('Erro ao atualizar benefício:', error);
+        throw error;
+    }
+}
+
+// Deletar benefício
+async function deletarBeneficio(id) {
+    try {
+        const result = await pool.query('DELETE FROM beneficios WHERE id = $1', [id]);
+        return result.rowCount > 0;
+    } catch (error) {
+        console.error('Erro ao deletar benefício:', error);
         throw error;
     }
 }
@@ -3077,5 +3319,8 @@ module.exports = {
     criarPlano,
     atualizarPlano,
     deletarPlano,
+    // Funções de benefícios
+    atualizarBeneficio,
+    deletarBeneficio,
     fechar
 };
