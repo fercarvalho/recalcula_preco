@@ -3107,8 +3107,6 @@ async function atualizarRodapeLink(id, texto, link, coluna, eh_link) {
         // Se não é um link, garantir que o link seja uma string vazia
         const linkValue = ehLinkValue ? (link || '') : '';
         
-        console.log('database.js atualizarRodapeLink - Parâmetros:', { id, texto, link, linkValue, coluna, eh_link, ehLinkValue });
-        
         const result = await pool.query(
             'UPDATE rodape_links SET texto = $1, link = $2, coluna = $3, eh_link = $4, updated_at = CURRENT_TIMESTAMP WHERE id = $5 RETURNING *',
             [texto, linkValue, coluna, ehLinkValue, id]
@@ -3177,7 +3175,6 @@ async function atualizarOrdemRodapeLinks(linkIds) {
             throw new Error('Nenhum ID de link do rodapé válido fornecido');
         }
 
-        console.log('Atualizando ordem dos links do rodapé:', idsValidos);
 
         // Usar transação para garantir consistência
         const client = await pool.connect();
@@ -3188,7 +3185,6 @@ async function atualizarOrdemRodapeLinks(linkIds) {
                 const ordem = i + 1; // Ordem começa em 1
                 const linkId = idsValidos[i];
 
-                console.log(`Atualizando link do rodapé ID ${linkId} para ordem ${ordem}`);
 
                 const result = await client.query(
                     'UPDATE rodape_links SET ordem = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
@@ -3201,7 +3197,6 @@ async function atualizarOrdemRodapeLinks(linkIds) {
             }
 
             await client.query('COMMIT');
-            console.log('Ordem dos links do rodapé atualizada com sucesso');
         } catch (error) {
             await client.query('ROLLBACK');
             console.error('Erro na transação ao atualizar ordem dos links do rodapé:', error);

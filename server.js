@@ -1752,7 +1752,6 @@ app.put('/api/admin/rodape/ordem', authenticateToken, requireAdmin, async (req, 
     try {
         const { linkIds } = req.body;
         
-        console.log('Recebido para atualizar ordem dos links do rodapé:', linkIds);
         
         if (!Array.isArray(linkIds)) {
             console.error('linkIds não é um array:', typeof linkIds, linkIds);
@@ -1806,8 +1805,6 @@ app.put('/api/admin/rodape/:id', authenticateToken, requireAdmin, async (req, re
         const { id } = req.params;
         const { texto, link, coluna, eh_link } = req.body;
         
-        console.log('Atualizar rodapé - Recebido:', { id, texto, link, coluna, eh_link, linkType: typeof link, linkLength: link?.length });
-        
         if (!texto || !texto.trim()) {
             return res.status(400).json({ error: 'O texto do link é obrigatório' });
         }
@@ -1829,38 +1826,21 @@ app.put('/api/admin/rodape/:id', authenticateToken, requireAdmin, async (req, re
             ehLinkValue = Boolean(eh_link);
         }
         
-        console.log('=== VALIDAÇÃO RODAPÉ ===');
-        console.log('eh_link recebido:', eh_link, 'tipo:', typeof eh_link);
-        console.log('ehLinkValue calculado:', ehLinkValue, 'tipo:', typeof ehLinkValue, 'é true?', ehLinkValue === true, 'é false?', ehLinkValue === false);
-        console.log('link recebido:', link, 'tipo:', typeof link);
-        
-        // IMPORTANTE: Só validar o link se ehLinkValue for explicitamente true
-        // Se for false, não validar (permitir link vazio)
+        // Se eh_link é true, o link é obrigatório
         if (ehLinkValue === true) {
-            console.log('ehLinkValue é TRUE - validando se link está preenchido');
             const linkTrimmed = link ? String(link).trim() : '';
-            console.log('linkTrimmed:', linkTrimmed, 'está vazio?', linkTrimmed === '');
             if (linkTrimmed === '') {
-                console.log('ERRO: link é obrigatório quando eh_link é true');
                 return res.status(400).json({ error: 'O link é obrigatório quando o item é um link' });
             }
-            console.log('Link válido!');
-        } else {
-            console.log('ehLinkValue é FALSE - NÃO validando link, permitindo vazio');
         }
         
         // Se eh_link é false, o link deve ser uma string vazia
         const linkValue = ehLinkValue ? (link ? String(link).trim() : '') : '';
-        console.log('linkValue final:', linkValue, 'ehLinkValue:', ehLinkValue);
-        console.log('=== FIM VALIDAÇÃO ===');
         
-        console.log('Chamando db.atualizarRodapeLink com:', { id: parseInt(id), texto: texto.trim(), link: linkValue, coluna: coluna.trim(), eh_link: ehLinkValue });
         const linkAtualizado = await db.atualizarRodapeLink(parseInt(id), texto.trim(), linkValue, coluna.trim(), ehLinkValue);
         if (!linkAtualizado) {
-            console.log('Link não encontrado no banco de dados');
             return res.status(404).json({ error: 'Link não encontrado' });
         }
-        console.log('Link atualizado com sucesso:', linkAtualizado);
         res.json(linkAtualizado);
     } catch (error) {
         console.error('Erro ao atualizar link do rodapé:', error);

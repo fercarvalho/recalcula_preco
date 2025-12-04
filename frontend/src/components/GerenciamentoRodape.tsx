@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { FaLink, FaPlus, FaEdit, FaTrash, FaSave, FaGripVertical, FaToggleOn, FaToggleOff } from 'react-icons/fa';
 import Modal from './Modal';
 import { mostrarAlert, mostrarConfirm, mostrarPrompt } from '../utils/modals';
@@ -115,44 +115,67 @@ const GerenciamentoRodape = ({ isOpen, onClose }: GerenciamentoRodapeProps) => {
     handleAdicionar(novaColuna);
   };
 
-  // Drag and drop para reordenar links do rodapé (todos os links juntos, mas ordenados por coluna)
+  // Drag and drop para reordenar links do rodapé (similar ao FAQ)
   const handleReorderLinks = async (novosLinks: RodapeLink[]) => {
     // Atualizar localmente primeiro para feedback imediato
     setLinks(novosLinks);
     
     try {
-      console.log('handleReorderLinks chamado com:', novosLinks);
+      // Recalcular ordem sequencial dentro de cada coluna baseado na nova ordem
+      colunas.forEach(col => {
+        const linksDaColuna = novosLinks
+          .filter(l => l.coluna === col)
+          .sort((a, b) => {
+            // Manter a ordem relativa atual na lista
+            const indexA = novosLinks.findIndex(l => l.id === a.id);
+            const indexB = novosLinks.findIndex(l => l.id === b.id);
+            return indexA - indexB;
+          });
+        
+        // Atualizar ordem sequencial (0, 1, 2, ...)
+        linksDaColuna.forEach((link, ordem) => {
+          const linkIndex = novosLinks.findIndex(l => l.id === link.id);
+          if (linkIndex !== -1) {
+            novosLinks[linkIndex].ordem = ordem;
+          }
+        });
+      });
       
       const linkIds = novosLinks
         .map(p => p.id)
         .filter((id): id is number => {
-          // Filtrar apenas IDs numéricos (não temporários)
           if (id === undefined || id === null) return false;
-          if (typeof id === 'string') return false; // IDs temporários são strings
+          if (typeof id === 'string') return false;
           const numId = typeof id === 'string' ? parseInt(id, 10) : id;
-          const isValid = !isNaN(numId);
-          if (!isValid) {
-            console.warn('ID inválido filtrado:', id);
-          }
-          return isValid;
+          return !isNaN(numId);
         })
         .map(id => {
           const numId = typeof id === 'string' ? parseInt(id, 10) : id;
-          console.log('ID convertido:', id, '->', numId);
           return numId;
         });
-      
-      console.log('IDs finais para enviar:', linkIds);
       
       if (linkIds.length === 0) {
         throw new Error('Nenhum ID de link válido encontrado');
       }
       
-      if (linkIds.length !== novosLinks.length) {
-        console.warn(`Aviso: ${novosLinks.length - linkIds.length} links foram filtrados por terem IDs inválidos`);
-      }
-      
       await apiService.atualizarOrdemRodapeLinks(linkIds);
+      
+      // Verificar se algum link mudou de coluna e atualizar
+      const linksOriginais = links;
+      for (const novoLink of novosLinks) {
+        const linkOriginal = linksOriginais.find(l => l.id === novoLink.id);
+        if (linkOriginal && linkOriginal.coluna !== novoLink.coluna) {
+          if (novoLink.id && typeof novoLink.id === 'number') {
+            await apiService.atualizarRodapeLink(
+              novoLink.id,
+              novoLink.texto,
+              novoLink.link,
+              novoLink.coluna,
+              novoLink.eh_link
+            );
+          }
+        }
+      }
       
       // Disparar evento para atualizar o rodapé na landing page
       window.dispatchEvent(new CustomEvent('rodape-updated'));
@@ -164,13 +187,67 @@ const GerenciamentoRodape = ({ isOpen, onClose }: GerenciamentoRodapeProps) => {
     }
   };
 
+  // Estado para rastrear qual link está sendo arrastado
+  const [draggedLinkId, setDraggedLinkId] = useState<string | number | null>(null);
+
   const {
-    handleDragStart: handleDragStartLink,
-    handleDragEnd: handleDragEndLink,
-    handleDragOver: handleDragOverLink,
-    handleDrop: handleDropLink,
+    handleDragStart: handleDragStartLinkBase,
+    handleDragEnd: handleDragEndLinkBase,
+    handleDragOver: handleDragOverLinkBase,
+    handleDrop: handleDropLinkBase,
     handleDragLeave: handleDragLeaveLink,
   } = useDragAndDrop(linksComIds, handleReorderLinks);
+
+  // Wrapper customizado para handleDrop que detecta a coluna de destino
+  const handleDropLink = (e: React.DragEvent, id: string | number) => {
+    // Encontrar a coluna do elemento onde foi solto
+    const targetElement = e.currentTarget as HTMLElement;
+    const colunaElement = targetElement.closest('.rodape-coluna');
+    const colunaDestino = colunaElement?.querySelector('.rodape-coluna-header h3')?.textContent;
+    
+    if (colunaDestino && draggedLinkId) {
+      const draggedLink = linksComIds.find(l => l.id === draggedLinkId);
+      if (draggedLink && draggedLink.coluna !== colunaDestino) {
+        // Atualizar a coluna do link antes de chamar o handler base
+        const novosLinks = linksComIds.map(l => 
+          l.id === draggedLinkId ? { ...l, coluna: colunaDestino } : l
+        );
+        
+        // Reordenar: mover o link arrastado para a posição do link de destino
+        const draggedIndex = novosLinks.findIndex(l => l.id === draggedLinkId);
+        const dropIndex = novosLinks.findIndex(l => l.id === id);
+        
+        if (draggedIndex !== -1 && dropIndex !== -1) {
+          const [linkMovido] = novosLinks.splice(draggedIndex, 1);
+          const insertIndex = dropIndex > draggedIndex ? dropIndex : dropIndex;
+          novosLinks.splice(insertIndex, 0, linkMovido);
+          
+          handleReorderLinks(novosLinks);
+          setDraggedLinkId(null);
+          return;
+        }
+      }
+    }
+    
+    // Se não mudou de coluna, usar o handler normal
+    handleDropLinkBase(e, id);
+    setDraggedLinkId(null);
+  };
+
+  // Wrapper para handleDragStart que salva o ID do link arrastado
+  const handleDragStartLink = (e: React.DragEvent, id: string | number, type: 'categoria' | 'item' | 'plano') => {
+    setDraggedLinkId(id);
+    handleDragStartLinkBase(e, id, type);
+  };
+
+  // Wrapper para handleDragEnd que limpa o estado
+  const handleDragEndLink = (e: React.DragEvent) => {
+    setDraggedLinkId(null);
+    handleDragEndLinkBase(e);
+  };
+
+  // Wrapper para handleDragOver
+  const handleDragOverLink = handleDragOverLinkBase;
 
   // Agrupar links por coluna
   const linksPorColuna = colunas.reduce((acc, coluna) => {
@@ -369,12 +446,12 @@ const ModalLink = ({ link, colunas, colunaSelecionada: colunaInicial, onClose, o
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [link?.id]);
   
-  // Atualizar coluna separadamente quando colunaInicial mudar
+  // Atualizar coluna quando colunaInicial mudar
   useEffect(() => {
-    if (colunaInicial && coluna !== colunaInicial) {
+    if (colunaInicial) {
       setColuna(colunaInicial);
     }
-  }, [colunaInicial, coluna]);
+  }, [colunaInicial]);
 
   const handleSalvar = async () => {
     if (!texto.trim()) {
@@ -396,15 +473,6 @@ const ModalLink = ({ link, colunas, colunaSelecionada: colunaInicial, onClose, o
     try {
       // Se não é um link, garantir que o linkUrl seja uma string vazia
       const linkFinal = ehLink ? linkUrl.trim() : '';
-      
-      console.log('Frontend - Enviando dados:', {
-        id: link?.id,
-        texto: texto.trim(),
-        link: linkFinal,
-        coluna: coluna.trim(),
-        ehLink: ehLink,
-        ehLinkType: typeof ehLink
-      });
       
       if (link?.id && typeof link.id === 'number') {
         await apiService.atualizarRodapeLink(link.id, texto.trim(), linkFinal, coluna.trim(), ehLink);
@@ -508,8 +576,11 @@ const ModalLink = ({ link, colunas, colunaSelecionada: colunaInicial, onClose, o
           <label htmlFor="link-coluna">Coluna <span className="required">*</span>:</label>
           <select
             id="link-coluna"
-            value={coluna}
-            onChange={(e) => setColuna(e.target.value)}
+            value={coluna || ''}
+            onChange={(e) => {
+              e.preventDefault();
+              setColuna(e.target.value);
+            }}
             className="form-input"
             disabled={loading}
           >

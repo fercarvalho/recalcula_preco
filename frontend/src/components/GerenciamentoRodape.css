@@ -101,6 +101,19 @@
   border-radius: 2px;
 }
 
+.rodape-drop-zone {
+  min-height: 4px;
+  margin: 2px 0;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.rodape-drop-zone.drag-over {
+  min-height: 20px;
+  background: rgba(255, 107, 53, 0.1);
+  border: 2px dashed var(--cor-primaria, #FF6B35);
+}
+
 .rodape-link-item:hover {
   border-color: var(--cor-primaria, #FF6B35);
   box-shadow: 0 2px 8px rgba(255, 107, 53, 0.1);

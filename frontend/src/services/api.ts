@@ -500,7 +500,6 @@ export const apiService = {
       coluna,
       eh_link: eh_link !== undefined ? Boolean(eh_link) : true
     };
-    console.log('api.ts - Enviando payload:', payload);
     const response = await api.put(`/api/admin/rodape/${id}`, payload);
     return response.data;
   },
