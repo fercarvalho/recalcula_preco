@@ -375,7 +375,7 @@ const iconesFuncoes = [
   'FaExclamationTriangle', 'FaInfo', 'FaInfoCircle',
   'FaQuestion', 'FaQuestionCircle', 'FaCheckCircle', 'FaTimesCircle',
   // Status e confirmação
-  'FaCheck', 'FaCheckSquare', 'FaCheckCircle',
+  'FaCheck', 'FaCheckSquare',
   'FaTimes', 'FaBan', 'FaStop', 'FaStopCircle',
   'FaPlay', 'FaPlayCircle', 'FaPause', 'FaPauseCircle',
   // IA e tecnologia
@@ -403,10 +403,10 @@ const iconesFuncoes = [
   'FaUserPlus', 'FaUserMinus', 'FaUserTimes',
   'FaUserCheck',
   // Configurações e preferências
-  'FaCog', 'FaCogs', 'FaWrench', 'FaTools',
+  'FaWrench', 'FaTools',
   'FaHammer', 'FaScrewdriver', 'FaPaintBrush', 'FaPalette',
   // Gráficos e análise
-  'FaChartLine', 'FaChartBar', 'FaChartPie', 'FaChartArea',
+  'FaChartArea',
   // Ações e comandos
   'FaPlus', 'FaPlusCircle', 'FaPlusSquare', 'FaMinus', 'FaMinusCircle',
   'FaMinusSquare', 'FaPowerOff',
@@ -424,14 +424,12 @@ const iconesFuncoes = [
   'FaBolt', 'FaFire', 'FaRocket', 'FaSpaceShuttle', 'FaAtom',
   'FaFlask', 'FaMicroscope', 'FaVial', 'FaDna',
   // Sincronização e atualização
-  'FaSync', 'FaSyncAlt', 'FaRedo', 'FaRedoAlt', 'FaUndo', 'FaUndoAlt',
   'FaSpinner', 'FaCircleNotch',
   // Backup e restauração
-  'FaArchive', 'FaDatabase', 'FaServer',
-  'FaCloud',
+  // (FaArchive, FaDatabase, FaServer, FaCloud já estão acima)
   // Integração e API
-  'FaCode', 'FaPlug', 'FaNetworkWired',
-  'FaRss', 'FaLink'
+  'FaCode', 'FaPlug'
+  // (FaNetworkWired, FaRss, FaLink já estão acima)
 ];
 
 const SelecionarIconeModal = ({ isOpen, iconeAtual, onClose, onSelect, tipo = 'categoria' }: SelecionarIconeModalProps) => {
@@ -443,8 +441,12 @@ const SelecionarIconeModal = ({ isOpen, iconeAtual, onClose, onSelect, tipo = 'c
     setBusca(''); // Limpar busca ao fechar
   };
 
-  // Selecionar lista de ícones baseado no tipo
-  const iconesDisponiveis = tipo === 'funcao' ? iconesFuncoes : iconesCategorias;
+  // Selecionar lista de ícones baseado no tipo e remover duplicatas
+  const iconesDisponiveis = useMemo(() => {
+    const lista = tipo === 'funcao' ? iconesFuncoes : iconesCategorias;
+    // Remover duplicatas usando Set
+    return Array.from(new Set(lista));
+  }, [tipo]);
 
   // Filtrar ícones baseado na busca
   const iconesFiltrados = useMemo(() => {
@@ -460,7 +462,7 @@ const SelecionarIconeModal = ({ isOpen, iconeAtual, onClose, onSelect, tipo = 'c
              nomeTraduzido.includes(termoBusca) || 
              nomeIcone.toLowerCase().includes(termoBusca);
     });
-  }, [busca, tipo]);
+  }, [busca, iconesDisponiveis]);
 
   return (
     <Modal
