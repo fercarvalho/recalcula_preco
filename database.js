@@ -3475,6 +3475,20 @@ async function atualizarBeneficio(id, texto, ehAviso = null) {
     }
 }
 
+// Remover benefício de um plano específico (sem deletar o benefício)
+async function removerBeneficioDoPlano(planoId, beneficioId) {
+    try {
+        const result = await pool.query(
+            'DELETE FROM plano_beneficios WHERE plano_id = $1 AND beneficio_id = $2',
+            [planoId, beneficioId]
+        );
+        return result.rowCount > 0;
+    } catch (error) {
+        console.error('Erro ao remover benefício do plano:', error);
+        throw error;
+    }
+}
+
 // Deletar benefício (remove de todos os planos)
 async function deletarBeneficio(id) {
     try {
@@ -3568,6 +3582,7 @@ module.exports = {
     deletarPlano,
     // Funções de benefícios
     obterTodosBeneficios,
+    removerBeneficioDoPlano,
     atualizarBeneficio,
     deletarBeneficio,
     fechar

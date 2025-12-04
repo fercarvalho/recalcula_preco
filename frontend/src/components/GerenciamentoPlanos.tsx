@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FaCreditCard, FaPlus, FaEdit, FaTrash, FaToggleOn, FaToggleOff, FaSave, FaStar } from 'react-icons/fa';
 import Modal from './Modal';
-import { mostrarAlert, mostrarConfirm } from '../utils/modals';
+import { mostrarAlert, mostrarConfirm, mostrarChoice } from '../utils/modals';
 import { apiService } from '../services/api';
 import './GerenciamentoPlanos.css';
 
@@ -390,20 +390,36 @@ const ModalPlano = ({ plano, onClose, onSave }: ModalPlanoProps) => {
       return;
     }
     
-    const confirmado = await mostrarConfirm(
-      'Confirmar Exclusão',
-      `Tem certeza que deseja deletar este benefício?`
+    if (!plano?.id) {
+      // Se não tem plano.id, apenas remover localmente
+      setBeneficios(beneficios.filter(b => b.id !== beneficio.id));
+      return;
+    }
+    
+    const escolha = await mostrarChoice(
+      'Remover Benefício',
+      `O que você deseja fazer com o benefício "${beneficio.texto}"?`,
+      'Remover apenas deste plano',
+      'Deletar completamente'
     );
     
-    if (!confirmado) return;
+    if (escolha === 'cancel') return;
     
     try {
-      await apiService.deletarBeneficio(beneficio.id);
-      setBeneficios(beneficios.filter(b => b.id !== beneficio.id));
-      await mostrarAlert('Sucesso', 'Benefício deletado com sucesso!');
+      if (escolha === 'option1') {
+        // Remover apenas do plano atual
+        await apiService.removerBeneficioDoPlano(plano.id, beneficio.id);
+        setBeneficios(beneficios.filter(b => b.id !== beneficio.id));
+        await mostrarAlert('Sucesso', 'Benefício removido do plano com sucesso!');
+      } else if (escolha === 'option2') {
+        // Deletar completamente (afeta todos os planos)
+        await apiService.deletarBeneficio(beneficio.id);
+        setBeneficios(beneficios.filter(b => b.id !== beneficio.id));
+        await mostrarAlert('Sucesso', 'Benefício deletado completamente com sucesso!');
+      }
     } catch (error) {
-      console.error('Erro ao deletar benefício:', error);
-      await mostrarAlert('Erro', 'Erro ao deletar benefício. Tente novamente.');
+      console.error('Erro ao processar remoção do benefício:', error);
+      await mostrarAlert('Erro', 'Erro ao processar remoção do benefício. Tente novamente.');
     }
   };
 

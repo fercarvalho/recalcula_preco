@@ -351,6 +351,10 @@ export const apiService = {
     await api.delete(`/api/admin/beneficios/${id}`);
   },
 
+  async removerBeneficioDoPlano(planoId: number, beneficioId: number): Promise<void> {
+    await api.delete(`/api/admin/planos/${planoId}/beneficios/${beneficioId}`);
+  },
+
   async obterTodosBeneficios(): Promise<Array<{
     id: number;
     texto: string;

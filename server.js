@@ -1543,6 +1543,21 @@ app.get('/api/admin/beneficios', authenticateToken, requireAdmin, async (req, re
     }
 });
 
+// Remover benefício de um plano específico (sem deletar o benefício)
+app.delete('/api/admin/planos/:planoId/beneficios/:beneficioId', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { planoId, beneficioId } = req.params;
+        const removido = await db.removerBeneficioDoPlano(parseInt(planoId), parseInt(beneficioId));
+        if (!removido) {
+            return res.status(404).json({ error: 'Relacionamento não encontrado' });
+        }
+        res.json({ message: 'Benefício removido do plano com sucesso' });
+    } catch (error) {
+        console.error('Erro ao remover benefício do plano:', error);
+        res.status(500).json({ error: 'Erro ao remover benefício do plano' });
+    }
+});
+
 // Servir arquivos estáticos do frontend React (DEPOIS das rotas da API)
 const frontendPath = path.join(__dirname, 'frontend', 'dist');
 app.use(express.static(frontendPath));
