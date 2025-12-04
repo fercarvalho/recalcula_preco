@@ -14,11 +14,70 @@
   border-radius: 8px;
   padding: 20px;
   transition: all 0.2s ease;
+  position: relative;
+  display: flex;
+  gap: 12px;
+  cursor: grab;
 }
 
 .plano-card:hover {
   border-color: var(--cor-primaria, #FF6B35);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.plano-card.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.plano-card.drag-over {
+  border-color: var(--cor-primaria, #FF6B35);
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+}
+
+.plano-card.drag-over-top::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--cor-primaria, #FF6B35);
+  border-radius: 2px;
+}
+
+.plano-card.drag-over-bottom::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--cor-primaria, #FF6B35);
+  border-radius: 2px;
+}
+
+.plano-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  cursor: grab;
+  padding: 4px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.plano-drag-handle:active {
+  cursor: grabbing;
+}
+
+.plano-card:hover .plano-drag-handle {
+  color: var(--cor-primaria, #FF6B35);
+}
+
+.plano-content {
+  flex: 1;
 }
 
 .plano-header {

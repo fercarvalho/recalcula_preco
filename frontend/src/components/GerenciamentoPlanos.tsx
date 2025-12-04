@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { FaCreditCard, FaPlus, FaEdit, FaTrash, FaToggleOn, FaToggleOff, FaSave, FaStar } from 'react-icons/fa';
+import { FaCreditCard, FaPlus, FaEdit, FaTrash, FaToggleOn, FaToggleOff, FaSave, FaStar, FaGripVertical } from 'react-icons/fa';
 import Modal from './Modal';
 import { mostrarAlert, mostrarConfirm, mostrarChoice } from '../utils/modals';
 import { apiService } from '../services/api';
+import { useDragAndDrop } from '../hooks/useDragAndDrop';
 import './GerenciamentoPlanos.css';
 
 export interface Beneficio {
@@ -46,6 +47,60 @@ const GerenciamentoPlanos = ({ isOpen, onClose }: GerenciamentoPlanosProps) => {
       carregarPlanos();
     }
   }, [isOpen]);
+
+  // Drag and drop para reordenar planos
+  const handleReorderPlanos = async (novosPlanos: Plano[]) => {
+    try {
+      console.log('handleReorderPlanos chamado com:', novosPlanos);
+      
+      setPlanos(novosPlanos);
+      const planosIds = novosPlanos
+        .map(p => {
+          console.log('Plano:', p.nome, 'ID:', p.id, 'Tipo:', typeof p.id);
+          return p.id;
+        })
+        .filter((id): id is number => {
+          const isValid = id !== undefined && id !== null && !isNaN(Number(id));
+          if (!isValid) {
+            console.warn('ID inválido filtrado:', id);
+          }
+          return isValid;
+        })
+        .map(id => {
+          const numId = Number(id);
+          console.log('ID convertido:', id, '->', numId);
+          return numId;
+        });
+      
+      console.log('IDs finais para enviar:', planosIds);
+      
+      if (planosIds.length === 0) {
+        throw new Error('Nenhum ID de plano válido encontrado');
+      }
+      
+      if (planosIds.length !== novosPlanos.length) {
+        console.warn(`Aviso: ${novosPlanos.length - planosIds.length} planos foram filtrados por terem IDs inválidos`);
+      }
+      
+      await apiService.atualizarOrdemPlanos(planosIds);
+      
+      // Disparar evento para atualizar os planos na landing page
+      window.dispatchEvent(new CustomEvent('planos-updated'));
+    } catch (error) {
+      console.error('Erro ao atualizar ordem dos planos:', error);
+      await mostrarAlert('Erro', 'Erro ao atualizar ordem dos planos. Tente novamente.');
+      // Recarregar planos em caso de erro
+      await carregarPlanos();
+    }
+  };
+
+  const {
+    handleDragStart,
+    handleDragEnd,
+    handleDragOver,
+    handleDrop,
+    handleDragLeave,
+  } = useDragAndDrop(planos, handleReorderPlanos);
 
   const carregarPlanos = async () => {
     try {
@@ -157,9 +212,22 @@ const GerenciamentoPlanos = ({ isOpen, onClose }: GerenciamentoPlanosProps) => {
           ) : (
             <div className="planos-list">
               {planos.map((plano) => (
-                <div key={plano.id} className="plano-card">
-                  <div className="plano-header">
-                    <div className="plano-info">
+                <div
+                  key={plano.id}
+                  className="plano-card"
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, plano.id!, 'plano')}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={(e) => handleDragOver(e, plano.id!)}
+                  onDrop={(e) => handleDrop(e, plano.id!)}
+                  onDragLeave={handleDragLeave}
+                >
+                  <div className="plano-drag-handle" title="Arraste para reordenar">
+                    <FaGripVertical />
+                  </div>
+                  <div className="plano-content">
+                    <div className="plano-header">
+                      <div className="plano-info">
                       <h3>
                         {plano.nome}
                         {plano.mais_popular && (
@@ -202,9 +270,9 @@ const GerenciamentoPlanos = ({ isOpen, onClose }: GerenciamentoPlanosProps) => {
                           </button>
                         </label>
                       </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="plano-actions">
+                    <div className="plano-actions">
                     <button
                       onClick={() => {
                         setPlanoEditando(plano);
@@ -220,6 +288,7 @@ const GerenciamentoPlanos = ({ isOpen, onClose }: GerenciamentoPlanosProps) => {
                     >
                       <FaTrash /> Deletar
                     </button>
+                    </div>
                   </div>
                 </div>
               ))}

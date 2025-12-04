@@ -3,7 +3,7 @@ import type { DragEvent } from 'react';
 
 interface DragState {
   draggedId: string | number | null;
-  draggedType: 'categoria' | 'item' | null;
+  draggedType: 'categoria' | 'item' | 'plano' | null;
   draggedElement: HTMLElement | null;
   dragOverId: string | number | null;
   dragOverPosition: 'before' | 'after' | null;
@@ -21,7 +21,7 @@ export const useDragAndDrop = <T extends { id: string | number }>(
     dragOverPosition: null,
   });
 
-  const handleDragStart = (e: DragEvent, id: string | number, type: 'categoria' | 'item') => {
+  const handleDragStart = (e: DragEvent, id: string | number, type: 'categoria' | 'item' | 'plano') => {
     setDragState({
       draggedId: id,
       draggedType: type,

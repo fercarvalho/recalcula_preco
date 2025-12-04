@@ -125,10 +125,19 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
         beneficios: p.beneficios
       }));
       
+      // Ordenar primeiro por ordem (campo que define a ordem na lista de gerenciamento)
+      // e depois por mais_popular como critério secundário
       const planosOrdenados = planosConvertidos.sort((a, b) => {
+        // Primeiro critério: ordem
+        const ordemA = a.ordem ?? 999;
+        const ordemB = b.ordem ?? 999;
+        if (ordemA !== ordemB) {
+          return ordemA - ordemB;
+        }
+        // Segundo critério: mais popular (apenas se a ordem for igual)
         if (a.mais_popular && !b.mais_popular) return -1;
         if (!a.mais_popular && b.mais_popular) return 1;
-        return (a.ordem || 0) - (b.ordem || 0);
+        return 0;
       });
       setPlanos(planosOrdenados);
     } catch (error) {

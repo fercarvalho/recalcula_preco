@@ -363,5 +363,9 @@ export const apiService = {
     const response = await api.get('/api/admin/beneficios');
     return response.data;
   },
+
+  async atualizarOrdemPlanos(planosIds: number[]): Promise<void> {
+    await api.put('/api/admin/planos/ordem', { planosIds });
+  },
 };
 

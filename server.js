@@ -1458,6 +1458,32 @@ app.post('/api/admin/planos', authenticateToken, requireAdmin, async (req, res) 
     }
 });
 
+// Atualizar ordem dos planos (DEVE VIR ANTES DA ROTA /:id)
+app.put('/api/admin/planos/ordem', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { planosIds } = req.body;
+        
+        console.log('Recebido para atualizar ordem:', planosIds);
+        
+        if (!Array.isArray(planosIds)) {
+            console.error('planosIds não é um array:', typeof planosIds, planosIds);
+            return res.status(400).json({ error: 'planosIds deve ser um array' });
+        }
+        
+        if (planosIds.length === 0) {
+            console.error('planosIds está vazio');
+            return res.status(400).json({ error: 'planosIds não pode estar vazio' });
+        }
+        
+        await db.atualizarOrdemPlanos(planosIds);
+        res.json({ message: 'Ordem dos planos atualizada com sucesso' });
+    } catch (error) {
+        console.error('Erro ao atualizar ordem dos planos:', error);
+        console.error('Stack trace:', error.stack);
+        res.status(500).json({ error: 'Erro ao atualizar ordem dos planos', details: error.message });
+    }
+});
+
 // Atualizar plano (apenas admin)
 app.put('/api/admin/planos/:id', authenticateToken, requireAdmin, async (req, res) => {
     try {
