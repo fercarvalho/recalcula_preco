@@ -57,6 +57,29 @@
   border-radius: 20px;
   font-size: 0.9rem;
   font-weight: bold;
+  z-index: 1;
+}
+
+.plano-badge-desconto {
+  position: absolute;
+  top: -12px;
+  left: 20px;
+  background: #ff9800;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: bold;
+  z-index: 1;
+}
+
+/* Quando há ambos os badges, ajustar posição */
+.plano-card:has(.plano-badge):has(.plano-badge-desconto) .plano-badge {
+  right: 20px;
+}
+
+.plano-card:has(.plano-badge):has(.plano-badge-desconto) .plano-badge-desconto {
+  left: 20px;
 }
 
 .plano-header {

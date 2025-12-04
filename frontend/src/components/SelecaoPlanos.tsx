@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { FaCheck } from 'react-icons/fa';
 import { apiService } from '../services/api';
 import { mostrarAlert } from '../utils/modals';
+import type { Plano } from './GerenciamentoPlanos';
 import './SelecaoPlanos.css';
 
 interface SelecaoPlanosProps {
@@ -9,6 +11,7 @@ interface SelecaoPlanosProps {
 
 export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso: _onPagamentoSucesso }) => {
   const [carregando, setCarregando] = useState<string | null>(null);
+  const [planos, setPlanos] = useState<Plano[]>([]);
   const [statusPagamento, setStatusPagamento] = useState<{
     temAcesso: boolean;
     tipo: 'anual' | 'unico' | null;
@@ -16,7 +19,67 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
 
   useEffect(() => {
     verificarStatus();
+    carregarPlanos();
   }, []);
+
+  const carregarPlanos = async () => {
+    try {
+      const planosCarregados = await apiService.obterPlanos();
+      // Converter para o tipo Plano e ordenar por ordem
+      const planosConvertidos: Plano[] = planosCarregados.map(p => ({
+        id: p.id,
+        nome: p.nome,
+        tipo: p.tipo as Plano['tipo'],
+        valor: p.valor,
+        valor_parcelado: p.valor_parcelado,
+        valor_total: p.valor_total,
+        periodo: p.periodo,
+        desconto_percentual: p.desconto_percentual,
+        desconto_valor: p.desconto_valor,
+        mais_popular: p.mais_popular,
+        mostrar_valor_total: p.mostrar_valor_total,
+        mostrar_valor_parcelado: p.mostrar_valor_parcelado,
+        ativo: p.ativo,
+        ordem: p.ordem,
+        beneficios: p.beneficios
+      }));
+      
+      // Ordenar por ordem
+      const planosOrdenados = planosConvertidos.sort((a, b) => {
+        const ordemA = a.ordem ?? 999;
+        const ordemB = b.ordem ?? 999;
+        return ordemA - ordemB;
+      });
+      
+      setPlanos(planosOrdenados);
+    } catch (error) {
+      console.error('Erro ao carregar planos:', error);
+    }
+  };
+
+  const formatarValor = (valor: number | null | undefined): string => {
+    if (valor === null || valor === undefined || isNaN(valor) || valor <= 0) return '0,00';
+    return valor.toFixed(2).replace('.', ',');
+  };
+
+  const formatarPeriodo = (tipo: string, periodo: string | null | undefined, valorParcelado: number | null | undefined): string => {
+    if (tipo === 'unico') {
+      return periodo || 'pagamento único';
+    }
+    if (tipo === 'parcelado') {
+      if (valorParcelado && valorParcelado > 0) {
+        return '/mês em parcelas';
+      }
+      return '';
+    }
+    if (tipo === 'recorrente') {
+      if (periodo && periodo.trim() !== '') {
+        return `/${periodo}`;
+      }
+      return '/mês';
+    }
+    return '';
+  };
 
   const verificarStatus = async () => {
     try {
@@ -27,25 +90,24 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
     }
   };
 
-  const handlePlanoAnual = async () => {
+  const handlePlanoClick = async (plano: Plano) => {
     try {
-      setCarregando('anual');
-      const { url } = await apiService.criarCheckoutAnual();
-      window.location.href = url;
-    } catch (error: any) {
-      setCarregando(null);
-      await mostrarAlert(
-        'Erro',
-        error.response?.data?.error || 'Erro ao criar sessão de pagamento. Tente novamente.'
-      );
-    }
-  };
-
-  const handlePlanoUnico = async () => {
-    try {
-      setCarregando('unico');
-      const { url } = await apiService.criarCheckoutUnico();
-      window.location.href = url;
+      const nomeLower = plano.nome.toLowerCase();
+      const isAnual = plano.tipo === 'recorrente' && (nomeLower.includes('anual') || nomeLower.includes('anual'));
+      const isUnico = plano.tipo === 'unico' || nomeLower.includes('único') || nomeLower.includes('unico');
+      
+      if (isAnual) {
+        setCarregando('anual');
+        const { url } = await apiService.criarCheckoutAnual();
+        window.location.href = url;
+      } else if (isUnico) {
+        setCarregando('unico');
+        const { url } = await apiService.criarCheckoutUnico();
+        window.location.href = url;
+      } else {
+        await mostrarAlert('Erro', 'Tipo de plano não suportado para pagamento.');
+        setCarregando(null);
+      }
     } catch (error: any) {
       setCarregando(null);
       await mostrarAlert(
@@ -78,62 +140,102 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
       </div>
 
       <div className="planos-grid">
-        {/* Plano Anual */}
-        <div className="plano-card plano-destaque">
-          <div className="plano-badge">Mais Popular</div>
-          <div className="plano-header">
-            <h2>Plano Anual</h2>
-            <div className="plano-preco">
-              <span className="preco-valor">R$ 19,90</span>
-              <span className="preco-periodo">/mês em 12x</span>
-            </div>
-            <p className="plano-descricao">Acesso completo por 12 meses</p>
-          </div>
-          <ul className="plano-beneficios">
-            <li>✅ Cadastro ilimitado de produtos</li>
-            <li>✅ Reajustes automáticos (fixo ou percentual)</li>
-            <li>✅ Cálculo com taxas de plataformas</li>
-            <li>✅ Organização por categorias</li>
-            <li>✅ Acesso de qualquer dispositivo</li>
-            <li>✅ Backup automático de valores</li>
-            <li>✅ Suporte prioritário</li>
-          </ul>
-          <button
-            className="btn-plano btn-plano-anual"
-            onClick={handlePlanoAnual}
-            disabled={carregando !== null}
-          >
-            {carregando === 'anual' ? 'Processando...' : 'Assinar Plano Anual'}
-          </button>
-        </div>
+        {planos.length === 0 ? (
+          <div>Carregando planos...</div>
+        ) : (
+          planos.map((plano) => {
+            const temDescontoPercentual = !!(plano.desconto_percentual && plano.desconto_percentual > 0);
+            const temDescontoValor = !!(plano.desconto_valor && plano.desconto_valor > 0);
+            const temDesconto = temDescontoPercentual || temDescontoValor;
+            
+            // Calcular valor a exibir
+            let valorExibir = plano.valor;
+            if (plano.tipo === 'parcelado' && plano.mostrar_valor_parcelado && plano.valor_parcelado) {
+              valorExibir = plano.valor_parcelado;
+            } else if (plano.tipo === 'recorrente' && plano.mostrar_valor_total && plano.valor_total) {
+              valorExibir = plano.valor_total;
+            }
 
-        {/* Plano Único */}
-        <div className="plano-card">
-          <div className="plano-header">
-            <h2>Acesso Único</h2>
-            <div className="plano-preco">
-              <span className="preco-valor">R$ 199,00</span>
-              <span className="preco-periodo">pagamento único</span>
-            </div>
-            <p className="plano-descricao">Acesso por 24 horas</p>
-          </div>
-          <ul className="plano-beneficios">
-            <li>✅ Cadastro ilimitado de produtos</li>
-            <li>✅ Reajustes automáticos (fixo ou percentual)</li>
-            <li>✅ Cálculo com taxas de plataformas</li>
-            <li>✅ Organização por categorias</li>
-            <li>✅ Acesso de qualquer dispositivo</li>
-            <li className="texto-aviso">⚠️ Válido por 24 horas após o pagamento</li>
-            <li className="texto-aviso">⚠️ Dados não são salvos permanentemente</li>
-          </ul>
-          <button
-            className="btn-plano btn-plano-unico"
-            onClick={handlePlanoUnico}
-            disabled={carregando !== null}
-          >
-            {carregando === 'unico' ? 'Processando...' : 'Comprar Acesso Único'}
-          </button>
-        </div>
+            return (
+              <div
+                key={plano.id}
+                className={`plano-card ${plano.mais_popular ? 'plano-destaque' : ''}`}
+              >
+                {plano.mais_popular && (
+                  <div className="plano-badge">Mais Popular</div>
+                )}
+                {temDesconto && (
+                  <div className="plano-badge-desconto">
+                    {temDescontoPercentual
+                      ? `${plano.desconto_percentual}% OFF`
+                      : `R$ ${formatarValor(plano.desconto_valor)} OFF`}
+                  </div>
+                )}
+                <div className="plano-header">
+                  <h2>{plano.nome}</h2>
+                  <div className="plano-preco">
+                    <span className="preco-valor">R$ {formatarValor(valorExibir)}</span>
+                    <span className="preco-periodo">
+                      {formatarPeriodo(plano.tipo, plano.periodo, plano.valor_parcelado)}
+                    </span>
+                  </div>
+                  {plano.periodo && plano.tipo === 'unico' && (
+                    <p className="plano-descricao">Acesso por {plano.periodo}</p>
+                  )}
+                  {plano.tipo === 'recorrente' && (
+                    <p className="plano-descricao">Acesso completo por 12 meses</p>
+                  )}
+                </div>
+                <ul className="plano-beneficios">
+                  {plano.beneficios && plano.beneficios.map((beneficio, index) => {
+                    const texto = typeof beneficio === 'string' ? beneficio : beneficio.texto;
+                    const ehAviso = typeof beneficio === 'string'
+                      ? texto.startsWith('⚠️')
+                      : (beneficio.eh_aviso || false);
+                    const textoLimpo = typeof beneficio === 'string' && texto.startsWith('⚠️')
+                      ? texto.substring(1).trim()
+                      : texto;
+                    return (
+                      <li
+                        key={typeof beneficio === 'string' ? index : (beneficio.id || index)}
+                        className={ehAviso ? 'texto-aviso' : ''}
+                      >
+                        {ehAviso ? (
+                          <>⚠️ {textoLimpo}</>
+                        ) : (
+                          <><FaCheck /> {textoLimpo}</>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+                <button
+                  className={`btn-plano ${plano.mais_popular ? 'btn-plano-anual' : 'btn-plano-unico'}`}
+                  onClick={() => handlePlanoClick(plano)}
+                  disabled={carregando !== null}
+                >
+                  {(() => {
+                    const nomeLower = plano.nome.toLowerCase();
+                    const isAnual = plano.tipo === 'recorrente' && (nomeLower.includes('anual'));
+                    const isUnico = plano.tipo === 'unico' || nomeLower.includes('único') || nomeLower.includes('unico');
+                    const loadingType = isAnual ? 'anual' : (isUnico ? 'unico' : null);
+                    
+                    if (carregando === loadingType) {
+                      return 'Processando...';
+                    }
+                    if (isUnico) {
+                      return 'Comprar Acesso Único';
+                    }
+                    if (isAnual) {
+                      return 'Assinar Plano Anual';
+                    }
+                    return plano.tipo === 'unico' ? 'Comprar' : 'Assinar';
+                  })()}
+                </button>
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );
