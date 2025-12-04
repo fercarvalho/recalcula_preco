@@ -3389,6 +3389,23 @@ async function deletarPlano(id) {
 
 // ========== FUNÇÕES DE BENEFÍCIOS ==========
 
+// Obter todos os benefícios disponíveis
+async function obterTodosBeneficios() {
+    try {
+        const result = await pool.query(
+            'SELECT id, texto, eh_aviso FROM beneficios ORDER BY texto ASC'
+        );
+        return result.rows.map(row => ({
+            id: row.id,
+            texto: row.texto,
+            eh_aviso: row.eh_aviso || false
+        }));
+    } catch (error) {
+        console.error('Erro ao obter todos os benefícios:', error);
+        throw error;
+    }
+}
+
 // Obter ou criar benefício único (compartilhado entre planos)
 async function obterOuCriarBeneficio(texto, ehAviso = false) {
     try {
@@ -3550,6 +3567,7 @@ module.exports = {
     atualizarPlano,
     deletarPlano,
     // Funções de benefícios
+    obterTodosBeneficios,
     atualizarBeneficio,
     deletarBeneficio,
     fechar

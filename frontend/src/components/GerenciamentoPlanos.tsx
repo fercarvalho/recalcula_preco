@@ -289,6 +289,9 @@ const ModalPlano = ({ plano, onClose, onSave }: ModalPlanoProps) => {
   const [beneficioEditando, setBeneficioEditando] = useState<number | null>(null);
   const [textoEditando, setTextoEditando] = useState('');
   const [loading, setLoading] = useState(false);
+  const [todosBeneficios, setTodosBeneficios] = useState<Beneficio[]>([]);
+  const [buscaBeneficio, setBuscaBeneficio] = useState('');
+  const [mostrarResultadosBusca, setMostrarResultadosBusca] = useState(false);
 
   useEffect(() => {
     if (plano) {
@@ -328,6 +331,19 @@ const ModalPlano = ({ plano, onClose, onSave }: ModalPlanoProps) => {
     }
   }, [plano]);
 
+  // Carregar todos os benefícios disponíveis quando o modal abrir
+  useEffect(() => {
+    const carregarTodosBeneficios = async () => {
+      try {
+        const todos = await apiService.obterTodosBeneficios();
+        setTodosBeneficios(todos);
+      } catch (error) {
+        console.error('Erro ao carregar benefícios:', error);
+      }
+    };
+    carregarTodosBeneficios();
+  }, []);
+
   const handleAdicionarBeneficio = () => {
     if (novoBeneficio.trim()) {
       const texto = novoBeneficio.trim();
@@ -341,6 +357,31 @@ const ModalPlano = ({ plano, onClose, onSave }: ModalPlanoProps) => {
       setNovoBeneficio('');
     }
   };
+
+  const handleAdicionarBeneficioExistente = (beneficio: Beneficio) => {
+    // Verificar se o benefício já não está na lista
+    const jaExiste = beneficios.some(b => b.id === beneficio.id);
+    if (!jaExiste) {
+      const novo: Beneficio = {
+        id: beneficio.id,
+        texto: beneficio.texto,
+        ordem: beneficios.length + 1,
+        eh_aviso: beneficio.eh_aviso || false
+      };
+      setBeneficios([...beneficios, novo]);
+      setBuscaBeneficio('');
+      setMostrarResultadosBusca(false);
+    }
+  };
+
+  // Filtrar benefícios disponíveis baseado na busca
+  const beneficiosFiltrados = todosBeneficios.filter(b => {
+    if (!buscaBeneficio.trim()) return false;
+    const textoBusca = buscaBeneficio.toLowerCase();
+    const textoBeneficio = b.texto.toLowerCase();
+    return textoBeneficio.includes(textoBusca) && 
+           !beneficios.some(ben => ben.id === b.id); // Não mostrar se já está no plano
+  });
 
   const handleRemoverBeneficio = async (beneficio: Beneficio) => {
     if (!beneficio.id) {
@@ -498,7 +539,7 @@ const ModalPlano = ({ plano, onClose, onSave }: ModalPlanoProps) => {
         </>
       }
     >
-      <div className="plano-form">
+      <div className="plano-form" style={{ paddingBottom: 0 }}>
         <div className="form-row">
           <div className="form-group">
             <label htmlFor="plano-nome">Nome do Plano <span className="required">*</span>:</label>
@@ -856,8 +897,9 @@ const ModalPlano = ({ plano, onClose, onSave }: ModalPlanoProps) => {
           )}
         </div>
 
-        <div className="form-group">
+        <div className="form-group" style={{ marginBottom: 0 }}>
           <label>Benefícios:</label>
+          
           <div className="beneficios-list">
             {beneficios.map((beneficio, index) => (
               <div key={beneficio.id || index} className="beneficio-item">
@@ -955,7 +997,72 @@ const ModalPlano = ({ plano, onClose, onSave }: ModalPlanoProps) => {
               </div>
             ))}
           </div>
-          <div className="adicionar-beneficio">
+          
+          {/* Campo de busca de benefícios existentes */}
+          <div style={{ marginTop: '12px', marginBottom: '0', position: 'relative' }}>
+            <input
+              type="text"
+              value={buscaBeneficio}
+              onChange={(e) => {
+                setBuscaBeneficio(e.target.value);
+                setMostrarResultadosBusca(e.target.value.trim().length > 0);
+              }}
+              onFocus={() => {
+                if (buscaBeneficio.trim().length > 0) {
+                  setMostrarResultadosBusca(true);
+                }
+              }}
+              onBlur={() => {
+                // Delay para permitir clique nos resultados
+                setTimeout(() => setMostrarResultadosBusca(false), 200);
+              }}
+              placeholder="Buscar benefícios existentes..."
+              className="form-input"
+              style={{ width: '100%' }}
+              disabled={loading}
+            />
+            
+            {/* Lista de resultados da busca */}
+            {mostrarResultadosBusca && beneficiosFiltrados.length > 0 && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                right: 0,
+                backgroundColor: 'white',
+                border: '1px solid #ddd',
+                borderRadius: '4px',
+                maxHeight: '200px',
+                overflowY: 'auto',
+                zIndex: 1000,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                marginTop: '4px'
+              }}>
+                {beneficiosFiltrados.map((beneficio) => (
+                  <div
+                    key={beneficio.id}
+                    onClick={() => handleAdicionarBeneficioExistente(beneficio)}
+                    style={{
+                      padding: '8px 12px',
+                      cursor: 'pointer',
+                      borderBottom: '1px solid #eee',
+                      color: beneficio.eh_aviso ? '#ffc107' : 'inherit'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#f5f5f5';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'white';
+                    }}
+                  >
+                    {beneficio.eh_aviso ? '⚠️ ' : ''}{beneficio.texto}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          
+          <div className="adicionar-beneficio" style={{ marginTop: '12px', marginBottom: '0' }}>
             <input
               type="text"
               value={novoBeneficio}

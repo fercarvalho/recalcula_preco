@@ -350,5 +350,14 @@ export const apiService = {
   async deletarBeneficio(id: number): Promise<void> {
     await api.delete(`/api/admin/beneficios/${id}`);
   },
+
+  async obterTodosBeneficios(): Promise<Array<{
+    id: number;
+    texto: string;
+    eh_aviso: boolean;
+  }>> {
+    const response = await api.get('/api/admin/beneficios');
+    return response.data;
+  },
 };
 

@@ -1532,6 +1532,17 @@ app.delete('/api/admin/beneficios/:id', authenticateToken, requireAdmin, async (
     }
 });
 
+// Obter todos os benefícios disponíveis
+app.get('/api/admin/beneficios', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const beneficios = await db.obterTodosBeneficios();
+        res.json(beneficios);
+    } catch (error) {
+        console.error('Erro ao obter benefícios:', error);
+        res.status(500).json({ error: 'Erro ao obter benefícios' });
+    }
+});
+
 // Servir arquivos estáticos do frontend React (DEPOIS das rotas da API)
 const frontendPath = path.join(__dirname, 'frontend', 'dist');
 app.use(express.static(frontendPath));
