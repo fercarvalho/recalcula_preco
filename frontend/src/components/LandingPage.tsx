@@ -471,7 +471,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
           <div className="container">
             <h2 className="section-title">Escolha o plano ideal para você</h2>
 
-            <div className="planos-grid-landing">
+            <div className={`planos-grid-landing planos-${planos.length}`}>
               {planos.map((plano) => {
                 const temDescontoPercentual = !!(plano.desconto_percentual && plano.desconto_percentual > 0);
                 const temDescontoValor = !!(plano.desconto_valor && plano.desconto_valor > 0);

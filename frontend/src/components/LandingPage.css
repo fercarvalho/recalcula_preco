@@ -723,10 +723,47 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
   gap: 2rem;
-  max-width: 900px;
+  max-width: 1200px;
   margin: 0 auto 2rem;
   padding: 0 2rem;
   box-sizing: border-box;
+  justify-content: center;
+}
+
+/* Telas maiores que 11 polegadas (>= 1400px) - 3 planos por linha */
+@media (min-width: 1400px) {
+  .planos-grid-landing {
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    max-width: 1400px;
+    justify-content: center;
+  }
+  
+  /* Quando há apenas 2 planos, limitar largura para centralizar */
+  .planos-grid-landing.planos-2 {
+    grid-template-columns: repeat(2, 1fr);
+    max-width: 900px;
+  }
+  
+  /* Quando há apenas 1 plano, limitar largura para centralizar */
+  .planos-grid-landing.planos-1 {
+    grid-template-columns: 1fr;
+    max-width: 450px;
+  }
+}
+
+/* Telas médias (768px - 1399px) - 2 planos por linha */
+@media (min-width: 768px) and (max-width: 1399px) {
+  .planos-grid-landing {
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    max-width: 1000px;
+    justify-content: center;
+  }
+  
+  /* Quando há apenas 1 plano, limitar largura para centralizar */
+  .planos-grid-landing.planos-1 {
+    grid-template-columns: 1fr;
+    max-width: 450px;
+  }
 }
 
 .plano-card-landing {
@@ -1266,6 +1303,7 @@
 
   .planos-grid-landing {
     grid-template-columns: 1fr;
+    max-width: 100%;
   }
 
   .beneficios-grid {
