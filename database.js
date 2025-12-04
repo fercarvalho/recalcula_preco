@@ -435,13 +435,11 @@ async function inicializar() {
             )
         `);
         
-        // Criar tabela de benefícios
+        // Criar tabela de benefícios (sem plano_id - benefícios são compartilhados)
         await pool.query(`
             CREATE TABLE IF NOT EXISTS beneficios (
                 id SERIAL PRIMARY KEY,
-                plano_id INTEGER NOT NULL REFERENCES planos(id) ON DELETE CASCADE,
-                texto TEXT NOT NULL,
-                ordem INTEGER DEFAULT 0,
+                texto TEXT NOT NULL UNIQUE,
                 eh_aviso BOOLEAN DEFAULT FALSE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -454,14 +452,69 @@ async function inicializar() {
             ADD COLUMN IF NOT EXISTS eh_aviso BOOLEAN DEFAULT FALSE
         `);
         
-        // Criar índice para busca rápida por plano_id
+        // Remover plano_id se existir (migração)
         await pool.query(`
-            CREATE INDEX IF NOT EXISTS idx_beneficios_plano_id 
-            ON beneficios(plano_id)
+            DO $$ 
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'beneficios' AND column_name = 'plano_id'
+                ) THEN
+                    ALTER TABLE beneficios DROP COLUMN plano_id;
+                END IF;
+            END $$;
         `);
         
-        // Migrar benefícios existentes da coluna TEXT[] para a nova tabela
-        await migrarBeneficiosParaTabela();
+        // Limpar benefícios duplicados antes de adicionar constraint UNIQUE
+        await pool.query(`
+            DO $$ 
+            BEGIN
+                -- Deletar duplicatas, mantendo apenas o primeiro registro de cada texto
+                DELETE FROM beneficios a
+                USING beneficios b
+                WHERE a.id > b.id 
+                AND LOWER(TRIM(a.texto)) = LOWER(TRIM(b.texto));
+            END $$;
+        `);
+        
+        // Adicionar UNIQUE constraint no texto se não existir
+        await pool.query(`
+            DO $$ 
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_constraint 
+                    WHERE conname = 'beneficios_texto_key'
+                ) THEN
+                    ALTER TABLE beneficios ADD CONSTRAINT beneficios_texto_key UNIQUE (texto);
+                END IF;
+            END $$;
+        `);
+        
+        // Criar tabela de relacionamento plano_beneficios (many-to-many)
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS plano_beneficios (
+                id SERIAL PRIMARY KEY,
+                plano_id INTEGER NOT NULL REFERENCES planos(id) ON DELETE CASCADE,
+                beneficio_id INTEGER NOT NULL REFERENCES beneficios(id) ON DELETE CASCADE,
+                ordem INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(plano_id, beneficio_id)
+            )
+        `);
+        
+        // Criar índices para busca rápida
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_plano_beneficios_plano_id 
+            ON plano_beneficios(plano_id)
+        `);
+        
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_plano_beneficios_beneficio_id 
+            ON plano_beneficios(beneficio_id)
+        `);
+        
+        // Migrar benefícios existentes para estrutura many-to-many
+        await migrarBeneficiosParaManyToMany();
         
         // Inicializar planos padrão se não existirem
         await inicializarPlanosPadrao();
@@ -2723,7 +2776,111 @@ async function atualizarConfiguracoesMenu(configuracoes) {
     }
 }
 
-// Migrar benefícios da coluna TEXT[] para a tabela beneficios
+// Migrar benefícios para estrutura many-to-many (consolidando duplicatas)
+async function migrarBeneficiosParaManyToMany() {
+    try {
+        // Verificar se a tabela plano_beneficios já tem dados (já foi migrado)
+        const countRelacionamentos = await pool.query('SELECT COUNT(*) as count FROM plano_beneficios');
+        if (parseInt(countRelacionamentos.rows[0].count) > 0) {
+            console.log('Migração many-to-many já foi realizada');
+            return;
+        }
+        
+        // Verificar se a coluna plano_id ainda existe
+        const colunaExiste = await pool.query(`
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'beneficios' AND column_name = 'plano_id'
+            ) as exists
+        `);
+        
+        if (!colunaExiste.rows[0].exists) {
+            console.log('Coluna plano_id não existe mais - migração já foi concluída ou não é necessária');
+            return;
+        }
+        
+        // Verificar se existem benefícios antigos com plano_id (estrutura antiga)
+        const beneficiosAntigos = await pool.query(`
+            SELECT id, plano_id, texto, ordem, eh_aviso 
+            FROM beneficios 
+            WHERE plano_id IS NOT NULL
+            ORDER BY plano_id, ordem
+        `);
+        
+        if (beneficiosAntigos.rows.length === 0) {
+            console.log('Nenhum benefício antigo encontrado para migrar');
+            return;
+        }
+        
+        console.log(`Migrando ${beneficiosAntigos.rows.length} benefícios para estrutura many-to-many...`);
+        
+        // Agrupar benefícios por texto (normalizado - trim e lowercase para comparação)
+        const beneficiosUnicos = new Map(); // texto_normalizado -> { id, texto, eh_aviso }
+        const relacionamentos = []; // [{ plano_id, beneficio_id, ordem }]
+        
+        for (const beneficio of beneficiosAntigos.rows) {
+            const textoNormalizado = beneficio.texto.trim().toLowerCase();
+            
+            // Se já existe um benefício com esse texto, usar o ID existente
+            if (beneficiosUnicos.has(textoNormalizado)) {
+                const beneficioExistente = beneficiosUnicos.get(textoNormalizado);
+                relacionamentos.push({
+                    plano_id: beneficio.plano_id,
+                    beneficio_id: beneficioExistente.id,
+                    ordem: beneficio.ordem
+                });
+            } else {
+                // Criar novo benefício único (sem plano_id)
+                const novoBeneficio = await pool.query(
+                    'INSERT INTO beneficios (texto, eh_aviso) VALUES ($1, $2) ON CONFLICT (texto) DO UPDATE SET texto = beneficios.texto RETURNING id',
+                    [beneficio.texto.trim(), beneficio.eh_aviso || false]
+                );
+                
+                const novoId = novoBeneficio.rows[0].id;
+                beneficiosUnicos.set(textoNormalizado, {
+                    id: novoId,
+                    texto: beneficio.texto.trim(),
+                    eh_aviso: beneficio.eh_aviso || false
+                });
+                
+                relacionamentos.push({
+                    plano_id: beneficio.plano_id,
+                    beneficio_id: novoId,
+                    ordem: beneficio.ordem
+                });
+            }
+        }
+        
+        // Inserir relacionamentos
+        for (const rel of relacionamentos) {
+            await pool.query(
+                'INSERT INTO plano_beneficios (plano_id, beneficio_id, ordem) VALUES ($1, $2, $3) ON CONFLICT (plano_id, beneficio_id) DO NOTHING',
+                [rel.plano_id, rel.beneficio_id, rel.ordem]
+            );
+        }
+        
+        // Deletar benefícios antigos que tinham plano_id (se ainda existirem)
+        // Nota: Isso só funcionará se a coluna plano_id ainda existir
+        await pool.query(`
+            DO $$ 
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'beneficios' AND column_name = 'plano_id'
+                ) THEN
+                    DELETE FROM beneficios WHERE plano_id IS NOT NULL;
+                END IF;
+            END $$;
+        `);
+        
+        console.log(`Migração concluída: ${beneficiosUnicos.size} benefícios únicos criados, ${relacionamentos.length} relacionamentos estabelecidos`);
+    } catch (error) {
+        console.error('Erro ao migrar benefícios para many-to-many:', error);
+        // Não lançar erro para não impedir a inicialização
+    }
+}
+
+// Migrar benefícios da coluna TEXT[] para a tabela beneficios (função antiga - mantida para compatibilidade)
 async function migrarBeneficiosParaTabela() {
     try {
         // Verificar se já existem benefícios na nova tabela
@@ -2871,7 +3028,7 @@ async function inicializarPlanosPadrao() {
             
             const planoId = result.rows[0].id;
             
-            // Inserir benefícios na nova tabela
+            // Inserir benefícios usando relacionamento many-to-many
             if (plano.beneficios && Array.isArray(plano.beneficios)) {
                 for (let i = 0; i < plano.beneficios.length; i++) {
                     const beneficio = plano.beneficios[i];
@@ -2883,9 +3040,13 @@ async function inicializarPlanosPadrao() {
                         ? texto.substring(1).trim()
                         : texto;
                     
+                    // Obter ou criar benefício único
+                    const beneficioId = await obterOuCriarBeneficio(textoLimpo, ehAviso);
+                    
+                    // Criar relacionamento
                     await pool.query(
-                        'INSERT INTO beneficios (plano_id, texto, ordem, eh_aviso) VALUES ($1, $2, $3, $4)',
-                        [planoId, textoLimpo, i + 1, ehAviso]
+                        'INSERT INTO plano_beneficios (plano_id, beneficio_id, ordem) VALUES ($1, $2, $3) ON CONFLICT (plano_id, beneficio_id) DO NOTHING',
+                        [planoId, beneficioId, i + 1]
                     );
                 }
             }
@@ -2911,9 +3072,13 @@ async function obterPlanos(apenasAtivos = false) {
         const planos = [];
         
         for (const row of result.rows) {
-            // Buscar benefícios da nova tabela
+            // Buscar benefícios através da tabela intermediária
             const beneficiosResult = await pool.query(
-                'SELECT id, texto, ordem, eh_aviso FROM beneficios WHERE plano_id = $1 ORDER BY ordem ASC, id ASC',
+                `SELECT b.id, b.texto, pb.ordem, b.eh_aviso 
+                 FROM beneficios b
+                 INNER JOIN plano_beneficios pb ON b.id = pb.beneficio_id
+                 WHERE pb.plano_id = $1 
+                 ORDER BY pb.ordem ASC, b.id ASC`,
                 [row.id]
             );
             
@@ -2959,9 +3124,13 @@ async function obterPlanoPorId(id) {
         }
         const row = result.rows[0];
         
-        // Buscar benefícios da nova tabela
+        // Buscar benefícios através da tabela intermediária
         const beneficiosResult = await pool.query(
-            'SELECT id, texto, ordem, eh_aviso FROM beneficios WHERE plano_id = $1 ORDER BY ordem ASC, id ASC',
+            `SELECT b.id, b.texto, pb.ordem, b.eh_aviso 
+             FROM beneficios b
+             INNER JOIN plano_beneficios pb ON b.id = pb.beneficio_id
+             WHERE pb.plano_id = $1 
+             ORDER BY pb.ordem ASC, b.id ASC`,
             [id]
         );
         
@@ -3025,7 +3194,7 @@ async function criarPlano(plano) {
         const row = result.rows[0];
         const planoId = row.id;
         
-        // Inserir benefícios na nova tabela
+        // Inserir benefícios usando relacionamento many-to-many
         const beneficios = [];
         if (plano.beneficios && Array.isArray(plano.beneficios)) {
             for (let i = 0; i < plano.beneficios.length; i++) {
@@ -3040,14 +3209,25 @@ async function criarPlano(plano) {
                     ? texto.substring(1).trim()
                     : texto;
                 
-                const beneficioResult = await pool.query(
-                    'INSERT INTO beneficios (plano_id, texto, ordem, eh_aviso) VALUES ($1, $2, $3, $4) RETURNING id, texto, ordem, eh_aviso',
-                    [planoId, textoLimpo, ordem, ehAviso]
+                // Obter ou criar benefício único
+                const beneficioId = await obterOuCriarBeneficio(textoLimpo, ehAviso);
+                
+                // Criar relacionamento
+                await pool.query(
+                    'INSERT INTO plano_beneficios (plano_id, beneficio_id, ordem) VALUES ($1, $2, $3) ON CONFLICT (plano_id, beneficio_id) DO UPDATE SET ordem = $3',
+                    [planoId, beneficioId, ordem]
                 );
+                
+                // Buscar dados do benefício para retornar
+                const beneficioResult = await pool.query(
+                    'SELECT id, texto, eh_aviso FROM beneficios WHERE id = $1',
+                    [beneficioId]
+                );
+                
                 beneficios.push({
                     id: beneficioResult.rows[0].id,
                     texto: beneficioResult.rows[0].texto,
-                    ordem: beneficioResult.rows[0].ordem,
+                    ordem: ordem,
                     eh_aviso: beneficioResult.rows[0].eh_aviso || false
                 });
             }
@@ -3122,10 +3302,10 @@ async function atualizarPlano(id, plano) {
         
         // Sincronizar benefícios
         if (plano.beneficios !== undefined) {
-            // Deletar todos os benefícios existentes
-            await pool.query('DELETE FROM beneficios WHERE plano_id = $1', [id]);
+            // Deletar todos os relacionamentos existentes
+            await pool.query('DELETE FROM plano_beneficios WHERE plano_id = $1', [id]);
             
-            // Inserir os novos benefícios
+            // Inserir os novos relacionamentos
             if (Array.isArray(plano.beneficios) && plano.beneficios.length > 0) {
                 for (let i = 0; i < plano.beneficios.length; i++) {
                     const beneficio = plano.beneficios[i];
@@ -3138,9 +3318,13 @@ async function atualizarPlano(id, plano) {
                         ? texto.substring(1).trim()
                         : texto;
                     
+                    // Obter ou criar benefício único
+                    const beneficioId = await obterOuCriarBeneficio(textoLimpo, ehAviso);
+                    
+                    // Criar relacionamento
                     await pool.query(
-                        'INSERT INTO beneficios (plano_id, texto, ordem, eh_aviso) VALUES ($1, $2, $3, $4)',
-                        [id, textoLimpo, ordem, ehAviso]
+                        'INSERT INTO plano_beneficios (plano_id, beneficio_id, ordem) VALUES ($1, $2, $3)',
+                        [id, beneficioId, ordem]
                     );
                 }
             }
@@ -3152,9 +3336,13 @@ async function atualizarPlano(id, plano) {
         
         const row = result.rows[0];
         
-        // Buscar benefícios atualizados
+        // Buscar benefícios atualizados através da tabela intermediária
         const beneficiosResult = await pool.query(
-            'SELECT id, texto, ordem, eh_aviso FROM beneficios WHERE plano_id = $1 ORDER BY ordem ASC, id ASC',
+            `SELECT b.id, b.texto, pb.ordem, b.eh_aviso 
+             FROM beneficios b
+             INNER JOIN plano_beneficios pb ON b.id = pb.beneficio_id
+             WHERE pb.plano_id = $1 
+             ORDER BY pb.ordem ASC, b.id ASC`,
             [id]
         );
         
@@ -3201,11 +3389,51 @@ async function deletarPlano(id) {
 
 // ========== FUNÇÕES DE BENEFÍCIOS ==========
 
-// Atualizar benefício
+// Obter ou criar benefício único (compartilhado entre planos)
+async function obterOuCriarBeneficio(texto, ehAviso = false) {
+    try {
+        const textoLimpo = texto.trim();
+        
+        // Tentar buscar benefício existente
+        const result = await pool.query(
+            'SELECT id, texto, eh_aviso FROM beneficios WHERE texto = $1',
+            [textoLimpo]
+        );
+        
+        if (result.rows.length > 0) {
+            return result.rows[0].id;
+        }
+        
+        // Criar novo benefício
+        const insertResult = await pool.query(
+            'INSERT INTO beneficios (texto, eh_aviso) VALUES ($1, $2) RETURNING id',
+            [textoLimpo, ehAviso]
+        );
+        
+        return insertResult.rows[0].id;
+    } catch (error) {
+        console.error('Erro ao obter ou criar benefício:', error);
+        throw error;
+    }
+}
+
+// Atualizar benefício (afeta todos os planos que o utilizam)
 async function atualizarBeneficio(id, texto, ehAviso = null) {
     try {
+        const textoLimpo = texto.trim();
+        
+        // Verificar se já existe outro benefício com esse texto
+        const existente = await pool.query(
+            'SELECT id FROM beneficios WHERE texto = $1 AND id != $2',
+            [textoLimpo, id]
+        );
+        
+        if (existente.rows.length > 0) {
+            throw new Error('Já existe um benefício com esse texto');
+        }
+        
         let query = 'UPDATE beneficios SET texto = $1, updated_at = CURRENT_TIMESTAMP';
-        const params = [texto, id];
+        const params = [textoLimpo, id];
         
         if (ehAviso !== null) {
             query += ', eh_aviso = $3';
@@ -3221,9 +3449,7 @@ async function atualizarBeneficio(id, texto, ehAviso = null) {
         const row = result.rows[0];
         return {
             id: row.id,
-            plano_id: row.plano_id,
             texto: row.texto,
-            ordem: row.ordem,
             eh_aviso: row.eh_aviso || false
         };
     } catch (error) {
@@ -3232,9 +3458,13 @@ async function atualizarBeneficio(id, texto, ehAviso = null) {
     }
 }
 
-// Deletar benefício
+// Deletar benefício (remove de todos os planos)
 async function deletarBeneficio(id) {
     try {
+        // Deletar relacionamentos primeiro (cascade já faz isso, mas é mais explícito)
+        await pool.query('DELETE FROM plano_beneficios WHERE beneficio_id = $1', [id]);
+        
+        // Deletar o benefício
         const result = await pool.query('DELETE FROM beneficios WHERE id = $1', [id]);
         return result.rowCount > 0;
     } catch (error) {

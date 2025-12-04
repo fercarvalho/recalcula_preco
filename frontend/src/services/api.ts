@@ -340,9 +340,7 @@ export const apiService = {
   // ========== BENEFÍCIOS ==========
   async atualizarBeneficio(id: number, texto: string, eh_aviso?: boolean): Promise<{
     id: number;
-    plano_id: number;
     texto: string;
-    ordem: number;
     eh_aviso: boolean;
   }> {
     const response = await api.put(`/api/admin/beneficios/${id}`, { texto, eh_aviso });
