@@ -1697,6 +1697,151 @@ app.put('/api/admin/faq/ordem', authenticateToken, requireAdmin, async (req, res
     }
 });
 
+// ========== ROTAS DE RODAPÉ ==========
+
+// Obter links do rodapé (público)
+app.get('/api/rodape', async (req, res) => {
+    try {
+        const links = await db.obterRodapeLinks();
+        res.json(links);
+    } catch (error) {
+        console.error('Erro ao obter links do rodapé:', error);
+        res.status(500).json({ error: 'Erro ao obter links do rodapé' });
+    }
+});
+
+// Obter links do rodapé (admin)
+app.get('/api/admin/rodape', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const links = await db.obterRodapeLinks();
+        res.json(links);
+    } catch (error) {
+        console.error('Erro ao obter links do rodapé:', error);
+        res.status(500).json({ error: 'Erro ao obter links do rodapé' });
+    }
+});
+
+// Obter colunas do rodapé (admin)
+app.get('/api/admin/rodape/colunas', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const colunas = await db.obterColunasRodape();
+        res.json(colunas);
+    } catch (error) {
+        console.error('Erro ao obter colunas do rodapé:', error);
+        res.status(500).json({ error: 'Erro ao obter colunas do rodapé' });
+    }
+});
+
+// Obter link do rodapé por ID (admin)
+app.get('/api/admin/rodape/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const link = await db.obterRodapeLinkPorId(parseInt(id));
+        if (!link) {
+            return res.status(404).json({ error: 'Link não encontrado' });
+        }
+        res.json(link);
+    } catch (error) {
+        console.error('Erro ao obter link do rodapé:', error);
+        res.status(500).json({ error: 'Erro ao obter link do rodapé' });
+    }
+});
+
+// Atualizar ordem dos links do rodapé (DEVE VIR ANTES DA ROTA /:id)
+app.put('/api/admin/rodape/ordem', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { linkIds } = req.body;
+        
+        console.log('Recebido para atualizar ordem dos links do rodapé:', linkIds);
+        
+        if (!Array.isArray(linkIds)) {
+            console.error('linkIds não é um array:', typeof linkIds, linkIds);
+            return res.status(400).json({ error: 'linkIds deve ser um array' });
+        }
+        
+        if (linkIds.length === 0) {
+            console.error('linkIds está vazio');
+            return res.status(400).json({ error: 'linkIds não pode estar vazio' });
+        }
+        
+        await db.atualizarOrdemRodapeLinks(linkIds);
+        res.json({ message: 'Ordem dos links do rodapé atualizada com sucesso' });
+    } catch (error) {
+        console.error('Erro ao atualizar ordem dos links do rodapé:', error);
+        console.error('Stack trace:', error.stack);
+        res.status(500).json({ error: 'Erro ao atualizar ordem dos links do rodapé', details: error.message });
+    }
+});
+
+// Criar link do rodapé (admin)
+app.post('/api/admin/rodape', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { texto, link, coluna, ordem } = req.body;
+        
+        if (!texto || !texto.trim()) {
+            return res.status(400).json({ error: 'O texto do link é obrigatório' });
+        }
+        
+        if (!link || !link.trim()) {
+            return res.status(400).json({ error: 'O link é obrigatório' });
+        }
+        
+        if (!coluna || !coluna.trim()) {
+            return res.status(400).json({ error: 'A coluna é obrigatória' });
+        }
+        
+        const novoLink = await db.criarRodapeLink(texto.trim(), link.trim(), coluna.trim(), ordem);
+        res.json(novoLink);
+    } catch (error) {
+        console.error('Erro ao criar link do rodapé:', error);
+        res.status(500).json({ error: 'Erro ao criar link do rodapé' });
+    }
+});
+
+// Atualizar link do rodapé (admin)
+app.put('/api/admin/rodape/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { texto, link, coluna } = req.body;
+        
+        if (!texto || !texto.trim()) {
+            return res.status(400).json({ error: 'O texto do link é obrigatório' });
+        }
+        
+        if (!link || !link.trim()) {
+            return res.status(400).json({ error: 'O link é obrigatório' });
+        }
+        
+        if (!coluna || !coluna.trim()) {
+            return res.status(400).json({ error: 'A coluna é obrigatória' });
+        }
+        
+        const linkAtualizado = await db.atualizarRodapeLink(parseInt(id), texto.trim(), link.trim(), coluna.trim());
+        if (!linkAtualizado) {
+            return res.status(404).json({ error: 'Link não encontrado' });
+        }
+        res.json(linkAtualizado);
+    } catch (error) {
+        console.error('Erro ao atualizar link do rodapé:', error);
+        res.status(500).json({ error: 'Erro ao atualizar link do rodapé' });
+    }
+});
+
+// Deletar link do rodapé (admin)
+app.delete('/api/admin/rodape/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const deletado = await db.deletarRodapeLink(parseInt(id));
+        if (!deletado) {
+            return res.status(404).json({ error: 'Link não encontrado' });
+        }
+        res.json({ message: 'Link deletado com sucesso' });
+    } catch (error) {
+        console.error('Erro ao deletar link do rodapé:', error);
+        res.status(500).json({ error: 'Erro ao deletar link do rodapé' });
+    }
+});
+
 // Atualizar pergunta FAQ (admin)
 app.put('/api/admin/faq/:id', authenticateToken, requireAdmin, async (req, res) => {
     try {

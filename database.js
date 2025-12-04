@@ -505,6 +505,22 @@ async function inicializar() {
         // Inicializar FAQ padrão se não existir
         await inicializarFAQPadrao();
         
+        // Criar tabela de links do rodapé
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS rodape_links (
+                id SERIAL PRIMARY KEY,
+                texto TEXT NOT NULL,
+                link TEXT NOT NULL,
+                coluna TEXT NOT NULL,
+                ordem INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        // Inicializar links do rodapé padrão se não existir
+        await inicializarRodapePadrao();
+        
         // Criar tabela de relacionamento plano_beneficios (many-to-many)
         await pool.query(`
             CREATE TABLE IF NOT EXISTS plano_beneficios (
@@ -2820,6 +2836,39 @@ async function inicializarFAQPadrao() {
     }
 }
 
+// Inicializar links do rodapé padrão
+async function inicializarRodapePadrao() {
+    try {
+        const countResult = await pool.query('SELECT COUNT(*) as count FROM rodape_links');
+        const count = parseInt(countResult.rows[0].count);
+        
+        if (count > 0) {
+            return; // Já existem links
+        }
+        
+        const linksPadrao = [
+            { texto: 'Sobre', link: '#sobre', coluna: 'Links', ordem: 1 },
+            { texto: 'Funcionalidades', link: '#funcionalidades', coluna: 'Links', ordem: 2 },
+            { texto: 'O que vem por aí', link: '#roadmap', coluna: 'Links', ordem: 3 },
+            { texto: 'Planos', link: '#planos', coluna: 'Links', ordem: 4 },
+            { texto: 'FAQ', link: '#faq', coluna: 'Links', ordem: 5 },
+            { texto: 'Login', link: '#login', coluna: 'Links', ordem: 6 }
+        ];
+        
+        for (const link of linksPadrao) {
+            await pool.query(
+                'INSERT INTO rodape_links (texto, link, coluna, ordem) VALUES ($1, $2, $3, $4)',
+                [link.texto, link.link, link.coluna, link.ordem]
+            );
+        }
+        
+        console.log(`${linksPadrao.length} links do rodapé padrão inicializados`);
+    } catch (error) {
+        console.error('Erro ao inicializar links do rodapé padrão:', error);
+        // Não lançar erro para não impedir a inicialização
+    }
+}
+
 // Obter todas as perguntas FAQ
 async function obterFAQ() {
     try {
@@ -2917,6 +2966,183 @@ async function deletarFAQ(id) {
         return result.rowCount > 0;
     } catch (error) {
         console.error('Erro ao deletar FAQ:', error);
+        throw error;
+    }
+}
+
+// ========== FUNÇÕES DE RODAPÉ ==========
+
+// Obter todos os links do rodapé
+async function obterRodapeLinks() {
+    try {
+        const result = await pool.query(
+            'SELECT * FROM rodape_links ORDER BY coluna ASC, ordem ASC, id ASC'
+        );
+        return result.rows.map(row => ({
+            id: row.id,
+            texto: row.texto,
+            link: row.link,
+            coluna: row.coluna,
+            ordem: row.ordem || 0,
+            created_at: row.created_at,
+            updated_at: row.updated_at
+        }));
+    } catch (error) {
+        console.error('Erro ao obter links do rodapé:', error);
+        throw error;
+    }
+}
+
+// Obter link do rodapé por ID
+async function obterRodapeLinkPorId(id) {
+    try {
+        const result = await pool.query('SELECT * FROM rodape_links WHERE id = $1', [id]);
+        if (result.rows.length === 0) {
+            return null;
+        }
+        const row = result.rows[0];
+        return {
+            id: row.id,
+            texto: row.texto,
+            link: row.link,
+            coluna: row.coluna,
+            ordem: row.ordem || 0,
+            created_at: row.created_at,
+            updated_at: row.updated_at
+        };
+    } catch (error) {
+        console.error('Erro ao obter link do rodapé por ID:', error);
+        throw error;
+    }
+}
+
+// Criar link do rodapé
+async function criarRodapeLink(texto, link, coluna, ordem) {
+    try {
+        const result = await pool.query(
+            'INSERT INTO rodape_links (texto, link, coluna, ordem) VALUES ($1, $2, $3, $4) RETURNING *',
+            [texto, link, coluna, ordem || 0]
+        );
+        const row = result.rows[0];
+        return {
+            id: row.id,
+            texto: row.texto,
+            link: row.link,
+            coluna: row.coluna,
+            ordem: row.ordem || 0,
+            created_at: row.created_at,
+            updated_at: row.updated_at
+        };
+    } catch (error) {
+        console.error('Erro ao criar link do rodapé:', error);
+        throw error;
+    }
+}
+
+// Atualizar link do rodapé
+async function atualizarRodapeLink(id, texto, link, coluna) {
+    try {
+        const result = await pool.query(
+            'UPDATE rodape_links SET texto = $1, link = $2, coluna = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4 RETURNING *',
+            [texto, link, coluna, id]
+        );
+        if (result.rows.length === 0) {
+            return null;
+        }
+        const row = result.rows[0];
+        return {
+            id: row.id,
+            texto: row.texto,
+            link: row.link,
+            coluna: row.coluna,
+            ordem: row.ordem || 0,
+            created_at: row.created_at,
+            updated_at: row.updated_at
+        };
+    } catch (error) {
+        console.error('Erro ao atualizar link do rodapé:', error);
+        throw error;
+    }
+}
+
+// Deletar link do rodapé
+async function deletarRodapeLink(id) {
+    try {
+        const result = await pool.query('DELETE FROM rodape_links WHERE id = $1', [id]);
+        return result.rowCount > 0;
+    } catch (error) {
+        console.error('Erro ao deletar link do rodapé:', error);
+        throw error;
+    }
+}
+
+// Obter colunas únicas do rodapé
+async function obterColunasRodape() {
+    try {
+        const result = await pool.query(
+            'SELECT DISTINCT coluna FROM rodape_links ORDER BY coluna ASC'
+        );
+        return result.rows.map(row => row.coluna);
+    } catch (error) {
+        console.error('Erro ao obter colunas do rodapé:', error);
+        throw error;
+    }
+}
+
+// Atualizar ordem dos links do rodapé
+async function atualizarOrdemRodapeLinks(linkIds) {
+    try {
+        if (!Array.isArray(linkIds) || linkIds.length === 0) {
+            console.log('atualizarOrdemRodapeLinks: linkIds vazio ou não é array');
+            return;
+        }
+
+        // Validar e converter IDs para números
+        const idsValidos = linkIds
+            .map(id => {
+                const numId = typeof id === 'string' ? parseInt(id, 10) : id;
+                return isNaN(numId) ? null : numId;
+            })
+            .filter(id => id !== null);
+
+        if (idsValidos.length === 0) {
+            throw new Error('Nenhum ID de link do rodapé válido fornecido');
+        }
+
+        console.log('Atualizando ordem dos links do rodapé:', idsValidos);
+
+        // Usar transação para garantir consistência
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+
+            for (let i = 0; i < idsValidos.length; i++) {
+                const ordem = i + 1; // Ordem começa em 1
+                const linkId = idsValidos[i];
+
+                console.log(`Atualizando link do rodapé ID ${linkId} para ordem ${ordem}`);
+
+                const result = await client.query(
+                    'UPDATE rodape_links SET ordem = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+                    [ordem, linkId]
+                );
+
+                if (result.rowCount === 0) {
+                    console.warn(`Link do rodapé com ID ${linkId} não encontrado`);
+                }
+            }
+
+            await client.query('COMMIT');
+            console.log('Ordem dos links do rodapé atualizada com sucesso');
+        } catch (error) {
+            await client.query('ROLLBACK');
+            console.error('Erro na transação ao atualizar ordem dos links do rodapé:', error);
+            throw error;
+        } finally {
+            client.release();
+        }
+    } catch (error) {
+        console.error('Erro ao atualizar ordem dos links do rodapé:', error);
         throw error;
     }
 }
@@ -3936,5 +4162,13 @@ module.exports = {
     atualizarFAQ,
     deletarFAQ,
     atualizarOrdemFAQ,
+    // Funções de Rodapé
+    obterRodapeLinks,
+    obterRodapeLinkPorId,
+    criarRodapeLink,
+    atualizarRodapeLink,
+    deletarRodapeLink,
+    obterColunasRodape,
+    atualizarOrdemRodapeLinks,
     fechar
 };

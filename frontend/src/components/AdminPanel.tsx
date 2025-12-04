@@ -8,7 +8,8 @@ import GerenciamentoFuncoes from './GerenciamentoFuncoes';
 import GerenciamentoMenu from './GerenciamentoMenu';
 import GerenciamentoPlanos from './GerenciamentoPlanos';
 import GerenciamentoFAQ from './GerenciamentoFAQ';
-import { FaUser, FaEdit, FaTrash, FaShieldAlt, FaChevronRight, FaChevronDown, FaFolder, FaEye, FaEyeSlash, FaPlus, FaTimes, FaCog, FaBars, FaCreditCard, FaQuestionCircle } from 'react-icons/fa';
+import GerenciamentoRodape from './GerenciamentoRodape';
+import { FaUser, FaEdit, FaTrash, FaShieldAlt, FaChevronRight, FaChevronDown, FaFolder, FaEye, FaEyeSlash, FaPlus, FaTimes, FaCog, FaBars, FaCreditCard, FaQuestionCircle, FaLink } from 'react-icons/fa';
 import * as FaIcons from 'react-icons/fa';
 import './AdminPanel.css';
 
@@ -51,6 +52,7 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
   const [showGerenciamentoMenu, setShowGerenciamentoMenu] = useState(false);
   const [showGerenciamentoPlanos, setShowGerenciamentoPlanos] = useState(false);
   const [showGerenciamentoFAQ, setShowGerenciamentoFAQ] = useState(false);
+  const [showGerenciamentoRodape, setShowGerenciamentoRodape] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -369,6 +371,10 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
     setShowGerenciamentoFAQ(false);
   }, []);
 
+  const handleCloseGerenciamentoRodape = useCallback(() => {
+    setShowGerenciamentoRodape(false);
+  }, []);
+
   if (!isOpen) return null;
 
   return (
@@ -389,6 +395,10 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
         isOpen={showGerenciamentoFAQ}
         onClose={handleCloseGerenciamentoFAQ}
       />
+      <GerenciamentoRodape
+        isOpen={showGerenciamentoRodape}
+        onClose={handleCloseGerenciamentoRodape}
+      />
       <Modal
         isOpen={isOpen}
         onClose={onClose}
@@ -396,13 +406,14 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
         size="large"
       >
         <div className="admin-panel">
-          <div className="admin-section" style={{ marginBottom: '30px', paddingBottom: '30px', borderBottom: '2px solid #e9ecef' }}>
+          <div className="admin-section" style={{ marginBottom: '30px', paddingBottom: '30px', borderBottom: 'none' }}>
             <h3>Gerenciamento da Landing Page</h3>
             <div className="admin-buttons-list" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div>
                 <h4 style={{ marginBottom: '8px', fontSize: '16px', fontWeight: '500' }}>
-                  <FaCog /> Gerenciamento de Funções da Landing Page
+                  <FaCog /> Gerenciar Funções da Landing Page
                 </h4>
+                <div style={{ borderBottom: '1px solid #e9ecef', marginBottom: '12px' }}></div>
                 <p style={{ marginBottom: '12px', color: '#666', fontSize: '14px' }}>
                   Gerencie as funções exibidas na landing page. Configure quais funções estão ativas e quais são de IA.
                 </p>
@@ -416,8 +427,9 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
               </div>
               <div>
                 <h4 style={{ marginBottom: '8px', fontSize: '16px', fontWeight: '500' }}>
-                  <FaBars /> Gerenciamento de Menu
+                  <FaBars /> Gerenciar Menu
                 </h4>
+                <div style={{ borderBottom: '1px solid #e9ecef', marginBottom: '12px' }}></div>
                 <p style={{ marginBottom: '12px', color: '#666', fontSize: '14px' }}>
                   Escolha quais seções da landing page aparecem no menu de navegação do header.
                 </p>
@@ -431,8 +443,9 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
               </div>
               <div>
                 <h4 style={{ marginBottom: '8px', fontSize: '16px', fontWeight: '500' }}>
-                  <FaCreditCard /> Gerenciamento de Planos
+                  <FaCreditCard /> Gerenciar Planos
                 </h4>
+                <div style={{ borderBottom: '1px solid #e9ecef', marginBottom: '12px' }}></div>
                 <p style={{ marginBottom: '12px', color: '#666', fontSize: '14px' }}>
                   Gerencie os planos de pagamento: valores, benefícios, descontos, tipo de pagamento e outras configurações.
                 </p>
@@ -446,18 +459,36 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
               </div>
               <div>
                 <h4 style={{ marginBottom: '8px', fontSize: '16px', fontWeight: '500' }}>
-                  <FaQuestionCircle /> Gerenciamento de FAQ
+                  <FaQuestionCircle /> Gerenciar FAQ
                 </h4>
+                <div style={{ borderBottom: '1px solid #e9ecef', marginBottom: '12px' }}></div>
                 <p style={{ marginBottom: '12px', color: '#666', fontSize: '14px' }}>
                   Gerencie as perguntas frequentes (FAQ) exibidas na landing page.
                 </p>
-                <button 
+                <button
                   onClick={() => setShowGerenciamentoFAQ(true)}
                   className="btn-primary"
                   style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left' }}
                 >
                   <FaQuestionCircle /> Gerenciar FAQ
                 </button>
+                
+                <div style={{ marginTop: '20px', marginBottom: '30px' }}>
+                  <h4 style={{ marginBottom: '8px', fontSize: '16px', fontWeight: '500' }}>
+                    <FaLink /> Gerenciar Rodapé
+                  </h4>
+                  <div style={{ borderBottom: '1px solid #e9ecef', marginBottom: '12px' }}></div>
+                  <p style={{ marginBottom: '12px', color: '#666', fontSize: '14px' }}>
+                    Gerencie as colunas e links do rodapé da landing page.
+                  </p>
+                  <button
+                    onClick={() => setShowGerenciamentoRodape(true)}
+                    className="btn-primary"
+                    style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left' }}
+                  >
+                    <FaLink /> Gerenciar Rodapé
+                  </button>
+                </div>
               </div>
             </div>
           </div>

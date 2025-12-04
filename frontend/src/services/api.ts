@@ -430,5 +430,74 @@ export const apiService = {
   async atualizarOrdemFAQ(faqIds: number[]): Promise<void> {
     await api.put('/api/admin/faq/ordem', { faqIds });
   },
+
+  // ========== Rodapé ==========
+  async obterRodapeLinks(): Promise<Array<{
+    id: number;
+    texto: string;
+    link: string;
+    coluna: string;
+    ordem: number;
+  }>> {
+    const response = await api.get('/api/rodape');
+    return response.data;
+  },
+
+  async obterRodapeLinksAdmin(): Promise<Array<{
+    id: number;
+    texto: string;
+    link: string;
+    coluna: string;
+    ordem: number;
+  }>> {
+    const response = await api.get('/api/admin/rodape');
+    return response.data;
+  },
+
+  async obterColunasRodape(): Promise<string[]> {
+    const response = await api.get('/api/admin/rodape/colunas');
+    return response.data;
+  },
+
+  async obterRodapeLinkPorId(id: number): Promise<{
+    id: number;
+    texto: string;
+    link: string;
+    coluna: string;
+    ordem: number;
+  }> {
+    const response = await api.get(`/api/admin/rodape/${id}`);
+    return response.data;
+  },
+
+  async criarRodapeLink(texto: string, link: string, coluna: string, ordem?: number): Promise<{
+    id: number;
+    texto: string;
+    link: string;
+    coluna: string;
+    ordem: number;
+  }> {
+    const response = await api.post('/api/admin/rodape', { texto, link, coluna, ordem });
+    return response.data;
+  },
+
+  async atualizarRodapeLink(id: number, texto: string, link: string, coluna: string): Promise<{
+    id: number;
+    texto: string;
+    link: string;
+    coluna: string;
+    ordem: number;
+  }> {
+    const response = await api.put(`/api/admin/rodape/${id}`, { texto, link, coluna });
+    return response.data;
+  },
+
+  async deletarRodapeLink(id: number): Promise<void> {
+    await api.delete(`/api/admin/rodape/${id}`);
+  },
+
+  async atualizarOrdemRodapeLinks(linkIds: number[]): Promise<void> {
+    await api.put('/api/admin/rodape/ordem', { linkIds });
+  },
 };
 

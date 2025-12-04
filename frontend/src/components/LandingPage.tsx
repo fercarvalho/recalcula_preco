@@ -15,6 +15,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
   const [secoesMenuAtivas, setSecoesMenuAtivas] = useState<string[]>([]);
   const [planos, setPlanos] = useState<Plano[]>([]);
   const [faqs, setFaqs] = useState<Array<{ id: number; pergunta: string; resposta: string }>>([]);
+  const [rodapeLinks, setRodapeLinks] = useState<Array<{ id: number; texto: string; link: string; coluna: string; ordem: number }>>([]);
 
   const toggleFaq = (id: number) => {
     setFaqOpen(faqOpen === id ? null : id);
@@ -54,6 +55,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
     carregarSecoesMenu();
     carregarPlanos();
     carregarFAQ();
+    carregarRodapeLinks();
     
     // Ouvir atualizações de configuração do menu
     const handleMenuConfigUpdate = () => {
@@ -70,15 +72,22 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
       carregarFAQ();
     };
     
+    // Ouvir atualizações de rodapé
+    const handleRodapeUpdate = () => {
+      carregarRodapeLinks();
+    };
+    
     window.addEventListener('menu-config-updated', handleMenuConfigUpdate);
     window.addEventListener('planos-updated', handlePlanosUpdate);
     window.addEventListener('faq-updated', handleFAQUpdate);
+    window.addEventListener('rodape-updated', handleRodapeUpdate);
     
     // Também ouvir quando a página ganha foco (quando o usuário volta para a landing page)
     const handleFocus = () => {
       carregarSecoesMenu();
       carregarPlanos();
       carregarFAQ();
+      carregarRodapeLinks();
     };
     
     window.addEventListener('focus', handleFocus);
@@ -89,6 +98,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
         carregarSecoesMenu();
         carregarPlanos();
         carregarFAQ();
+        carregarRodapeLinks();
       }
     };
     
@@ -98,6 +108,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
       window.removeEventListener('menu-config-updated', handleMenuConfigUpdate);
       window.removeEventListener('planos-updated', handlePlanosUpdate);
       window.removeEventListener('faq-updated', handleFAQUpdate);
+      window.removeEventListener('rodape-updated', handleRodapeUpdate);
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
@@ -612,30 +623,92 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
               <h4>Recalcula Preço</h4>
               <p>Sua ferramenta completa para gerenciar preços e aplicar reajustes de forma inteligente.</p>
             </div>
-            <div className="footer-section">
-              <h4>Links</h4>
-              <a href="#sobre" onClick={(e) => {
-                e.preventDefault();
-                document.getElementById('sobre')?.scrollIntoView({ behavior: 'smooth' });
-              }}>Sobre</a>
-              <a href="#funcionalidades" onClick={(e) => {
-                e.preventDefault();
-                document.getElementById('funcionalidades')?.scrollIntoView({ behavior: 'smooth' });
-              }}>Funcionalidades</a>
-              <a href="#roadmap" onClick={(e) => {
-                e.preventDefault();
-                document.getElementById('roadmap')?.scrollIntoView({ behavior: 'smooth' });
-              }}>O que vem por aí</a>
-              <a href="#planos" onClick={(e) => {
-                e.preventDefault();
-                document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' });
-              }}>Planos</a>
-              <a href="#faq" onClick={(e) => {
-                e.preventDefault();
-                document.getElementById('faq')?.scrollIntoView({ behavior: 'smooth' });
-              }}>FAQ</a>
-              <button onClick={onLoginClick} className="footer-link">Login</button>
-            </div>
+            {(() => {
+              // Agrupar links por coluna
+              const linksPorColuna = rodapeLinks.reduce((acc, link) => {
+                if (!acc[link.coluna]) {
+                  acc[link.coluna] = [];
+                }
+                acc[link.coluna].push(link);
+                return acc;
+              }, {} as Record<string, typeof rodapeLinks>);
+
+              // Ordenar links dentro de cada coluna por ordem
+              Object.keys(linksPorColuna).forEach(coluna => {
+                linksPorColuna[coluna].sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+              });
+
+              // Obter colunas únicas ordenadas
+              const colunas = Array.from(new Set(rodapeLinks.map(l => l.coluna))).sort();
+
+              return colunas.map((coluna) => (
+                <div key={coluna} className="footer-section">
+                  <h4>{coluna}</h4>
+                  {linksPorColuna[coluna]?.map((link) => {
+                    const handleLinkClick = (e: React.MouseEvent) => {
+                      if (link.link.startsWith('#')) {
+                        e.preventDefault();
+                        const targetId = link.link.substring(1);
+                        if (targetId === 'login') {
+                          onLoginClick();
+                        } else {
+                          document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth' });
+                        }
+                      }
+                      // Se não começar com #, deixar o comportamento padrão do link
+                    };
+
+                    if (link.link === '#login' || link.texto.toLowerCase() === 'login') {
+                      return (
+                        <button
+                          key={link.id}
+                          onClick={onLoginClick}
+                          className="footer-link"
+                        >
+                          {link.texto}
+                        </button>
+                      );
+                    }
+
+                    return (
+                      <a
+                        key={link.id}
+                        href={link.link}
+                        onClick={handleLinkClick}
+                      >
+                        {link.texto}
+                      </a>
+                    );
+                  })}
+                </div>
+              ));
+            })()}
+            {rodapeLinks.length === 0 && (
+              <div className="footer-section">
+                <h4>Links</h4>
+                <a href="#sobre" onClick={(e) => {
+                  e.preventDefault();
+                  document.getElementById('sobre')?.scrollIntoView({ behavior: 'smooth' });
+                }}>Sobre</a>
+                <a href="#funcionalidades" onClick={(e) => {
+                  e.preventDefault();
+                  document.getElementById('funcionalidades')?.scrollIntoView({ behavior: 'smooth' });
+                }}>Funcionalidades</a>
+                <a href="#roadmap" onClick={(e) => {
+                  e.preventDefault();
+                  document.getElementById('roadmap')?.scrollIntoView({ behavior: 'smooth' });
+                }}>O que vem por aí</a>
+                <a href="#planos" onClick={(e) => {
+                  e.preventDefault();
+                  document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' });
+                }}>Planos</a>
+                <a href="#faq" onClick={(e) => {
+                  e.preventDefault();
+                  document.getElementById('faq')?.scrollIntoView({ behavior: 'smooth' });
+                }}>FAQ</a>
+                <button onClick={onLoginClick} className="footer-link">Login</button>
+              </div>
+            )}
             <div className="footer-section">
               <h4>Contato</h4>
               <p>Dúvidas ou suporte?</p>
