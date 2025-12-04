@@ -438,6 +438,7 @@ export const apiService = {
     link: string;
     coluna: string;
     ordem: number;
+    eh_link: boolean;
   }>> {
     const response = await api.get('/api/rodape');
     return response.data;
@@ -449,6 +450,7 @@ export const apiService = {
     link: string;
     coluna: string;
     ordem: number;
+    eh_link: boolean;
   }>> {
     const response = await api.get('/api/admin/rodape');
     return response.data;
@@ -465,30 +467,41 @@ export const apiService = {
     link: string;
     coluna: string;
     ordem: number;
+    eh_link: boolean;
   }> {
     const response = await api.get(`/api/admin/rodape/${id}`);
     return response.data;
   },
 
-  async criarRodapeLink(texto: string, link: string, coluna: string, ordem?: number): Promise<{
+  async criarRodapeLink(texto: string, link: string, coluna: string, ordem?: number, eh_link?: boolean): Promise<{
     id: number;
     texto: string;
     link: string;
     coluna: string;
     ordem: number;
+    eh_link: boolean;
   }> {
-    const response = await api.post('/api/admin/rodape', { texto, link, coluna, ordem });
+    const response = await api.post('/api/admin/rodape', { texto, link, coluna, ordem, eh_link });
     return response.data;
   },
 
-  async atualizarRodapeLink(id: number, texto: string, link: string, coluna: string): Promise<{
+  async atualizarRodapeLink(id: number, texto: string, link: string, coluna: string, eh_link?: boolean): Promise<{
     id: number;
     texto: string;
     link: string;
     coluna: string;
     ordem: number;
+    eh_link: boolean;
   }> {
-    const response = await api.put(`/api/admin/rodape/${id}`, { texto, link, coluna });
+    // Garantir que eh_link seja sempre enviado como booleano
+    const payload = {
+      texto,
+      link,
+      coluna,
+      eh_link: eh_link !== undefined ? Boolean(eh_link) : true
+    };
+    console.log('api.ts - Enviando payload:', payload);
+    const response = await api.put(`/api/admin/rodape/${id}`, payload);
     return response.data;
   },
 

@@ -15,7 +15,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
   const [secoesMenuAtivas, setSecoesMenuAtivas] = useState<string[]>([]);
   const [planos, setPlanos] = useState<Plano[]>([]);
   const [faqs, setFaqs] = useState<Array<{ id: number; pergunta: string; resposta: string }>>([]);
-  const [rodapeLinks, setRodapeLinks] = useState<Array<{ id: number; texto: string; link: string; coluna: string; ordem: number }>>([]);
+  const [rodapeLinks, setRodapeLinks] = useState<Array<{ id: number; texto: string; link: string; coluna: string; ordem: number; eh_link: boolean }>>([]);
 
   const toggleFaq = (id: number) => {
     setFaqOpen(faqOpen === id ? null : id);
@@ -199,6 +199,16 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
     } catch (error) {
       console.error('Erro ao carregar FAQ:', error);
       setFaqs([]);
+    }
+  };
+
+  const carregarRodapeLinks = async () => {
+    try {
+      const linksCarregados = await apiService.obterRodapeLinks();
+      setRodapeLinks(linksCarregados);
+    } catch (error) {
+      console.error('Erro ao carregar links do rodapé:', error);
+      setRodapeLinks([]);
     }
   };
 
@@ -619,10 +629,6 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
       <footer className="landing-footer">
         <div className="container">
           <div className="footer-content">
-            <div className="footer-section">
-              <h4>Recalcula Preço</h4>
-              <p>Sua ferramenta completa para gerenciar preços e aplicar reajustes de forma inteligente.</p>
-            </div>
             {(() => {
               // Agrupar links por coluna
               const linksPorColuna = rodapeLinks.reduce((acc, link) => {
@@ -641,79 +647,98 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
               // Obter colunas únicas ordenadas
               const colunas = Array.from(new Set(rodapeLinks.map(l => l.coluna))).sort();
 
-              return colunas.map((coluna) => (
-                <div key={coluna} className="footer-section">
-                  <h4>{coluna}</h4>
-                  {linksPorColuna[coluna]?.map((link) => {
-                    const handleLinkClick = (e: React.MouseEvent) => {
-                      if (link.link.startsWith('#')) {
-                        e.preventDefault();
-                        const targetId = link.link.substring(1);
-                        if (targetId === 'login') {
-                          onLoginClick();
-                        } else {
-                          document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth' });
-                        }
-                      }
-                      // Se não começar com #, deixar o comportamento padrão do link
-                    };
+              return colunas.map((coluna) => {
+                const linksDaColuna = linksPorColuna[coluna] || [];
 
-                    if (link.link === '#login' || link.texto.toLowerCase() === 'login') {
+                return (
+                  <div key={coluna} className="footer-section">
+                    <h4>{coluna}</h4>
+                    {linksDaColuna.map((link) => {
+                      const handleLinkClick = (e: React.MouseEvent) => {
+                        if (link.link && link.link.startsWith('#')) {
+                          e.preventDefault();
+                          const targetId = link.link.substring(1);
+                          if (targetId === 'login') {
+                            onLoginClick();
+                          } else if (targetId) {
+                            document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth' });
+                          }
+                        }
+                      };
+
+                      // Se não for um link (eh_link = false), renderizar como texto (parágrafo)
+                      if (!link.eh_link) {
+                        return (
+                          <p key={link.id}>
+                            {link.texto}
+                          </p>
+                        );
+                      }
+
+                      // Se for um link
+                      if (link.link === '#login' || link.texto.toLowerCase() === 'login') {
+                        return (
+                          <button
+                            key={link.id}
+                            onClick={onLoginClick}
+                            className="footer-link"
+                          >
+                            {link.texto}
+                          </button>
+                        );
+                      }
+
                       return (
-                        <button
+                        <a
                           key={link.id}
-                          onClick={onLoginClick}
-                          className="footer-link"
+                          href={link.link || '#'}
+                          onClick={handleLinkClick}
                         >
                           {link.texto}
-                        </button>
+                        </a>
                       );
-                    }
-
-                    return (
-                      <a
-                        key={link.id}
-                        href={link.link}
-                        onClick={handleLinkClick}
-                      >
-                        {link.texto}
-                      </a>
-                    );
-                  })}
-                </div>
-              ));
+                    })}
+                  </div>
+                );
+              });
             })()}
             {rodapeLinks.length === 0 && (
-              <div className="footer-section">
-                <h4>Links</h4>
-                <a href="#sobre" onClick={(e) => {
-                  e.preventDefault();
-                  document.getElementById('sobre')?.scrollIntoView({ behavior: 'smooth' });
-                }}>Sobre</a>
-                <a href="#funcionalidades" onClick={(e) => {
-                  e.preventDefault();
-                  document.getElementById('funcionalidades')?.scrollIntoView({ behavior: 'smooth' });
-                }}>Funcionalidades</a>
-                <a href="#roadmap" onClick={(e) => {
-                  e.preventDefault();
-                  document.getElementById('roadmap')?.scrollIntoView({ behavior: 'smooth' });
-                }}>O que vem por aí</a>
-                <a href="#planos" onClick={(e) => {
-                  e.preventDefault();
-                  document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' });
-                }}>Planos</a>
-                <a href="#faq" onClick={(e) => {
-                  e.preventDefault();
-                  document.getElementById('faq')?.scrollIntoView({ behavior: 'smooth' });
-                }}>FAQ</a>
-                <button onClick={onLoginClick} className="footer-link">Login</button>
-              </div>
+              <>
+                <div className="footer-section">
+                  <h4>Recalcula Preço</h4>
+                  <p>Sua ferramenta completa para gerenciar preços e aplicar reajustes de forma inteligente.</p>
+                </div>
+                <div className="footer-section">
+                  <h4>Links</h4>
+                  <a href="#sobre" onClick={(e) => {
+                    e.preventDefault();
+                    document.getElementById('sobre')?.scrollIntoView({ behavior: 'smooth' });
+                  }}>Sobre</a>
+                  <a href="#funcionalidades" onClick={(e) => {
+                    e.preventDefault();
+                    document.getElementById('funcionalidades')?.scrollIntoView({ behavior: 'smooth' });
+                  }}>Funcionalidades</a>
+                  <a href="#roadmap" onClick={(e) => {
+                    e.preventDefault();
+                    document.getElementById('roadmap')?.scrollIntoView({ behavior: 'smooth' });
+                  }}>O que vem por aí</a>
+                  <a href="#planos" onClick={(e) => {
+                    e.preventDefault();
+                    document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' });
+                  }}>Planos</a>
+                  <a href="#faq" onClick={(e) => {
+                    e.preventDefault();
+                    document.getElementById('faq')?.scrollIntoView({ behavior: 'smooth' });
+                  }}>FAQ</a>
+                  <button onClick={onLoginClick} className="footer-link">Login</button>
+                </div>
+                <div className="footer-section">
+                  <h4>Contato</h4>
+                  <p>Dúvidas ou suporte?</p>
+                  <p>Entre em contato conosco</p>
+                </div>
+              </>
             )}
-            <div className="footer-section">
-              <h4>Contato</h4>
-              <p>Dúvidas ou suporte?</p>
-              <p>Entre em contato conosco</p>
-            </div>
           </div>
           <div className="footer-bottom">
             <p>&copy; 2026 Recalcula Preço. Todos os direitos reservados.</p>

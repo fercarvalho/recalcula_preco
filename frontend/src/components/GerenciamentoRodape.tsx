@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { FaLink, FaPlus, FaEdit, FaTrash, FaSave, FaGripVertical } from 'react-icons/fa';
+import { useState, useEffect, useRef } from 'react';
+import { FaLink, FaPlus, FaEdit, FaTrash, FaSave, FaGripVertical, FaToggleOn, FaToggleOff } from 'react-icons/fa';
 import Modal from './Modal';
 import { mostrarAlert, mostrarConfirm, mostrarPrompt } from '../utils/modals';
 import { apiService } from '../services/api';
@@ -12,6 +12,7 @@ export interface RodapeLink {
   link: string;
   coluna: string;
   ordem?: number;
+  eh_link?: boolean;
 }
 
 interface GerenciamentoRodapeProps {
@@ -250,9 +251,16 @@ const GerenciamentoRodape = ({ isOpen, onClose }: GerenciamentoRodapeProps) => {
                                   <div className="rodape-link-texto">
                                     <strong>{link.texto}</strong>
                                   </div>
-                                  <div className="rodape-link-url">
-                                    {link.link}
-                                  </div>
+                                  {link.eh_link && link.link && (
+                                    <div className="rodape-link-url">
+                                      {link.link}
+                                    </div>
+                                  )}
+                                  {!link.eh_link && (
+                                    <div className="rodape-link-tipo" style={{ color: '#6c757d', fontSize: '0.85rem', fontStyle: 'italic' }}>
+                                      Texto
+                                    </div>
+                                  )}
                                 </div>
                                 <div className="rodape-link-actions">
                                   <button
@@ -319,25 +327,63 @@ interface ModalLinkProps {
 }
 
 const ModalLink = ({ link, colunas, colunaSelecionada: colunaInicial, onClose, onSave }: ModalLinkProps) => {
-  const [texto, setTexto] = useState(link?.texto || '');
-  const [linkUrl, setLinkUrl] = useState(link?.link || '');
-  const [coluna, setColuna] = useState(colunaInicial || (colunas.length > 0 ? colunas[0] : ''));
+  // Inicializar estados com valores do link ou valores padrão
+  const getInitialEhLink = () => {
+    if (link?.eh_link !== undefined) return link.eh_link;
+    return true; // Padrão: é um link
+  };
+  
+  const [texto, setTexto] = useState(() => link?.texto || '');
+  const [linkUrl, setLinkUrl] = useState(() => link?.link || '');
+  const [coluna, setColuna] = useState(() => colunaInicial || (colunas.length > 0 ? colunas[0] : ''));
+  const [ehLink, setEhLink] = useState(getInitialEhLink);
   const [loading, setLoading] = useState(false);
+  const linkIdRef = useRef(link?.id);
+  const initializedRef = useRef(false);
 
+  // Inicializar valores apenas quando o link mudar (não em cada render)
   useEffect(() => {
-    if (colunaInicial) {
+    const linkIdAtual = link?.id;
+    
+    // Se o link mudou (novo link ou link diferente) ou ainda não foi inicializado
+    if (!initializedRef.current || linkIdRef.current !== linkIdAtual) {
+      initializedRef.current = true;
+      linkIdRef.current = linkIdAtual;
+      
+      if (colunaInicial) {
+        setColuna(colunaInicial);
+      }
+      
+      if (link) {
+        const novoEhLink = link.eh_link !== undefined ? link.eh_link : true;
+        setEhLink(novoEhLink);
+        setLinkUrl(link.link || '');
+        setTexto(link.texto || '');
+      } else {
+        // Se não há link (criando novo), inicializar como true
+        setEhLink(true);
+        setLinkUrl('');
+        setTexto('');
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [link?.id]);
+  
+  // Atualizar coluna separadamente quando colunaInicial mudar
+  useEffect(() => {
+    if (colunaInicial && coluna !== colunaInicial) {
       setColuna(colunaInicial);
     }
-  }, [colunaInicial]);
+  }, [colunaInicial, coluna]);
 
   const handleSalvar = async () => {
     if (!texto.trim()) {
-      await mostrarAlert('Erro', 'O texto do link é obrigatório.');
+      await mostrarAlert('Erro', 'O texto é obrigatório.');
       return;
     }
 
-    if (!linkUrl.trim()) {
-      await mostrarAlert('Erro', 'O link é obrigatório.');
+    if (ehLink && !linkUrl.trim()) {
+      await mostrarAlert('Erro', 'O link é obrigatório quando o item é um link.');
       return;
     }
 
@@ -348,9 +394,21 @@ const ModalLink = ({ link, colunas, colunaSelecionada: colunaInicial, onClose, o
 
     setLoading(true);
     try {
+      // Se não é um link, garantir que o linkUrl seja uma string vazia
+      const linkFinal = ehLink ? linkUrl.trim() : '';
+      
+      console.log('Frontend - Enviando dados:', {
+        id: link?.id,
+        texto: texto.trim(),
+        link: linkFinal,
+        coluna: coluna.trim(),
+        ehLink: ehLink,
+        ehLinkType: typeof ehLink
+      });
+      
       if (link?.id && typeof link.id === 'number') {
-        await apiService.atualizarRodapeLink(link.id, texto.trim(), linkUrl.trim(), coluna.trim());
-        await mostrarAlert('Sucesso', 'Link atualizado com sucesso!');
+        await apiService.atualizarRodapeLink(link.id, texto.trim(), linkFinal, coluna.trim(), ehLink);
+        await mostrarAlert('Sucesso', 'Item atualizado com sucesso!');
       } else {
         // Obter a ordem máxima para esta coluna
         const linksColuna = await apiService.obterRodapeLinksAdmin();
@@ -359,17 +417,18 @@ const ModalLink = ({ link, colunas, colunaSelecionada: colunaInicial, onClose, o
           ? Math.max(...linksMesmaColuna.map(l => l.ordem || 0))
           : 0;
         
-        await apiService.criarRodapeLink(texto.trim(), linkUrl.trim(), coluna.trim(), ordemMaxima + 1);
-        await mostrarAlert('Sucesso', 'Link criado com sucesso!');
+        await apiService.criarRodapeLink(texto.trim(), linkFinal, coluna.trim(), ordemMaxima + 1, ehLink);
+        await mostrarAlert('Sucesso', 'Item criado com sucesso!');
       }
 
       // Disparar evento para atualizar o rodapé na landing page
       window.dispatchEvent(new CustomEvent('rodape-updated'));
 
       await onSave();
-    } catch (error) {
-      console.error('Erro ao salvar link:', error);
-      await mostrarAlert('Erro', 'Erro ao salvar link. Tente novamente.');
+    } catch (error: any) {
+      console.error('Erro ao salvar item:', error);
+      const errorMessage = error?.response?.data?.error || error?.message || 'Erro ao salvar item. Tente novamente.';
+      await mostrarAlert('Erro', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -379,7 +438,7 @@ const ModalLink = ({ link, colunas, colunaSelecionada: colunaInicial, onClose, o
     <Modal
       isOpen={true}
       onClose={onClose}
-      title={link ? 'Editar Link' : 'Adicionar Link'}
+      title={link ? 'Editar Item' : 'Adicionar Item'}
       size="medium"
       className="modal-nested"
       footer={
@@ -395,7 +454,7 @@ const ModalLink = ({ link, colunas, colunaSelecionada: colunaInicial, onClose, o
     >
       <div className="rodape-link-form">
         <div className="form-group">
-          <label htmlFor="link-texto">Texto do Link <span className="required">*</span>:</label>
+          <label htmlFor="link-texto">Texto <span className="required">*</span>:</label>
           <input
             type="text"
             id="link-texto"
@@ -408,18 +467,42 @@ const ModalLink = ({ link, colunas, colunaSelecionada: colunaInicial, onClose, o
           />
         </div>
 
-        <div className="form-group">
-          <label htmlFor="link-url">Link <span className="required">*</span>:</label>
-          <input
-            type="text"
-            id="link-url"
-            value={linkUrl}
-            onChange={(e) => setLinkUrl(e.target.value)}
-            className="form-input"
-            placeholder="Ex: #sobre ou https://exemplo.com"
-            disabled={loading}
-          />
+        <div className="switch-group">
+          <label>
+            <span>É um link?</span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const novoValor = !ehLink;
+                setEhLink(novoValor);
+                if (!novoValor) {
+                  setLinkUrl('');
+                }
+              }}
+              className={`switch-btn ${ehLink ? 'active' : ''}`}
+              disabled={loading}
+            >
+              {ehLink ? <FaToggleOn /> : <FaToggleOff />}
+            </button>
+          </label>
         </div>
+
+        {ehLink && (
+          <div className="form-group">
+            <label htmlFor="link-url">Link <span className="required">*</span>:</label>
+            <input
+              type="text"
+              id="link-url"
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
+              className="form-input"
+              placeholder="Ex: #sobre ou https://exemplo.com"
+              disabled={loading}
+            />
+          </div>
+        )}
 
         <div className="form-group">
           <label htmlFor="link-coluna">Coluna <span className="required">*</span>:</label>

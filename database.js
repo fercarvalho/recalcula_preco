@@ -510,13 +510,27 @@ async function inicializar() {
             CREATE TABLE IF NOT EXISTS rodape_links (
                 id SERIAL PRIMARY KEY,
                 texto TEXT NOT NULL,
-                link TEXT NOT NULL,
+                link TEXT,
                 coluna TEXT NOT NULL,
                 ordem INTEGER DEFAULT 0,
+                eh_link BOOLEAN DEFAULT true,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
+        
+        // Adicionar coluna eh_link se não existir (migração)
+        try {
+            await pool.query('ALTER TABLE rodape_links ADD COLUMN IF NOT EXISTS eh_link BOOLEAN DEFAULT true');
+            // Atualizar registros existentes: se link for '#', eh_link = false
+            await pool.query(`
+                UPDATE rodape_links 
+                SET eh_link = false 
+                WHERE link = '#' OR link IS NULL OR link = ''
+            `);
+        } catch (error) {
+            console.log('Coluna eh_link já existe ou erro ao adicionar:', error.message);
+        }
         
         // Inicializar links do rodapé padrão se não existir
         await inicializarRodapePadrao();
@@ -2843,6 +2857,39 @@ async function inicializarRodapePadrao() {
         const count = parseInt(countResult.rows[0].count);
         
         if (count > 0) {
+            // Verificar se as colunas "Recalcula Preço" e "Contato" existem
+            const colunasResult = await pool.query('SELECT DISTINCT coluna FROM rodape_links');
+            const colunasExistentes = colunasResult.rows.map(row => row.coluna);
+            
+            // Adicionar colunas faltantes se necessário
+            if (!colunasExistentes.includes('Recalcula Preço')) {
+                await pool.query(
+                    'INSERT INTO rodape_links (texto, link, coluna, ordem, eh_link) VALUES ($1, $2, $3, $4, $5)',
+                    ['Recalcula Preço', '', 'Recalcula Preço', 1, false]
+                );
+                await pool.query(
+                    'INSERT INTO rodape_links (texto, link, coluna, ordem, eh_link) VALUES ($1, $2, $3, $4, $5)',
+                    ['Sua ferramenta completa para gerenciar preços e aplicar reajustes de forma inteligente.', '', 'Recalcula Preço', 2, false]
+                );
+                console.log('Coluna "Recalcula Preço" adicionada ao rodapé');
+            }
+            
+            if (!colunasExistentes.includes('Contato')) {
+                await pool.query(
+                    'INSERT INTO rodape_links (texto, link, coluna, ordem, eh_link) VALUES ($1, $2, $3, $4, $5)',
+                    ['Contato', '', 'Contato', 1, false]
+                );
+                await pool.query(
+                    'INSERT INTO rodape_links (texto, link, coluna, ordem, eh_link) VALUES ($1, $2, $3, $4, $5)',
+                    ['Dúvidas ou suporte?', '', 'Contato', 2, false]
+                );
+                await pool.query(
+                    'INSERT INTO rodape_links (texto, link, coluna, ordem, eh_link) VALUES ($1, $2, $3, $4, $5)',
+                    ['Entre em contato conosco', '', 'Contato', 3, false]
+                );
+                console.log('Coluna "Contato" adicionada ao rodapé');
+            }
+            
             return; // Já existem links
         }
         
@@ -2852,13 +2899,20 @@ async function inicializarRodapePadrao() {
             { texto: 'O que vem por aí', link: '#roadmap', coluna: 'Links', ordem: 3 },
             { texto: 'Planos', link: '#planos', coluna: 'Links', ordem: 4 },
             { texto: 'FAQ', link: '#faq', coluna: 'Links', ordem: 5 },
-            { texto: 'Login', link: '#login', coluna: 'Links', ordem: 6 }
+            { texto: 'Login', link: '#login', coluna: 'Links', ordem: 6, eh_link: true },
+            // Coluna "Recalcula Preço" - título e descrição
+            { texto: 'Recalcula Preço', link: '', coluna: 'Recalcula Preço', ordem: 1, eh_link: false },
+            { texto: 'Sua ferramenta completa para gerenciar preços e aplicar reajustes de forma inteligente.', link: '', coluna: 'Recalcula Preço', ordem: 2, eh_link: false },
+            // Coluna "Contato"
+            { texto: 'Contato', link: '', coluna: 'Contato', ordem: 1, eh_link: false },
+            { texto: 'Dúvidas ou suporte?', link: '', coluna: 'Contato', ordem: 2, eh_link: false },
+            { texto: 'Entre em contato conosco', link: '', coluna: 'Contato', ordem: 3, eh_link: false }
         ];
         
         for (const link of linksPadrao) {
             await pool.query(
-                'INSERT INTO rodape_links (texto, link, coluna, ordem) VALUES ($1, $2, $3, $4)',
-                [link.texto, link.link, link.coluna, link.ordem]
+                'INSERT INTO rodape_links (texto, link, coluna, ordem, eh_link) VALUES ($1, $2, $3, $4, $5)',
+                [link.texto, link.link || '', link.coluna, link.ordem, link.eh_link !== undefined ? link.eh_link : true]
             );
         }
         
@@ -2981,9 +3035,10 @@ async function obterRodapeLinks() {
         return result.rows.map(row => ({
             id: row.id,
             texto: row.texto,
-            link: row.link,
+            link: row.link || '',
             coluna: row.coluna,
             ordem: row.ordem || 0,
+            eh_link: row.eh_link !== undefined ? row.eh_link : true,
             created_at: row.created_at,
             updated_at: row.updated_at
         }));
@@ -3004,9 +3059,10 @@ async function obterRodapeLinkPorId(id) {
         return {
             id: row.id,
             texto: row.texto,
-            link: row.link,
+            link: row.link || '',
             coluna: row.coluna,
             ordem: row.ordem || 0,
+            eh_link: row.eh_link !== undefined ? row.eh_link : true,
             created_at: row.created_at,
             updated_at: row.updated_at
         };
@@ -3017,19 +3073,23 @@ async function obterRodapeLinkPorId(id) {
 }
 
 // Criar link do rodapé
-async function criarRodapeLink(texto, link, coluna, ordem) {
+async function criarRodapeLink(texto, link, coluna, ordem, eh_link) {
     try {
+        const ehLinkValue = eh_link !== undefined ? eh_link : (link && link !== '#');
+        const linkValue = ehLinkValue ? (link || '') : '';
+        
         const result = await pool.query(
-            'INSERT INTO rodape_links (texto, link, coluna, ordem) VALUES ($1, $2, $3, $4) RETURNING *',
-            [texto, link, coluna, ordem || 0]
+            'INSERT INTO rodape_links (texto, link, coluna, ordem, eh_link) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+            [texto, linkValue, coluna, ordem || 0, ehLinkValue]
         );
         const row = result.rows[0];
         return {
             id: row.id,
             texto: row.texto,
-            link: row.link,
+            link: row.link || '',
             coluna: row.coluna,
             ordem: row.ordem || 0,
+            eh_link: row.eh_link !== undefined ? row.eh_link : true,
             created_at: row.created_at,
             updated_at: row.updated_at
         };
@@ -3040,11 +3100,18 @@ async function criarRodapeLink(texto, link, coluna, ordem) {
 }
 
 // Atualizar link do rodapé
-async function atualizarRodapeLink(id, texto, link, coluna) {
+async function atualizarRodapeLink(id, texto, link, coluna, eh_link) {
     try {
+        // Usar o valor de eh_link diretamente, sem recalcular
+        const ehLinkValue = eh_link !== undefined ? eh_link : true;
+        // Se não é um link, garantir que o link seja uma string vazia
+        const linkValue = ehLinkValue ? (link || '') : '';
+        
+        console.log('database.js atualizarRodapeLink - Parâmetros:', { id, texto, link, linkValue, coluna, eh_link, ehLinkValue });
+        
         const result = await pool.query(
-            'UPDATE rodape_links SET texto = $1, link = $2, coluna = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4 RETURNING *',
-            [texto, link, coluna, id]
+            'UPDATE rodape_links SET texto = $1, link = $2, coluna = $3, eh_link = $4, updated_at = CURRENT_TIMESTAMP WHERE id = $5 RETURNING *',
+            [texto, linkValue, coluna, ehLinkValue, id]
         );
         if (result.rows.length === 0) {
             return null;
@@ -3053,9 +3120,10 @@ async function atualizarRodapeLink(id, texto, link, coluna) {
         return {
             id: row.id,
             texto: row.texto,
-            link: row.link,
+            link: row.link || '',
             coluna: row.coluna,
             ordem: row.ordem || 0,
+            eh_link: row.eh_link !== undefined ? row.eh_link : true,
             created_at: row.created_at,
             updated_at: row.updated_at
         };
