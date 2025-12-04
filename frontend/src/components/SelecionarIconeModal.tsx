@@ -9,6 +9,7 @@ interface SelecionarIconeModalProps {
   iconeAtual: string | null;
   onClose: () => void;
   onSelect: (icone: string) => void;
+  tipo?: 'categoria' | 'funcao'; // Tipo de contexto: categoria (restaurante) ou função (funcionalidades)
 }
 
 // Mapeamento de nomes de ícones para português
@@ -298,8 +299,8 @@ const obterNomeTraduzido = (nomeIcone: string): string => {
   return traducoesIcones[nomeSemPrefixo] || nomeSemPrefixo;
 };
 
-// Lista de ícones relacionados a comidas, bebidas, lanches, doces e consumo
-const iconesDisponiveis = [
+// Lista de ícones relacionados a comidas, bebidas, lanches, doces e consumo (para categorias)
+const iconesCategorias = [
   // Comidas principais
   'FaUtensils', 'FaHamburger', 'FaPizzaSlice', 'FaDrumstickBite',
   'FaAppleAlt', 'FaCarrot', 'FaFish', 'FaBacon',
@@ -340,7 +341,100 @@ const iconesDisponiveis = [
   'FaThumbsDown', 'FaHeartBroken'
 ];
 
-const SelecionarIconeModal = ({ isOpen, iconeAtual, onClose, onSelect }: SelecionarIconeModalProps) => {
+// Lista de ícones relacionados a funcionalidades, recursos e ferramentas (para funções)
+const iconesFuncoes = [
+  // Calculadoras e matemática
+  'FaCalculator', 'FaChartLine', 'FaChartBar', 'FaChartPie',
+  'FaDollarSign', 'FaMoneyBill', 'FaCreditCard', 'FaWallet',
+  // Automação e processos
+  'FaSync', 'FaSyncAlt', 'FaRedo', 'FaRedoAlt', 'FaUndo', 'FaUndoAlt',
+  'FaCog', 'FaCogs', 'FaFilter',
+  // Organização e gestão
+  'FaFolder', 'FaFolderOpen', 'FaBox', 'FaBoxes', 'FaArchive',
+  'FaList', 'FaListAlt', 'FaTh', 'FaThLarge', 'FaThList',
+  'FaSort', 'FaSortAlphaDown', 'FaSortAlphaUp', 'FaSortAmountDown', 'FaSortAmountUp',
+  'FaSortNumericDown', 'FaSortNumericUp',
+  // Edição e manipulação
+  'FaEdit', 'FaPencilAlt', 'FaCopy',
+  'FaTrash', 'FaTrashAlt',
+  'FaSave', 'FaFile', 'FaFileAlt',
+  // Visualização e exibição
+  'FaEye', 'FaEyeSlash', 'FaSearch',
+  // Comunicação e integração
+  'FaComments', 'FaComment', 'FaCommentDots', 'FaCommentAlt',
+  'FaEnvelope', 'FaEnvelopeOpen',
+  'FaPhone', 'FaPhoneAlt', 'FaPhoneSquare',
+  'FaVideo', 'FaWhatsapp',
+  'FaShare', 'FaShareAlt', 'FaShareSquare',
+  'FaLink', 'FaRss',
+  // Segurança e proteção
+  'FaLock', 'FaUnlock', 'FaKey',
+  'FaShieldAlt', 'FaShield',
+  // Notificações e alertas
+  'FaBell', 'FaExclamation', 'FaExclamationCircle',
+  'FaExclamationTriangle', 'FaInfo', 'FaInfoCircle',
+  'FaQuestion', 'FaQuestionCircle', 'FaCheckCircle', 'FaTimesCircle',
+  // Status e confirmação
+  'FaCheck', 'FaCheckSquare', 'FaCheckCircle',
+  'FaTimes', 'FaBan', 'FaStop', 'FaStopCircle',
+  'FaPlay', 'FaPlayCircle', 'FaPause', 'FaPauseCircle',
+  // IA e tecnologia
+  'FaRobot', 'FaBrain', 'FaServer',
+  'FaDatabase', 'FaCloud',
+  'FaNetworkWired', 'FaWifi', 'FaSatellite',
+  // Mobile e dispositivos
+  'FaMobile', 'FaMobileAlt', 'FaLaptop', 'FaTablet',
+  'FaDesktop', 'FaTv', 'FaHeadphones',
+  // Tempo e agendamento
+  'FaClock', 'FaCalendar', 'FaCalendarAlt',
+  'FaCalendarCheck',
+  // Navegação e direção
+  'FaArrowLeft', 'FaArrowRight', 'FaArrowUp', 'FaArrowDown',
+  'FaChevronLeft', 'FaChevronRight', 'FaChevronUp', 'FaChevronDown',
+  'FaAngleLeft', 'FaAngleRight', 'FaAngleUp', 'FaAngleDown',
+  'FaCaretLeft', 'FaCaretRight', 'FaCaretUp', 'FaCaretDown',
+  // Upload e download
+  'FaUpload', 'FaDownload',
+  'FaArrowCircleUp', 'FaArrowCircleDown',
+  // Impressão e exportação
+  'FaPrint',
+  // Usuários e permissões
+  'FaUser', 'FaUsers', 'FaUserFriends', 'FaUserCircle',
+  'FaUserPlus', 'FaUserMinus', 'FaUserTimes',
+  'FaUserCheck',
+  // Configurações e preferências
+  'FaCog', 'FaCogs', 'FaWrench', 'FaTools',
+  'FaHammer', 'FaScrewdriver', 'FaPaintBrush', 'FaPalette',
+  // Gráficos e análise
+  'FaChartLine', 'FaChartBar', 'FaChartPie', 'FaChartArea',
+  // Ações e comandos
+  'FaPlus', 'FaPlusCircle', 'FaPlusSquare', 'FaMinus', 'FaMinusCircle',
+  'FaMinusSquare', 'FaPowerOff',
+  'FaForward', 'FaBackward',
+  // Marcadores e tags
+  'FaTag', 'FaTags', 'FaBookmark', 'FaFlag',
+  'FaFlagCheckered', 'FaMapMarker', 'FaMapMarkerAlt',
+  // Documentação e ajuda
+  'FaBook', 'FaBookOpen', 'FaGraduationCap',
+  'FaLifeRing', 'FaHandPaper',
+  // Sucesso e conquistas
+  'FaTrophy', 'FaMedal', 'FaAward', 'FaCertificate', 'FaRibbon',
+  'FaStar', 'FaStarHalf', 'FaThumbsUp', 'FaThumbsDown',
+  // Energia e performance
+  'FaBolt', 'FaFire', 'FaRocket', 'FaSpaceShuttle', 'FaAtom',
+  'FaFlask', 'FaMicroscope', 'FaVial', 'FaDna',
+  // Sincronização e atualização
+  'FaSync', 'FaSyncAlt', 'FaRedo', 'FaRedoAlt', 'FaUndo', 'FaUndoAlt',
+  'FaSpinner', 'FaCircleNotch',
+  // Backup e restauração
+  'FaArchive', 'FaDatabase', 'FaServer',
+  'FaCloud',
+  // Integração e API
+  'FaCode', 'FaPlug', 'FaNetworkWired',
+  'FaRss', 'FaLink'
+];
+
+const SelecionarIconeModal = ({ isOpen, iconeAtual, onClose, onSelect, tipo = 'categoria' }: SelecionarIconeModalProps) => {
   const [busca, setBusca] = useState('');
 
   const handleSelectIcon = (nomeIcone: string) => {
@@ -348,6 +442,9 @@ const SelecionarIconeModal = ({ isOpen, iconeAtual, onClose, onSelect }: Selecio
     onClose();
     setBusca(''); // Limpar busca ao fechar
   };
+
+  // Selecionar lista de ícones baseado no tipo
+  const iconesDisponiveis = tipo === 'funcao' ? iconesFuncoes : iconesCategorias;
 
   // Filtrar ícones baseado na busca
   const iconesFiltrados = useMemo(() => {
@@ -363,7 +460,7 @@ const SelecionarIconeModal = ({ isOpen, iconeAtual, onClose, onSelect }: Selecio
              nomeTraduzido.includes(termoBusca) || 
              nomeIcone.toLowerCase().includes(termoBusca);
     });
-  }, [busca]);
+  }, [busca, tipo]);
 
   return (
     <Modal

@@ -84,6 +84,8 @@ const GerenciamentoFuncoes = ({ isOpen, onClose }: GerenciamentoFuncoesProps) =>
   }, [isOpen]);
 
   const handleToggleAtiva = async (funcao: Funcao) => {
+    if (!funcao.id) return;
+    
     try {
       const novaAtiva = !funcao.ativa;
       const funcaoAtualizada = {
@@ -96,32 +98,51 @@ const GerenciamentoFuncoes = ({ isOpen, onClose }: GerenciamentoFuncoesProps) =>
         eh_ia: funcao.eh_ia,
         ordem: funcao.ordem || 0
       };
-      await apiService.atualizarFuncao(funcao.id!, funcaoAtualizada);
-      await carregarFuncoes();
+      await apiService.atualizarFuncao(funcao.id, funcaoAtualizada);
+      
+      // Atualizar localmente sem recarregar toda a lista
+      setFuncoes(prevFuncoes => 
+        prevFuncoes.map(f => 
+          f.id === funcao.id ? { ...f, ativa: novaAtiva } : f
+        )
+      );
     } catch (error: any) {
       console.error('Erro ao atualizar função:', error);
       const mensagem = error.response?.data?.error || error.message || 'Erro ao atualizar função. Tente novamente.';
       await mostrarAlert('Erro', mensagem);
+      // Em caso de erro, recarregar para garantir sincronização
+      await carregarFuncoes();
     }
   };
 
   const handleToggleIA = async (funcao: Funcao) => {
+    if (!funcao.id) return;
+    
     try {
+      const novaEhIA = !funcao.eh_ia;
       const funcaoAtualizada = {
         titulo: funcao.titulo,
         descricao: funcao.descricao,
         icone: funcao.icone || null,
         icone_upload: funcao.icone_upload || null,
         ativa: funcao.ativa,
-        eh_ia: !funcao.eh_ia,
+        eh_ia: novaEhIA,
         ordem: funcao.ordem || 0
       };
-      await apiService.atualizarFuncao(funcao.id!, funcaoAtualizada);
-      await carregarFuncoes();
+      await apiService.atualizarFuncao(funcao.id, funcaoAtualizada);
+      
+      // Atualizar localmente sem recarregar toda a lista
+      setFuncoes(prevFuncoes => 
+        prevFuncoes.map(f => 
+          f.id === funcao.id ? { ...f, eh_ia: novaEhIA } : f
+        )
+      );
     } catch (error: any) {
       console.error('Erro ao atualizar função:', error);
       const mensagem = error.response?.data?.error || error.message || 'Erro ao atualizar função. Tente novamente.';
       await mostrarAlert('Erro', mensagem);
+      // Em caso de erro, recarregar para garantir sincronização
+      await carregarFuncoes();
     }
   };
 
@@ -471,6 +492,7 @@ const ModalAdicionarFuncao = ({ funcao, onClose, onSave }: ModalAdicionarFuncaoP
           iconeAtual={icone || null}
           onClose={() => setShowIconeModal(false)}
           onSelect={handleIconeSelecionado}
+          tipo="funcao"
         />
       )}
     </>
