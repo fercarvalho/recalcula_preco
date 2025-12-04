@@ -296,14 +296,69 @@
 .beneficio-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   padding: 10px;
   background: #f8f9fa;
   border-radius: 4px;
-  gap: 8px;
+  cursor: move;
+  transition: all 0.2s;
+  position: relative;
 }
 
-.beneficio-item span {
+.beneficio-item.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.beneficio-item.drag-over {
+  border: 2px dashed #007bff;
+  background: #e7f3ff;
+}
+
+.beneficio-item.drag-over-top::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #007bff;
+}
+
+.beneficio-item.drag-over-bottom::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #007bff;
+}
+
+.beneficio-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6c757d;
+  cursor: grab;
+  padding: 4px;
+  flex-shrink: 0;
+}
+
+.beneficio-drag-handle:active {
+  cursor: grabbing;
+}
+
+.beneficio-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+  gap: 8px;
+  min-width: 0;
+}
+
+.beneficio-content span {
   flex: 1;
   word-break: break-word;
 }

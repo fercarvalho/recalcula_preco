@@ -7,7 +7,7 @@ import { useDragAndDrop } from '../hooks/useDragAndDrop';
 import './GerenciamentoPlanos.css';
 
 export interface Beneficio {
-  id?: number;
+  id?: number | string;
   texto: string;
   ordem?: number;
   eh_aviso?: boolean;
@@ -345,8 +345,9 @@ const ModalPlano = ({ plano, onClose, onSave }: ModalPlanoProps) => {
     return plano.beneficios.map((b, index) => {
       if (typeof b === 'string') {
         const ehAviso = b.startsWith('⚠️');
-        return { 
-          texto: ehAviso ? b.substring(1).trim() : b, 
+        return {
+          id: `temp-${index}`, // ID temporário para benefícios sem ID
+          texto: ehAviso ? b.substring(1).trim() : b,
           ordem: index + 1,
           eh_aviso: ehAviso
         };
@@ -388,8 +389,9 @@ const ModalPlano = ({ plano, onClose, onSave }: ModalPlanoProps) => {
       const beneficiosFormatados = (plano.beneficios || []).map((b, index) => {
         if (typeof b === 'string') {
           const ehAviso = b.startsWith('⚠️');
-          return { 
-            texto: ehAviso ? b.substring(1).trim() : b, 
+          return {
+            id: `temp-${index}`, // ID temporário para benefícios sem ID
+            texto: ehAviso ? b.substring(1).trim() : b,
             ordem: index + 1,
             eh_aviso: ehAviso
           };
@@ -539,6 +541,65 @@ const ModalPlano = ({ plano, onClose, onSave }: ModalPlanoProps) => {
     }
   };
 
+  // Drag and drop para reordenar benefícios
+  const handleReorderBeneficios = async (novosBeneficios: Beneficio[]) => {
+    // Atualizar localmente primeiro para feedback imediato
+    setBeneficios(novosBeneficios);
+    
+    if (!plano?.id) {
+      // Se não tem plano.id, apenas atualizar localmente
+      return;
+    }
+
+    try {
+      console.log('handleReorderBeneficios chamado com:', novosBeneficios);
+      
+      const beneficiosIds = novosBeneficios
+        .map(b => b.id)
+        .filter((id): id is number => {
+          // Filtrar apenas IDs numéricos (não temporários)
+          if (id === undefined || id === null) return false;
+          if (typeof id === 'string' && id.startsWith('temp-')) return false;
+          const numId = typeof id === 'string' ? parseInt(id, 10) : id;
+          const isValid = !isNaN(numId);
+          if (!isValid) {
+            console.warn('ID inválido filtrado:', id);
+          }
+          return isValid;
+        })
+        .map(id => {
+          const numId = typeof id === 'string' ? parseInt(id, 10) : id;
+          console.log('ID convertido:', id, '->', numId);
+          return numId;
+        });
+      
+      console.log('IDs finais para enviar:', beneficiosIds);
+      
+      if (beneficiosIds.length === 0) {
+        console.warn('Nenhum ID de benefício válido encontrado, apenas atualizando localmente');
+        return;
+      }
+      
+      if (beneficiosIds.length !== novosBeneficios.length) {
+        console.warn(`Aviso: ${novosBeneficios.length - beneficiosIds.length} benefícios foram filtrados por terem IDs inválidos ou temporários`);
+      }
+      
+      await apiService.atualizarOrdemBeneficios(plano.id, beneficiosIds);
+    } catch (error) {
+      console.error('Erro ao atualizar ordem dos benefícios:', error);
+      await mostrarAlert('Erro', 'Erro ao atualizar ordem dos benefícios. Tente novamente.');
+      // Recarregar benefícios em caso de erro (mas não temos uma função para isso, então apenas manter o estado atual)
+    }
+  };
+
+  const {
+    handleDragStart: handleDragStartBeneficio,
+    handleDragEnd: handleDragEndBeneficio,
+    handleDragOver: handleDragOverBeneficio,
+    handleDrop: handleDropBeneficio,
+    handleDragLeave: handleDragLeaveBeneficio,
+  } = useDragAndDrop(beneficios, handleReorderBeneficios);
+
   const handleSalvar = async () => {
     if (!nome.trim()) {
       await mostrarAlert('Erro', 'O nome do plano é obrigatório.');
@@ -569,6 +630,13 @@ const ModalPlano = ({ plano, onClose, onSave }: ModalPlanoProps) => {
         valorFinal = valorParceladoFinal || 0; // Para parcelado, o valor é o parcelado
       }
 
+      // Atualizar a ordem dos benefícios baseada na posição atual no array
+      // Isso garante que a ordem do drag and drop seja preservada ao salvar
+      const beneficiosComOrdem = beneficios.map((beneficio, index) => ({
+        ...beneficio,
+        ordem: index + 1 // Ordem começa em 1
+      }));
+
       const planoData: Plano = {
         nome: nome.trim(),
         tipo,
@@ -583,7 +651,7 @@ const ModalPlano = ({ plano, onClose, onSave }: ModalPlanoProps) => {
         mostrar_valor_parcelado: tipo === 'parcelado' ? mostrarValorParcelado : false, // Só parcelado mostra valor parcelado
         ativo,
         ordem: parseInt(ordem) || 1,
-        beneficios
+        beneficios: beneficiosComOrdem
       };
 
       if (plano?.id) {
@@ -986,8 +1054,24 @@ const ModalPlano = ({ plano, onClose, onSave }: ModalPlanoProps) => {
           <label>Benefícios:</label>
           
           <div className="beneficios-list">
-            {beneficios.map((beneficio, index) => (
-              <div key={beneficio.id || index} className="beneficio-item">
+            {beneficios.map((beneficio, index) => {
+              // Usar ID do benefício ou criar um temporário baseado no índice
+              const beneficioId = beneficio.id || `temp-${index}`;
+              return (
+              <div
+                key={beneficioId}
+                className="beneficio-item"
+                draggable
+                onDragStart={(e) => handleDragStartBeneficio(e, beneficioId, 'item')}
+                onDragEnd={handleDragEndBeneficio}
+                onDragOver={(e) => handleDragOverBeneficio(e, beneficioId)}
+                onDrop={(e) => handleDropBeneficio(e, beneficioId)}
+                onDragLeave={handleDragLeaveBeneficio}
+              >
+                <div className="beneficio-drag-handle">
+                  <FaGripVertical />
+                </div>
+                <div className="beneficio-content">
                 {beneficioEditando === beneficio.id ? (
                   <>
                     <input
@@ -1079,8 +1163,10 @@ const ModalPlano = ({ plano, onClose, onSave }: ModalPlanoProps) => {
                     </div>
                   </>
                 )}
+                </div>
               </div>
-            ))}
+              );
+            })}
           </div>
           
           {/* Campo de busca de benefícios existentes */}

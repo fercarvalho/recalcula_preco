@@ -367,5 +367,9 @@ export const apiService = {
   async atualizarOrdemPlanos(planosIds: number[]): Promise<void> {
     await api.put('/api/admin/planos/ordem', { planosIds });
   },
+
+  async atualizarOrdemBeneficios(planoId: number, beneficiosIds: number[]): Promise<void> {
+    await api.put(`/api/admin/planos/${planoId}/beneficios/ordem`, { beneficiosIds });
+  },
 };
 

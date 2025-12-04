@@ -3445,6 +3445,63 @@ async function atualizarOrdemPlanos(planosIds) {
     }
 }
 
+async function atualizarOrdemBeneficios(planoId, beneficiosIds) {
+    try {
+        if (!planoId || !beneficiosIds || !Array.isArray(beneficiosIds) || beneficiosIds.length === 0) {
+            console.log('atualizarOrdemBeneficios: parâmetros inválidos');
+            return;
+        }
+
+        // Validar e converter IDs para números
+        const idsValidos = beneficiosIds
+            .map(id => {
+                const numId = typeof id === 'string' ? parseInt(id, 10) : id;
+                return isNaN(numId) ? null : numId;
+            })
+            .filter(id => id !== null);
+
+        if (idsValidos.length === 0) {
+            throw new Error('Nenhum ID de benefício válido fornecido');
+        }
+
+        console.log(`Atualizando ordem dos benefícios do plano ${planoId}:`, idsValidos);
+
+        // Usar transação para garantir consistência
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+
+            for (let i = 0; i < idsValidos.length; i++) {
+                const ordem = i + 1; // Ordem começa em 1
+                const beneficioId = idsValidos[i];
+
+                console.log(`Atualizando benefício ID ${beneficioId} do plano ${planoId} para ordem ${ordem}`);
+
+                const result = await client.query(
+                    'UPDATE plano_beneficios SET ordem = $1 WHERE plano_id = $2 AND beneficio_id = $3',
+                    [ordem, planoId, beneficioId]
+                );
+
+                if (result.rowCount === 0) {
+                    console.warn(`Relacionamento plano_id ${planoId} e beneficio_id ${beneficioId} não encontrado`);
+                }
+            }
+
+            await client.query('COMMIT');
+            console.log('Ordem dos benefícios atualizada com sucesso');
+        } catch (error) {
+            await client.query('ROLLBACK');
+            console.error('Erro na transação ao atualizar ordem dos benefícios:', error);
+            throw error;
+        } finally {
+            client.release();
+        }
+    } catch (error) {
+        console.error('Erro ao atualizar ordem dos benefícios:', error);
+        throw error;
+    }
+}
+
 // ========== FUNÇÕES DE BENEFÍCIOS ==========
 
 // Obter todos os benefícios disponíveis
@@ -3644,5 +3701,6 @@ module.exports = {
     removerBeneficioDoPlano,
     atualizarBeneficio,
     deletarBeneficio,
+    atualizarOrdemBeneficios,
     fechar
 };

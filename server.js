@@ -1584,6 +1584,33 @@ app.delete('/api/admin/planos/:planoId/beneficios/:beneficioId', authenticateTok
     }
 });
 
+// Atualizar ordem dos benefícios de um plano
+app.put('/api/admin/planos/:planoId/beneficios/ordem', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { planoId } = req.params;
+        const { beneficiosIds } = req.body;
+        
+        console.log(`Recebido para atualizar ordem dos benefícios do plano ${planoId}:`, beneficiosIds);
+        
+        if (!Array.isArray(beneficiosIds)) {
+            console.error('beneficiosIds não é um array:', typeof beneficiosIds, beneficiosIds);
+            return res.status(400).json({ error: 'beneficiosIds deve ser um array' });
+        }
+        
+        if (beneficiosIds.length === 0) {
+            console.error('beneficiosIds está vazio');
+            return res.status(400).json({ error: 'beneficiosIds não pode estar vazio' });
+        }
+        
+        await db.atualizarOrdemBeneficios(parseInt(planoId), beneficiosIds);
+        res.json({ message: 'Ordem dos benefícios atualizada com sucesso' });
+    } catch (error) {
+        console.error('Erro ao atualizar ordem dos benefícios:', error);
+        console.error('Stack trace:', error.stack);
+        res.status(500).json({ error: 'Erro ao atualizar ordem dos benefícios', details: error.message });
+    }
+});
+
 // Servir arquivos estáticos do frontend React (DEPOIS das rotas da API)
 const frontendPath = path.join(__dirname, 'frontend', 'dist');
 app.use(express.static(frontendPath));
