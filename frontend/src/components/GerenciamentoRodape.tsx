@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { FaLink, FaPlus, FaEdit, FaTrash, FaSave, FaGripVertical, FaToggleOn, FaToggleOff } from 'react-icons/fa';
 import Modal from './Modal';
 import { mostrarAlert, mostrarConfirm, mostrarPrompt } from '../utils/modals';
@@ -249,6 +249,135 @@ const GerenciamentoRodape = ({ isOpen, onClose }: GerenciamentoRodapeProps) => {
   // Wrapper para handleDragOver
   const handleDragOverLink = handleDragOverLinkBase;
 
+  // Estado para controlar o drag and drop das colunas
+  const [draggedColuna, setDraggedColuna] = useState<string | null>(null);
+  const [dragOverColuna, setDragOverColuna] = useState<string | null>(null);
+  const [dragOverPosition, setDragOverPosition] = useState<'before' | 'after' | null>(null);
+
+  // Drag and drop para reordenar colunas
+  const handleReorderColunas = async (novasColunas: string[]) => {
+    console.log('handleReorderColunas chamado com:', novasColunas);
+    // Atualizar localmente primeiro para feedback imediato
+    setColunas(novasColunas);
+    
+    try {
+      console.log('Enviando ordem das colunas para o servidor:', novasColunas);
+      await apiService.atualizarOrdemColunasRodape(novasColunas);
+      console.log('Ordem das colunas atualizada com sucesso');
+      
+      // Disparar evento para atualizar o rodapé na landing page
+      window.dispatchEvent(new CustomEvent('rodape-updated'));
+    } catch (error) {
+      console.error('Erro ao atualizar ordem das colunas:', error);
+      await mostrarAlert('Erro', 'Erro ao atualizar ordem das colunas. Tente novamente.');
+      // Recarregar dados em caso de erro
+      await carregarDados();
+    }
+  };
+
+  // Handlers customizados para drag and drop de colunas (strings)
+  const handleDragStartColuna = (e: React.DragEvent, coluna: string, type: 'categoria' | 'item' | 'plano') => {
+    console.log('Drag start coluna:', coluna);
+    setDraggedColuna(coluna);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', coluna);
+    (e.currentTarget as HTMLElement).classList.add('dragging');
+  };
+
+  const handleDragEndColuna = (e: React.DragEvent) => {
+    console.log('Drag end coluna');
+    const element = e.currentTarget as HTMLElement;
+    element.classList.remove('dragging');
+    
+    // Limpar estados de drag-over
+    document.querySelectorAll('.drag-over').forEach(el => {
+      el.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
+    });
+
+    setDraggedColuna(null);
+    setDragOverColuna(null);
+    setDragOverPosition(null);
+  };
+
+  const handleDragOverColuna = (e: React.DragEvent, coluna: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+
+    if (draggedColuna === coluna) return;
+
+    const element = e.currentTarget as HTMLElement;
+    const rect = element.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const midpoint = rect.height / 2;
+
+    const position = y < midpoint ? 'before' : 'after';
+
+    // Limpar outros drag-over
+    document.querySelectorAll('.drag-over').forEach(el => {
+      if (el !== element) {
+        el.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
+      }
+    });
+
+    element.classList.add('drag-over');
+    element.classList.remove('drag-over-top', 'drag-over-bottom');
+    element.classList.add(`drag-over-${position}`);
+
+    setDragOverColuna(coluna);
+    setDragOverPosition(position);
+  };
+
+  const handleDropColuna = (e: React.DragEvent, coluna: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    console.log('Drop coluna:', coluna, 'dragged:', draggedColuna);
+
+    const element = e.currentTarget as HTMLElement;
+    element.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
+
+    if (!draggedColuna || draggedColuna === coluna) {
+      setDraggedColuna(null);
+      setDragOverColuna(null);
+      setDragOverPosition(null);
+      return;
+    }
+
+    const draggedIndex = colunas.findIndex(c => c === draggedColuna);
+    const dropIndex = colunas.findIndex(c => c === coluna);
+
+    console.log('Índices - dragged:', draggedIndex, 'drop:', dropIndex);
+
+    if (draggedIndex === -1 || dropIndex === -1) {
+      console.error('Índices inválidos');
+      setDraggedColuna(null);
+      setDragOverColuna(null);
+      setDragOverPosition(null);
+      return;
+    }
+
+    const newColunas = [...colunas];
+    const [draggedItem] = newColunas.splice(draggedIndex, 1);
+
+    const insertIndex = dragOverPosition === 'before' ? dropIndex : dropIndex + 1;
+    newColunas.splice(insertIndex, 0, draggedItem);
+
+    console.log('Nova ordem das colunas:', newColunas);
+
+    handleReorderColunas(newColunas);
+    
+    setDraggedColuna(null);
+    setDragOverColuna(null);
+    setDragOverPosition(null);
+  };
+
+  const handleDragLeaveColuna = (e: React.DragEvent) => {
+    const element = e.currentTarget as HTMLElement;
+    if (!element.contains(e.relatedTarget as Node)) {
+      element.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
+    }
+  };
+
   // Agrupar links por coluna
   const linksPorColuna = colunas.reduce((acc, coluna) => {
     acc[coluna] = linksComIds
@@ -293,8 +422,20 @@ const GerenciamentoRodape = ({ isOpen, onClose }: GerenciamentoRodapeProps) => {
               ) : (
                 <div className="rodape-colunas">
                   {colunas.map((coluna) => (
-                    <div key={coluna} className="rodape-coluna">
+                    <div
+                      key={coluna}
+                      className="rodape-coluna"
+                      draggable
+                      onDragStart={(e) => handleDragStartColuna(e, coluna, 'categoria')}
+                      onDragEnd={handleDragEndColuna}
+                      onDragOver={(e) => handleDragOverColuna(e, coluna)}
+                      onDrop={(e) => handleDropColuna(e, coluna)}
+                      onDragLeave={handleDragLeaveColuna}
+                    >
                       <div className="rodape-coluna-header">
+                        <div className="rodape-coluna-drag-handle">
+                          <FaGripVertical />
+                        </div>
                         <h3>{coluna}</h3>
                         <button
                           onClick={() => handleAdicionar(coluna)}

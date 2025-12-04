@@ -1732,6 +1732,27 @@ app.get('/api/admin/rodape/colunas', authenticateToken, requireAdmin, async (req
     }
 });
 
+// Atualizar ordem das colunas do rodapé
+app.put('/api/admin/rodape/colunas/ordem', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { nomesColunas } = req.body;
+
+        if (!Array.isArray(nomesColunas)) {
+            return res.status(400).json({ error: 'nomesColunas deve ser um array' });
+        }
+
+        if (nomesColunas.length === 0) {
+            return res.status(400).json({ error: 'nomesColunas não pode estar vazio' });
+        }
+
+        await db.atualizarOrdemColunasRodape(nomesColunas);
+        res.json({ message: 'Ordem das colunas atualizada com sucesso' });
+    } catch (error) {
+        console.error('Erro ao atualizar ordem das colunas do rodapé:', error);
+        res.status(500).json({ error: 'Erro ao atualizar ordem das colunas do rodapé' });
+    }
+});
+
 // Obter link do rodapé por ID (admin)
 app.get('/api/admin/rodape/:id', authenticateToken, requireAdmin, async (req, res) => {
     try {

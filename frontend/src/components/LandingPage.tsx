@@ -644,8 +644,9 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
                 linksPorColuna[coluna].sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
               });
 
-              // Obter colunas únicas ordenadas
-              const colunas = Array.from(new Set(rodapeLinks.map(l => l.coluna))).sort();
+              // Obter colunas únicas ordenadas (a ordem vem do banco de dados)
+              const colunas = Array.from(new Set(rodapeLinks.map(l => l.coluna)));
+              // Manter a ordem que vem do banco (já ordenada pela função obterColunasRodape)
 
               return colunas.map((coluna) => {
                 const linksDaColuna = linksPorColuna[coluna] || [];

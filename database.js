@@ -532,6 +532,16 @@ async function inicializar() {
             console.log('Coluna eh_link já existe ou erro ao adicionar:', error.message);
         }
         
+        // Criar tabela para ordem das colunas do rodapé
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS rodape_colunas_ordem (
+                nome TEXT PRIMARY KEY,
+                ordem INTEGER NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
         // Inicializar links do rodapé padrão se não existir
         await inicializarRodapePadrao();
         
@@ -3029,10 +3039,20 @@ async function deletarFAQ(id) {
 // Obter todos os links do rodapé
 async function obterRodapeLinks() {
     try {
+        // Obter ordem das colunas
+        const colunasOrdenadas = await obterColunasRodape();
+        
+        // Criar um mapa de ordem das colunas
+        const ordemColunas = new Map();
+        colunasOrdenadas.forEach((coluna, index) => {
+            ordemColunas.set(coluna, index);
+        });
+        
         const result = await pool.query(
-            'SELECT * FROM rodape_links ORDER BY coluna ASC, ordem ASC, id ASC'
+            'SELECT * FROM rodape_links ORDER BY ordem ASC, id ASC'
         );
-        return result.rows.map(row => ({
+        
+        const links = result.rows.map(row => ({
             id: row.id,
             texto: row.texto,
             link: row.link || '',
@@ -3042,6 +3062,18 @@ async function obterRodapeLinks() {
             created_at: row.created_at,
             updated_at: row.updated_at
         }));
+        
+        // Ordenar links pela ordem das colunas
+        links.sort((a, b) => {
+            const ordemA = ordemColunas.get(a.coluna) ?? 999;
+            const ordemB = ordemColunas.get(b.coluna) ?? 999;
+            if (ordemA !== ordemB) {
+                return ordemA - ordemB;
+            }
+            return a.ordem - b.ordem;
+        });
+        
+        return links;
     } catch (error) {
         console.error('Erro ao obter links do rodapé:', error);
         throw error;
@@ -3142,15 +3174,83 @@ async function deletarRodapeLink(id) {
     }
 }
 
-// Obter colunas únicas do rodapé
+// Obter colunas únicas do rodapé ordenadas
 async function obterColunasRodape() {
     try {
-        const result = await pool.query(
-            'SELECT DISTINCT coluna FROM rodape_links ORDER BY coluna ASC'
+        // Primeiro, obter todas as colunas distintas dos links
+        const colunasResult = await pool.query(
+            'SELECT DISTINCT coluna FROM rodape_links'
         );
-        return result.rows.map(row => row.coluna);
+        const todasColunas = colunasResult.rows.map(row => row.coluna);
+        
+        // Obter ordem das colunas da tabela de ordem
+        const ordemResult = await pool.query(
+            'SELECT nome, ordem FROM rodape_colunas_ordem WHERE nome = ANY($1::text[]) ORDER BY ordem ASC',
+            [todasColunas]
+        );
+        
+        const colunasComOrdem = ordemResult.rows.map(row => row.nome);
+        const colunasSemOrdem = todasColunas.filter(c => !colunasComOrdem.includes(c));
+        
+        // Se houver colunas sem ordem, adicionar na tabela de ordem
+        if (colunasSemOrdem.length > 0) {
+            const maxOrdemResult = await pool.query('SELECT COALESCE(MAX(ordem), -1) as max_ordem FROM rodape_colunas_ordem');
+            const maxOrdem = parseInt(maxOrdemResult.rows[0].max_ordem) || -1;
+            
+            for (let i = 0; i < colunasSemOrdem.length; i++) {
+                await pool.query(
+                    'INSERT INTO rodape_colunas_ordem (nome, ordem) VALUES ($1, $2) ON CONFLICT (nome) DO NOTHING',
+                    [colunasSemOrdem[i], maxOrdem + 1 + i]
+                );
+            }
+        }
+        
+        // Retornar colunas ordenadas pela ordem
+        const result = await pool.query(
+            'SELECT nome FROM rodape_colunas_ordem WHERE nome = ANY($1::text[]) ORDER BY ordem ASC',
+            [todasColunas]
+        );
+        
+        const colunasOrdenadas = result.rows.map(row => row.nome);
+        
+        // Adicionar colunas que não estão na tabela de ordem (caso ainda existam)
+        colunasSemOrdem.forEach(coluna => {
+            if (!colunasOrdenadas.includes(coluna)) {
+                colunasOrdenadas.push(coluna);
+            }
+        });
+        
+        return colunasOrdenadas;
     } catch (error) {
         console.error('Erro ao obter colunas do rodapé:', error);
+        throw error;
+    }
+}
+
+// Atualizar ordem das colunas do rodapé
+async function atualizarOrdemColunasRodape(nomesColunas) {
+    try {
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            
+            // Atualizar ordem de cada coluna
+            for (let i = 0; i < nomesColunas.length; i++) {
+                await client.query(
+                    'INSERT INTO rodape_colunas_ordem (nome, ordem) VALUES ($1, $2) ON CONFLICT (nome) DO UPDATE SET ordem = $2, updated_at = CURRENT_TIMESTAMP',
+                    [nomesColunas[i], i]
+                );
+            }
+            
+            await client.query('COMMIT');
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
+    } catch (error) {
+        console.error('Erro ao atualizar ordem das colunas do rodapé:', error);
         throw error;
     }
 }
@@ -4233,5 +4333,6 @@ module.exports = {
     deletarRodapeLink,
     obterColunasRodape,
     atualizarOrdemRodapeLinks,
+    atualizarOrdemColunasRodape,
     fechar
 };

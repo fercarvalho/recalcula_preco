@@ -15,6 +15,45 @@
   border-radius: 8px;
   padding: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  cursor: move;
+  transition: all 0.2s;
+}
+
+.rodape-coluna.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.rodape-coluna.drag-over {
+  border-color: var(--cor-primaria, #FF6B35) !important;
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3) !important;
+}
+
+.rodape-coluna.drag-over-top::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--cor-primaria, #FF6B35);
+  border-radius: 2px;
+}
+
+.rodape-coluna.drag-over-bottom::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--cor-primaria, #FF6B35);
+  border-radius: 2px;
+}
+
+.rodape-coluna:hover {
+  border-color: var(--cor-primaria, #FF6B35);
+  box-shadow: 0 2px 8px rgba(255, 107, 53, 0.1);
 }
 
 .rodape-coluna-header {
@@ -24,6 +63,26 @@
   margin-bottom: 15px;
   padding-bottom: 10px;
   border-bottom: 2px solid #e9ecef;
+  gap: 10px;
+}
+
+.rodape-coluna-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6c757d;
+  cursor: grab;
+  padding: 4px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.rodape-coluna-drag-handle:active {
+  cursor: grabbing;
+}
+
+.rodape-coluna:hover .rodape-coluna-drag-handle {
+  color: var(--cor-primaria, #FF6B35);
 }
 
 .rodape-coluna-header h3 {

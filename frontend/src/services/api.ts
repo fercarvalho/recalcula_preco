@@ -461,6 +461,10 @@ export const apiService = {
     return response.data;
   },
 
+  async atualizarOrdemColunasRodape(nomesColunas: string[]): Promise<void> {
+    await api.put('/api/admin/rodape/colunas/ordem', { nomesColunas });
+  },
+
   async obterRodapeLinkPorId(id: number): Promise<{
     id: number;
     texto: string;
