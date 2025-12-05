@@ -12,6 +12,7 @@ import GerenciamentoRodape from './GerenciamentoRodape';
 import GerenciamentoSessoes from './GerenciamentoSessoes';
 import OrganizarFuncoesModal from './OrganizarFuncoesModal';
 import EstatisticasUsuarios from './EstatisticasUsuarios';
+import EstatisticasGerais from './EstatisticasGerais';
 import { useDragAndDrop } from '../hooks/useDragAndDrop';
 import { FaUser, FaEdit, FaTrash, FaShieldAlt, FaChevronRight, FaChevronDown, FaFolder, FaEye, FaEyeSlash, FaPlus, FaTimes, FaCog, FaBars, FaCreditCard, FaQuestionCircle, FaLink, FaLayerGroup, FaGripVertical, FaSearch, FaSortAlphaDown, FaSortAlphaUp, FaSort, FaChartLine } from 'react-icons/fa';
 import * as FaIcons from 'react-icons/fa';
@@ -74,6 +75,7 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
   const [showEstatisticasUsuarios, setShowEstatisticasUsuarios] = useState(false);
   const [usuarioEstatisticasId, setUsuarioEstatisticasId] = useState<number | null>(null);
   const [usuarioEstatisticasNome, setUsuarioEstatisticasNome] = useState<string>('');
+  const [showEstatisticasGerais, setShowEstatisticasGerais] = useState(false);
 
   const [botoesGerenciamento, setBotoesGerenciamento] = useState<GerenciamentoButton[]>([
     { id: 'funcoes', titulo: 'Gerenciar Funções da Landing Page', descricao: 'Gerencie as funções exibidas na landing page. Configure quais funções estão ativas e quais são de IA.', icone: <FaCog />, onClick: () => setShowGerenciamentoFuncoes(true), ordem: 1 },
@@ -549,6 +551,11 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
         usuarioId={usuarioEstatisticasId || undefined}
         username={usuarioEstatisticasNome}
       />
+
+      <EstatisticasGerais
+        isOpen={showEstatisticasGerais}
+        onClose={() => setShowEstatisticasGerais(false)}
+      />
       <Modal
         isOpen={isOpen}
         onClose={onClose}
@@ -600,6 +607,30 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
 
           <div className="admin-usuarios-list">
             <h3 style={{ marginBottom: '15px' }}>Usuários do Sistema</h3>
+            <div style={{ marginBottom: '15px' }}>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('Botão Estatísticas Gerais clicado, showEstatisticasGerais:', showEstatisticasGerais);
+                  setShowEstatisticasGerais(true);
+                  console.log('Estado atualizado para true');
+                }}
+                className="btn-primary"
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  fontSize: '0.9rem',
+                  padding: '10px 16px',
+                  marginBottom: '15px'
+                }}
+              >
+                <FaChartLine /> Estatísticas Gerais
+              </button>
+            </div>
             <div className="admin-busca-usuario" style={{ marginBottom: '15px' }}>
               <div style={{ position: 'relative' }}>
                 <FaSearch style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#999' }} />

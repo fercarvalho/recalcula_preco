@@ -298,6 +298,17 @@ app.get('/api/admin/user-stats/:id', authenticateToken, requireAdmin, async (req
     }
 });
 
+// Obter estatísticas gerais do sistema (apenas admin)
+app.get('/api/admin/stats-gerais', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const stats = await db.obterEstatisticasGerais();
+        res.json(stats);
+    } catch (error) {
+        console.error('Erro ao obter estatísticas gerais:', error);
+        res.status(500).json({ error: 'Erro ao obter estatísticas gerais' });
+    }
+});
+
 // Logout - finalizar sessão
 app.post('/api/auth/logout', authenticateToken, async (req, res) => {
     try {

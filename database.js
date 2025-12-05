@@ -5071,6 +5071,93 @@ async function obterEstatisticasTodosUsuarios() {
     }
 }
 
+// Obter estatísticas gerais do sistema (somas e médias)
+async function obterEstatisticasGerais() {
+    try {
+        // Total de usuários
+        const totalUsuarios = await pool.query('SELECT COUNT(*) as total FROM usuarios');
+        const totalUsuariosCount = parseInt(totalUsuarios.rows[0].total) || 0;
+
+        // Total de logins
+        const totalLogins = await pool.query(`
+            SELECT COALESCE(SUM(login_count), 0) as total 
+            FROM usuarios
+        `);
+        const totalLoginsCount = parseInt(totalLogins.rows[0].total) || 0;
+
+        // Tempo total de uso
+        const tempoTotalUso = await pool.query(`
+            SELECT COALESCE(SUM(total_usage_time), 0) as total 
+            FROM usuarios
+        `);
+        const tempoTotalUsoSegundos = parseInt(tempoTotalUso.rows[0].total) || 0;
+
+        // Total de sessões e tempo total de sessões
+        const totalSessoes = await pool.query(`
+            SELECT 
+                COUNT(*) as total_sessoes,
+                COALESCE(SUM(duration), 0) as tempo_total
+            FROM user_sessions
+        `);
+        const totalSessoesCount = parseInt(totalSessoes.rows[0].total_sessoes) || 0;
+        const tempoTotalSessoesSegundos = parseInt(totalSessoes.rows[0].tempo_total) || 0;
+
+        // Calcular médias
+        const mediaLoginsPorUsuario = totalUsuariosCount > 0 ? totalLoginsCount / totalUsuariosCount : 0;
+        const mediaTempoUsoPorUsuario = totalUsuariosCount > 0 ? tempoTotalUsoSegundos / totalUsuariosCount : 0;
+        const mediaSessoesPorUsuario = totalUsuariosCount > 0 ? totalSessoesCount / totalUsuariosCount : 0;
+        const mediaTempoSessao = totalSessoesCount > 0 ? tempoTotalSessoesSegundos / totalSessoesCount : 0;
+
+        // Usuários ativos hoje
+        const agora = new Date();
+        const inicioHoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+        const usuariosAtivosHoje = await pool.query(`
+            SELECT COUNT(DISTINCT usuario_id) as total
+            FROM user_sessions
+            WHERE session_start >= $1
+        `, [inicioHoje]);
+        const usuariosAtivosHojeCount = parseInt(usuariosAtivosHoje.rows[0].total) || 0;
+
+        // Usuários ativos na última semana
+        const inicioSemana = new Date(agora);
+        inicioSemana.setDate(agora.getDate() - 7);
+        const usuariosAtivosSemana = await pool.query(`
+            SELECT COUNT(DISTINCT usuario_id) as total
+            FROM user_sessions
+            WHERE session_start >= $1
+        `, [inicioSemana]);
+        const usuariosAtivosSemanaCount = parseInt(usuariosAtivosSemana.rows[0].total) || 0;
+
+        // Usuários ativos no último mês
+        const inicioMes = new Date(agora);
+        inicioMes.setDate(agora.getDate() - 30);
+        const usuariosAtivosMes = await pool.query(`
+            SELECT COUNT(DISTINCT usuario_id) as total
+            FROM user_sessions
+            WHERE session_start >= $1
+        `, [inicioMes]);
+        const usuariosAtivosMesCount = parseInt(usuariosAtivosMes.rows[0].total) || 0;
+
+        return {
+            total_usuarios: totalUsuariosCount,
+            total_logins: totalLoginsCount,
+            tempo_total_uso: tempoTotalUsoSegundos,
+            total_sessoes: totalSessoesCount,
+            tempo_total_sessoes: tempoTotalSessoesSegundos,
+            media_logins_por_usuario: mediaLoginsPorUsuario,
+            media_tempo_uso_por_usuario: mediaTempoUsoPorUsuario,
+            media_sessoes_por_usuario: mediaSessoesPorUsuario,
+            media_tempo_sessao: mediaTempoSessao,
+            usuarios_ativos_hoje: usuariosAtivosHojeCount,
+            usuarios_ativos_semana: usuariosAtivosSemanaCount,
+            usuarios_ativos_mes: usuariosAtivosMesCount
+        };
+    } catch (error) {
+        console.error('Erro ao obter estatísticas gerais:', error);
+        throw error;
+    }
+}
+
 // Finalizar sessão do usuário (chamado no logout)
 async function finalizarSessao(usuarioId) {
     try {
@@ -5270,6 +5357,7 @@ module.exports = {
     registrarAtividade,
     obterEstatisticasUsuario,
     obterEstatisticasTodosUsuarios,
+    obterEstatisticasGerais,
     finalizarSessao,
     // Funções de validação de email
     criarTokenValidacaoEmail,

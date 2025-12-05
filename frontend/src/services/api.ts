@@ -553,6 +553,10 @@ export const apiService = {
     const response = await api.get('/api/admin/user-stats');
     return response.data;
   },
+  async obterEstatisticasGerais(): Promise<any> {
+    const response = await api.get('/api/admin/stats-gerais');
+    return response.data;
+  },
   async finalizarSessao(): Promise<void> {
     await api.post('/api/auth/logout');
   },
