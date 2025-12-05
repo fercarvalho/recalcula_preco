@@ -12,6 +12,7 @@ interface AlterarEmailModalProps {
 
 const AlterarEmailModal = ({ isOpen, onClose }: AlterarEmailModalProps) => {
   const [novoEmail, setNovoEmail] = useState('');
+  const [confirmarEmail, setConfirmarEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [showSenha, setShowSenha] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -20,14 +21,19 @@ const AlterarEmailModal = ({ isOpen, onClose }: AlterarEmailModalProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!novoEmail.trim()) {
-      await mostrarAlert('Erro', 'O novo email não pode estar vazio.');
+    if (!novoEmail.trim() || !confirmarEmail.trim()) {
+      await mostrarAlert('Erro', 'Por favor, preencha todos os campos obrigatórios.');
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(novoEmail.trim())) {
       await mostrarAlert('Erro', 'Por favor, insira um email válido.');
+      return;
+    }
+
+    if (novoEmail.trim().toLowerCase() !== confirmarEmail.trim().toLowerCase()) {
+      await mostrarAlert('Erro', 'Os emails não coincidem. Por favor, verifique e tente novamente.');
       return;
     }
 
@@ -79,6 +85,7 @@ const AlterarEmailModal = ({ isOpen, onClose }: AlterarEmailModalProps) => {
 
       await mostrarAlert('Sucesso', 'Email alterado com sucesso!');
       setNovoEmail('');
+      setConfirmarEmail('');
       setSenha('');
       onClose();
       // Recarregar a página para atualizar o header
@@ -133,6 +140,25 @@ const AlterarEmailModal = ({ isOpen, onClose }: AlterarEmailModalProps) => {
             disabled={loading}
             required
           />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="confirmar-email">Confirmar Novo Email <span className="required">*</span>:</label>
+          <input
+            id="confirmar-email"
+            type="email"
+            className="form-input"
+            value={confirmarEmail}
+            onChange={(e) => setConfirmarEmail(e.target.value)}
+            placeholder="Digite o novo email novamente"
+            disabled={loading}
+            required
+          />
+          {confirmarEmail && novoEmail.trim().toLowerCase() !== confirmarEmail.trim().toLowerCase() && (
+            <small style={{ color: '#f44336', fontSize: '0.85rem', marginTop: '4px', display: 'block' }}>
+              Os emails não coincidem
+            </small>
+          )}
         </div>
 
         <div className="form-group">

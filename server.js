@@ -224,12 +224,8 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
         // Verificar se email está validado
         const emailValidado = await db.verificarEmailValidado(req.user.id);
         
-        // Verificar se há token de validação pendente (se não há token, pode ser que o email não foi validado corretamente)
-        const temTokenPendente = await db.obterTokenValidacaoEmail(req.user.id);
-        
-        // Se email_validado é true mas há token pendente, pode ser inconsistência - considerar como não validado
-        // Se email_validado é false, considerar como não validado
-        const emailRealmenteValidado = emailValidado && !temTokenPendente;
+        // Retornar o status real do email_validado
+        // Não verificar token pendente aqui, pois o email_validado é a fonte da verdade
         
         res.json({
             user: {
@@ -237,7 +233,7 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
                 username: req.user.username,
                 email: req.user.email,
                 is_admin: req.user.is_admin || false,
-                email_validado: emailRealmenteValidado
+                email_validado: emailValidado
             }
         });
     } catch (error) {

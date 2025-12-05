@@ -35,7 +35,7 @@ const MenuUsuario = ({ onLogout, onReiniciarSistema, onReexibirTutorial, onOpenA
   } | null>(null);
   const [carregandoCancelar, setCarregandoCancelar] = useState(false);
   const [reenviandoEmail, setReenviandoEmail] = useState(false);
-  const [emailNaoValidado, setEmailNaoValidado] = useState<boolean>(true); // Inicializar como true (assumir não validado até confirmar)
+  const [emailNaoValidado, setEmailNaoValidado] = useState<boolean | null>(null); // null = ainda não verificado
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Atualizar usuário quando o componente montar ou quando o login/email for alterado
@@ -74,14 +74,13 @@ const MenuUsuario = ({ onLogout, onReiniciarSistema, onReexibirTutorial, onOpenA
             console.log('MenuUsuario - Status do email do usuário:', data.user?.email_validado);
             console.log('MenuUsuario - Dados completos do usuário:', data.user);
             // Se o backend retornar email_validado, usar ele
-            // email_validado === false significa que não está validado
-            // email_validado === null ou undefined também significa que não está validado
+            // email_validado === true significa que está validado (NÃO mostrar opção)
+            // email_validado === false, null ou undefined significa que não está validado (mostrar opção)
             const emailValidado = data.user?.email_validado;
             console.log('MenuUsuario - emailValidado:', emailValidado, 'tipo:', typeof emailValidado);
-            // A opção deve aparecer se email_validado for false, null ou undefined
-            // Se email_validado for true, então email está validado (não mostrar opção)
-            // Se email_validado for false, null ou undefined, então email não está validado (mostrar opção)
-            const naoValidado = emailValidado !== true;
+            // A opção deve aparecer APENAS se email_validado for false, null ou undefined
+            // Se email_validado for true, então email está validado (NÃO mostrar opção)
+            const naoValidado = emailValidado === false || emailValidado === null || emailValidado === undefined;
             console.log('MenuUsuario - Definindo emailNaoValidado como:', naoValidado);
             setEmailNaoValidado(naoValidado);
           } else {
@@ -128,8 +127,9 @@ const MenuUsuario = ({ onLogout, onReiniciarSistema, onReexibirTutorial, onOpenA
             const data = await response.json();
             const emailValidado = data.user?.email_validado;
             console.log('MenuUsuario - Menu aberto - emailValidado:', emailValidado);
-            // A opção deve aparecer se email_validado for false, null ou undefined
-            const naoValidado = emailValidado !== true;
+            // A opção deve aparecer APENAS se email_validado for false, null ou undefined
+            // Se email_validado for true, então email está validado (NÃO mostrar opção)
+            const naoValidado = emailValidado === false || emailValidado === null || emailValidado === undefined;
             console.log('MenuUsuario - Menu aberto - Definindo emailNaoValidado como:', naoValidado);
             setEmailNaoValidado(naoValidado);
           }
@@ -280,8 +280,9 @@ const MenuUsuario = ({ onLogout, onReiniciarSistema, onReexibirTutorial, onOpenA
             {/* Debug: mostrar estado do email */}
             {console.log('MenuUsuario - Render - emailNaoValidado:', emailNaoValidado, 'statusPagamento?.emailNaoValidado:', statusPagamento?.emailNaoValidado)}
             
-            {/* Mostrar se emailNaoValidado for true ou se statusPagamento indicar que não está validado */}
-            {(emailNaoValidado === true || statusPagamento?.emailNaoValidado === true) && (
+            {/* Mostrar APENAS se emailNaoValidado for true (email não validado) */}
+            {/* Não mostrar se emailNaoValidado for false (email validado) ou null (ainda não verificado) */}
+            {emailNaoValidado === true && (
               <>
                 <div className="menu-usuario-divider"></div>
                 <button
