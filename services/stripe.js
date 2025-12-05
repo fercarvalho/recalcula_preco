@@ -15,26 +15,29 @@ const stripe = stripeSecretKey ? new Stripe(stripeSecretKey, {
 const PLANO_ANUAL_PRICE_ID = process.env.STRIPE_PLANO_ANUAL_PRICE_ID || '';
 const PLANO_UNICO_PRICE_ID = process.env.STRIPE_PLANO_UNICO_PRICE_ID || '';
 
-// Criar sessão de checkout para plano anual
-async function criarCheckoutAnual(customerEmail, userId, successUrl, cancelUrl) {
+// Criar sessão de checkout para plano anual (com price_id dinâmico)
+async function criarCheckoutAnual(customerEmail, userId, successUrl, cancelUrl, priceId = null) {
     try {
         if (!stripe) {
             throw new Error('Stripe não está configurado. Verifique STRIPE_SECRET_KEY no arquivo .env');
         }
         
-        if (!PLANO_ANUAL_PRICE_ID || PLANO_ANUAL_PRICE_ID.trim() === '') {
-            throw new Error('STRIPE_PLANO_ANUAL_PRICE_ID não está configurado. Configure a variável de ambiente STRIPE_PLANO_ANUAL_PRICE_ID com o ID do preço recorrente no Stripe.');
+        // Usar price_id fornecido ou fallback para o do .env
+        const finalPriceId = priceId || PLANO_ANUAL_PRICE_ID;
+        
+        if (!finalPriceId || finalPriceId.trim() === '') {
+            throw new Error('Price ID do Stripe não está configurado. Configure o campo "Stripe Price ID" no plano ou a variável STRIPE_PLANO_ANUAL_PRICE_ID no arquivo .env');
         }
         
         // Verificar se o price é válido e é do tipo recorrente
         try {
-            const price = await stripe.prices.retrieve(PLANO_ANUAL_PRICE_ID);
+            const price = await stripe.prices.retrieve(finalPriceId);
             if (!price.recurring) {
-                throw new Error(`O preço ${PLANO_ANUAL_PRICE_ID} não é um preço recorrente. Para assinaturas, é necessário usar um preço do tipo "recurring" criado no Stripe Dashboard.`);
+                throw new Error(`O preço ${finalPriceId} não é um preço recorrente. Para assinaturas, é necessário usar um preço do tipo "recurring" criado no Stripe Dashboard.`);
             }
         } catch (priceError) {
             if (priceError.message.includes('No such price')) {
-                throw new Error(`O preço ${PLANO_ANUAL_PRICE_ID} não foi encontrado no Stripe. Verifique se o STRIPE_PLANO_ANUAL_PRICE_ID está correto no arquivo .env.`);
+                throw new Error(`O preço ${finalPriceId} não foi encontrado no Stripe. Verifique se o ID está correto.`);
             }
             throw priceError;
         }
@@ -44,7 +47,7 @@ async function criarCheckoutAnual(customerEmail, userId, successUrl, cancelUrl) 
             payment_method_types: ['card'],
             line_items: [
                 {
-                    price: PLANO_ANUAL_PRICE_ID,
+                    price: finalPriceId,
                     quantity: 1,
                 },
             ],

@@ -301,6 +301,7 @@ const GerenciamentoPlanos = ({ isOpen, onClose }: GerenciamentoPlanosProps) => {
       {showModalPlano && (
         <ModalPlano
           plano={planoEditando}
+          planos={planos}
           onClose={() => {
             setShowModalPlano(false);
             setPlanoEditando(null);
@@ -318,11 +319,12 @@ const GerenciamentoPlanos = ({ isOpen, onClose }: GerenciamentoPlanosProps) => {
 
 interface ModalPlanoProps {
   plano: Plano | null;
+  planos: Plano[]; // Lista de planos para calcular ordem de novos planos
   onClose: () => void;
   onSave: () => Promise<void>;
 }
 
-const ModalPlano = ({ plano, onClose, onSave }: ModalPlanoProps) => {
+const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
   const [nome, setNome] = useState(plano?.nome || '');
   const [tipo, setTipo] = useState<Plano['tipo']>(plano?.tipo || 'recorrente');
   const [valor, setValor] = useState(plano?.valor?.toString() || '');
@@ -339,7 +341,6 @@ const ModalPlano = ({ plano, onClose, onSave }: ModalPlanoProps) => {
   const [mostrarValorTotal, setMostrarValorTotal] = useState(plano?.mostrar_valor_total !== undefined ? plano.mostrar_valor_total : true);
   const [mostrarValorParcelado, setMostrarValorParcelado] = useState(plano?.mostrar_valor_parcelado !== undefined ? plano.mostrar_valor_parcelado : true);
   const [ativo, setAtivo] = useState(plano?.ativo !== undefined ? plano.ativo : true);
-  const [ordem, setOrdem] = useState(plano?.ordem?.toString() || '1');
   const [beneficios, setBeneficios] = useState<Beneficio[]>(() => {
     if (!plano?.beneficios) return [];
     // Converter string[] para Beneficio[] se necessário
@@ -386,7 +387,7 @@ const ModalPlano = ({ plano, onClose, onSave }: ModalPlanoProps) => {
       setMostrarValorTotal(plano.mostrar_valor_total !== undefined ? plano.mostrar_valor_total : true);
       setMostrarValorParcelado(plano.mostrar_valor_parcelado !== undefined ? plano.mostrar_valor_parcelado : true);
       setAtivo(plano.ativo !== undefined ? plano.ativo : true);
-      setOrdem(plano.ordem?.toString() || '1');
+      // Ordem é gerenciada pelo drag and drop, não precisa ser setada aqui
       // Converter benefícios para formato Beneficio[]
       const beneficiosFormatados = (plano.beneficios || []).map((b, index) => {
         if (typeof b === 'string') {
@@ -652,7 +653,7 @@ const ModalPlano = ({ plano, onClose, onSave }: ModalPlanoProps) => {
         mostrar_valor_total: tipo === 'unico' ? false : mostrarValorTotal, // Único não mostra valor total
         mostrar_valor_parcelado: tipo === 'parcelado' ? mostrarValorParcelado : false, // Só parcelado mostra valor parcelado
         ativo,
-        ordem: parseInt(ordem) || 1,
+        ordem: plano?.ordem || (planos.length > 0 ? Math.max(...planos.map(p => p.ordem || 0)) + 1 : 1), // Manter ordem atual ao editar, ou adicionar no final se for novo
         beneficios: beneficiosComOrdem,
         stripe_price_id: stripePriceId.trim() || null
       };
@@ -989,21 +990,6 @@ const ModalPlano = ({ plano, onClose, onSave }: ModalPlanoProps) => {
           )}
         </div>
 
-        <div className="form-row">
-          <div className="form-group">
-            <label htmlFor="plano-ordem">Ordem:</label>
-            <input
-              type="number"
-              id="plano-ordem"
-              value={ordem}
-              onChange={(e) => setOrdem(e.target.value)}
-              className="form-input"
-              min="0"
-              placeholder="0"
-              disabled={loading}
-            />
-          </div>
-        </div>
 
         <div className="form-row">
           <div className="form-group">
