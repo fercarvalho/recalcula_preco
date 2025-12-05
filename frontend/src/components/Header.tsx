@@ -19,10 +19,28 @@ interface HeaderProps {
 }
 
 const Header = ({ onReiniciarSistema, onReexibirTutorial, onOpenAdminPanel, isAdmin }: HeaderProps) => {
-  const handleLogout = () => {
-    clearAuth();
-    localStorage.removeItem('admin_viewing_user_id');
-    window.location.href = '/';
+  const handleLogout = async () => {
+    try {
+      // Finalizar sessão no servidor
+      const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
+      const token = localStorage.getItem('token');
+      if (token) {
+        await fetch(`${API_BASE}/api/auth/logout`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }).catch(() => {
+          // Ignorar erros para não impedir o logout
+        });
+      }
+    } catch (error) {
+      // Ignorar erros para não impedir o logout
+    } finally {
+      clearAuth();
+      localStorage.removeItem('admin_viewing_user_id');
+      window.location.href = '/';
+    }
   };
 
   const handleVoltarAoMeuUsuario = () => {

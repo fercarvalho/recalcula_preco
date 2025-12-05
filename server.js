@@ -226,6 +226,75 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
     }
 });
 
+// Registrar atividade (heartbeat) - para rastreamento de tempo de uso
+app.post('/api/auth/activity', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        await db.registrarAtividade(userId);
+        res.json({ message: 'Atividade registrada' });
+    } catch (error) {
+        console.error('Erro ao registrar atividade:', error);
+        res.status(500).json({ error: 'Erro ao registrar atividade' });
+    }
+});
+
+// Obter estatísticas do próprio usuário
+app.get('/api/auth/stats', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const stats = await db.obterEstatisticasUsuario(userId);
+        if (!stats) {
+            return res.status(404).json({ error: 'Usuário não encontrado' });
+        }
+        res.json(stats);
+    } catch (error) {
+        console.error('Erro ao obter estatísticas:', error);
+        res.status(500).json({ error: 'Erro ao obter estatísticas' });
+    }
+});
+
+// Obter estatísticas de todos os usuários (apenas admin)
+app.get('/api/admin/user-stats', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const stats = await db.obterEstatisticasTodosUsuarios();
+        res.json(stats);
+    } catch (error) {
+        console.error('Erro ao obter estatísticas de usuários:', error);
+        res.status(500).json({ error: 'Erro ao obter estatísticas de usuários' });
+    }
+});
+
+// Obter estatísticas de um usuário específico (apenas admin)
+app.get('/api/admin/user-stats/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const usuarioId = parseInt(req.params.id);
+        if (isNaN(usuarioId)) {
+            return res.status(400).json({ error: 'ID de usuário inválido' });
+        }
+        const stats = await db.obterEstatisticasUsuario(usuarioId);
+        if (!stats) {
+            return res.status(404).json({ error: 'Usuário não encontrado' });
+        }
+        res.json(stats);
+    } catch (error) {
+        console.error('Erro ao obter estatísticas do usuário:', error);
+        res.status(500).json({ error: 'Erro ao obter estatísticas do usuário' });
+    }
+});
+
+// Logout - finalizar sessão
+app.post('/api/auth/logout', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        await db.finalizarSessao(userId);
+        res.json({ message: 'Sessão finalizada' });
+    } catch (error) {
+        console.error('Erro ao finalizar sessão:', error);
+        // Não retornar erro para não impedir o logout
+        res.json({ message: 'Sessão finalizada' });
+    }
+});
+
 // Alterar login (username)
 app.put('/api/auth/alterar-login', authenticateToken, async (req, res) => {
     try {

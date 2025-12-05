@@ -534,5 +534,24 @@ export const apiService = {
   async atualizarOrdemSessoes(sessaoIds: string[]): Promise<void> {
     await api.put('/api/configuracoes-sessoes/ordem', { sessaoIds });
   },
+  // Estatísticas
+  async registrarAtividade(): Promise<void> {
+    await api.post('/api/auth/activity');
+  },
+  async obterEstatisticasUsuario(): Promise<any> {
+    const response = await api.get('/api/auth/stats');
+    return response.data;
+  },
+  async obterEstatisticasUsuarioPorId(usuarioId: number): Promise<any> {
+    const response = await api.get(`/api/admin/user-stats/${usuarioId}`);
+    return response.data;
+  },
+  async obterEstatisticasTodosUsuarios(): Promise<any[]> {
+    const response = await api.get('/api/admin/user-stats');
+    return response.data;
+  },
+  async finalizarSessao(): Promise<void> {
+    await api.post('/api/auth/logout');
+  },
 };
 

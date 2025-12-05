@@ -120,6 +120,46 @@ function App() {
     };
   }, []);
 
+  // Sistema de heartbeat para rastrear tempo de uso
+  useEffect(() => {
+    if (!authenticated) return;
+
+    const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
+    const token = getToken();
+
+    // Registrar atividade a cada 30 segundos
+    const heartbeatInterval = setInterval(async () => {
+      if (token) {
+        try {
+          await fetch(`${API_BASE}/api/auth/activity`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+        } catch (error) {
+          // Ignorar erros silenciosamente
+        }
+      }
+    }, 30000); // 30 segundos
+
+    // Registrar atividade imediatamente ao montar
+    if (token) {
+      fetch(`${API_BASE}/api/auth/activity`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      }).catch(() => {
+        // Ignorar erros
+      });
+    }
+
+    return () => {
+      clearInterval(heartbeatInterval);
+    };
+  }, [authenticated]);
+
   // Detectar token de recuperação de senha na URL
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);

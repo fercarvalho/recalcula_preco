@@ -11,8 +11,9 @@ import GerenciamentoFAQ from './GerenciamentoFAQ';
 import GerenciamentoRodape from './GerenciamentoRodape';
 import GerenciamentoSessoes from './GerenciamentoSessoes';
 import OrganizarFuncoesModal from './OrganizarFuncoesModal';
+import EstatisticasUsuarios from './EstatisticasUsuarios';
 import { useDragAndDrop } from '../hooks/useDragAndDrop';
-import { FaUser, FaEdit, FaTrash, FaShieldAlt, FaChevronRight, FaChevronDown, FaFolder, FaEye, FaEyeSlash, FaPlus, FaTimes, FaCog, FaBars, FaCreditCard, FaQuestionCircle, FaLink, FaLayerGroup, FaGripVertical, FaSearch, FaSortAlphaDown, FaSortAlphaUp, FaSort } from 'react-icons/fa';
+import { FaUser, FaEdit, FaTrash, FaShieldAlt, FaChevronRight, FaChevronDown, FaFolder, FaEye, FaEyeSlash, FaPlus, FaTimes, FaCog, FaBars, FaCreditCard, FaQuestionCircle, FaLink, FaLayerGroup, FaGripVertical, FaSearch, FaSortAlphaDown, FaSortAlphaUp, FaSort, FaChartLine } from 'react-icons/fa';
 import * as FaIcons from 'react-icons/fa';
 import './AdminPanel.css';
 
@@ -34,6 +35,16 @@ interface AdminPanelProps {
   isOpen: boolean;
   onClose: () => void;
   onCarregarUsuarioNoSistema?: (usuarioId: number) => Promise<void>;
+}
+
+// Estrutura dos botões de gerenciamento com ordem
+interface GerenciamentoButton {
+  id: string;
+  titulo: string;
+  descricao: string;
+  icone: React.ReactNode;
+  onClick: () => void;
+  ordem: number;
 }
 
 const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelProps) => {
@@ -60,16 +71,9 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
   const [showGerenciamentoRodape, setShowGerenciamentoRodape] = useState(false);
   const [showGerenciamentoSessoes, setShowGerenciamentoSessoes] = useState(false);
   const [showOrganizarFuncoes, setShowOrganizarFuncoes] = useState(false);
-
-  // Estrutura dos botões de gerenciamento com ordem
-  interface GerenciamentoButton {
-    id: string;
-    titulo: string;
-    descricao: string;
-    icone: React.ReactNode;
-    onClick: () => void;
-    ordem: number;
-  }
+  const [showEstatisticasUsuarios, setShowEstatisticasUsuarios] = useState(false);
+  const [usuarioEstatisticasId, setUsuarioEstatisticasId] = useState<number | null>(null);
+  const [usuarioEstatisticasNome, setUsuarioEstatisticasNome] = useState<string>('');
 
   const [botoesGerenciamento, setBotoesGerenciamento] = useState<GerenciamentoButton[]>([
     { id: 'funcoes', titulo: 'Gerenciar Funções da Landing Page', descricao: 'Gerencie as funções exibidas na landing page. Configure quais funções estão ativas e quais são de IA.', icone: <FaCog />, onClick: () => setShowGerenciamentoFuncoes(true), ordem: 1 },
@@ -535,6 +539,16 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
         isOpen={showGerenciamentoSessoes}
         onClose={handleCloseGerenciamentoSessoes}
       />
+      <EstatisticasUsuarios
+        isOpen={showEstatisticasUsuarios}
+        onClose={() => {
+          setShowEstatisticasUsuarios(false);
+          setUsuarioEstatisticasId(null);
+          setUsuarioEstatisticasNome('');
+        }}
+        usuarioId={usuarioEstatisticasId || undefined}
+        username={usuarioEstatisticasNome}
+      />
       <Modal
         isOpen={isOpen}
         onClose={onClose}
@@ -585,7 +599,7 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
           </div>
 
           <div className="admin-usuarios-list">
-            <h3>Usuários do Sistema</h3>
+            <h3 style={{ marginBottom: '15px' }}>Usuários do Sistema</h3>
             <div className="admin-busca-usuario" style={{ marginBottom: '15px' }}>
               <div style={{ position: 'relative' }}>
                 <FaSearch style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#999' }} />
@@ -695,6 +709,19 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
                         className="btn-icon"
                         onClick={(e) => {
                           e.stopPropagation();
+                          setUsuarioEstatisticasId(usuario.id);
+                          setUsuarioEstatisticasNome(usuario.username);
+                          setShowEstatisticasUsuarios(true);
+                        }}
+                        title="Ver estatísticas"
+                        style={{ color: 'var(--cor-primaria, #FF6B35)' }}
+                      >
+                        <FaChartLine />
+                      </button>
+                      <button
+                        className="btn-icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
                           if (usuarioSelecionado === usuario.id) {
                             setUsuarioSelecionado(null);
                             setUsuarioDetalhes(null);
@@ -709,14 +736,20 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
                       </button>
                       <button
                         className="btn-icon"
-                        onClick={() => handleEditarUsuario(usuario)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditarUsuario(usuario);
+                        }}
                         title="Editar usuário"
                       >
                         <FaEdit />
                       </button>
                       <button
                         className="btn-icon danger"
-                        onClick={() => handleDeletarUsuario(usuario)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeletarUsuario(usuario);
+                        }}
                         title="Deletar usuário"
                       >
                         <FaTrash />

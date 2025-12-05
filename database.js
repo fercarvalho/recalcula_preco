@@ -124,6 +124,23 @@ async function inicializar() {
             await pool.query('ALTER TABLE usuarios ADD COLUMN tutorial_completed BOOLEAN DEFAULT FALSE');
         }
         
+        // Adicionar colunas de estatísticas de uso se não existirem
+        if (!(await colunaExiste('usuarios', 'last_login'))) {
+            await pool.query('ALTER TABLE usuarios ADD COLUMN last_login TIMESTAMP');
+        }
+        if (!(await colunaExiste('usuarios', 'login_count'))) {
+            await pool.query('ALTER TABLE usuarios ADD COLUMN login_count INTEGER DEFAULT 0');
+        }
+        if (!(await colunaExiste('usuarios', 'total_usage_time'))) {
+            await pool.query('ALTER TABLE usuarios ADD COLUMN total_usage_time INTEGER DEFAULT 0'); // em segundos
+        }
+        if (!(await colunaExiste('usuarios', 'last_activity'))) {
+            await pool.query('ALTER TABLE usuarios ADD COLUMN last_activity TIMESTAMP');
+        }
+        if (!(await colunaExiste('usuarios', 'current_session_start'))) {
+            await pool.query('ALTER TABLE usuarios ADD COLUMN current_session_start TIMESTAMP');
+        }
+        
         // Adicionar coluna email se não existir
         if (!(await colunaExiste('usuarios', 'email'))) {
             await pool.query('ALTER TABLE usuarios ADD COLUMN email VARCHAR(255)');
@@ -228,6 +245,26 @@ async function inicializar() {
         // Adicionar coluna ordem se não existir
         if (!(await colunaExiste('itens', 'ordem'))) {
             await pool.query('ALTER TABLE itens ADD COLUMN ordem INTEGER');
+        }
+        
+        // Criar tabela de sessões de usuário para rastreamento detalhado
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS user_sessions (
+                id SERIAL PRIMARY KEY,
+                usuario_id INTEGER REFERENCES usuarios(id) ON DELETE CASCADE,
+                session_start TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                session_end TIMESTAMP,
+                duration INTEGER, -- duração em segundos
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        // Criar índice para melhor performance nas consultas
+        try {
+            await pool.query('CREATE INDEX IF NOT EXISTS idx_user_sessions_usuario_id ON user_sessions(usuario_id)');
+            await pool.query('CREATE INDEX IF NOT EXISTS idx_user_sessions_session_start ON user_sessions(session_start)');
+        } catch (error) {
+            // Ignorar erro se o índice já existir
         }
                 
         // Criar tabela de categorias para gerenciar ordem
@@ -890,6 +927,9 @@ async function verificarCredenciais(identificador, senha) {
             for (const usuario of result.rows) {
                 const senhaValida = await bcrypt.compare(senha, usuario.senha_hash);
                 if (senhaValida) {
+                    // Atualizar estatísticas de login
+                    await registrarLogin(usuario.id);
+                    
                     return {
                         id: usuario.id,
                         username: usuario.username,
@@ -908,6 +948,9 @@ async function verificarCredenciais(identificador, senha) {
             if (!senhaValida) {
                 return null;
             }
+            
+            // Atualizar estatísticas de login
+            await registrarLogin(usuario.id);
             
             return {
                 id: usuario.id,
@@ -4543,6 +4586,248 @@ async function deletarBeneficio(id) {
     }
 }
 
+// ========== FUNÇÕES DE ESTATÍSTICAS DE USO ==========
+
+// Registrar login do usuário
+async function registrarLogin(usuarioId) {
+    try {
+        const agora = new Date();
+        
+        // Atualizar last_login, incrementar login_count e iniciar nova sessão
+        await pool.query(`
+            UPDATE usuarios 
+            SET 
+                last_login = $1,
+                login_count = COALESCE(login_count, 0) + 1,
+                current_session_start = $1,
+                last_activity = $1
+            WHERE id = $2
+        `, [agora, usuarioId]);
+        
+        // Criar registro de sessão
+        await pool.query(`
+            INSERT INTO user_sessions (usuario_id, session_start)
+            VALUES ($1, $2)
+        `, [usuarioId, agora]);
+        
+    } catch (error) {
+        console.error('Erro ao registrar login:', error);
+        // Não lançar erro para não impedir o login
+    }
+}
+
+// Registrar atividade do usuário (heartbeat)
+async function registrarAtividade(usuarioId) {
+    try {
+        const agora = new Date();
+        
+        // Obter dados atuais do usuário
+        const usuario = await pool.query(`
+            SELECT current_session_start, total_usage_time
+            FROM usuarios 
+            WHERE id = $1
+        `, [usuarioId]);
+        
+        if (usuario.rows.length === 0) {
+            return;
+        }
+        
+        const dadosUsuario = usuario.rows[0];
+        let tempoParaAcumular = 0;
+        
+        // Se houver sessão ativa, calcular tempo desde o último heartbeat
+        if (dadosUsuario.current_session_start) {
+            const sessionStart = new Date(dadosUsuario.current_session_start);
+            const tempoSessao = Math.floor((agora - sessionStart) / 1000); // em segundos
+            
+            // Acumular apenas o tempo desde o último heartbeat (30 segundos)
+            // Mas limitar a 30 segundos para evitar acumulação excessiva
+            tempoParaAcumular = Math.min(tempoSessao, 30);
+        }
+        
+        // Atualizar last_activity, tempo total e início da sessão
+        await pool.query(`
+            UPDATE usuarios 
+            SET 
+                last_activity = $1,
+                total_usage_time = COALESCE(total_usage_time, 0) + $2,
+                current_session_start = COALESCE(current_session_start, $1)
+            WHERE id = $3
+        `, [agora, tempoParaAcumular, usuarioId]);
+        
+    } catch (error) {
+        console.error('Erro ao registrar atividade:', error);
+        // Não lançar erro para não impedir a atividade
+    }
+}
+
+// Obter estatísticas de um usuário
+async function obterEstatisticasUsuario(usuarioId) {
+    try {
+        const usuario = await pool.query(`
+            SELECT 
+                id,
+                username,
+                email,
+                created_at,
+                last_login,
+                login_count,
+                total_usage_time,
+                last_activity,
+                current_session_start
+            FROM usuarios
+            WHERE id = $1
+        `, [usuarioId]);
+        
+        if (usuario.rows.length === 0) {
+            return null;
+        }
+        
+        const dados = usuario.rows[0];
+        
+        // Calcular tempo de sessão atual
+        let tempoSessaoAtual = 0;
+        if (dados.current_session_start) {
+            const sessionStart = new Date(dados.current_session_start);
+            const agora = new Date();
+            tempoSessaoAtual = Math.floor((agora - sessionStart) / 1000);
+        }
+        
+        // Obter estatísticas de sessões
+        const sessoes = await pool.query(`
+            SELECT 
+                COUNT(*) as total_sessoes,
+                SUM(duration) as tempo_total_sessoes,
+                MAX(session_start) as ultima_sessao
+            FROM user_sessions
+            WHERE usuario_id = $1
+        `, [usuarioId]);
+        
+        const statsSessoes = sessoes.rows[0];
+        
+        return {
+            id: dados.id,
+            username: dados.username,
+            email: dados.email,
+            created_at: dados.created_at,
+            last_login: dados.last_login,
+            login_count: dados.login_count || 0,
+            total_usage_time: dados.total_usage_time || 0,
+            last_activity: dados.last_activity,
+            current_session_start: dados.current_session_start,
+            current_session_duration: tempoSessaoAtual,
+            total_sessions: parseInt(statsSessoes.total_sessoes) || 0,
+            total_sessions_time: parseInt(statsSessoes.tempo_total_sessoes) || 0,
+            last_session: statsSessoes.ultima_sessao
+        };
+    } catch (error) {
+        console.error('Erro ao obter estatísticas do usuário:', error);
+        throw error;
+    }
+}
+
+// Obter estatísticas de todos os usuários (para admin)
+async function obterEstatisticasTodosUsuarios() {
+    try {
+        const usuarios = await pool.query(`
+            SELECT 
+                id,
+                username,
+                email,
+                created_at,
+                last_login,
+                login_count,
+                total_usage_time,
+                last_activity,
+                current_session_start
+            FROM usuarios
+            ORDER BY last_activity DESC NULLS LAST, created_at DESC
+        `);
+        
+        const stats = await Promise.all(usuarios.rows.map(async (usuario) => {
+            // Calcular tempo de sessão atual
+            let tempoSessaoAtual = 0;
+            if (usuario.current_session_start) {
+                const sessionStart = new Date(usuario.current_session_start);
+                const agora = new Date();
+                tempoSessaoAtual = Math.floor((agora - sessionStart) / 1000);
+            }
+            
+            // Obter estatísticas de sessões
+            const sessoes = await pool.query(`
+                SELECT 
+                    COUNT(*) as total_sessoes,
+                    SUM(duration) as tempo_total_sessoes
+                FROM user_sessions
+                WHERE usuario_id = $1
+            `, [usuario.id]);
+            
+            const statsSessoes = sessoes.rows[0];
+            
+            return {
+                id: usuario.id,
+                username: usuario.username,
+                email: usuario.email,
+                created_at: usuario.created_at,
+                last_login: usuario.last_login,
+                login_count: usuario.login_count || 0,
+                total_usage_time: usuario.total_usage_time || 0,
+                last_activity: usuario.last_activity,
+                current_session_start: usuario.current_session_start,
+                current_session_duration: tempoSessaoAtual,
+                total_sessions: parseInt(statsSessoes.total_sessoes) || 0,
+                total_sessions_time: parseInt(statsSessoes.tempo_total_sessoes) || 0
+            };
+        }));
+        
+        return stats;
+    } catch (error) {
+        console.error('Erro ao obter estatísticas de todos os usuários:', error);
+        throw error;
+    }
+}
+
+// Finalizar sessão do usuário (chamado no logout)
+async function finalizarSessao(usuarioId) {
+    try {
+        const agora = new Date();
+        
+        // Obter início da sessão atual
+        const usuario = await pool.query(`
+            SELECT current_session_start 
+            FROM usuarios 
+            WHERE id = $1
+        `, [usuarioId]);
+        
+        if (usuario.rows.length > 0 && usuario.rows[0].current_session_start) {
+            const sessionStart = new Date(usuario.rows[0].current_session_start);
+            const duracao = Math.floor((agora - sessionStart) / 1000);
+            
+            // Atualizar última sessão aberta com duração
+            await pool.query(`
+                UPDATE user_sessions 
+                SET session_end = $1, duration = $2
+                WHERE usuario_id = $3 
+                AND session_end IS NULL
+                ORDER BY session_start DESC
+                LIMIT 1
+            `, [agora, duracao, usuarioId]);
+            
+            // Atualizar tempo total de uso
+            await pool.query(`
+                UPDATE usuarios 
+                SET total_usage_time = COALESCE(total_usage_time, 0) + $1,
+                    current_session_start = NULL
+                WHERE id = $2
+            `, [duracao, usuarioId]);
+        }
+        
+    } catch (error) {
+        console.error('Erro ao finalizar sessão:', error);
+        // Não lançar erro para não impedir o logout
+    }
+}
+
 // Fechar conexão
 async function fechar() {
     try {
@@ -4651,6 +4936,12 @@ module.exports = {
     // Funções de ordem dos botões de gerenciamento
     obterOrdemGerenciamentos,
     atualizarOrdemGerenciamentos,
+    // Funções de estatísticas
+    registrarLogin,
+    registrarAtividade,
+    obterEstatisticasUsuario,
+    obterEstatisticasTodosUsuarios,
+    finalizarSessao,
     fechar
 };
 
