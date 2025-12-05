@@ -5,6 +5,7 @@ import RegistroModal from './RegistroModal';
 import { apiService } from '../services/api';
 import type { Funcao } from './GerenciamentoFuncoes';
 import { obterSecoesMenuAtivas } from './GerenciamentoMenu';
+import { obterSessoesAtivas } from './GerenciamentoSessoes';
 import type { Plano } from './GerenciamentoPlanos';
 import './LandingPage.css';
 
@@ -13,6 +14,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
   const [funcoes, setFuncoes] = useState<Funcao[]>([]);
   const [secoesMenuAtivas, setSecoesMenuAtivas] = useState<string[]>([]);
+  const [sessoesAtivas, setSessoesAtivas] = useState<string[]>([]);
   const [planos, setPlanos] = useState<Plano[]>([]);
   const [faqs, setFaqs] = useState<Array<{ id: number; pergunta: string; resposta: string }>>([]);
   const [rodapeLinks, setRodapeLinks] = useState<Array<{ id: number; texto: string; link: string; coluna: string; ordem: number; eh_link: boolean }>>([]);
@@ -53,6 +55,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
   useEffect(() => {
     carregarFuncoes();
     carregarSecoesMenu();
+    carregarSessoes();
     carregarPlanos();
     carregarFAQ();
     carregarRodapeLinks();
@@ -60,6 +63,12 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
     // Ouvir atualizações de configuração do menu
     const handleMenuConfigUpdate = () => {
       carregarSecoesMenu();
+    };
+    
+    // Ouvir atualizações de configuração de sessões
+    const handleSessoesConfigUpdate = () => {
+      console.log('Evento sessoes-config-updated recebido, recarregando sessões...');
+      carregarSessoes();
     };
     
     // Ouvir atualizações de planos
@@ -83,6 +92,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
     };
     
     window.addEventListener('menu-config-updated', handleMenuConfigUpdate);
+    window.addEventListener('sessoes-config-updated', handleSessoesConfigUpdate);
     window.addEventListener('planos-updated', handlePlanosUpdate);
     window.addEventListener('faq-updated', handleFAQUpdate);
     window.addEventListener('rodape-updated', handleRodapeUpdate);
@@ -91,6 +101,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
     // Também ouvir quando a página ganha foco (quando o usuário volta para a landing page)
     const handleFocus = () => {
       carregarSecoesMenu();
+      carregarSessoes();
       carregarPlanos();
       carregarFAQ();
       carregarRodapeLinks();
@@ -103,6 +114,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         carregarSecoesMenu();
+        carregarSessoes();
         carregarPlanos();
         carregarFAQ();
         carregarRodapeLinks();
@@ -114,6 +126,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
     
     return () => {
       window.removeEventListener('menu-config-updated', handleMenuConfigUpdate);
+      window.removeEventListener('sessoes-config-updated', handleSessoesConfigUpdate);
       window.removeEventListener('planos-updated', handlePlanosUpdate);
       window.removeEventListener('faq-updated', handleFAQUpdate);
       window.removeEventListener('rodape-updated', handleRodapeUpdate);
@@ -131,6 +144,19 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
       console.error('Erro ao carregar seções do menu:', error);
       // Em caso de erro, mostrar todas as seções como padrão
       setSecoesMenuAtivas(['sobre', 'funcionalidades', 'roadmap', 'planos', 'faq']);
+    }
+  };
+
+  const carregarSessoes = async () => {
+    try {
+      const sessoesAtivasCarregadas = await obterSessoesAtivas();
+      console.log('Sessões ativas carregadas:', sessoesAtivasCarregadas);
+      // Forçar atualização criando um novo array para garantir que o React detecte a mudança
+      setSessoesAtivas([...sessoesAtivasCarregadas]);
+    } catch (error) {
+      console.error('Erro ao carregar sessões:', error);
+      // Em caso de erro, mostrar todas as sessões como padrão
+      setSessoesAtivas(['hero', 'sobre', 'funcionalidades', 'whatsapp-ia-ativas', 'roadmap', 'whatsapp-integracao', 'planos', 'faq', 'cta-final']);
     }
   };
 
@@ -293,6 +319,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
       </header>
 
       {/* Hero Section */}
+      {sessoesAtivas.includes('hero') && (
       <section className="hero-section">
         <div className="hero-content">
           <div className="hero-text">
@@ -321,8 +348,10 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
           </div>
         </div>
       </section>
+      )}
 
       {/* Nossa História / Por que existe */}
+      {sessoesAtivas.includes('sobre') && (
       <section id="sobre" className="sobre-section">
         <div className="container">
           <h2 className="section-title">Por que criamos este sistema?</h2>
@@ -364,9 +393,10 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
           </div>
         </div>
       </section>
+      )}
 
       {/* Funcionalidades */}
-      {beneficios.length > 0 && (
+      {sessoesAtivas.includes('funcionalidades') && beneficios.length > 0 && (
         <section id="funcionalidades" className="funcionalidades-section">
           <div className="container">
             <h2 className="section-title">Funcionalidades</h2>
@@ -384,7 +414,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
       )}
 
       {/* Integração com Inteligência Artificial (pelo WhatsApp) - Funções Ativas */}
-      {funcoesIAAtivas.length > 0 && (
+      {sessoesAtivas.includes('whatsapp-ia-ativas') && funcoesIAAtivas.length > 0 && (
         <section id="whatsapp-ia-ativas" className="whatsapp-section">
           <div className="container">
             <h2 className="section-title">
@@ -420,7 +450,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
       )}
 
       {/* Roadmap – O que vem por aí */}
-      {roadmapItens.length > 0 && (
+      {sessoesAtivas.includes('roadmap') && roadmapItens.length > 0 && (
         <section id="roadmap" className="roadmap-section">
           <div className="container">
             <h2 className="section-title">O que vem por aí <span className="roadmap-subtitle">(funcionalidades em desenvolvimento)</span></h2>
@@ -443,7 +473,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
       )}
 
       {/* Integração com o WhatsApp – No Forno */}
-      {funcoesIA.filter(f => !f.ativa).length > 0 && (
+      {sessoesAtivas.includes('whatsapp-integracao') && funcoesIA.filter(f => !f.ativa).length > 0 && (
         <section id="whatsapp-integracao" className="whatsapp-section">
           <div className="container">
             <h2 className="section-title">
@@ -482,7 +512,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
       )}
 
       {/* Planos */}
-      {planos.length > 0 && (
+      {sessoesAtivas.includes('planos') && planos.length > 0 && (
         <section id="planos" className="planos-section">
           <div className="container">
             <h2 className="section-title">Escolha o plano ideal para você</h2>
@@ -594,6 +624,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
       )}
 
       {/* FAQ */}
+      {sessoesAtivas.includes('faq') && (
       <section id="faq" className="faq-section">
         <div className="container">
           <h2 className="section-title">FAQ – Perguntas Frequentes</h2>
@@ -619,8 +650,10 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
           </div>
         </div>
       </section>
+      )}
 
       {/* CTA Final */}
+      {sessoesAtivas.includes('cta-final') && (
       <section className="cta-final-section">
         <div className="container">
           <div className="cta-final-content">
@@ -633,6 +666,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
           </div>
         </div>
       </section>
+      )}
 
       {/* Footer */}
       <footer className="landing-footer">

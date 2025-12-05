@@ -1398,6 +1398,37 @@ app.put('/api/configuracoes-menu', authenticateToken, requireAdmin, async (req, 
     }
 });
 
+// ========== CONFIGURAÇÕES DE SESSÕES DA LANDING PAGE ==========
+
+// Obter todas as configurações de sessões (público - usado na landing page)
+app.get('/api/configuracoes-sessoes', async (req, res) => {
+    try {
+        const configuracoes = await db.obterConfiguracoesSessoes();
+        res.json(configuracoes);
+    } catch (error) {
+        console.error('Erro ao obter configurações de sessões:', error);
+        res.status(500).json({ error: 'Erro ao obter configurações de sessões' });
+    }
+});
+
+// Atualizar configurações de sessões (apenas admin)
+app.put('/api/configuracoes-sessoes', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { configuracoes } = req.body;
+        
+        if (!Array.isArray(configuracoes)) {
+            return res.status(400).json({ error: 'Configurações devem ser um array' });
+        }
+
+        await db.atualizarConfiguracoesSessoes(configuracoes);
+        const configuracoesAtualizadas = await db.obterConfiguracoesSessoes();
+        res.json(configuracoesAtualizadas);
+    } catch (error) {
+        console.error('Erro ao atualizar configurações de sessões:', error);
+        res.status(500).json({ error: 'Erro ao atualizar configurações de sessões' });
+    }
+});
+
 // ========== PLANOS ==========
 
 // Obter todos os planos (público - usado na landing page)

@@ -515,5 +515,16 @@ export const apiService = {
   async atualizarOrdemRodapeLinks(linkIds: number[]): Promise<void> {
     await api.put('/api/admin/rodape/ordem', { linkIds });
   },
+
+  // ========== Configurações de Sessões da Landing Page ==========
+  async obterConfiguracoesSessoes(): Promise<Array<{ id: string; nome: string; ativa: boolean; ordem: number }>> {
+    const response = await api.get<Array<{ id: string; nome: string; ativa: boolean; ordem: number }>>('/api/configuracoes-sessoes');
+    return response.data;
+  },
+
+  async atualizarConfiguracoesSessoes(configuracoes: Array<{ id: string; ativa: boolean }>): Promise<Array<{ id: string; nome: string; ativa: boolean; ordem: number }>> {
+    const response = await api.put<Array<{ id: string; nome: string; ativa: boolean; ordem: number }>>('/api/configuracoes-sessoes', { configuracoes });
+    return response.data;
+  },
 };
 

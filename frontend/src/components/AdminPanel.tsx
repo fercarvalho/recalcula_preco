@@ -9,8 +9,9 @@ import GerenciamentoMenu from './GerenciamentoMenu';
 import GerenciamentoPlanos from './GerenciamentoPlanos';
 import GerenciamentoFAQ from './GerenciamentoFAQ';
 import GerenciamentoRodape from './GerenciamentoRodape';
+import GerenciamentoSessoes from './GerenciamentoSessoes';
 import OrganizarFuncoesModal from './OrganizarFuncoesModal';
-import { FaUser, FaEdit, FaTrash, FaShieldAlt, FaChevronRight, FaChevronDown, FaFolder, FaEye, FaEyeSlash, FaPlus, FaTimes, FaCog, FaBars, FaCreditCard, FaQuestionCircle, FaLink } from 'react-icons/fa';
+import { FaUser, FaEdit, FaTrash, FaShieldAlt, FaChevronRight, FaChevronDown, FaFolder, FaEye, FaEyeSlash, FaPlus, FaTimes, FaCog, FaBars, FaCreditCard, FaQuestionCircle, FaLink, FaLayerGroup } from 'react-icons/fa';
 import * as FaIcons from 'react-icons/fa';
 import './AdminPanel.css';
 
@@ -54,6 +55,7 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
   const [showGerenciamentoPlanos, setShowGerenciamentoPlanos] = useState(false);
   const [showGerenciamentoFAQ, setShowGerenciamentoFAQ] = useState(false);
   const [showGerenciamentoRodape, setShowGerenciamentoRodape] = useState(false);
+  const [showGerenciamentoSessoes, setShowGerenciamentoSessoes] = useState(false);
   const [showOrganizarFuncoes, setShowOrganizarFuncoes] = useState(false);
 
   useEffect(() => {
@@ -377,6 +379,10 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
     setShowGerenciamentoRodape(false);
   }, []);
 
+  const handleCloseGerenciamentoSessoes = useCallback(() => {
+    setShowGerenciamentoSessoes(false);
+  }, []);
+
   if (!isOpen) return null;
 
   return (
@@ -409,6 +415,10 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
       <GerenciamentoRodape
         isOpen={showGerenciamentoRodape}
         onClose={handleCloseGerenciamentoRodape}
+      />
+      <GerenciamentoSessoes
+        isOpen={showGerenciamentoSessoes}
+        onClose={handleCloseGerenciamentoSessoes}
       />
       <Modal
         isOpen={isOpen}
@@ -451,6 +461,22 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
               >
                 <FaBars /> Gerenciar Menu
               </button>
+              </div>
+              <div>
+                <h4 style={{ marginBottom: '8px', fontSize: '16px', fontWeight: '500' }}>
+                  <FaLayerGroup /> Gerenciar Sessões da Landing Page
+                </h4>
+                <div style={{ borderBottom: '1px solid #e9ecef', marginBottom: '12px' }}></div>
+                <p style={{ marginBottom: '12px', color: '#666', fontSize: '14px' }}>
+                  Gerencie quais sessões da landing page devem ser exibidas. Lembre-se: todas as sessões com funções são uma sessão só.
+                </p>
+                <button 
+                  onClick={() => setShowGerenciamentoSessoes(true)}
+                  className="btn-primary"
+                  style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left' }}
+                >
+                  <FaLayerGroup /> Gerenciar Sessões
+                </button>
               </div>
               <div>
                 <h4 style={{ marginBottom: '8px', fontSize: '16px', fontWeight: '500' }}>

@@ -412,6 +412,22 @@ async function inicializar() {
         // Inicializar configurações padrão do menu se não existirem
         await inicializarConfiguracoesMenuPadrao();
         
+        // Criar tabela de configurações de sessões da landing page
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS configuracoes_sessoes (
+                id SERIAL PRIMARY KEY,
+                sessao_id VARCHAR(50) UNIQUE NOT NULL,
+                nome VARCHAR(255) NOT NULL,
+                ativa BOOLEAN DEFAULT TRUE,
+                ordem INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        // Inicializar configurações padrão de sessões se não existirem
+        await inicializarConfiguracoesSessoesPadrao();
+        
         // Criar tabela de planos
         await pool.query(`
             CREATE TABLE IF NOT EXISTS planos (
@@ -3445,6 +3461,85 @@ async function atualizarConfiguracoesMenu(configuracoes) {
     }
 }
 
+// ========== FUNÇÕES DE CONFIGURAÇÕES DE SESSÕES DA LANDING PAGE ==========
+
+// Inicializar configurações padrão de sessões
+async function inicializarConfiguracoesSessoesPadrao() {
+    try {
+        const sessoesPadrao = [
+            { sessao_id: 'hero', nome: 'Hero (Seção Principal)', ativa: true, ordem: 0 },
+            { sessao_id: 'sobre', nome: 'Sobre', ativa: true, ordem: 1 },
+            { sessao_id: 'funcionalidades', nome: 'Funcionalidades (Todas as funções)', ativa: true, ordem: 2 },
+            { sessao_id: 'whatsapp-ia-ativas', nome: 'WhatsApp IA - Funções Ativas', ativa: true, ordem: 3 },
+            { sessao_id: 'roadmap', nome: 'Roadmap (O que vem por aí)', ativa: true, ordem: 4 },
+            { sessao_id: 'whatsapp-integracao', nome: 'WhatsApp IA - Integração', ativa: true, ordem: 5 },
+            { sessao_id: 'planos', nome: 'Planos', ativa: true, ordem: 6 },
+            { sessao_id: 'faq', nome: 'FAQ', ativa: true, ordem: 7 },
+            { sessao_id: 'cta-final', nome: 'CTA Final', ativa: true, ordem: 8 }
+        ];
+
+        for (const sessao of sessoesPadrao) {
+            const existe = await pool.query(
+                'SELECT id FROM configuracoes_sessoes WHERE sessao_id = $1',
+                [sessao.sessao_id]
+            );
+            
+            if (existe.rows.length === 0) {
+                await pool.query(
+                    `INSERT INTO configuracoes_sessoes (sessao_id, nome, ativa, ordem, created_at, updated_at)
+                     VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+                    [sessao.sessao_id, sessao.nome, sessao.ativa, sessao.ordem]
+                );
+            }
+        }
+    } catch (error) {
+        console.error('Erro ao inicializar configurações de sessões:', error);
+        throw error;
+    }
+}
+
+// Obter todas as configurações de sessões
+async function obterConfiguracoesSessoes() {
+    try {
+        const result = await pool.query(
+            'SELECT * FROM configuracoes_sessoes ORDER BY ordem ASC'
+        );
+        return result.rows.map(row => ({
+            id: row.sessao_id,
+            nome: row.nome,
+            ativa: row.ativa,
+            ordem: row.ordem
+        }));
+    } catch (error) {
+        console.error('Erro ao obter configurações de sessões:', error);
+        throw error;
+    }
+}
+
+// Atualizar configurações de sessões
+async function atualizarConfiguracoesSessoes(configuracoes) {
+    try {
+        // Usar transação para garantir consistência
+        await pool.query('BEGIN');
+        
+        for (const config of configuracoes) {
+            await pool.query(
+                `UPDATE configuracoes_sessoes 
+                 SET ativa = $1, updated_at = CURRENT_TIMESTAMP
+                 WHERE sessao_id = $2`,
+                [config.ativa, config.id]
+            );
+        }
+        
+        await pool.query('COMMIT');
+        return true;
+    } catch (error) {
+        await pool.query('ROLLBACK');
+        console.error('Erro ao atualizar configurações de sessões:', error);
+        throw error;
+    }
+}
+
 // Migrar benefícios para estrutura many-to-many (consolidando duplicatas)
 async function migrarBeneficiosParaManyToMany() {
     try {
@@ -4358,6 +4453,10 @@ module.exports = {
     // Funções de configurações do menu
     obterConfiguracoesMenu,
     atualizarConfiguracoesMenu,
+    // Funções de configurações de sessões
+    inicializarConfiguracoesSessoesPadrao,
+    obterConfiguracoesSessoes,
+    atualizarConfiguracoesSessoes,
     // Funções de planos
     obterPlanos,
     obterPlanoPorId,
