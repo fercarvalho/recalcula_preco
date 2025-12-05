@@ -873,9 +873,9 @@ async function verificarCredenciais(identificador, senha) {
                 [identificador.trim().toLowerCase()]
             );
         } else {
-            // Buscar por username (único)
+            // Buscar por username (único) - case-insensitive
             result = await pool.query(
-                'SELECT id, username, email, senha_hash, is_admin FROM usuarios WHERE username = $1',
+                'SELECT id, username, email, senha_hash, is_admin FROM usuarios WHERE LOWER(username) = LOWER($1)',
                 [identificador.trim()]
             );
         }
@@ -1022,9 +1022,9 @@ async function atualizarUsuario(usuarioId, novoUsername, novoEmail, novaSenha, i
         let paramIndex = 1;
 
         if (novoUsername) {
-            // Verificar se o novo username já existe
+            // Verificar se o novo username já existe (case-insensitive)
             const existente = await pool.query(
-                'SELECT id FROM usuarios WHERE username = $1 AND id != $2',
+                'SELECT id FROM usuarios WHERE LOWER(username) = LOWER($1) AND id != $2',
                 [novoUsername.trim(), usuarioId]
             );
             if (existente.rows.length > 0) {
@@ -1112,9 +1112,9 @@ async function alterarLogin(usuarioId, novoLogin, senha) {
             throw new Error('Senha incorreta');
         }
 
-        // Verificar se o novo login já existe
+        // Verificar se o novo login já existe (case-insensitive)
         const loginExistente = await pool.query(
-            'SELECT id FROM usuarios WHERE username = $1 AND id != $2',
+            'SELECT id FROM usuarios WHERE LOWER(username) = LOWER($1) AND id != $2',
             [novoLogin.trim(), usuarioId]
         );
 
@@ -1242,9 +1242,9 @@ async function verificarCredenciaisPorId(usuarioId, senha) {
 // Criar novo usuário
 async function criarUsuario(username, email, senha) {
     try {
-        // Verificar se o username já existe
+        // Verificar se o username já existe (case-insensitive)
         const usuarioExistente = await pool.query(
-            'SELECT id FROM usuarios WHERE username = $1',
+            'SELECT id FROM usuarios WHERE LOWER(username) = LOWER($1)',
             [username.trim()]
         );
 
@@ -2019,7 +2019,7 @@ async function obterUsuariosPorEmail(email) {
 async function obterUsuarioPorUsername(username) {
     try {
         const result = await pool.query(
-            'SELECT id, username, email FROM usuarios WHERE username = $1',
+            'SELECT id, username, email FROM usuarios WHERE LOWER(username) = LOWER($1)',
             [username.trim()]
         );
         
