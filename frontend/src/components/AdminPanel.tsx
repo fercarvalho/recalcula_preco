@@ -12,7 +12,7 @@ import GerenciamentoRodape from './GerenciamentoRodape';
 import GerenciamentoSessoes from './GerenciamentoSessoes';
 import OrganizarFuncoesModal from './OrganizarFuncoesModal';
 import { useDragAndDrop } from '../hooks/useDragAndDrop';
-import { FaUser, FaEdit, FaTrash, FaShieldAlt, FaChevronRight, FaChevronDown, FaFolder, FaEye, FaEyeSlash, FaPlus, FaTimes, FaCog, FaBars, FaCreditCard, FaQuestionCircle, FaLink, FaLayerGroup, FaGripVertical } from 'react-icons/fa';
+import { FaUser, FaEdit, FaTrash, FaShieldAlt, FaChevronRight, FaChevronDown, FaFolder, FaEye, FaEyeSlash, FaPlus, FaTimes, FaCog, FaBars, FaCreditCard, FaQuestionCircle, FaLink, FaLayerGroup, FaGripVertical, FaSearch, FaSortAlphaDown, FaSortAlphaUp, FaSort } from 'react-icons/fa';
 import * as FaIcons from 'react-icons/fa';
 import './AdminPanel.css';
 
@@ -41,6 +41,8 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
   const [usuarioSelecionado, setUsuarioSelecionado] = useState<number | null>(null);
   const [usuarioDetalhes, setUsuarioDetalhes] = useState<UsuarioDetalhes | null>(null);
   const [loading, setLoading] = useState(false);
+  const [buscaUsuario, setBuscaUsuario] = useState<string>('');
+  const [ordemUsuarios, setOrdemUsuarios] = useState<'nenhuma' | 'crescente' | 'decrescente'>('nenhuma');
   const [showEditarUsuario, setShowEditarUsuario] = useState(false);
   const [usuarioEditando, setUsuarioEditando] = useState<Usuario | null>(null);
   const [categoriasExpandidas, setCategoriasExpandidas] = useState<Set<string>>(new Set());
@@ -584,8 +586,94 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
 
           <div className="admin-usuarios-list">
             <h3>Usuários do Sistema</h3>
+            <div className="admin-busca-usuario" style={{ marginBottom: '15px' }}>
+              <div style={{ position: 'relative' }}>
+                <FaSearch style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#999' }} />
+                <input
+                  type="text"
+                  placeholder="Buscar por nome ou email..."
+                  value={buscaUsuario}
+                  onChange={(e) => setBuscaUsuario(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px 10px 40px',
+                    border: '1px solid #ddd',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    outline: 'none',
+                    transition: 'border-color 0.2s ease'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--cor-primaria, #FF6B35)'}
+                  onBlur={(e) => e.target.style.borderColor = '#ddd'}
+                />
+              </div>
+            </div>
+            <div style={{ marginBottom: '15px' }}>
+              <button
+                onClick={() => {
+                  if (ordemUsuarios === 'nenhuma') {
+                    setOrdemUsuarios('crescente');
+                  } else if (ordemUsuarios === 'crescente') {
+                    setOrdemUsuarios('decrescente');
+                  } else {
+                    setOrdemUsuarios('nenhuma');
+                  }
+                }}
+                className="btn-secondary"
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  fontSize: '0.875rem',
+                  padding: '8px 12px'
+                }}
+                title={
+                  ordemUsuarios === 'nenhuma' 
+                    ? 'Ordenar alfabeticamente (A-Z)'
+                    : ordemUsuarios === 'crescente'
+                    ? 'Ordenar alfabeticamente (Z-A)'
+                    : 'Remover ordenação'
+                }
+              >
+                {ordemUsuarios === 'nenhuma' && (
+                  <>
+                    <FaSort /> Ordenar Lista
+                  </>
+                )}
+                {ordemUsuarios === 'crescente' && (
+                  <>
+                    <FaSortAlphaDown /> A-Z
+                  </>
+                )}
+                {ordemUsuarios === 'decrescente' && (
+                  <>
+                    <FaSortAlphaUp /> Z-A
+                  </>
+                )}
+              </button>
+            </div>
             <div className="usuarios-list">
-              {usuarios.map(usuario => (
+              {usuarios
+                .filter(usuario => {
+                  if (!buscaUsuario.trim()) return true;
+                  const termo = buscaUsuario.toLowerCase().trim();
+                  const nome = usuario.username?.toLowerCase() || '';
+                  const email = usuario.email?.toLowerCase() || '';
+                  return nome.includes(termo) || email.includes(termo);
+                })
+                .sort((a, b) => {
+                  if (ordemUsuarios === 'nenhuma') return 0;
+                  const nomeA = a.username?.toLowerCase() || '';
+                  const nomeB = b.username?.toLowerCase() || '';
+                  if (ordemUsuarios === 'crescente') {
+                    return nomeA.localeCompare(nomeB, 'pt-BR');
+                  } else {
+                    return nomeB.localeCompare(nomeA, 'pt-BR');
+                  }
+                })
+                .map(usuario => (
                 <div
                   key={usuario.id}
                   className={`usuario-item ${usuarioSelecionado === usuario.id ? 'selected' : ''} ${onCarregarUsuarioNoSistema ? 'clickable' : ''}`}

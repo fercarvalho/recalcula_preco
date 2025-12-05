@@ -18,6 +18,25 @@
   font-size: 1.2rem;
 }
 
+.admin-busca-usuario {
+  margin-bottom: 15px;
+}
+
+.admin-busca-usuario input {
+  width: 100%;
+  padding: 10px 12px 10px 40px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.admin-busca-usuario input:focus {
+  border-color: var(--cor-primaria, #FF6B35);
+  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+}
+
 .usuarios-list {
   display: flex;
   flex-direction: column;
