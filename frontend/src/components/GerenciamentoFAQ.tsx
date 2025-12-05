@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { FaQuestionCircle, FaPlus, FaEdit, FaTrash, FaSave, FaGripVertical } from 'react-icons/fa';
+import { useState, useEffect, useRef } from 'react';
+import { FaQuestionCircle, FaPlus, FaEdit, FaTrash, FaSave, FaGripVertical, FaUndo } from 'react-icons/fa';
 import Modal from './Modal';
 import { mostrarAlert, mostrarConfirm } from '../utils/modals';
 import { apiService } from '../services/api';
@@ -23,6 +23,8 @@ const GerenciamentoFAQ = ({ isOpen, onClose }: GerenciamentoFAQProps) => {
   const [loading, setLoading] = useState(false);
   const [showModalFAQ, setShowModalFAQ] = useState(false);
   const [faqEditando, setFAQEditando] = useState<FAQ | null>(null);
+  // Guardar ordem padrão quando o modal é aberto
+  const ordemPadraoRef = useRef<Map<number, number>>(new Map());
   
   // Garantir que todas as perguntas tenham ID para o drag and drop
   const faqComIds = faq.map((p, index) => ({
@@ -41,6 +43,14 @@ const GerenciamentoFAQ = ({ isOpen, onClose }: GerenciamentoFAQProps) => {
       setLoading(true);
       const faqCarregado = await apiService.obterFAQAdmin();
       setFAQ(faqCarregado);
+      
+      // Salvar ordem padrão (ordem atual quando o modal é aberto)
+      ordemPadraoRef.current.clear();
+      faqCarregado.forEach(p => {
+        if (p.id && typeof p.id === 'number') {
+          ordemPadraoRef.current.set(p.id, p.ordem || 0);
+        }
+      });
     } catch (error) {
       console.error('Erro ao carregar FAQ:', error);
       await mostrarAlert('Erro', 'Erro ao carregar FAQ. Tente novamente.');
@@ -140,6 +150,58 @@ const GerenciamentoFAQ = ({ isOpen, onClose }: GerenciamentoFAQProps) => {
     handleDragLeave: handleDragLeaveFAQ,
   } = useDragAndDrop(faqComIds, handleReorderFAQ);
 
+  // Restaurar ordem padrão das perguntas FAQ
+  const handleRestaurarPadrao = async () => {
+    try {
+      setLoading(true);
+      
+      // Restaurar ordem padrão para todas as perguntas
+      const faqRestaurado = faq.map(p => {
+        if (p.id && typeof p.id === 'number') {
+          return {
+            ...p,
+            ordem: ordemPadraoRef.current.get(p.id) || 0
+          };
+        }
+        return p;
+      });
+      
+      // Ordenar pela ordem padrão
+      faqRestaurado.sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+      
+      setFAQ(faqRestaurado);
+      
+      // Salvar no servidor
+      const faqIds = faqRestaurado
+        .map(p => p.id)
+        .filter((id): id is number => {
+          if (id === undefined || id === null) return false;
+          if (typeof id === 'string') return false;
+          const numId = typeof id === 'string' ? parseInt(id, 10) : id;
+          return !isNaN(numId);
+        })
+        .map(id => {
+          const numId = typeof id === 'string' ? parseInt(id, 10) : id;
+          return numId;
+        });
+      
+      if (faqIds.length > 0) {
+        await apiService.atualizarOrdemFAQ(faqIds);
+      }
+      
+      // Disparar evento para atualizar o FAQ na landing page
+      window.dispatchEvent(new CustomEvent('faq-updated'));
+      
+      await mostrarAlert('Sucesso', 'Ordem padrão das perguntas FAQ restaurada!');
+    } catch (error) {
+      console.error('Erro ao restaurar ordem padrão do FAQ:', error);
+      await mostrarAlert('Erro', 'Erro ao restaurar ordem padrão. Tente novamente.');
+      await carregarFAQ();
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -154,6 +216,9 @@ const GerenciamentoFAQ = ({ isOpen, onClose }: GerenciamentoFAQProps) => {
           <>
             <button onClick={onClose} className="btn-secondary">
               Fechar
+            </button>
+            <button onClick={handleRestaurarPadrao} className="btn-secondary" disabled={loading || faq.length === 0}>
+              <FaUndo /> Restaurar Padrão
             </button>
             <button onClick={handleAdicionar} className="btn-primary">
               <FaPlus /> Adicionar Pergunta
