@@ -17,6 +17,49 @@
   line-height: 1.5;
 }
 
+.sessao-master-funcoes {
+  margin-bottom: 1.5rem;
+  padding: 1.25rem;
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.1) 0%, rgba(255, 107, 53, 0.05) 100%);
+  border: 2px solid #FF6B35;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(255, 107, 53, 0.15);
+}
+
+.sessao-master-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sessao-master-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  flex: 1;
+}
+
+.sessao-master-info .sessao-icon {
+  color: #FF6B35;
+  font-size: 1.5rem;
+  margin-top: 0.25rem;
+}
+
+.sessao-master-nome {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.25rem;
+}
+
+.sessao-master-descricao {
+  display: block;
+  font-size: 0.875rem;
+  color: #666;
+  line-height: 1.4;
+}
+
 .sessoes-list {
   display: flex;
   flex-direction: column;

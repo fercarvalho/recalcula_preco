@@ -48,6 +48,55 @@ const GerenciamentoSessoes = ({ isOpen, onClose }: GerenciamentoSessoesProps) =>
     }
   };
 
+  // IDs das sessões relacionadas a funções
+  const sessoesFuncoes = ['funcionalidades', 'whatsapp-ia-ativas', 'roadmap', 'whatsapp-integracao'];
+
+  // Verificar se todas as sessões de funções estão ativas
+  const todasFuncoesAtivas = () => {
+    return sessoesFuncoes.every(id => {
+      const sessao = sessoes.find(s => s.id === id);
+      return sessao?.ativa === true;
+    });
+  };
+
+  // Alternar todas as sessões de funções simultaneamente
+  const handleToggleTodasFuncoes = async () => {
+    try {
+      const todasAtivas = todasFuncoesAtivas();
+      const novaAtiva = !todasAtivas;
+      
+      // Atualizar estado local imediatamente para feedback visual
+      let sessoesAtualizadas: SessaoLanding[] = [];
+      setSessoes(prevSessoes => {
+        sessoesAtualizadas = prevSessoes.map(s =>
+          sessoesFuncoes.includes(s.id) ? { ...s, ativa: novaAtiva } : s
+        );
+        return sessoesAtualizadas;
+      });
+
+      // Salvar na API imediatamente
+      const configuracoesParaSalvar = sessoesAtualizadas.map(s => ({
+        id: s.id,
+        ativa: s.ativa
+      }));
+      
+      await apiService.atualizarConfiguracoesSessoes(configuracoesParaSalvar);
+      
+      // Disparar evento para atualizar instantaneamente na landing page
+      console.log('Disparando evento sessoes-config-updated (todas funções)');
+      window.dispatchEvent(new CustomEvent('sessoes-config-updated'));
+    } catch (error) {
+      console.error('Erro ao atualizar sessões de funções:', error);
+      // Reverter mudança em caso de erro
+      setSessoes(prevSessoes =>
+        prevSessoes.map(s =>
+          sessoesFuncoes.includes(s.id) ? { ...s, ativa: !s.ativa } : s
+        )
+      );
+      await mostrarAlert('Erro', 'Erro ao atualizar sessões de funções. Tente novamente.');
+    }
+  };
+
   const handleToggleSessao = async (id: string) => {
     try {
       const sessao = sessoes.find(s => s.id === id);
@@ -157,6 +206,28 @@ const GerenciamentoSessoes = ({ isOpen, onClose }: GerenciamentoSessoesProps) =>
             <div className="sessoes-info">
               <p>Selecione quais sessões da landing page devem ser exibidas. Lembre-se: todas as sessões com funções são uma sessão só.</p>
             </div>
+            
+            {/* Switch Master para Sessões de Funções */}
+            <div className="sessao-master-funcoes">
+              <div className="sessao-master-header">
+                <div className="sessao-master-info">
+                  <FaLayerGroup className="sessao-icon" />
+                  <div>
+                    <span className="sessao-master-nome">Todas as Sessões de Funções</span>
+                    <span className="sessao-master-descricao">Controla: Funcionalidades, WhatsApp IA - Funções Ativas, Roadmap e WhatsApp IA - Integração</span>
+                  </div>
+                </div>
+                <button
+                  onClick={handleToggleTodasFuncoes}
+                  className={`toggle-btn ${todasFuncoesAtivas() ? 'active' : ''}`}
+                  title={todasFuncoesAtivas() ? 'Desativar todas as sessões de funções' : 'Ativar todas as sessões de funções'}
+                  disabled={loading}
+                >
+                  {todasFuncoesAtivas() ? <FaToggleOn /> : <FaToggleOff />}
+                </button>
+              </div>
+            </div>
+
             {sessoes.length === 0 && !loading ? (
               <div className="empty-state">
                 <p>Nenhuma sessão encontrada. Por favor, recarregue a página.</p>
