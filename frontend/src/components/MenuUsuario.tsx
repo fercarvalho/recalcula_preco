@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { getUser } from '../services/auth';
-import { FaUser, FaSignOutAlt, FaKey, FaUserEdit, FaRedo, FaGraduationCap, FaShieldAlt, FaEnvelope, FaCreditCard } from 'react-icons/fa';
+import { getUser, getToken } from '../services/auth';
+import { FaUser, FaSignOutAlt, FaKey, FaUserEdit, FaRedo, FaGraduationCap, FaShieldAlt, FaEnvelope, FaCreditCard, FaCheckCircle } from 'react-icons/fa';
 import AlterarLoginModal from './AlterarLoginModal';
 import AlterarSenhaModal from './AlterarSenhaModal';
 import AlterarEmailModal from './AlterarEmailModal';
@@ -25,6 +25,7 @@ const MenuUsuario = ({ onLogout, onReiniciarSistema, onReexibirTutorial, onOpenA
   const [statusPagamento, setStatusPagamento] = useState<{
     temAcesso: boolean;
     tipo: 'anual' | 'unico' | null;
+    emailNaoValidado?: boolean;
     assinatura: {
       status: string;
       plano_tipo: string;
@@ -33,6 +34,8 @@ const MenuUsuario = ({ onLogout, onReiniciarSistema, onReexibirTutorial, onOpenA
     } | null;
   } | null>(null);
   const [carregandoCancelar, setCarregandoCancelar] = useState(false);
+  const [reenviandoEmail, setReenviandoEmail] = useState(false);
+  const [emailNaoValidado, setEmailNaoValidado] = useState<boolean>(true); // Inicializar como true (assumir não validado até confirmar)
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Atualizar usuário quando o componente montar ou quando o login/email for alterado
@@ -40,7 +43,7 @@ const MenuUsuario = ({ onLogout, onReiniciarSistema, onReexibirTutorial, onOpenA
     setUser(getUser());
   }, [showAlterarLogin, showAlterarEmail]);
 
-  // Verificar status de pagamento ao montar o componente
+  // Verificar status de pagamento e email ao montar o componente
   useEffect(() => {
     const verificarStatus = async () => {
       try {
@@ -49,6 +52,49 @@ const MenuUsuario = ({ onLogout, onReiniciarSistema, onReexibirTutorial, onOpenA
       } catch (error) {
         console.error('Erro ao verificar status de pagamento:', error);
       }
+      
+      // Sempre verificar diretamente se o email está validado
+      const verificarEmail = async () => {
+        try {
+          const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
+          const token = getToken();
+          if (!token) {
+            console.log('MenuUsuario: Token não encontrado');
+            return;
+          }
+          
+          const response = await fetch(`${API_BASE}/api/auth/me`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log('MenuUsuario - Status do email do usuário:', data.user?.email_validado);
+            console.log('MenuUsuario - Dados completos do usuário:', data.user);
+            // Se o backend retornar email_validado, usar ele
+            // email_validado === false significa que não está validado
+            // email_validado === null ou undefined também significa que não está validado
+            const emailValidado = data.user?.email_validado;
+            console.log('MenuUsuario - emailValidado:', emailValidado, 'tipo:', typeof emailValidado);
+            // A opção deve aparecer se email_validado for false, null ou undefined
+            // Se email_validado for true, então email está validado (não mostrar opção)
+            // Se email_validado for false, null ou undefined, então email não está validado (mostrar opção)
+            const naoValidado = emailValidado !== true;
+            console.log('MenuUsuario - Definindo emailNaoValidado como:', naoValidado);
+            setEmailNaoValidado(naoValidado);
+          } else {
+            console.error('MenuUsuario - Erro ao obter dados do usuário:', response.status, response.statusText);
+            const errorText = await response.text();
+            console.error('MenuUsuario - Resposta de erro:', errorText);
+          }
+        } catch (error) {
+          console.error('MenuUsuario - Erro ao verificar status do email:', error);
+        }
+      };
+      
+      verificarEmail();
     };
     verificarStatus();
   }, []);
@@ -62,6 +108,37 @@ const MenuUsuario = ({ onLogout, onReiniciarSistema, onReexibirTutorial, onOpenA
 
     if (showMenu) {
       document.addEventListener('mousedown', handleClickOutside);
+      
+      // Verificar email quando o menu é aberto
+      const verificarEmail = async () => {
+        try {
+          const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
+          const token = getToken();
+          if (!token) {
+            return;
+          }
+          
+          const response = await fetch(`${API_BASE}/api/auth/me`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            const emailValidado = data.user?.email_validado;
+            console.log('MenuUsuario - Menu aberto - emailValidado:', emailValidado);
+            // A opção deve aparecer se email_validado for false, null ou undefined
+            const naoValidado = emailValidado !== true;
+            console.log('MenuUsuario - Menu aberto - Definindo emailNaoValidado como:', naoValidado);
+            setEmailNaoValidado(naoValidado);
+          }
+        } catch (error) {
+          console.error('MenuUsuario - Erro ao verificar status do email:', error);
+        }
+      };
+      
+      verificarEmail();
     }
 
     return () => {
@@ -114,6 +191,29 @@ const MenuUsuario = ({ onLogout, onReiniciarSistema, onReexibirTutorial, onOpenA
         'Erro',
         error.response?.data?.error || 'Erro ao acessar o portal de gerenciamento. Tente novamente.'
       );
+    }
+  };
+
+  const handleValidarEmail = async () => {
+    try {
+      setReenviandoEmail(true);
+      await apiService.reenviarEmailValidacao();
+      await mostrarAlert(
+        'Email Enviado',
+        'Um novo email de validação foi enviado para seu endereço de email. Verifique sua caixa de entrada e clique no link para validar seu email.'
+      );
+      setShowMenu(false);
+      // Atualizar status para remover a opção do menu
+      const status = await apiService.verificarStatusPagamento();
+      setStatusPagamento(status);
+      setEmailNaoValidado(false); // Email foi enviado, remover a opção
+    } catch (error: any) {
+      await mostrarAlert(
+        'Erro',
+        error.response?.data?.error || 'Erro ao reenviar email de validação. Tente novamente.'
+      );
+    } finally {
+      setReenviandoEmail(false);
     }
   };
 
@@ -176,6 +276,24 @@ const MenuUsuario = ({ onLogout, onReiniciarSistema, onReexibirTutorial, onOpenA
               <FaKey className="menu-icon" />
               <span>Alterar Senha</span>
             </button>
+
+            {/* Debug: mostrar estado do email */}
+            {console.log('MenuUsuario - Render - emailNaoValidado:', emailNaoValidado, 'statusPagamento?.emailNaoValidado:', statusPagamento?.emailNaoValidado)}
+            
+            {/* Mostrar se emailNaoValidado for true ou se statusPagamento indicar que não está validado */}
+            {(emailNaoValidado === true || statusPagamento?.emailNaoValidado === true) && (
+              <>
+                <div className="menu-usuario-divider"></div>
+                <button
+                  className="menu-usuario-item"
+                  onClick={handleValidarEmail}
+                  disabled={reenviandoEmail}
+                >
+                  <FaCheckCircle className="menu-icon" />
+                  <span>{reenviandoEmail ? 'Enviando...' : 'Validar Email'}</span>
+                </button>
+              </>
+            )}
 
             <div className="menu-usuario-divider"></div>
 

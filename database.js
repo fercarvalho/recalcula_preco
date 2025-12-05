@@ -1344,18 +1344,75 @@ async function criarTokenValidacaoEmail(usuarioId) {
 // Validar token de email
 async function validarTokenEmail(token) {
     try {
+        console.log('Validando token:', token ? `${token.substring(0, 10)}...` : 'null');
+        console.log('Tamanho do token recebido:', token ? token.length : 0);
+        
+        // Verificar todos os tokens no banco para debug
+        const allTokensDebug = await pool.query('SELECT token, usuario_id, expires_at FROM email_validation_tokens');
+        console.log('Total de tokens no banco:', allTokensDebug.rows.length);
+        if (allTokensDebug.rows.length > 0) {
+            console.log('Primeiro token no banco:', allTokensDebug.rows[0].token ? `${allTokensDebug.rows[0].token.substring(0, 10)}...` : 'null');
+            console.log('Tamanho do primeiro token no banco:', allTokensDebug.rows[0].token ? allTokensDebug.rows[0].token.length : 0);
+            console.log('Tokens são iguais?', allTokensDebug.rows[0].token === token);
+        }
+        
+        // Limpar espaços e caracteres especiais do token
+        const tokenLimpo = token ? token.trim() : null;
+        
         const result = await pool.query(
             'SELECT usuario_id, expires_at FROM email_validation_tokens WHERE token = $1',
-            [token]
+            [tokenLimpo]
         );
         
+        console.log('Tokens encontrados após busca:', result.rows.length);
+        
         if (result.rows.length === 0) {
-            return { valido: false, erro: 'Token inválido' };
+            // Se não encontrou, verificar se há algum token que corresponda (pode ter espaços ou encoding diferente)
+            for (const row of allTokensDebug.rows) {
+                const tokenBanco = row.token;
+                if (tokenBanco && tokenLimpo && tokenBanco.trim() === tokenLimpo.trim()) {
+                    console.log('Token encontrado por comparação manual!');
+                    const tokenData = { usuario_id: row.usuario_id, expires_at: row.expires_at };
+                    const expiresAt = new Date(tokenData.expires_at);
+                    const agora = new Date();
+                    
+                    console.log('Token expira em:', expiresAt);
+                    console.log('Data atual:', agora);
+                    
+                    if (agora > expiresAt) {
+                        await pool.query('DELETE FROM email_validation_tokens WHERE token = $1', [tokenBanco]);
+                        return { valido: false, erro: 'Token expirado' };
+                    }
+                    
+                    await pool.query(
+                        'UPDATE usuarios SET email_validado = TRUE WHERE id = $1',
+                        [tokenData.usuario_id]
+                    );
+                    
+                    await pool.query('DELETE FROM email_validation_tokens WHERE token = $1', [tokenBanco]);
+                    
+                    console.log('Token validado com sucesso para usuário:', tokenData.usuario_id);
+                    return { valido: true, usuarioId: tokenData.usuario_id };
+                }
+            }
+            
+            // Token não encontrado no banco
+            console.log('Token não encontrado no banco de dados.');
+            console.log('Isso pode acontecer se:');
+            console.log('1. O token foi usado e deletado');
+            console.log('2. O token expirou e foi deletado');
+            console.log('3. O token nunca foi criado no banco (usuário criado antes da implementação)');
+            console.log('4. O token no email é diferente do token no banco');
+            
+            return { valido: false, erro: 'Token inválido. O token não foi encontrado no banco de dados. Se você criou sua conta antes da implementação da validação de email, faça login e use a opção "Reenviar Email" para gerar um novo token.' };
         }
         
         const tokenData = result.rows[0];
         const expiresAt = new Date(tokenData.expires_at);
         const agora = new Date();
+        
+        console.log('Token expira em:', expiresAt);
+        console.log('Data atual:', agora);
         
         if (agora > expiresAt) {
             // Deletar token expirado
@@ -1372,6 +1429,7 @@ async function validarTokenEmail(token) {
         // Deletar token usado
         await pool.query('DELETE FROM email_validation_tokens WHERE token = $1', [token]);
         
+        console.log('Token validado com sucesso para usuário:', tokenData.usuario_id);
         return { valido: true, usuarioId: tokenData.usuario_id };
     } catch (error) {
         console.error('Erro ao validar token de email:', error);

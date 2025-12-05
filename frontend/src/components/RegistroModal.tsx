@@ -14,6 +14,7 @@ interface RegistroModalProps {
 const RegistroModal = ({ isOpen, onClose, onRegisterSuccess }: RegistroModalProps) => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const [confirmarEmail, setConfirmarEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [showSenha, setShowSenha] = useState(false);
@@ -23,7 +24,7 @@ const RegistroModal = ({ isOpen, onClose, onRegisterSuccess }: RegistroModalProp
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!username.trim() || !email.trim() || !senha.trim() || !confirmarSenha.trim()) {
+    if (!username.trim() || !email.trim() || !confirmarEmail.trim() || !senha.trim() || !confirmarSenha.trim()) {
       await mostrarAlert('Erro', 'Por favor, preencha todos os campos obrigatórios.');
       return;
     }
@@ -36,6 +37,11 @@ const RegistroModal = ({ isOpen, onClose, onRegisterSuccess }: RegistroModalProp
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
       await mostrarAlert('Erro', 'Por favor, insira um email válido.');
+      return;
+    }
+
+    if (email.trim().toLowerCase() !== confirmarEmail.trim().toLowerCase()) {
+      await mostrarAlert('Erro', 'Os emails não coincidem. Por favor, verifique e tente novamente.');
       return;
     }
 
@@ -77,6 +83,7 @@ const RegistroModal = ({ isOpen, onClose, onRegisterSuccess }: RegistroModalProp
       await mostrarAlert('Sucesso', `Usuário "${data.user.username}" criado com sucesso!`);
       setUsername('');
       setEmail('');
+      setConfirmarEmail('');
       setSenha('');
       setConfirmarSenha('');
       onClose();
@@ -135,6 +142,25 @@ const RegistroModal = ({ isOpen, onClose, onRegisterSuccess }: RegistroModalProp
             disabled={loading}
             required
           />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="confirmar-email-registro">Confirmar Email <span className="required">*</span>:</label>
+          <input
+            id="confirmar-email-registro"
+            type="email"
+            className="form-input"
+            value={confirmarEmail}
+            onChange={(e) => setConfirmarEmail(e.target.value)}
+            placeholder="Digite o email novamente"
+            disabled={loading}
+            required
+          />
+          {confirmarEmail && email.trim().toLowerCase() !== confirmarEmail.trim().toLowerCase() && (
+            <small style={{ color: '#f44336', fontSize: '0.85rem', marginTop: '4px' }}>
+              Os emails não coincidem
+            </small>
+          )}
         </div>
 
         <div className="form-group">

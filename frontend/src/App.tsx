@@ -18,6 +18,7 @@ import ResetarSenhaModal from './components/ResetarSenhaModal';
 import { SelecaoPlanos } from './components/SelecaoPlanos';
 import Modal from './components/Modal';
 import ValidarEmailModal from './components/ValidarEmailModal';
+import ValidarEmail from './pages/ValidarEmail';
 import { isAuthenticated, getToken, getUser, saveAuth } from './services/auth';
 import { carregarPlataformasSync, carregarPlataformas } from './utils/plataformas';
 
@@ -34,6 +35,17 @@ import { mostrarAlert, mostrarConfirm } from './utils/modals';
 import './App.css';
 
 function App() {
+  // Verificar se está na rota de validação de email PRIMEIRO
+  // Esta verificação deve ser feita ANTES de qualquer estado ou lógica
+  const pathname = window.location.pathname;
+  const urlParams = new URLSearchParams(window.location.search);
+  const validationToken = urlParams.get('token');
+  const isValidationRoute = pathname === '/validar-email' || pathname.includes('/validar-email') || (validationToken && window.location.href.includes('validar-email'));
+  
+  if (isValidationRoute) {
+    return <ValidarEmail />;
+  }
+
   const [itensPorCategoria, setItensPorCategoria] = useState<ItensPorCategoria>({});
   const [itensSelecionados, setItensSelecionados] = useState<Set<number>>(new Set());
   const [categoriasColapsadas, setCategoriasColapsadas] = useState<Set<string>>(new Set());
@@ -535,15 +547,6 @@ function App() {
   // Não bloquear acesso - permitir modo trial
   // Usuários sem acesso pago podem usar o sistema, mas não ver preços das plataformas
 
-  // Verificar se está na rota de validação de email
-  const urlParams = new URLSearchParams(window.location.search);
-  const validationToken = urlParams.get('token');
-  const isValidationRoute = window.location.pathname.includes('/validar-email') || (validationToken && window.location.href.includes('validar-email'));
-  
-  if (isValidationRoute) {
-    const ValidarEmail = require('./pages/ValidarEmail').default;
-    return <ValidarEmail />;
-  }
 
   if (loading) {
     return (

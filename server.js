@@ -221,12 +221,23 @@ app.post('/api/auth/register', async (req, res) => {
 // Verificar token (para verificar se o usuário está autenticado)
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
     try {
+        // Verificar se email está validado
+        const emailValidado = await db.verificarEmailValidado(req.user.id);
+        
+        // Verificar se há token de validação pendente (se não há token, pode ser que o email não foi validado corretamente)
+        const temTokenPendente = await db.obterTokenValidacaoEmail(req.user.id);
+        
+        // Se email_validado é true mas há token pendente, pode ser inconsistência - considerar como não validado
+        // Se email_validado é false, considerar como não validado
+        const emailRealmenteValidado = emailValidado && !temTokenPendente;
+        
         res.json({
             user: {
                 id: req.user.id,
                 username: req.user.username,
                 email: req.user.email,
-                is_admin: req.user.is_admin || false
+                is_admin: req.user.is_admin || false,
+                email_validado: emailRealmenteValidado
             }
         });
     } catch (error) {
@@ -308,12 +319,20 @@ app.post('/api/auth/logout', authenticateToken, async (req, res) => {
 app.get('/api/auth/validar-email/:token', async (req, res) => {
     try {
         const { token } = req.params;
+        console.log('Recebida requisição de validação de email com token:', token ? `${token.substring(0, 10)}...` : 'null');
+        
+        if (!token || token.trim() === '') {
+            return res.status(400).json({ error: 'Token não fornecido' });
+        }
+        
         const resultado = await db.validarTokenEmail(token);
         
         if (!resultado.valido) {
+            console.log('Token inválido:', resultado.erro);
             return res.status(400).json({ error: resultado.erro || 'Token inválido ou expirado' });
         }
         
+        console.log('Email validado com sucesso para usuário:', resultado.usuarioId);
         res.json({ 
             message: 'Email validado com sucesso!',
             usuarioId: resultado.usuarioId

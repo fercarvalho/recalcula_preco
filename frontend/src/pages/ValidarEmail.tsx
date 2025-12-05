@@ -15,6 +15,8 @@ const ValidarEmail = () => {
     const validar = async () => {
       const token = searchParams.get('token');
       
+      console.log('Token da URL:', token ? `${token.substring(0, 10)}...` : 'null');
+      
       if (!token) {
         setStatus('error');
         setMensagem('Token não fornecido');
@@ -22,6 +24,7 @@ const ValidarEmail = () => {
       }
 
       try {
+        console.log('Enviando requisição para validar email...');
         await apiService.validarEmail(token);
         setStatus('success');
         setMensagem('Email validado com sucesso! Você já pode usar o sistema normalmente.');
@@ -31,13 +34,15 @@ const ValidarEmail = () => {
           window.location.href = '/';
         }, 3000);
       } catch (error: any) {
+        console.error('Erro ao validar email:', error);
+        console.error('Resposta do servidor:', error.response?.data);
         setStatus('error');
         setMensagem(error.response?.data?.error || 'Erro ao validar email. Token inválido ou expirado.');
       }
     };
 
     validar();
-  }, [searchParams, navigate]);
+  }, [searchParams]);
 
   return (
     <div className="validar-email-page">
