@@ -24,6 +24,14 @@
   margin-bottom: 15px;
   padding-bottom: 10px;
   border-bottom: 2px solid #e9ecef;
+  gap: 12px;
+}
+
+.funcao-categoria-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
 }
 
 .funcao-categoria-header h3 {
@@ -35,6 +43,13 @@
 .funcao-categoria-count {
   color: #6c757d;
   font-size: 0.9rem;
+}
+
+.btn-restaurar-categoria {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .funcoes-list {

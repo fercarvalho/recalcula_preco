@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { FaGripVertical } from 'react-icons/fa';
+import { useState, useEffect, useRef } from 'react';
+import { FaGripVertical, FaUndo } from 'react-icons/fa';
 import Modal from './Modal';
 import { mostrarAlert } from '../utils/modals';
 import { apiService } from '../services/api';
@@ -44,9 +44,11 @@ interface CategoriaFuncoesProps {
   categoria: Categoria;
   funcoes: Funcao[];
   onReorder: (categoria: CategoriaTipo, novasFuncoes: Funcao[]) => void;
+  onRestaurarPadrao: (categoria: CategoriaTipo) => void;
+  loading: boolean;
 }
 
-const CategoriaFuncoes = ({ categoria, funcoes, onReorder }: CategoriaFuncoesProps) => {
+const CategoriaFuncoes = ({ categoria, funcoes, onReorder, onRestaurarPadrao, loading }: CategoriaFuncoesProps) => {
   // Garantir que todas as funções tenham ID
   const funcoesComIds = funcoes.map((f, index) => ({
     ...f,
@@ -67,42 +69,55 @@ const CategoriaFuncoes = ({ categoria, funcoes, onReorder }: CategoriaFuncoesPro
   return (
     <div className="funcao-categoria">
       <div className="funcao-categoria-header">
-        <h3>{categoria.titulo}</h3>
-        <span className="funcao-categoria-count">
-          {funcoes.length} {funcoes.length === 1 ? 'função' : 'funções'}
-        </span>
+        <div className="funcao-categoria-header-left">
+          <h3>{categoria.titulo}</h3>
+          <span className="funcao-categoria-count">
+            {funcoes.length} {funcoes.length === 1 ? 'função' : 'funções'}
+          </span>
+        </div>
       </div>
       <div className="funcoes-list">
         {funcoes.length === 0 ? (
           <p className="empty-categoria">Nenhuma função nesta categoria</p>
         ) : (
-          funcoesComIds.map((funcao) => {
-            const funcaoId = funcao.id;
-            return (
-              <div
-                key={funcaoId}
-                className="funcao-item"
-                draggable
-                onDragStart={(e) => handleDragStart(e, funcaoId, 'item')}
-                onDragEnd={handleDragEnd}
-                onDragOver={(e) => handleDragOver(e, funcaoId)}
-                onDrop={(e) => handleDrop(e, funcaoId)}
-                onDragLeave={handleDragLeave}
-              >
-                <div className="funcao-drag-handle">
-                  <FaGripVertical />
-                </div>
-                <div className="funcao-content">
-                  <div className="funcao-titulo">
-                    <strong>{funcao.titulo}</strong>
+          <>
+            {funcoesComIds.map((funcao) => {
+              const funcaoId = funcao.id;
+              return (
+                <div
+                  key={funcaoId}
+                  className="funcao-item"
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, funcaoId, 'item')}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={(e) => handleDragOver(e, funcaoId)}
+                  onDrop={(e) => handleDrop(e, funcaoId)}
+                  onDragLeave={handleDragLeave}
+                >
+                  <div className="funcao-drag-handle">
+                    <FaGripVertical />
                   </div>
-                  <div className="funcao-descricao">
-                    {funcao.descricao}
+                  <div className="funcao-content">
+                    <div className="funcao-titulo">
+                      <strong>{funcao.titulo}</strong>
+                    </div>
+                    <div className="funcao-descricao">
+                      {funcao.descricao}
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })
+              );
+            })}
+            <button
+              onClick={() => onRestaurarPadrao(categoria.id)}
+              className="btn-secondary btn-restaurar-categoria"
+              disabled={loading || funcoes.length === 0}
+              title={`Restaurar ordem padrão de ${categoria.titulo}`}
+              style={{ marginTop: '12px', width: '100%' }}
+            >
+              <FaUndo /> Restaurar Padrão
+            </button>
+          </>
         )}
       </div>
     </div>
@@ -112,6 +127,8 @@ const CategoriaFuncoes = ({ categoria, funcoes, onReorder }: CategoriaFuncoesPro
 const OrganizarFuncoesModal = ({ isOpen, onClose, onUpdate }: OrganizarFuncoesModalProps) => {
   const [funcoes, setFuncoes] = useState<Funcao[]>([]);
   const [loading, setLoading] = useState(false);
+  // Guardar ordem padrão quando o modal é aberto
+  const ordemPadraoRef = useRef<Map<number, number>>(new Map());
 
   useEffect(() => {
     if (isOpen) {
@@ -124,6 +141,14 @@ const OrganizarFuncoesModal = ({ isOpen, onClose, onUpdate }: OrganizarFuncoesMo
       setLoading(true);
       const funcoesCarregadas = await apiService.obterFuncoes();
       setFuncoes(funcoesCarregadas);
+      
+      // Salvar ordem padrão (ordem atual quando o modal é aberto)
+      ordemPadraoRef.current.clear();
+      funcoesCarregadas.forEach(f => {
+        if (f.id) {
+          ordemPadraoRef.current.set(f.id, f.ordem || 0);
+        }
+      });
     } catch (error) {
       console.error('Erro ao carregar funções:', error);
       await mostrarAlert('Erro', 'Erro ao carregar funções. Tente novamente.');
@@ -139,6 +164,109 @@ const OrganizarFuncoesModal = ({ isOpen, onClose, onUpdate }: OrganizarFuncoesMo
       .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
     return acc;
   }, {} as Record<CategoriaTipo, Funcao[]>);
+
+  // Restaurar ordem padrão de uma categoria específica
+  const handleRestaurarPadraoCategoria = async (categoria: CategoriaTipo) => {
+    try {
+      setLoading(true);
+      
+      // Obter funções da categoria atual
+      const funcoesDaCategoria = funcoes.filter(f => {
+        const categoriaFuncao = CATEGORIAS.find(c => c.ativa === f.ativa && c.eh_ia === f.eh_ia);
+        return categoriaFuncao?.id === categoria;
+      });
+      
+      // Restaurar ordem padrão para cada função da categoria
+      const funcoesRestauradas = funcoesDaCategoria.map(f => ({
+        ...f,
+        ordem: ordemPadraoRef.current.get(f.id || 0) || 0
+      }));
+      
+      // Ordenar pela ordem padrão
+      funcoesRestauradas.sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+      
+      // Atualizar todas as funções mantendo outras categorias intactas
+      const outrasFuncoes = funcoes.filter(f => {
+        const categoriaFuncao = CATEGORIAS.find(c => c.ativa === f.ativa && c.eh_ia === f.eh_ia);
+        return categoriaFuncao?.id !== categoria;
+      });
+      
+      const todasFuncoes = [...outrasFuncoes, ...funcoesRestauradas];
+      setFuncoes(todasFuncoes);
+      
+      // Salvar no servidor
+      for (const funcao of todasFuncoes) {
+        if (funcao.id) {
+          await apiService.atualizarFuncao(funcao.id, {
+            titulo: funcao.titulo,
+            descricao: funcao.descricao,
+            icone: funcao.icone || null,
+            icone_upload: funcao.icone_upload || null,
+            ativa: funcao.ativa,
+            eh_ia: funcao.eh_ia,
+            ordem: funcao.ordem || 0
+          });
+        }
+      }
+      
+      // Disparar evento para atualizar na landing page
+      window.dispatchEvent(new CustomEvent('funcoes-updated'));
+      onUpdate();
+      
+      await mostrarAlert('Sucesso', `Ordem padrão de ${CATEGORIAS.find(c => c.id === categoria)?.titulo} restaurada!`);
+    } catch (error) {
+      console.error('Erro ao restaurar ordem padrão da categoria:', error);
+      await mostrarAlert('Erro', 'Erro ao restaurar ordem padrão. Tente novamente.');
+      await carregarFuncoes();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Restaurar ordem padrão de todas as funções
+  const handleRestaurarPadraoTodas = async () => {
+    try {
+      setLoading(true);
+      
+      // Restaurar ordem padrão para todas as funções
+      const funcoesRestauradas = funcoes.map(f => ({
+        ...f,
+        ordem: ordemPadraoRef.current.get(f.id || 0) || 0
+      }));
+      
+      // Ordenar pela ordem padrão
+      funcoesRestauradas.sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+      
+      setFuncoes(funcoesRestauradas);
+      
+      // Salvar no servidor
+      for (const funcao of funcoesRestauradas) {
+        if (funcao.id) {
+          await apiService.atualizarFuncao(funcao.id, {
+            titulo: funcao.titulo,
+            descricao: funcao.descricao,
+            icone: funcao.icone || null,
+            icone_upload: funcao.icone_upload || null,
+            ativa: funcao.ativa,
+            eh_ia: funcao.eh_ia,
+            ordem: funcao.ordem || 0
+          });
+        }
+      }
+      
+      // Disparar evento para atualizar na landing page
+      window.dispatchEvent(new CustomEvent('funcoes-updated'));
+      onUpdate();
+      
+      await mostrarAlert('Sucesso', 'Ordem padrão de todas as funções restaurada!');
+    } catch (error) {
+      console.error('Erro ao restaurar ordem padrão de todas as funções:', error);
+      await mostrarAlert('Erro', 'Erro ao restaurar ordem padrão. Tente novamente.');
+      await carregarFuncoes();
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Drag and drop para reordenar funções dentro de uma categoria específica
   const handleReorderFuncoesCategoria = async (categoria: CategoriaTipo, novasFuncoesCategoria: Funcao[]) => {
@@ -209,6 +337,14 @@ const OrganizarFuncoesModal = ({ isOpen, onClose, onUpdate }: OrganizarFuncoesMo
       title="Organizar Funções"
       size="large"
       className="modal-nested"
+      footer={
+        <>
+          <button onClick={handleRestaurarPadraoTodas} className="btn-secondary" disabled={loading}>
+            <FaUndo /> Restaurar Padrões (Todos)
+          </button>
+          <button onClick={onClose} className="btn-secondary" disabled={loading}>Fechar</button>
+        </>
+      }
     >
       <div className="organizar-funcoes-container">
         {loading && funcoes.length === 0 ? (
@@ -224,6 +360,8 @@ const OrganizarFuncoesModal = ({ isOpen, onClose, onUpdate }: OrganizarFuncoesMo
                   categoria={categoria}
                   funcoes={funcoesDaCategoria}
                   onReorder={handleReorderFuncoesCategoria}
+                  onRestaurarPadrao={handleRestaurarPadraoCategoria}
+                  loading={loading}
                 />
               );
             })}
