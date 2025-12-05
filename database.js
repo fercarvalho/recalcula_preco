@@ -3039,8 +3039,16 @@ async function deletarFAQ(id) {
 // Obter todos os links do rodapé
 async function obterRodapeLinks() {
     try {
-        // Obter ordem das colunas
-        const colunasOrdenadas = await obterColunasRodape();
+        // Obter ordem das colunas (com tratamento de erro caso a tabela não exista)
+        let colunasOrdenadas = [];
+        try {
+            colunasOrdenadas = await obterColunasRodape();
+        } catch (error) {
+            // Se a tabela não existir, obter colunas diretamente dos links
+            console.log('Tabela rodape_colunas_ordem não encontrada, usando ordem alfabética');
+            const colunasResult = await pool.query('SELECT DISTINCT coluna FROM rodape_links ORDER BY coluna ASC');
+            colunasOrdenadas = colunasResult.rows.map(row => row.coluna);
+        }
         
         // Criar um mapa de ordem das colunas
         const ordemColunas = new Map();
@@ -3177,11 +3185,36 @@ async function deletarRodapeLink(id) {
 // Obter colunas únicas do rodapé ordenadas
 async function obterColunasRodape() {
     try {
+        // Verificar se a tabela existe
+        const tableExists = await pool.query(`
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name = 'rodape_colunas_ordem'
+            )
+        `);
+        
+        if (!tableExists.rows[0].exists) {
+            // Se a tabela não existir, criar
+            await pool.query(`
+                CREATE TABLE IF NOT EXISTS rodape_colunas_ordem (
+                    nome TEXT PRIMARY KEY,
+                    ordem INTEGER NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+        }
+        
         // Primeiro, obter todas as colunas distintas dos links
         const colunasResult = await pool.query(
             'SELECT DISTINCT coluna FROM rodape_links'
         );
         const todasColunas = colunasResult.rows.map(row => row.coluna);
+        
+        if (todasColunas.length === 0) {
+            return [];
+        }
         
         // Obter ordem das colunas da tabela de ordem
         const ordemResult = await pool.query(
@@ -3230,6 +3263,26 @@ async function obterColunasRodape() {
 // Atualizar ordem das colunas do rodapé
 async function atualizarOrdemColunasRodape(nomesColunas) {
     try {
+        // Verificar se a tabela existe, se não, criar
+        const tableExists = await pool.query(`
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name = 'rodape_colunas_ordem'
+            )
+        `);
+        
+        if (!tableExists.rows[0].exists) {
+            await pool.query(`
+                CREATE TABLE IF NOT EXISTS rodape_colunas_ordem (
+                    nome TEXT PRIMARY KEY,
+                    ordem INTEGER NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+        }
+        
         const client = await pool.connect();
         try {
             await client.query('BEGIN');

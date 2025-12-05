@@ -9,6 +9,7 @@ import GerenciamentoMenu from './GerenciamentoMenu';
 import GerenciamentoPlanos from './GerenciamentoPlanos';
 import GerenciamentoFAQ from './GerenciamentoFAQ';
 import GerenciamentoRodape from './GerenciamentoRodape';
+import OrganizarFuncoesModal from './OrganizarFuncoesModal';
 import { FaUser, FaEdit, FaTrash, FaShieldAlt, FaChevronRight, FaChevronDown, FaFolder, FaEye, FaEyeSlash, FaPlus, FaTimes, FaCog, FaBars, FaCreditCard, FaQuestionCircle, FaLink } from 'react-icons/fa';
 import * as FaIcons from 'react-icons/fa';
 import './AdminPanel.css';
@@ -53,6 +54,7 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
   const [showGerenciamentoPlanos, setShowGerenciamentoPlanos] = useState(false);
   const [showGerenciamentoFAQ, setShowGerenciamentoFAQ] = useState(false);
   const [showGerenciamentoRodape, setShowGerenciamentoRodape] = useState(false);
+  const [showOrganizarFuncoes, setShowOrganizarFuncoes] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -382,6 +384,15 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
       <GerenciamentoFuncoes
         isOpen={showGerenciamentoFuncoes}
         onClose={handleCloseGerenciamentoFuncoes}
+        onOpenOrganizar={() => setShowOrganizarFuncoes(true)}
+      />
+      <OrganizarFuncoesModal
+        isOpen={showOrganizarFuncoes}
+        onClose={() => setShowOrganizarFuncoes(false)}
+        onUpdate={async () => {
+          // Disparar evento para atualizar funções
+          window.dispatchEvent(new CustomEvent('funcoes-updated'));
+        }}
       />
       <GerenciamentoMenu
         isOpen={showGerenciamentoMenu}

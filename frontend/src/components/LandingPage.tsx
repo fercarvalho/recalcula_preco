@@ -77,10 +77,16 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
       carregarRodapeLinks();
     };
     
+    // Ouvir atualizações de funções
+    const handleFuncoesUpdate = () => {
+      carregarFuncoes();
+    };
+    
     window.addEventListener('menu-config-updated', handleMenuConfigUpdate);
     window.addEventListener('planos-updated', handlePlanosUpdate);
     window.addEventListener('faq-updated', handleFAQUpdate);
     window.addEventListener('rodape-updated', handleRodapeUpdate);
+    window.addEventListener('funcoes-updated', handleFuncoesUpdate);
     
     // Também ouvir quando a página ganha foco (quando o usuário volta para a landing page)
     const handleFocus = () => {
@@ -88,6 +94,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
       carregarPlanos();
       carregarFAQ();
       carregarRodapeLinks();
+      carregarFuncoes();
     };
     
     window.addEventListener('focus', handleFocus);
@@ -99,6 +106,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
         carregarPlanos();
         carregarFAQ();
         carregarRodapeLinks();
+        carregarFuncoes();
       }
     };
     
@@ -109,6 +117,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
       window.removeEventListener('planos-updated', handlePlanosUpdate);
       window.removeEventListener('faq-updated', handleFAQUpdate);
       window.removeEventListener('rodape-updated', handleRodapeUpdate);
+      window.removeEventListener('funcoes-updated', handleFuncoesUpdate);
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };

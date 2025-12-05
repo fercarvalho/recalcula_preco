@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { FaPlus, FaEdit, FaTrash, FaToggleOn, FaToggleOff } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaToggleOn, FaToggleOff, FaArrowsAlt } from 'react-icons/fa';
 import * as FaIcons from 'react-icons/fa';
 import Modal from './Modal';
 import { mostrarAlert, mostrarConfirm } from '../utils/modals';
@@ -18,12 +18,16 @@ export interface Funcao {
   ordem?: number;
 }
 
+// Re-exportar para uso em outros componentes
+export type { Funcao };
+
 interface GerenciamentoFuncoesProps {
   isOpen: boolean;
   onClose: () => void;
+  onOpenOrganizar?: () => void;
 }
 
-const GerenciamentoFuncoes = ({ isOpen, onClose }: GerenciamentoFuncoesProps) => {
+const GerenciamentoFuncoes = ({ isOpen, onClose, onOpenOrganizar }: GerenciamentoFuncoesProps) => {
   const [funcoes, setFuncoes] = useState<Funcao[]>([]);
   const [loading, setLoading] = useState(false);
   const [showModalAdicionar, setShowModalAdicionar] = useState(false);
@@ -193,6 +197,16 @@ const GerenciamentoFuncoes = ({ isOpen, onClose }: GerenciamentoFuncoesProps) =>
         footer={
           <>
             <button onClick={onClose} className="btn-secondary">Fechar</button>
+            <button 
+              onClick={() => {
+                if (onOpenOrganizar) {
+                  onOpenOrganizar();
+                }
+              }} 
+              className="btn-secondary"
+            >
+              <FaArrowsAlt /> Organizar Funções
+            </button>
             <button onClick={() => {
               setFuncaoEditando(null);
               setShowModalAdicionar(true);
@@ -495,6 +509,7 @@ const ModalAdicionarFuncao = ({ funcao, onClose, onSave }: ModalAdicionarFuncaoP
           tipo="funcao"
         />
       )}
+
     </>
   );
 };

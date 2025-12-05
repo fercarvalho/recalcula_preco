@@ -15,6 +15,15 @@
   animation: fadeIn 0.3s;
 }
 
+/* Modal aninhado (deve aparecer acima de outros modais) */
+.modal-nested {
+  z-index: 10001 !important;
+}
+
+.modal-nested.show {
+  z-index: 10001 !important;
+}
+
 .modal.show {
   display: flex;
   align-items: center;
@@ -150,6 +159,16 @@
 
 .modal-alert.show {
   z-index: 2000 !important;
+}
+
+/* Modal aninhado (deve aparecer acima de outros modais) */
+.modal-nested {
+  z-index: 10001 !important;
+}
+
+.modal-nested.show {
+  z-index: 10001 !important;
+  display: flex !important;
 }
 
 .modal-footer > * {
