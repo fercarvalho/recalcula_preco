@@ -1429,6 +1429,23 @@ app.put('/api/configuracoes-sessoes', authenticateToken, requireAdmin, async (re
     }
 });
 
+// Atualizar ordem das sessões (apenas admin)
+app.put('/api/configuracoes-sessoes/ordem', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { sessaoIds } = req.body;
+        
+        if (!Array.isArray(sessaoIds)) {
+            return res.status(400).json({ error: 'sessaoIds deve ser um array' });
+        }
+
+        await db.atualizarOrdemSessoes(sessaoIds);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Erro ao atualizar ordem das sessões:', error);
+        res.status(500).json({ error: 'Erro ao atualizar ordem das sessões' });
+    }
+});
+
 // ========== PLANOS ==========
 
 // Obter todos os planos (público - usado na landing page)

@@ -15,6 +15,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
   const [funcoes, setFuncoes] = useState<Funcao[]>([]);
   const [secoesMenuAtivas, setSecoesMenuAtivas] = useState<string[]>([]);
   const [sessoesAtivas, setSessoesAtivas] = useState<string[]>([]);
+  const [sessoesComOrdem, setSessoesComOrdem] = useState<Array<{ id: string; nome: string; ativa: boolean; ordem: number }>>([]);
   const [planos, setPlanos] = useState<Plano[]>([]);
   const [faqs, setFaqs] = useState<Array<{ id: number; pergunta: string; resposta: string }>>([]);
   const [rodapeLinks, setRodapeLinks] = useState<Array<{ id: number; texto: string; link: string; coluna: string; ordem: number; eh_link: boolean }>>([]);
@@ -149,14 +150,26 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
 
   const carregarSessoes = async () => {
     try {
-      const sessoesAtivasCarregadas = await obterSessoesAtivas();
-      console.log('Sessões ativas carregadas:', sessoesAtivasCarregadas);
-      // Forçar atualização criando um novo array para garantir que o React detecte a mudança
-      setSessoesAtivas([...sessoesAtivasCarregadas]);
+      // Carregar todas as configurações de sessões (com ordem)
+      const todasSessoes = await apiService.obterConfiguracoesSessoes();
+      console.log('Todas as sessões carregadas:', todasSessoes);
+      
+      // Filtrar apenas as ativas e manter a ordem
+      const sessoesAtivasOrdenadas = todasSessoes
+        .filter(s => s.ativa)
+        .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
+        .map(s => s.id);
+      
+      console.log('Sessões ativas ordenadas:', sessoesAtivasOrdenadas);
+      
+      // Salvar tanto os IDs quanto as configurações completas
+      setSessoesAtivas(sessoesAtivasOrdenadas);
+      setSessoesComOrdem(todasSessoes);
     } catch (error) {
       console.error('Erro ao carregar sessões:', error);
       // Em caso de erro, mostrar todas as sessões como padrão
       setSessoesAtivas(['hero', 'sobre', 'funcionalidades', 'whatsapp-ia-ativas', 'roadmap', 'whatsapp-integracao', 'planos', 'faq', 'cta-final']);
+      setSessoesComOrdem([]);
     }
   };
 
@@ -267,6 +280,363 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
   const funcoesIA = funcoes.filter(f => f.eh_ia);
   const funcoesIAAtivas = funcoes.filter(f => f.eh_ia && f.ativa);
 
+  // Mapear cada sessão para seu componente JSX
+  const renderizarSessao = (sessaoId: string) => {
+    switch (sessaoId) {
+      case 'hero':
+        return sessoesAtivas.includes('hero') ? (
+          <section key="hero" className="hero-section">
+            <div className="hero-content">
+              <div className="hero-text">
+                <h1 className="hero-title">
+                  Reajuste seus preços de forma <span className="highlight">inteligente e rápida</span>
+                </h1>
+                <p className="hero-subtitle">
+                  A ferramenta completa para restaurantes e lanchonetes gerenciarem seus cardápios e aplicarem reajustes de preços automaticamente, considerando as taxas das plataformas de delivery.
+                </p>
+                <div className="hero-cta">
+                  <button onClick={(e) => {
+                    e.preventDefault();
+                    document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' });
+                  }} className="btn-hero-primary">
+                    Começar agora
+                  </button>
+                  <button onClick={() => setShowRegistro(true)} className="btn-hero-secondary">
+                    Ver demonstração
+                  </button>
+                </div>
+              </div>
+              <div className="hero-image">
+                <div className="hero-mockup">
+                  <FaCalculator className="hero-icon" />
+                </div>
+              </div>
+            </div>
+          </section>
+        ) : null;
+
+      case 'sobre':
+        return sessoesAtivas.includes('sobre') ? (
+          <section key="sobre" id="sobre" className="sobre-section">
+            <div className="container">
+              <h2 className="section-title">Por que criamos este sistema?</h2>
+              <div className="sobre-content">
+                <div className="sobre-text">
+                  <p className="sobre-intro">
+                    Prazer, me chamo <strong>Fernando Carvalho</strong> e a Recalcula Preço nasceu de uma necessidade real: 
+                    a dificuldade de gerenciar preços em múltiplas plataformas de delivery.
+                  </p>
+                  <p>
+                    Este sistema foi criado inicialmente para a <strong>lanchonete Vira-Latas</strong>, localizada em <strong>Tupã, interior de São Paulo</strong>, 
+                    estabelecimento do meu pai. Ao observar as dificuldades que ele enfrentava no dia a dia, percebi um problema comum a muitos empreendedores do setor.
+                  </p>
+                  <p>
+                    Cada plataforma de delivery cobra taxas diferentes e calcula percentuais de formas distintas. Isso torna extremamente difícil para o dono de restaurante 
+                    ou lanchonete criar uma estratégia de preços harmoniosa, que funcione em todas as plataformas sem gerar prejuízo ou desequilíbrio financeiro.
+                  </p>
+                  <p>
+                    Ao ver essa dor de perto, decidi criar uma solução que tornasse esse processo <strong>mais fácil, mais leve e mais prático</strong>. 
+                    O sistema foi testado e validado na prática, comprovando que realmente resolve essa necessidade.
+                  </p>
+                  <p>
+                    Por isso, resolvi disponibilizar esta ferramenta por um <strong>preço acessível e justo</strong>, para ajudar todos os donos de lanchonetes e restaurantes 
+                    que enfrentam a mesma dificuldade: gerenciar diferentes preços em diferentes plataformas de delivery de forma <strong>justa, democrática, de fácil entendimento</strong>, 
+                    tornando esse processo mais <strong>rápido, habitual e eficiente</strong>.
+                  </p>
+                  <p className="sobre-conclusao">
+                    Este sistema foi feito com <strong>muito amor</strong> por mim, como uma homenagem aos meus pais. Através de trabalho duro, muito esforço e suor, 
+                    eles conseguiram me criar e me tornar um ser humano funcional. <strong>Aos meus pais, muito obrigado.</strong>
+                  </p>
+                  <p className="sobre-conclusao-final">
+                    E a você, espero que este sistema, assim como foi para eles, torne sua vida mais fácil. 
+                    <br />
+                    <strong>Um abraço! ❤️</strong>
+                    <br />
+                    <span className="sobre-assinatura">Te vejo do outro lado! 🚀</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+        ) : null;
+
+      case 'funcionalidades':
+        return sessoesAtivas.includes('funcionalidades') && beneficios.length > 0 ? (
+          <section key="funcionalidades" id="funcionalidades" className="funcionalidades-section">
+            <div className="container">
+              <h2 className="section-title">Funcionalidades</h2>
+              <div className="beneficios-grid">
+                {beneficios.map((beneficio, index) => (
+                  <div key={index} className="beneficio-card">
+                    <div className="beneficio-icon">{beneficio.icone}</div>
+                    <h3>{beneficio.titulo}</h3>
+                    <p>{beneficio.descricao}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        ) : null;
+
+      case 'whatsapp-ia-ativas':
+        return sessoesAtivas.includes('whatsapp-ia-ativas') && funcoesIAAtivas.length > 0 ? (
+          <section key="whatsapp-ia-ativas" id="whatsapp-ia-ativas" className="whatsapp-section">
+            <div className="container">
+              <h2 className="section-title">
+                Integração com Inteligência Artificial <span className="roadmap-subtitle">(pelo WhatsApp)</span>
+              </h2>
+              <p className="whatsapp-intro">
+                Conecte sua Recalcula Preço diretamente ao WhatsApp com automações inteligentes para o seu atendimento, cardápio e recebimento de pedidos.
+              </p>
+              <div className="whatsapp-placeholder">
+                <div className="whatsapp-features">
+                  {funcoesIAAtivas.map((funcao) => (
+                    <div key={funcao.id} className="whatsapp-feature-card">
+                      <div className="whatsapp-icon-inline-wrapper">
+                        {funcao.icone_upload ? (
+                          <img src={funcao.icone_upload} alt={funcao.titulo} style={{ width: '48px', height: '48px' }} />
+                        ) : funcao.icone ? (
+                          (() => {
+                            const IconComponent = FaIcons[funcao.icone as keyof typeof FaIcons] as React.ComponentType<any>;
+                            return IconComponent ? <IconComponent className="whatsapp-icon-inline" /> : <FaWhatsapp className="whatsapp-icon-inline" />;
+                          })()
+                        ) : (
+                          <FaWhatsapp className="whatsapp-icon-inline" />
+                        )}
+                      </div>
+                      <h3>{funcao.titulo}</h3>
+                      <p>{funcao.descricao}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+        ) : null;
+
+      case 'roadmap':
+        return sessoesAtivas.includes('roadmap') && roadmapItens.length > 0 ? (
+          <section key="roadmap" id="roadmap" className="roadmap-section">
+            <div className="container">
+              <h2 className="section-title">O que vem por aí <span className="roadmap-subtitle">(funcionalidades em desenvolvimento)</span></h2>
+              <p className="roadmap-intro">
+                Estamos sempre evoluindo a Recalcula Preço para deixar o seu dia a dia ainda mais simples.
+                Confira algumas das próximas novidades que estamos preparando para você.
+              </p>
+              <div className="roadmap-grid">
+                {roadmapItens.map((item, index) => (
+                  <div key={index} className="roadmap-card">
+                    <div className="roadmap-icon">{item.icone}</div>
+                    <h3>{item.titulo}</h3>
+                    <p>{item.descricao}</p>
+                    <span className="roadmap-tag">Em breve</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        ) : null;
+
+      case 'whatsapp-integracao':
+        return sessoesAtivas.includes('whatsapp-integracao') && funcoesIA.filter(f => !f.ativa).length > 0 ? (
+          <section key="whatsapp-integracao" id="whatsapp-integracao" className="whatsapp-section">
+            <div className="container">
+              <h2 className="section-title">
+                Integração com Inteligência Artificial <span className="roadmap-subtitle">(pelo WhatsApp) - Em breve (No Forno)</span>
+              </h2>
+              <p className="whatsapp-intro">
+                Estamos preparando uma área especial para conectar sua Recalcula Preço diretamente ao WhatsApp,
+                trazendo automações inteligentes para o seu atendimento, cardápio e recebimento de pedidos.
+              </p>
+              <div className="whatsapp-placeholder">
+                <div className="whatsapp-features">
+                  {funcoesIA.filter(f => !f.ativa).map((funcao) => (
+                    <div key={funcao.id} className="whatsapp-feature-card">
+                      <div className="whatsapp-icon-inline-wrapper">
+                        {funcao.icone_upload ? (
+                          <img src={funcao.icone_upload} alt={funcao.titulo} style={{ width: '48px', height: '48px' }} />
+                        ) : funcao.icone ? (
+                          (() => {
+                            const IconComponent = FaIcons[funcao.icone as keyof typeof FaIcons] as React.ComponentType<any>;
+                            return IconComponent ? <IconComponent className="whatsapp-icon-inline" /> : <FaWhatsapp className="whatsapp-icon-inline" />;
+                          })()
+                        ) : (
+                          <FaWhatsapp className="whatsapp-icon-inline" />
+                        )}
+                      </div>
+                      <h3>{funcao.titulo}</h3>
+                      <p>{funcao.descricao}</p>
+                      <span className="whatsapp-tag">Em breve</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+        ) : null;
+
+      case 'planos':
+        return sessoesAtivas.includes('planos') && planos.length > 0 ? (
+          <section key="planos" id="planos" className="planos-section">
+            <div className="container">
+              <h2 className="section-title">Escolha o plano ideal para você</h2>
+
+              <div className={`planos-grid-landing planos-${planos.length}`}>
+                {planos.map((plano) => {
+                  const temDescontoPercentual = !!(plano.desconto_percentual && plano.desconto_percentual > 0);
+                  const temDescontoValor = !!(plano.desconto_valor && plano.desconto_valor > 0);
+                  const temDesconto = temDescontoPercentual || temDescontoValor;
+                  
+                  const valorComDesconto = temDescontoPercentual
+                    ? plano.valor * (1 - plano.desconto_percentual / 100)
+                    : temDescontoValor
+                    ? plano.valor - plano.desconto_valor
+                    : plano.valor;
+
+                  return (
+                    <div 
+                      key={plano.id} 
+                      className={`plano-card-landing ${plano.mais_popular ? 'plano-destaque-landing' : ''}`}
+                    >
+                      {plano.mais_popular && (
+                        <div className="plano-badge-landing">Mais Popular</div>
+                      )}
+                      {temDescontoPercentual && (
+                        <div className="plano-badge-desconto-landing">
+                          {plano.desconto_percentual}% OFF
+                        </div>
+                      )}
+                      {temDescontoValor && !temDescontoPercentual && (
+                        <div className="plano-badge-desconto-landing">
+                          R$ {formatarValor(plano.desconto_valor!)} OFF
+                        </div>
+                      )}
+                      <div className="plano-header-landing">
+                        <h3>{plano.nome}</h3>
+                        <div className="plano-preco-landing">
+                          {temDesconto && (
+                            <div className="preco-original-landing">
+                              <span className="preco-original-texto">De: R$ {formatarValor(plano.valor)}</span>
+                            </div>
+                          )}
+                          <span className="preco-valor-landing">
+                            R$ {formatarValor(valorComDesconto)}
+                          </span>
+                          {formatarPeriodo(plano.tipo, plano.periodo || null, plano.valor_parcelado || null) && (
+                            <span className="preco-periodo-landing">
+                              {formatarPeriodo(plano.tipo, plano.periodo || null, plano.valor_parcelado || null)}
+                            </span>
+                          )}
+                          {temDescontoPercentual && (
+                            <p className="desconto-info-landing">
+                              Economize {plano.desconto_percentual}%
+                            </p>
+                          )}
+                          {temDescontoValor && !temDescontoPercentual && (
+                            <p className="desconto-info-landing">
+                              Economize R$ {formatarValor(plano.desconto_valor!)}
+                            </p>
+                          )}
+                        </div>
+                        {plano.valor_total && plano.valor_total > 0 && plano.mostrar_valor_total && (
+                          <p className="economia-texto">
+                            💰 Total: R$ {formatarValor(plano.valor_total)}
+                            {plano.tipo === 'recorrente' && plano.periodo === 'mensal' && ' por ano'}
+                          </p>
+                        )}
+                        {plano.periodo && plano.tipo === 'unico' && (
+                          <p className="plano-descricao-landing">Acesso por {plano.periodo}</p>
+                        )}
+                      </div>
+                      <ul className="plano-beneficios-landing">
+                        {plano.beneficios && plano.beneficios.map((beneficio, index) => {
+                          const texto = typeof beneficio === 'string' ? beneficio : beneficio.texto;
+                          const ehAviso = typeof beneficio === 'string' 
+                            ? texto.startsWith('⚠️')
+                            : (beneficio.eh_aviso || false);
+                          const textoLimpo = typeof beneficio === 'string' && texto.startsWith('⚠️')
+                            ? texto.substring(1).trim()
+                            : texto;
+                          return (
+                            <li 
+                              key={typeof beneficio === 'string' ? index : (beneficio.id || index)}
+                              className={ehAviso ? 'texto-aviso' : ''}
+                            >
+                              {ehAviso ? (
+                                <>⚠️ {textoLimpo}</>
+                              ) : (
+                                <><FaCheck /> {textoLimpo}</>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                      <button 
+                        onClick={handlePlanoClick} 
+                        className={`btn-plano-landing ${!plano.mais_popular ? 'btn-plano-secundario' : ''}`}
+                      >
+                        {plano.tipo === 'unico' ? 'Comprar acesso único' : 'Assinar agora'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <p className="garantia-texto">7 dias de garantia ou seu dinheiro de volta</p>
+            </div>
+          </section>
+        ) : null;
+
+      case 'faq':
+        return sessoesAtivas.includes('faq') ? (
+          <section key="faq" id="faq" className="faq-section">
+            <div className="container">
+              <h2 className="section-title">FAQ – Perguntas Frequentes</h2>
+              <p className="faq-subtitle">Tudo que você precisa saber sobre a Recalcula Preço</p>
+              
+              <div className="faq-list">
+                {faqs.map((faq) => (
+                  <div key={faq.id} className="faq-item">
+                    <button
+                      className={`faq-question ${faqOpen === faq.id ? 'open' : ''}`}
+                      onClick={() => toggleFaq(faq.id)}
+                    >
+                      <span>{faq.pergunta}</span>
+                      {faqOpen === faq.id ? <FaChevronUp /> : <FaChevronDown />}
+                    </button>
+                    {faqOpen === faq.id && (
+                      <div className="faq-answer">
+                        <p>{faq.resposta}</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        ) : null;
+
+      case 'cta-final':
+        return sessoesAtivas.includes('cta-final') ? (
+          <section key="cta-final" className="cta-final-section">
+            <div className="container">
+              <div className="cta-final-content">
+                <FaRocket className="cta-icon" />
+                <h2>Pronto para começar a reajustar seus preços?</h2>
+                <p>Junte-se a centenas de restaurantes que já usam nossa calculadora</p>
+                <button onClick={() => setShowRegistro(true)} className="btn-cta-final">
+                  Começar agora
+                </button>
+              </div>
+            </div>
+          </section>
+        ) : null;
+
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="landing-page">
       {/* Header */}
@@ -318,355 +688,8 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
         </nav>
       </header>
 
-      {/* Hero Section */}
-      {sessoesAtivas.includes('hero') && (
-      <section className="hero-section">
-        <div className="hero-content">
-          <div className="hero-text">
-            <h1 className="hero-title">
-              Reajuste seus preços de forma <span className="highlight">inteligente e rápida</span>
-            </h1>
-            <p className="hero-subtitle">
-              A ferramenta completa para restaurantes e lanchonetes gerenciarem seus cardápios e aplicarem reajustes de preços automaticamente, considerando as taxas das plataformas de delivery.
-            </p>
-            <div className="hero-cta">
-              <button onClick={(e) => {
-                e.preventDefault();
-                document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' });
-              }} className="btn-hero-primary">
-                Começar agora
-              </button>
-              <button onClick={() => setShowRegistro(true)} className="btn-hero-secondary">
-                Ver demonstração
-              </button>
-            </div>
-          </div>
-          <div className="hero-image">
-            <div className="hero-mockup">
-              <FaCalculator className="hero-icon" />
-            </div>
-          </div>
-        </div>
-      </section>
-      )}
-
-      {/* Nossa História / Por que existe */}
-      {sessoesAtivas.includes('sobre') && (
-      <section id="sobre" className="sobre-section">
-        <div className="container">
-          <h2 className="section-title">Por que criamos este sistema?</h2>
-          <div className="sobre-content">
-            <div className="sobre-text">
-              <p className="sobre-intro">
-                Prazer, me chamo <strong>Fernando Carvalho</strong> e a Recalcula Preço nasceu de uma necessidade real: 
-                a dificuldade de gerenciar preços em múltiplas plataformas de delivery.
-              </p>
-              <p>
-                Este sistema foi criado inicialmente para a <strong>lanchonete Vira-Latas</strong>, localizada em <strong>Tupã, interior de São Paulo</strong>, 
-                estabelecimento do meu pai. Ao observar as dificuldades que ele enfrentava no dia a dia, percebi um problema comum a muitos empreendedores do setor.
-              </p>
-              <p>
-                Cada plataforma de delivery cobra taxas diferentes e calcula percentuais de formas distintas. Isso torna extremamente difícil para o dono de restaurante 
-                ou lanchonete criar uma estratégia de preços harmoniosa, que funcione em todas as plataformas sem gerar prejuízo ou desequilíbrio financeiro.
-              </p>
-              <p>
-                Ao ver essa dor de perto, decidi criar uma solução que tornasse esse processo <strong>mais fácil, mais leve e mais prático</strong>. 
-                O sistema foi testado e validado na prática, comprovando que realmente resolve essa necessidade.
-              </p>
-              <p>
-                Por isso, resolvi disponibilizar esta ferramenta por um <strong>preço acessível e justo</strong>, para ajudar todos os donos de lanchonetes e restaurantes 
-                que enfrentam a mesma dificuldade: gerenciar diferentes preços em diferentes plataformas de delivery de forma <strong>justa, democrática, de fácil entendimento</strong>, 
-                tornando esse processo mais <strong>rápido, habitual e eficiente</strong>.
-              </p>
-              <p className="sobre-conclusao">
-                Este sistema foi feito com <strong>muito amor</strong> por mim, como uma homenagem aos meus pais. Através de trabalho duro, muito esforço e suor, 
-                eles conseguiram me criar e me tornar um ser humano funcional. <strong>Aos meus pais, muito obrigado.</strong>
-              </p>
-              <p className="sobre-conclusao-final">
-                E a você, espero que este sistema, assim como foi para eles, torne sua vida mais fácil. 
-                <br />
-                <strong>Um abraço! ❤️</strong>
-                <br />
-                <span className="sobre-assinatura">Te vejo do outro lado! 🚀</span>
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-      )}
-
-      {/* Funcionalidades */}
-      {sessoesAtivas.includes('funcionalidades') && beneficios.length > 0 && (
-        <section id="funcionalidades" className="funcionalidades-section">
-          <div className="container">
-            <h2 className="section-title">Funcionalidades</h2>
-            <div className="beneficios-grid">
-              {beneficios.map((beneficio, index) => (
-                <div key={index} className="beneficio-card">
-                  <div className="beneficio-icon">{beneficio.icone}</div>
-                  <h3>{beneficio.titulo}</h3>
-                  <p>{beneficio.descricao}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Integração com Inteligência Artificial (pelo WhatsApp) - Funções Ativas */}
-      {sessoesAtivas.includes('whatsapp-ia-ativas') && funcoesIAAtivas.length > 0 && (
-        <section id="whatsapp-ia-ativas" className="whatsapp-section">
-          <div className="container">
-            <h2 className="section-title">
-              Integração com Inteligência Artificial <span className="roadmap-subtitle">(pelo WhatsApp)</span>
-            </h2>
-            <p className="whatsapp-intro">
-              Conecte sua Recalcula Preço diretamente ao WhatsApp com automações inteligentes para o seu atendimento, cardápio e recebimento de pedidos.
-            </p>
-            <div className="whatsapp-placeholder">
-              <div className="whatsapp-features">
-                {funcoesIAAtivas.map((funcao) => (
-                  <div key={funcao.id} className="whatsapp-feature-card">
-                    <div className="whatsapp-icon-inline-wrapper">
-                      {funcao.icone_upload ? (
-                        <img src={funcao.icone_upload} alt={funcao.titulo} style={{ width: '48px', height: '48px' }} />
-                      ) : funcao.icone ? (
-                        (() => {
-                          const IconComponent = FaIcons[funcao.icone as keyof typeof FaIcons] as React.ComponentType<any>;
-                          return IconComponent ? <IconComponent className="whatsapp-icon-inline" /> : <FaWhatsapp className="whatsapp-icon-inline" />;
-                        })()
-                      ) : (
-                        <FaWhatsapp className="whatsapp-icon-inline" />
-                      )}
-                    </div>
-                    <h3>{funcao.titulo}</h3>
-                    <p>{funcao.descricao}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Roadmap – O que vem por aí */}
-      {sessoesAtivas.includes('roadmap') && roadmapItens.length > 0 && (
-        <section id="roadmap" className="roadmap-section">
-          <div className="container">
-            <h2 className="section-title">O que vem por aí <span className="roadmap-subtitle">(funcionalidades em desenvolvimento)</span></h2>
-            <p className="roadmap-intro">
-              Estamos sempre evoluindo a Recalcula Preço para deixar o seu dia a dia ainda mais simples.
-              Confira algumas das próximas novidades que estamos preparando para você.
-            </p>
-            <div className="roadmap-grid">
-              {roadmapItens.map((item, index) => (
-                <div key={index} className="roadmap-card">
-                  <div className="roadmap-icon">{item.icone}</div>
-                  <h3>{item.titulo}</h3>
-                  <p>{item.descricao}</p>
-                  <span className="roadmap-tag">Em breve</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Integração com o WhatsApp – No Forno */}
-      {sessoesAtivas.includes('whatsapp-integracao') && funcoesIA.filter(f => !f.ativa).length > 0 && (
-        <section id="whatsapp-integracao" className="whatsapp-section">
-          <div className="container">
-            <h2 className="section-title">
-              Integração com Inteligência Artificial <span className="roadmap-subtitle">(pelo WhatsApp) - Em breve (No Forno)</span>
-            </h2>
-            <p className="whatsapp-intro">
-              Estamos preparando uma área especial para conectar sua Recalcula Preço diretamente ao WhatsApp,
-              trazendo automações inteligentes para o seu atendimento, cardápio e recebimento de pedidos.
-            </p>
-            <div className="whatsapp-placeholder">
-              <div className="whatsapp-features">
-                {/* Funções de IA inativas (em breve) */}
-                {funcoesIA.filter(f => !f.ativa).map((funcao) => (
-                  <div key={funcao.id} className="whatsapp-feature-card">
-                    <div className="whatsapp-icon-inline-wrapper">
-                      {funcao.icone_upload ? (
-                        <img src={funcao.icone_upload} alt={funcao.titulo} style={{ width: '48px', height: '48px' }} />
-                      ) : funcao.icone ? (
-                        (() => {
-                          const IconComponent = FaIcons[funcao.icone as keyof typeof FaIcons] as React.ComponentType<any>;
-                          return IconComponent ? <IconComponent className="whatsapp-icon-inline" /> : <FaWhatsapp className="whatsapp-icon-inline" />;
-                        })()
-                      ) : (
-                        <FaWhatsapp className="whatsapp-icon-inline" />
-                      )}
-                    </div>
-                    <h3>{funcao.titulo}</h3>
-                    <p>{funcao.descricao}</p>
-                    <span className="whatsapp-tag">Em breve</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Planos */}
-      {sessoesAtivas.includes('planos') && planos.length > 0 && (
-        <section id="planos" className="planos-section">
-          <div className="container">
-            <h2 className="section-title">Escolha o plano ideal para você</h2>
-
-            <div className={`planos-grid-landing planos-${planos.length}`}>
-              {planos.map((plano) => {
-                const temDescontoPercentual = !!(plano.desconto_percentual && plano.desconto_percentual > 0);
-                const temDescontoValor = !!(plano.desconto_valor && plano.desconto_valor > 0);
-                const temDesconto = temDescontoPercentual || temDescontoValor;
-                
-                const valorComDesconto = temDescontoPercentual
-                  ? plano.valor * (1 - plano.desconto_percentual / 100)
-                  : temDescontoValor
-                  ? plano.valor - plano.desconto_valor
-                  : plano.valor;
-
-                return (
-                  <div 
-                    key={plano.id} 
-                    className={`plano-card-landing ${plano.mais_popular ? 'plano-destaque-landing' : ''}`}
-                  >
-                    {plano.mais_popular && (
-                      <div className="plano-badge-landing">Mais Popular</div>
-                    )}
-                    {temDescontoPercentual && (
-                      <div className="plano-badge-desconto-landing">
-                        {plano.desconto_percentual}% OFF
-                      </div>
-                    )}
-                    {temDescontoValor && !temDescontoPercentual && (
-                      <div className="plano-badge-desconto-landing">
-                        R$ {formatarValor(plano.desconto_valor!)} OFF
-                      </div>
-                    )}
-                    <div className="plano-header-landing">
-                      <h3>{plano.nome}</h3>
-                      <div className="plano-preco-landing">
-                        {temDesconto && (
-                          <div className="preco-original-landing">
-                            <span className="preco-original-texto">De: R$ {formatarValor(plano.valor)}</span>
-                          </div>
-                        )}
-                        <span className="preco-valor-landing">
-                          R$ {formatarValor(valorComDesconto)}
-                        </span>
-                        {formatarPeriodo(plano.tipo, plano.periodo || null, plano.valor_parcelado || null) && (
-                          <span className="preco-periodo-landing">
-                            {formatarPeriodo(plano.tipo, plano.periodo || null, plano.valor_parcelado || null)}
-                          </span>
-                        )}
-                        {temDescontoPercentual && (
-                          <p className="desconto-info-landing">
-                            Economize {plano.desconto_percentual}%
-                          </p>
-                        )}
-                        {temDescontoValor && !temDescontoPercentual && (
-                          <p className="desconto-info-landing">
-                            Economize R$ {formatarValor(plano.desconto_valor!)}
-                          </p>
-                        )}
-                      </div>
-                      {plano.valor_total && plano.valor_total > 0 && plano.mostrar_valor_total && (
-                        <p className="economia-texto">
-                          💰 Total: R$ {formatarValor(plano.valor_total)}
-                          {plano.tipo === 'recorrente' && plano.periodo === 'mensal' && ' por ano'}
-                        </p>
-                      )}
-                      {plano.periodo && plano.tipo === 'unico' && (
-                        <p className="plano-descricao-landing">Acesso por {plano.periodo}</p>
-                      )}
-                    </div>
-                    <ul className="plano-beneficios-landing">
-                      {plano.beneficios && plano.beneficios.map((beneficio, index) => {
-                        const texto = typeof beneficio === 'string' ? beneficio : beneficio.texto;
-                        const ehAviso = typeof beneficio === 'string' 
-                          ? texto.startsWith('⚠️')
-                          : (beneficio.eh_aviso || false);
-                        const textoLimpo = typeof beneficio === 'string' && texto.startsWith('⚠️')
-                          ? texto.substring(1).trim()
-                          : texto;
-                        return (
-                          <li 
-                            key={typeof beneficio === 'string' ? index : (beneficio.id || index)}
-                            className={ehAviso ? 'texto-aviso' : ''}
-                          >
-                            {ehAviso ? (
-                              <>⚠️ {textoLimpo}</>
-                            ) : (
-                              <><FaCheck /> {textoLimpo}</>
-                            )}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                    <button 
-                      onClick={handlePlanoClick} 
-                      className={`btn-plano-landing ${!plano.mais_popular ? 'btn-plano-secundario' : ''}`}
-                    >
-                      {plano.tipo === 'unico' ? 'Comprar acesso único' : 'Assinar agora'}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-
-            <p className="garantia-texto">7 dias de garantia ou seu dinheiro de volta</p>
-          </div>
-        </section>
-      )}
-
-      {/* FAQ */}
-      {sessoesAtivas.includes('faq') && (
-      <section id="faq" className="faq-section">
-        <div className="container">
-          <h2 className="section-title">FAQ – Perguntas Frequentes</h2>
-          <p className="faq-subtitle">Tudo que você precisa saber sobre a Recalcula Preço</p>
-          
-          <div className="faq-list">
-            {faqs.map((faq) => (
-              <div key={faq.id} className="faq-item">
-                <button
-                  className={`faq-question ${faqOpen === faq.id ? 'open' : ''}`}
-                  onClick={() => toggleFaq(faq.id)}
-                >
-                  <span>{faq.pergunta}</span>
-                  {faqOpen === faq.id ? <FaChevronUp /> : <FaChevronDown />}
-                </button>
-                {faqOpen === faq.id && (
-                  <div className="faq-answer">
-                    <p>{faq.resposta}</p>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-      )}
-
-      {/* CTA Final */}
-      {sessoesAtivas.includes('cta-final') && (
-      <section className="cta-final-section">
-        <div className="container">
-          <div className="cta-final-content">
-            <FaRocket className="cta-icon" />
-            <h2>Pronto para começar a reajustar seus preços?</h2>
-            <p>Junte-se a centenas de restaurantes que já usam nossa calculadora</p>
-            <button onClick={() => setShowRegistro(true)} className="btn-cta-final">
-              Começar agora
-            </button>
-          </div>
-        </div>
-      </section>
-      )}
+      {/* Renderizar sessões na ordem definida no backend */}
+      {sessoesAtivas.map((sessaoId) => renderizarSessao(sessaoId))}
 
       {/* Footer */}
       <footer className="landing-footer">

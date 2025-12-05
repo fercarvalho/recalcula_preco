@@ -71,16 +71,72 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   padding: 1rem;
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
+  background: #fff;
+  border: 2px solid #e9ecef;
   border-radius: 8px;
   transition: all 0.2s ease;
+  cursor: move;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.sessao-item.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.sessao-item.drag-over {
+  border-color: #FF6B35 !important;
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3) !important;
+}
+
+.sessao-item.drag-over-top::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #FF6B35;
+  border-radius: 2px;
+}
+
+.sessao-item.drag-over-bottom::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #FF6B35;
+  border-radius: 2px;
 }
 
 .sessao-item:hover {
-  background: #e9ecef;
+  background: #fff;
   border-color: #FF6B35;
+  box-shadow: 0 2px 8px rgba(255, 107, 53, 0.1);
+}
+
+.sessao-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6c757d;
+  cursor: grab;
+  padding: 4px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.sessao-drag-handle:active {
+  cursor: grabbing;
+}
+
+.sessao-item:hover .sessao-drag-handle {
+  color: #FF6B35;
 }
 
 .sessao-info {

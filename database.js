@@ -3540,6 +3540,52 @@ async function atualizarConfiguracoesSessoes(configuracoes) {
     }
 }
 
+// Atualizar ordem das sessões
+async function atualizarOrdemSessoes(sessaoIds) {
+    try {
+        if (!Array.isArray(sessaoIds) || sessaoIds.length === 0) {
+            console.log('atualizarOrdemSessoes: sessaoIds vazio ou não é array');
+            return;
+        }
+
+        console.log('Atualizando ordem das sessões:', sessaoIds);
+
+        // Usar transação para garantir consistência
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+
+            for (let i = 0; i < sessaoIds.length; i++) {
+                const ordem = i;
+                const sessaoId = sessaoIds[i];
+
+                console.log(`Atualizando sessão ID ${sessaoId} para ordem ${ordem}`);
+
+                const result = await client.query(
+                    'UPDATE configuracoes_sessoes SET ordem = $1, updated_at = CURRENT_TIMESTAMP WHERE sessao_id = $2',
+                    [ordem, sessaoId]
+                );
+
+                if (result.rowCount === 0) {
+                    console.warn(`Sessão com ID ${sessaoId} não encontrada`);
+                }
+            }
+
+            await client.query('COMMIT');
+            console.log('Ordem das sessões atualizada com sucesso');
+        } catch (error) {
+            await client.query('ROLLBACK');
+            console.error('Erro na transação ao atualizar ordem das sessões:', error);
+            throw error;
+        } finally {
+            client.release();
+        }
+    } catch (error) {
+        console.error('Erro ao atualizar ordem das sessões:', error);
+        throw error;
+    }
+}
+
 // Migrar benefícios para estrutura many-to-many (consolidando duplicatas)
 async function migrarBeneficiosParaManyToMany() {
     try {
@@ -4457,6 +4503,7 @@ module.exports = {
     inicializarConfiguracoesSessoesPadrao,
     obterConfiguracoesSessoes,
     atualizarConfiguracoesSessoes,
+    atualizarOrdemSessoes,
     // Funções de planos
     obterPlanos,
     obterPlanoPorId,

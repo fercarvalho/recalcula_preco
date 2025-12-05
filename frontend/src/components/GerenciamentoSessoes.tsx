@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { FaLayerGroup, FaToggleOn, FaToggleOff, FaSave } from 'react-icons/fa';
+import { FaLayerGroup, FaToggleOn, FaToggleOff, FaSave, FaGripVertical } from 'react-icons/fa';
 import Modal from './Modal';
 import { mostrarAlert } from '../utils/modals';
 import { apiService } from '../services/api';
+import { useDragAndDrop } from '../hooks/useDragAndDrop';
 import './GerenciamentoSessoes.css';
 
 export interface SessaoLanding {
@@ -175,6 +176,47 @@ const GerenciamentoSessoes = ({ isOpen, onClose }: GerenciamentoSessoesProps) =>
     }
   };
 
+  // Drag and drop para reordenar sessões
+  const handleReorderSessoes = async (novasSessoes: SessaoLanding[]) => {
+    // Atualizar localmente primeiro para feedback imediato
+    setSessoes(novasSessoes);
+    
+    try {
+      console.log('handleReorderSessoes chamado com:', novasSessoes);
+      
+      // Criar array com os IDs das sessões na nova ordem
+      const sessaoIds = novasSessoes.map(s => s.id);
+      
+      if (sessaoIds.length === 0) {
+        throw new Error('Nenhuma sessão encontrada');
+      }
+      
+      await apiService.atualizarOrdemSessoes(sessaoIds);
+      
+      // Disparar evento para atualizar as sessões na landing page
+      window.dispatchEvent(new CustomEvent('sessoes-config-updated'));
+    } catch (error) {
+      console.error('Erro ao atualizar ordem das sessões:', error);
+      await mostrarAlert('Erro', 'Erro ao atualizar ordem das sessões. Tente novamente.');
+      // Recarregar sessões em caso de erro
+      await carregarConfiguracoes();
+    }
+  };
+
+  // Garantir que todas as sessões tenham ID para o drag and drop
+  const sessoesComIds = sessoes.map((s, index) => ({
+    ...s,
+    id: s.id || `sessao-${index}`
+  }));
+
+  const {
+    handleDragStart: handleDragStartSessoes,
+    handleDragEnd: handleDragEndSessoes,
+    handleDragOver: handleDragOverSessoes,
+    handleDrop: handleDropSessoes,
+    handleDragLeave: handleDragLeaveSessoes,
+  } = useDragAndDrop(sessoesComIds, handleReorderSessoes);
+
   console.log('GerenciamentoSessoes render - isOpen:', isOpen, 'sessoes:', sessoes.length, 'loading:', loading);
 
   if (!isOpen) return null;
@@ -234,22 +276,37 @@ const GerenciamentoSessoes = ({ isOpen, onClose }: GerenciamentoSessoesProps) =>
               </div>
             ) : (
               <div className="sessoes-list">
-                {sessoes.map((sessao) => (
-                  <div key={sessao.id} className="sessao-item">
-                    <div className="sessao-info">
-                      <FaLayerGroup className="sessao-icon" />
-                      <span className="sessao-nome">{sessao.nome}</span>
-                    </div>
-                    <button
-                      onClick={() => handleToggleSessao(sessao.id)}
-                      className={`toggle-btn ${sessao.ativa ? 'active' : ''}`}
-                      title={sessao.ativa ? 'Ocultar sessão' : 'Mostrar sessão'}
-                      disabled={loading}
+                {sessoesComIds.map((sessao) => {
+                  const sessaoId = sessao.id;
+                  return (
+                    <div
+                      key={sessaoId}
+                      className="sessao-item"
+                      draggable
+                      onDragStart={(e) => handleDragStartSessoes(e, sessaoId, 'item')}
+                      onDragEnd={handleDragEndSessoes}
+                      onDragOver={(e) => handleDragOverSessoes(e, sessaoId)}
+                      onDrop={(e) => handleDropSessoes(e, sessaoId)}
+                      onDragLeave={handleDragLeaveSessoes}
                     >
-                      {sessao.ativa ? <FaToggleOn /> : <FaToggleOff />}
-                    </button>
-                  </div>
-                ))}
+                      <div className="sessao-drag-handle">
+                        <FaGripVertical />
+                      </div>
+                      <div className="sessao-info">
+                        <FaLayerGroup className="sessao-icon" />
+                        <span className="sessao-nome">{sessao.nome}</span>
+                      </div>
+                      <button
+                        onClick={() => handleToggleSessao(sessao.id)}
+                        className={`toggle-btn ${sessao.ativa ? 'active' : ''}`}
+                        title={sessao.ativa ? 'Ocultar sessão' : 'Mostrar sessão'}
+                        disabled={loading}
+                      >
+                        {sessao.ativa ? <FaToggleOn /> : <FaToggleOff />}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
             <div className="sessoes-preview">

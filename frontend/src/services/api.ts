@@ -526,5 +526,9 @@ export const apiService = {
     const response = await api.put<Array<{ id: string; nome: string; ativa: boolean; ordem: number }>>('/api/configuracoes-sessoes', { configuracoes });
     return response.data;
   },
+
+  async atualizarOrdemSessoes(sessaoIds: string[]): Promise<void> {
+    await api.put('/api/configuracoes-sessoes/ordem', { sessaoIds });
+  },
 };
 
