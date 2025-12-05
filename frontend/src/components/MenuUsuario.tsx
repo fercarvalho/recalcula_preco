@@ -4,6 +4,7 @@ import { FaUser, FaSignOutAlt, FaKey, FaUserEdit, FaRedo, FaGraduationCap, FaShi
 import AlterarLoginModal from './AlterarLoginModal';
 import AlterarSenhaModal from './AlterarSenhaModal';
 import AlterarEmailModal from './AlterarEmailModal';
+import AlterarDadosModal from './AlterarDadosModal';
 import { mostrarConfirm, mostrarAlert } from '../utils/modals';
 import { apiService } from '../services/api';
 import './MenuUsuario.css';
@@ -18,6 +19,7 @@ interface MenuUsuarioProps {
 
 const MenuUsuario = ({ onLogout, onReiniciarSistema, onReexibirTutorial, onOpenAdminPanel, isAdmin }: MenuUsuarioProps) => {
   const [showMenu, setShowMenu] = useState(false);
+  const [showAlterarDados, setShowAlterarDados] = useState(false);
   const [showAlterarLogin, setShowAlterarLogin] = useState(false);
   const [showAlterarSenha, setShowAlterarSenha] = useState(false);
   const [showAlterarEmail, setShowAlterarEmail] = useState(false);
@@ -247,6 +249,17 @@ const MenuUsuario = ({ onLogout, onReiniciarSistema, onReexibirTutorial, onOpenA
             <button
               className="menu-usuario-item"
               onClick={() => {
+                setShowAlterarDados(true);
+                setShowMenu(false);
+              }}
+            >
+              <FaUserEdit className="menu-icon" />
+              <span>Alterar Dados</span>
+            </button>
+
+            <button
+              className="menu-usuario-item"
+              onClick={() => {
                 setShowAlterarLogin(true);
                 setShowMenu(false);
               }}
@@ -375,6 +388,11 @@ const MenuUsuario = ({ onLogout, onReiniciarSistema, onReexibirTutorial, onOpenA
       <AlterarEmailModal
         isOpen={showAlterarEmail}
         onClose={() => setShowAlterarEmail(false)}
+      />
+
+      <AlterarDadosModal
+        isOpen={showAlterarDados}
+        onClose={() => setShowAlterarDados(false)}
       />
     </>
   );

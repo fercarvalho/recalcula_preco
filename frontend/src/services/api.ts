@@ -564,5 +564,18 @@ export const apiService = {
   async reenviarEmailValidacao(): Promise<void> {
     await api.post('/api/auth/reenviar-email-validacao');
   },
+  // Dados do usuário
+  async obterDadosUsuario(): Promise<any> {
+    const response = await api.get('/api/auth/dados');
+    return response.data;
+  },
+  async atualizarDadosUsuario(dados: any): Promise<any> {
+    const response = await api.put('/api/auth/alterar-dados', dados);
+    return response.data;
+  },
+  async uploadFotoPerfil(fotoBase64: string): Promise<any> {
+    const response = await api.post('/api/auth/upload-foto', { fotoBase64 });
+    return response.data;
+  },
 };
 

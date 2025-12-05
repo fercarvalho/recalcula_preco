@@ -146,6 +146,34 @@ async function inicializar() {
             await pool.query('ALTER TABLE usuarios ADD COLUMN email_validado BOOLEAN DEFAULT FALSE');
         }
         
+        // Adicionar colunas de dados pessoais se não existirem
+        const colunasDadosPessoais = [
+            { nome: 'nome', tipo: 'VARCHAR(255)' },
+            { nome: 'sobrenome', tipo: 'VARCHAR(255)' },
+            { nome: 'telefone', tipo: 'VARCHAR(20)' },
+            { nome: 'cpf', tipo: 'VARCHAR(14)' },
+            { nome: 'nome_estabelecimento', tipo: 'VARCHAR(255)' },
+            { nome: 'cep_residencial', tipo: 'VARCHAR(9)' },
+            { nome: 'endereco_residencial', tipo: 'VARCHAR(255)' },
+            { nome: 'numero_residencial', tipo: 'VARCHAR(20)' },
+            { nome: 'complemento_residencial', tipo: 'VARCHAR(255)' },
+            { nome: 'cidade_residencial', tipo: 'VARCHAR(100)' },
+            { nome: 'estado_residencial', tipo: 'VARCHAR(2)' },
+            { nome: 'cep_comercial', tipo: 'VARCHAR(9)' },
+            { nome: 'endereco_comercial', tipo: 'VARCHAR(255)' },
+            { nome: 'numero_comercial', tipo: 'VARCHAR(20)' },
+            { nome: 'complemento_comercial', tipo: 'VARCHAR(255)' },
+            { nome: 'cidade_comercial', tipo: 'VARCHAR(100)' },
+            { nome: 'estado_comercial', tipo: 'VARCHAR(2)' },
+            { nome: 'foto_perfil', tipo: 'VARCHAR(500)' }
+        ];
+        
+        for (const coluna of colunasDadosPessoais) {
+            if (!(await colunaExiste('usuarios', coluna.nome))) {
+                await pool.query(`ALTER TABLE usuarios ADD COLUMN ${coluna.nome} ${coluna.tipo}`);
+            }
+        }
+        
         // Criar tabela de tokens de validação de email
         await pool.query(`
             CREATE TABLE IF NOT EXISTS email_validation_tokens (
@@ -999,7 +1027,7 @@ async function verificarCredenciais(identificador, senha) {
 async function obterUsuarioPorId(id) {
     try {
         const result = await pool.query(
-            'SELECT id, username, email, is_admin, tutorial_completed FROM usuarios WHERE id = $1',
+            'SELECT id, username, email, is_admin, tutorial_completed, nome, sobrenome, telefone, cpf, nome_estabelecimento, cep_residencial, endereco_residencial, numero_residencial, complemento_residencial, cidade_residencial, estado_residencial, cep_comercial, endereco_comercial, numero_comercial, complemento_comercial, cidade_comercial, estado_comercial, foto_perfil FROM usuarios WHERE id = $1',
             [id]
         );
         
@@ -1007,12 +1035,31 @@ async function obterUsuarioPorId(id) {
             return null;
         }
         
+        const row = result.rows[0];
         return {
-            id: result.rows[0].id,
-            username: result.rows[0].username,
-            email: result.rows[0].email,
-            is_admin: result.rows[0].is_admin || false,
-            tutorial_completed: result.rows[0].tutorial_completed || false
+            id: row.id,
+            username: row.username,
+            email: row.email,
+            is_admin: row.is_admin || false,
+            tutorial_completed: row.tutorial_completed || false,
+            nome: row.nome || null,
+            sobrenome: row.sobrenome || null,
+            telefone: row.telefone || null,
+            cpf: row.cpf || null,
+            nome_estabelecimento: row.nome_estabelecimento || null,
+            cep_residencial: row.cep_residencial || null,
+            endereco_residencial: row.endereco_residencial || null,
+            numero_residencial: row.numero_residencial || null,
+            complemento_residencial: row.complemento_residencial || null,
+            cidade_residencial: row.cidade_residencial || null,
+            estado_residencial: row.estado_residencial || null,
+            cep_comercial: row.cep_comercial || null,
+            endereco_comercial: row.endereco_comercial || null,
+            numero_comercial: row.numero_comercial || null,
+            complemento_comercial: row.complemento_comercial || null,
+            cidade_comercial: row.cidade_comercial || null,
+            estado_comercial: row.estado_comercial || null,
+            foto_perfil: row.foto_perfil || null
         };
     } catch (error) {
         console.error('Erro ao obter usuário:', error);
@@ -5065,6 +5112,50 @@ async function finalizarSessao(usuarioId) {
     }
 }
 
+// Atualizar dados pessoais do usuário
+async function atualizarDadosUsuario(usuarioId, dados) {
+    try {
+        const updates = [];
+        const values = [];
+        let paramIndex = 1;
+
+        const campos = [
+            'nome', 'sobrenome', 'telefone', 'cpf', 'nome_estabelecimento',
+            'cep_residencial', 'endereco_residencial', 'numero_residencial', 
+            'complemento_residencial', 'cidade_residencial', 'estado_residencial',
+            'cep_comercial', 'endereco_comercial', 'numero_comercial',
+            'complemento_comercial', 'cidade_comercial', 'estado_comercial',
+            'foto_perfil'
+        ];
+
+        for (const campo of campos) {
+            if (dados[campo] !== undefined) {
+                updates.push(`${campo} = $${paramIndex++}`);
+                values.push(dados[campo] || null);
+            }
+        }
+
+        if (updates.length === 0) {
+            throw new Error('Nenhuma alteração especificada');
+        }
+
+        updates.push('updated_at = CURRENT_TIMESTAMP');
+        values.push(usuarioId);
+
+        const query = `UPDATE usuarios SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, nome, sobrenome, telefone, cpf, nome_estabelecimento, cep_residencial, endereco_residencial, numero_residencial, complemento_residencial, cidade_residencial, estado_residencial, cep_comercial, endereco_comercial, numero_comercial, complemento_comercial, cidade_comercial, estado_comercial, foto_perfil`;
+        const result = await pool.query(query, values);
+
+        if (result.rows.length === 0) {
+            throw new Error('Usuário não encontrado');
+        }
+
+        return result.rows[0];
+    } catch (error) {
+        console.error('Erro ao atualizar dados do usuário:', error);
+        throw error;
+    }
+}
+
 // Fechar conexão
 async function fechar() {
     try {
@@ -5084,6 +5175,7 @@ module.exports = {
     alterarLogin,
     alterarSenha,
     alterarEmail,
+    atualizarDadosUsuario,
     reiniciarSistema,
     listarUsuarios,
     atualizarUsuario,

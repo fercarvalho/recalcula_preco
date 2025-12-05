@@ -445,6 +445,61 @@ app.put('/api/auth/alterar-email', authenticateToken, async (req, res) => {
     }
 });
 
+// Obter dados do usuário
+app.get('/api/auth/dados', authenticateToken, async (req, res) => {
+    try {
+        const usuario = await db.obterUsuarioPorId(req.userId);
+        
+        if (!usuario) {
+            return res.status(404).json({ error: 'Usuário não encontrado' });
+        }
+        
+        res.json({ user: usuario });
+    } catch (error) {
+        console.error('Erro ao obter dados do usuário:', error);
+        res.status(500).json({ error: error.message || 'Erro ao obter dados do usuário' });
+    }
+});
+
+// Atualizar dados do usuário
+app.put('/api/auth/alterar-dados', authenticateToken, async (req, res) => {
+    try {
+        const dados = req.body;
+        
+        const usuario = await db.atualizarDadosUsuario(req.userId, dados);
+        
+        res.json({
+            message: 'Dados atualizados com sucesso',
+            user: usuario
+        });
+    } catch (error) {
+        console.error('Erro ao atualizar dados:', error);
+        res.status(500).json({ error: error.message || 'Erro ao atualizar dados' });
+    }
+});
+
+// Upload de foto de perfil
+app.post('/api/auth/upload-foto', authenticateToken, async (req, res) => {
+    try {
+        const { fotoBase64 } = req.body;
+        
+        if (!fotoBase64) {
+            return res.status(400).json({ error: 'Foto é obrigatória' });
+        }
+        
+        // Salvar como base64 no banco (ou você pode salvar em arquivo e guardar o caminho)
+        const usuario = await db.atualizarDadosUsuario(req.userId, { foto_perfil: fotoBase64 });
+        
+        res.json({
+            message: 'Foto atualizada com sucesso',
+            foto_perfil: usuario.foto_perfil
+        });
+    } catch (error) {
+        console.error('Erro ao fazer upload da foto:', error);
+        res.status(500).json({ error: error.message || 'Erro ao fazer upload da foto' });
+    }
+});
+
 // Reiniciar sistema (deletar todos os dados do usuário)
 app.post('/api/auth/reiniciar-sistema', authenticateToken, async (req, res) => {
     try {
