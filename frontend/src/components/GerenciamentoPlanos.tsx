@@ -29,6 +29,7 @@ export interface Plano {
   ativo?: boolean;
   ordem?: number;
   beneficios?: Beneficio[] | string[];
+  stripe_price_id?: string | null;
 }
 
 interface GerenciamentoPlanosProps {
@@ -362,6 +363,7 @@ const ModalPlano = ({ plano, onClose, onSave }: ModalPlanoProps) => {
   const [todosBeneficios, setTodosBeneficios] = useState<Beneficio[]>([]);
   const [buscaBeneficio, setBuscaBeneficio] = useState('');
   const [mostrarResultadosBusca, setMostrarResultadosBusca] = useState(false);
+  const [stripePriceId, setStripePriceId] = useState(plano?.stripe_price_id || '');
 
   useEffect(() => {
     if (plano) {
@@ -651,7 +653,8 @@ const ModalPlano = ({ plano, onClose, onSave }: ModalPlanoProps) => {
         mostrar_valor_parcelado: tipo === 'parcelado' ? mostrarValorParcelado : false, // Só parcelado mostra valor parcelado
         ativo,
         ordem: parseInt(ordem) || 1,
-        beneficios: beneficiosComOrdem
+        beneficios: beneficiosComOrdem,
+        stripe_price_id: stripePriceId.trim() || null
       };
 
       if (plano?.id) {
@@ -999,6 +1002,24 @@ const ModalPlano = ({ plano, onClose, onSave }: ModalPlanoProps) => {
               placeholder="0"
               disabled={loading}
             />
+          </div>
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label htmlFor="plano-stripe-price-id">Stripe Price ID:</label>
+            <input
+              type="text"
+              id="plano-stripe-price-id"
+              value={stripePriceId}
+              onChange={(e) => setStripePriceId(e.target.value)}
+              className="form-input"
+              placeholder="price_xxxxx (ID do preço no Stripe)"
+              disabled={loading}
+            />
+            <small style={{ color: '#666', fontSize: '12px', display: 'block', marginTop: '4px' }}>
+              ID do preço (Price) criado no Stripe Dashboard. Deixe em branco para usar o padrão do .env
+            </small>
           </div>
         </div>
 

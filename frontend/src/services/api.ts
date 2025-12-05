@@ -118,13 +118,13 @@ export const apiService = {
   },
 
   // Stripe
-  async criarCheckoutAnual(): Promise<{ sessionId: string; url: string }> {
-    const response = await api.post<{ sessionId: string; url: string }>('/api/stripe/checkout/anual');
+  async criarCheckoutAnual(priceId?: string): Promise<{ sessionId: string; url: string }> {
+    const response = await api.post<{ sessionId: string; url: string }>('/api/stripe/checkout/anual', { priceId });
     return response.data;
   },
 
-  async criarCheckoutUnico(): Promise<{ sessionId: string; url: string }> {
-    const response = await api.post<{ sessionId: string; url: string }>('/api/stripe/checkout/unico');
+  async criarCheckoutUnico(priceId?: string): Promise<{ sessionId: string; url: string }> {
+    const response = await api.post<{ sessionId: string; url: string }>('/api/stripe/checkout/unico', { priceId });
     return response.data;
   },
 
@@ -252,6 +252,7 @@ export const apiService = {
     ativo: boolean;
     ordem: number;
     beneficios: string[];
+    stripe_price_id: string | null;
   }>> {
     const response = await api.get('/api/planos');
     return response.data;

@@ -24,10 +24,6 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
     carregarPlanos();
   }, []);
 
-  // Debug: verificar estado de carregando
-  useEffect(() => {
-    console.log('Estado carregando:', carregando);
-  }, [carregando]);
 
   const carregarPlanos = async () => {
     try {
@@ -48,7 +44,8 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
         mostrar_valor_parcelado: p.mostrar_valor_parcelado,
         ativo: p.ativo,
         ordem: p.ordem,
-        beneficios: p.beneficios
+        beneficios: p.beneficios,
+        stripe_price_id: p.stripe_price_id || null
       }));
       
       // Ordenar por ordem
@@ -107,11 +104,11 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
       
       if (isRecorrente) {
         setCarregando('anual');
-        const { url } = await apiService.criarCheckoutAnual();
+        const { url } = await apiService.criarCheckoutAnual(plano.stripe_price_id || undefined);
         window.location.href = url;
       } else if (isUnico) {
         setCarregando('unico');
-        const { url } = await apiService.criarCheckoutUnico();
+        const { url } = await apiService.criarCheckoutUnico(plano.stripe_price_id || undefined);
         window.location.href = url;
       } else {
         await mostrarAlert('Erro', 'Tipo de plano não suportado para pagamento.');
@@ -153,7 +150,6 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
           <div>Carregando planos...</div>
         ) : (
           planos.map((plano) => {
-            console.log(`Mapeando plano: ${plano.nome}, tipo: "${plano.tipo}", tipo === 'recorrente': ${plano.tipo === 'recorrente'}, typeof: ${typeof plano.tipo}`);
             const temDescontoPercentual = !!(plano.desconto_percentual && plano.desconto_percentual > 0);
             const temDescontoValor = !!(plano.desconto_valor && plano.desconto_valor > 0);
             const temDesconto = temDescontoPercentual || temDescontoValor;
@@ -221,14 +217,7 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
                 </ul>
                 <button
                   className={`btn-plano ${plano.mais_popular ? 'btn-plano-anual' : 'btn-plano-unico'}`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('Botão clicado:', plano.nome, 'Tipo:', plano.tipo, 'Carregando:', carregando);
-                    if (!carregando) {
-                      handlePlanoClick(plano);
-                    }
-                  }}
+                  onClick={() => handlePlanoClick(plano)}
                   disabled={(() => {
                     // Detectar tipo de plano de forma mais robusta
                     const nomeLower = (plano.nome || '').toLowerCase();
@@ -237,12 +226,8 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
                     const isUnico = tipoLower === 'unico' || nomeLower.includes('único') || nomeLower.includes('unico');
                     
                     const loadingType = isRecorrente ? 'anual' : (isUnico ? 'unico' : null);
-                    const isDisabled = carregando === loadingType;
-                    
-                    console.log(`Plano ${plano.nome}: tipo="${plano.tipo}", isRecorrente=${isRecorrente}, loadingType=${loadingType}, carregando=${carregando}, disabled=${isDisabled}`);
-                    return isDisabled;
+                    return carregando === loadingType;
                   })()}
-                  style={{ pointerEvents: 'auto', cursor: 'pointer' }}
                 >
                   {(() => {
                     // Detectar tipo de plano de forma mais robusta

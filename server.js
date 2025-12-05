@@ -607,13 +607,15 @@ app.post('/api/auth/resetar-senha', async (req, res) => {
 app.post('/api/stripe/checkout/anual', authenticateToken, async (req, res) => {
     try {
         const usuario = req.user;
+        const { priceId } = req.body; // Receber priceId do plano
         const baseUrl = process.env.FRONTEND_URL || `http://localhost:${PORT}`;
         
         const session = await stripeService.criarCheckoutAnual(
             usuario.email,
             usuario.id,
             `${baseUrl}/pagamento/sucesso?session_id={CHECKOUT_SESSION_ID}`,
-            `${baseUrl}/pagamento/cancelado`
+            `${baseUrl}/pagamento/cancelado`,
+            priceId // Passar priceId dinâmico
         );
 
         res.json({ sessionId: session.id, url: session.url });
@@ -627,13 +629,15 @@ app.post('/api/stripe/checkout/anual', authenticateToken, async (req, res) => {
 app.post('/api/stripe/checkout/unico', authenticateToken, async (req, res) => {
     try {
         const usuario = req.user;
+        const { priceId } = req.body; // Receber priceId do plano
         const baseUrl = process.env.FRONTEND_URL || `http://localhost:${PORT}`;
         
         const session = await stripeService.criarCheckoutUnico(
             usuario.email,
             usuario.id,
             `${baseUrl}/pagamento/sucesso?session_id={CHECKOUT_SESSION_ID}`,
-            `${baseUrl}/pagamento/cancelado`
+            `${baseUrl}/pagamento/cancelado`,
+            priceId // Passar priceId dinâmico
         );
 
         res.json({ sessionId: session.id, url: session.url });

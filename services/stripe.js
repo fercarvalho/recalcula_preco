@@ -69,18 +69,26 @@ async function criarCheckoutAnual(customerEmail, userId, successUrl, cancelUrl) 
     }
 }
 
-// Criar sessão de checkout para pagamento único
-async function criarCheckoutUnico(customerEmail, userId, successUrl, cancelUrl) {
+// Criar sessão de checkout para pagamento único (com price_id dinâmico)
+async function criarCheckoutUnico(customerEmail, userId, successUrl, cancelUrl, priceId = null) {
     try {
         if (!stripe) {
             throw new Error('Stripe não está configurado. Verifique STRIPE_SECRET_KEY no arquivo .env');
         }
+        
+        // Usar price_id fornecido ou fallback para o do .env
+        const finalPriceId = priceId || PLANO_UNICO_PRICE_ID;
+        
+        if (!finalPriceId || finalPriceId.trim() === '') {
+            throw new Error('Price ID do Stripe não está configurado. Configure o campo "Stripe Price ID" no plano ou a variável STRIPE_PLANO_UNICO_PRICE_ID no arquivo .env');
+        }
+        
         const session = await stripe.checkout.sessions.create({
             customer_email: customerEmail,
             payment_method_types: ['card'],
             line_items: [
                 {
-                    price: PLANO_UNICO_PRICE_ID,
+                    price: finalPriceId,
                     quantity: 1,
                 },
             ],
