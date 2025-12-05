@@ -159,10 +159,40 @@ const GerenciamentoSessoes = ({ isOpen, onClose }: GerenciamentoSessoesProps) =>
   const handleResetar = async () => {
     try {
       setLoading(true);
-      const sessoesPadrao = sessoes.map(s => ({ ...s, ativa: true }));
-      const configuracoesParaSalvar = sessoesPadrao.map(s => ({ id: s.id, ativa: s.ativa }));
+      
+      // Ordem padrão das sessões
+      const ordemPadrao: { [key: string]: number } = {
+        'hero': 0,
+        'sobre': 1,
+        'funcionalidades': 2,
+        'whatsapp-ia-ativas': 3,
+        'roadmap': 4,
+        'whatsapp-integracao': 5,
+        'planos': 6,
+        'faq': 7,
+        'cta-final': 8
+      };
+      
+      // Restaurar estado ativo e ordem padrão
+      const sessoesPadrao = sessoes.map(s => ({ 
+        ...s, 
+        ativa: true,
+        ordem: ordemPadrao[s.id] !== undefined ? ordemPadrao[s.id] : s.ordem || 0
+      }));
+      
+      // Ordenar pela ordem padrão
+      const sessoesOrdenadas = [...sessoesPadrao].sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+      
+      // Atualizar estado local
+      setSessoes(sessoesOrdenadas);
+      
+      // Salvar configurações (ativa)
+      const configuracoesParaSalvar = sessoesOrdenadas.map(s => ({ id: s.id, ativa: s.ativa }));
       await apiService.atualizarConfiguracoesSessoes(configuracoesParaSalvar);
-      setSessoes(sessoesPadrao);
+      
+      // Salvar ordem
+      const sessaoIds = sessoesOrdenadas.map(s => s.id);
+      await apiService.atualizarOrdemSessoes(sessaoIds);
       
       // Disparar evento para atualizar as sessões na landing page
       window.dispatchEvent(new CustomEvent('sessoes-config-updated'));
@@ -171,6 +201,8 @@ const GerenciamentoSessoes = ({ isOpen, onClose }: GerenciamentoSessoesProps) =>
     } catch (error) {
       console.error('Erro ao resetar configurações de sessões:', error);
       await mostrarAlert('Erro', 'Erro ao resetar configurações de sessões. Tente novamente.');
+      // Recarregar configurações em caso de erro
+      await carregarConfiguracoes();
     } finally {
       setLoading(false);
     }

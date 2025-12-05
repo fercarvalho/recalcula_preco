@@ -1398,6 +1398,23 @@ app.put('/api/configuracoes-menu', authenticateToken, requireAdmin, async (req, 
     }
 });
 
+// Atualizar ordem das seções do menu (apenas admin)
+app.put('/api/configuracoes-menu/ordem', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { secaoIds } = req.body;
+        
+        if (!Array.isArray(secaoIds)) {
+            return res.status(400).json({ error: 'secaoIds deve ser um array' });
+        }
+
+        await db.atualizarOrdemMenu(secaoIds);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Erro ao atualizar ordem do menu:', error);
+        res.status(500).json({ error: 'Erro ao atualizar ordem do menu' });
+    }
+});
+
 // ========== CONFIGURAÇÕES DE SESSÕES DA LANDING PAGE ==========
 
 // Obter todas as configurações de sessões (público - usado na landing page)

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { FaBars, FaToggleOn, FaToggleOff, FaSave } from 'react-icons/fa';
+import { FaBars, FaToggleOn, FaToggleOff, FaSave, FaGripVertical } from 'react-icons/fa';
 import Modal from './Modal';
 import { mostrarAlert } from '../utils/modals';
 import { apiService } from '../services/api';
+import { useDragAndDrop } from '../hooks/useDragAndDrop';
 import './GerenciamentoMenu.css';
 
 export interface SecaoMenu {
@@ -48,12 +49,43 @@ const GerenciamentoMenu = ({ isOpen, onClose }: GerenciamentoMenuProps) => {
     }
   };
 
-  const handleToggleSecao = (id: string) => {
-    setSecoes(prevSecoes =>
-      prevSecoes.map(secao =>
-        secao.id === id ? { ...secao, ativa: !secao.ativa } : secao
-      )
-    );
+  const handleToggleSecao = async (id: string) => {
+    try {
+      const secao = secoes.find(s => s.id === id);
+      if (!secao) return;
+
+      const novaAtiva = !secao.ativa;
+      
+      // Atualizar estado local imediatamente para feedback visual e preparar dados para API
+      let secoesAtualizadas: SecaoMenu[] = [];
+      setSecoes(prevSecoes => {
+        secoesAtualizadas = prevSecoes.map(s =>
+          s.id === id ? { ...s, ativa: novaAtiva } : s
+        );
+        return secoesAtualizadas;
+      });
+
+      // Salvar na API imediatamente usando o estado atualizado
+      const configuracoesParaSalvar = secoesAtualizadas.map(s => ({
+        id: s.id,
+        ativa: s.ativa
+      }));
+      
+      await apiService.atualizarConfiguracoesMenu(configuracoesParaSalvar);
+      
+      // Disparar evento para atualizar instantaneamente na landing page
+      console.log('Disparando evento menu-config-updated');
+      window.dispatchEvent(new CustomEvent('menu-config-updated'));
+    } catch (error) {
+      console.error('Erro ao atualizar seção do menu:', error);
+      // Reverter mudança em caso de erro
+      setSecoes(prevSecoes =>
+        prevSecoes.map(s =>
+          s.id === id ? { ...s, ativa: !s.ativa } : s
+        )
+      );
+      await mostrarAlert('Erro', 'Erro ao atualizar seção do menu. Tente novamente.');
+    }
   };
 
   const handleSalvar = async () => {
@@ -78,10 +110,36 @@ const GerenciamentoMenu = ({ isOpen, onClose }: GerenciamentoMenuProps) => {
   const handleResetar = async () => {
     try {
       setLoading(true);
-      const secoesPadrao = secoes.map(s => ({ ...s, ativa: true }));
-      const configuracoesParaSalvar = secoesPadrao.map(s => ({ id: s.id, ativa: s.ativa }));
+      
+      // Ordem padrão das seções do menu
+      const ordemPadrao: { [key: string]: number } = {
+        'sobre': 0,
+        'funcionalidades': 1,
+        'roadmap': 2,
+        'planos': 3,
+        'faq': 4
+      };
+      
+      // Restaurar estado ativo e ordem padrão
+      const secoesPadrao = secoes.map(s => ({ 
+        ...s, 
+        ativa: true,
+        ordem: ordemPadrao[s.id] !== undefined ? ordemPadrao[s.id] : s.ordem || 0
+      }));
+      
+      // Ordenar pela ordem padrão
+      const secoesOrdenadas = [...secoesPadrao].sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+      
+      // Atualizar estado local
+      setSecoes(secoesOrdenadas);
+      
+      // Salvar configurações (ativa)
+      const configuracoesParaSalvar = secoesOrdenadas.map(s => ({ id: s.id, ativa: s.ativa }));
       await apiService.atualizarConfiguracoesMenu(configuracoesParaSalvar);
-      setSecoes(secoesPadrao);
+      
+      // Salvar ordem
+      const secaoIds = secoesOrdenadas.map(s => s.id);
+      await apiService.atualizarOrdemMenu(secaoIds);
       
       // Disparar evento para atualizar o menu na landing page
       window.dispatchEvent(new CustomEvent('menu-config-updated'));
@@ -90,10 +148,53 @@ const GerenciamentoMenu = ({ isOpen, onClose }: GerenciamentoMenuProps) => {
     } catch (error) {
       console.error('Erro ao resetar configurações do menu:', error);
       await mostrarAlert('Erro', 'Erro ao resetar configurações do menu. Tente novamente.');
+      // Recarregar configurações em caso de erro
+      await carregarConfiguracoes();
     } finally {
       setLoading(false);
     }
   };
+
+  // Drag and drop para reordenar seções do menu
+  const handleReorderMenu = async (novasSecoes: SecaoMenu[]) => {
+    // Atualizar localmente primeiro para feedback imediato
+    setSecoes(novasSecoes);
+    
+    try {
+      console.log('handleReorderMenu chamado com:', novasSecoes);
+      
+      // Criar array com os IDs das seções na nova ordem
+      const secaoIds = novasSecoes.map(s => s.id);
+      
+      if (secaoIds.length === 0) {
+        throw new Error('Nenhuma seção encontrada');
+      }
+      
+      await apiService.atualizarOrdemMenu(secaoIds);
+      
+      // Disparar evento para atualizar o menu na landing page
+      window.dispatchEvent(new CustomEvent('menu-config-updated'));
+    } catch (error) {
+      console.error('Erro ao atualizar ordem do menu:', error);
+      await mostrarAlert('Erro', 'Erro ao atualizar ordem do menu. Tente novamente.');
+      // Recarregar seções em caso de erro
+      await carregarConfiguracoes();
+    }
+  };
+
+  // Garantir que todas as seções tenham ID para o drag and drop
+  const secoesComIds = secoes.map((s, index) => ({
+    ...s,
+    id: s.id || `secao-${index}`
+  }));
+
+  const {
+    handleDragStart: handleDragStartMenu,
+    handleDragEnd: handleDragEndMenu,
+    handleDragOver: handleDragOverMenu,
+    handleDrop: handleDropMenu,
+    handleDragLeave: handleDragLeaveMenu,
+  } = useDragAndDrop(secoesComIds, handleReorderMenu);
 
   console.log('GerenciamentoMenu render - isOpen:', isOpen, 'secoes:', secoes.length, 'loading:', loading);
 
@@ -132,22 +233,37 @@ const GerenciamentoMenu = ({ isOpen, onClose }: GerenciamentoMenuProps) => {
               </div>
             ) : (
               <div className="secoes-list">
-                {secoes.map((secao) => (
-                  <div key={secao.id} className="secao-item">
-                    <div className="secao-info">
-                      <FaBars className="secao-icon" />
-                      <span className="secao-nome">{secao.nome}</span>
-                    </div>
-                    <button
-                      onClick={() => handleToggleSecao(secao.id)}
-                      className={`toggle-btn ${secao.ativa ? 'active' : ''}`}
-                      title={secao.ativa ? 'Ocultar do menu' : 'Mostrar no menu'}
-                      disabled={loading}
+                {secoesComIds.map((secao) => {
+                  const secaoId = secao.id;
+                  return (
+                    <div
+                      key={secaoId}
+                      className="secao-item"
+                      draggable
+                      onDragStart={(e) => handleDragStartMenu(e, secaoId, 'item')}
+                      onDragEnd={handleDragEndMenu}
+                      onDragOver={(e) => handleDragOverMenu(e, secaoId)}
+                      onDrop={(e) => handleDropMenu(e, secaoId)}
+                      onDragLeave={handleDragLeaveMenu}
                     >
-                      {secao.ativa ? <FaToggleOn /> : <FaToggleOff />}
-                    </button>
-                  </div>
-                ))}
+                      <div className="secao-drag-handle">
+                        <FaGripVertical />
+                      </div>
+                      <div className="secao-info">
+                        <FaBars className="secao-icon" />
+                        <span className="secao-nome">{secao.nome}</span>
+                      </div>
+                      <button
+                        onClick={() => handleToggleSecao(secao.id)}
+                        className={`toggle-btn ${secao.ativa ? 'active' : ''}`}
+                        title={secao.ativa ? 'Ocultar do menu' : 'Mostrar no menu'}
+                        disabled={loading}
+                      >
+                        {secao.ativa ? <FaToggleOn /> : <FaToggleOff />}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
             <div className="menu-preview">

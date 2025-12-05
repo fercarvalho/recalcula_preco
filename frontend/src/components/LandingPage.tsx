@@ -63,6 +63,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
     
     // Ouvir atualizações de configuração do menu
     const handleMenuConfigUpdate = () => {
+      console.log('Evento menu-config-updated recebido, recarregando seções do menu...');
       carregarSecoesMenu();
     };
     
@@ -139,8 +140,18 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
   
   const carregarSecoesMenu = async () => {
     try {
-      const secoesAtivas = await obterSecoesMenuAtivas();
-      setSecoesMenuAtivas(secoesAtivas);
+      // Carregar todas as configurações do menu (com ordem)
+      const todasSecoes = await apiService.obterConfiguracoesMenu();
+      console.log('Todas as seções do menu carregadas:', todasSecoes);
+      
+      // Filtrar apenas as ativas e manter a ordem
+      const secoesAtivasOrdenadas = todasSecoes
+        .filter(s => s.ativa)
+        .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
+        .map(s => s.id);
+      
+      console.log('Seções do menu ativas ordenadas:', secoesAtivasOrdenadas);
+      setSecoesMenuAtivas(secoesAtivasOrdenadas);
     } catch (error) {
       console.error('Erro ao carregar seções do menu:', error);
       // Em caso de erro, mostrar todas as seções como padrão
@@ -655,36 +666,50 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
           </div>
         </div>
         <nav className="landing-nav">
-          {secoesMenuAtivas.includes('sobre') && (
-            <a href="#sobre" onClick={(e) => {
-              e.preventDefault();
-              document.getElementById('sobre')?.scrollIntoView({ behavior: 'smooth' });
-            }}>Sobre</a>
-          )}
-          {secoesMenuAtivas.includes('funcionalidades') && (
-            <a href="#funcionalidades" onClick={(e) => {
-              e.preventDefault();
-              document.getElementById('funcionalidades')?.scrollIntoView({ behavior: 'smooth' });
-            }}>Funcionalidades</a>
-          )}
-          {secoesMenuAtivas.includes('roadmap') && (
-            <a href="#roadmap" onClick={(e) => {
-              e.preventDefault();
-              document.getElementById('roadmap')?.scrollIntoView({ behavior: 'smooth' });
-            }}>O que vem por aí</a>
-          )}
-          {secoesMenuAtivas.includes('planos') && (
-            <a href="#planos" onClick={(e) => {
-              e.preventDefault();
-              document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' });
-            }}>Planos</a>
-          )}
-          {secoesMenuAtivas.includes('faq') && (
-            <a href="#faq" onClick={(e) => {
-              e.preventDefault();
-              document.getElementById('faq')?.scrollIntoView({ behavior: 'smooth' });
-            }}>FAQ</a>
-          )}
+          {secoesMenuAtivas.map((secaoId) => {
+            const renderizarItemMenu = (id: string) => {
+              switch (id) {
+                case 'sobre':
+                  return (
+                    <a key="sobre" href="#sobre" onClick={(e) => {
+                      e.preventDefault();
+                      document.getElementById('sobre')?.scrollIntoView({ behavior: 'smooth' });
+                    }}>Sobre</a>
+                  );
+                case 'funcionalidades':
+                  return (
+                    <a key="funcionalidades" href="#funcionalidades" onClick={(e) => {
+                      e.preventDefault();
+                      document.getElementById('funcionalidades')?.scrollIntoView({ behavior: 'smooth' });
+                    }}>Funcionalidades</a>
+                  );
+                case 'roadmap':
+                  return (
+                    <a key="roadmap" href="#roadmap" onClick={(e) => {
+                      e.preventDefault();
+                      document.getElementById('roadmap')?.scrollIntoView({ behavior: 'smooth' });
+                    }}>O que vem por aí</a>
+                  );
+                case 'planos':
+                  return (
+                    <a key="planos" href="#planos" onClick={(e) => {
+                      e.preventDefault();
+                      document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' });
+                    }}>Planos</a>
+                  );
+                case 'faq':
+                  return (
+                    <a key="faq" href="#faq" onClick={(e) => {
+                      e.preventDefault();
+                      document.getElementById('faq')?.scrollIntoView({ behavior: 'smooth' });
+                    }}>FAQ</a>
+                  );
+                default:
+                  return null;
+              }
+            };
+            return renderizarItemMenu(secaoId);
+          })}
         </nav>
       </header>
 

@@ -26,16 +26,71 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
   padding: 15px;
   background: #fff;
   border: 2px solid #e9ecef;
   border-radius: 8px;
   transition: all 0.2s ease;
+  cursor: move;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.secao-item.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.secao-item.drag-over {
+  border-color: #FF6B35 !important;
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3) !important;
+}
+
+.secao-item.drag-over-top::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #FF6B35;
+  border-radius: 2px;
+}
+
+.secao-item.drag-over-bottom::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #FF6B35;
+  border-radius: 2px;
 }
 
 .secao-item:hover {
   border-color: var(--cor-primaria, #FF6B35);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(255, 107, 53, 0.1);
+}
+
+.secao-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6c757d;
+  cursor: grab;
+  padding: 4px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.secao-drag-handle:active {
+  cursor: grabbing;
+}
+
+.secao-item:hover .secao-drag-handle {
+  color: #FF6B35;
 }
 
 .secao-info {

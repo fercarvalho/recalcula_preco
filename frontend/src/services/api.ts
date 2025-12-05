@@ -229,6 +229,10 @@ export const apiService = {
     return response.data;
   },
 
+  async atualizarOrdemMenu(secaoIds: string[]): Promise<void> {
+    await api.put('/api/configuracoes-menu/ordem', { secaoIds });
+  },
+
   // Planos
   async obterPlanos(): Promise<Array<{
     id: number;

@@ -3461,6 +3461,52 @@ async function atualizarConfiguracoesMenu(configuracoes) {
     }
 }
 
+// Atualizar ordem das seções do menu
+async function atualizarOrdemMenu(secaoIds) {
+    try {
+        if (!Array.isArray(secaoIds) || secaoIds.length === 0) {
+            console.log('atualizarOrdemMenu: secaoIds vazio ou não é array');
+            return;
+        }
+
+        console.log('Atualizando ordem do menu:', secaoIds);
+
+        // Usar transação para garantir consistência
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+
+            for (let i = 0; i < secaoIds.length; i++) {
+                const ordem = i;
+                const secaoId = secaoIds[i];
+
+                console.log(`Atualizando seção do menu ID ${secaoId} para ordem ${ordem}`);
+
+                const result = await client.query(
+                    'UPDATE configuracoes_menu SET ordem = $1, updated_at = CURRENT_TIMESTAMP WHERE secao_id = $2',
+                    [ordem, secaoId]
+                );
+
+                if (result.rowCount === 0) {
+                    console.warn(`Seção do menu com ID ${secaoId} não encontrada`);
+                }
+            }
+
+            await client.query('COMMIT');
+            console.log('Ordem do menu atualizada com sucesso');
+        } catch (error) {
+            await client.query('ROLLBACK');
+            console.error('Erro na transação ao atualizar ordem do menu:', error);
+            throw error;
+        } finally {
+            client.release();
+        }
+    } catch (error) {
+        console.error('Erro ao atualizar ordem do menu:', error);
+        throw error;
+    }
+}
+
 // ========== FUNÇÕES DE CONFIGURAÇÕES DE SESSÕES DA LANDING PAGE ==========
 
 // Inicializar configurações padrão de sessões
@@ -4499,6 +4545,7 @@ module.exports = {
     // Funções de configurações do menu
     obterConfiguracoesMenu,
     atualizarConfiguracoesMenu,
+    atualizarOrdemMenu,
     // Funções de configurações de sessões
     inicializarConfiguracoesSessoesPadrao,
     obterConfiguracoesSessoes,
