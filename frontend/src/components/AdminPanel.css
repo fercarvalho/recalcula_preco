@@ -113,6 +113,38 @@
   justify-content: center;
 }
 
+.admin-botao-item {
+  padding: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  background: white;
+  transition: all 0.2s ease;
+  cursor: move;
+}
+
+.admin-botao-item:hover {
+  background: #f5f5f5;
+  border-color: var(--cor-primaria, #FF6B35);
+}
+
+.admin-botao-item.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.admin-botao-item.drag-over {
+  border-color: var(--cor-primaria, #FF6B35);
+  background: rgba(255, 107, 53, 0.05);
+}
+
+.admin-botao-drag-handle {
+  cursor: grab;
+}
+
+.admin-botao-drag-handle:active {
+  cursor: grabbing;
+}
+
 .btn-icon:hover {
   background: rgba(0, 0, 0, 0.05);
   color: var(--cor-primaria, #FF6B35);

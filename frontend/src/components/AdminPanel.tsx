@@ -11,7 +11,8 @@ import GerenciamentoFAQ from './GerenciamentoFAQ';
 import GerenciamentoRodape from './GerenciamentoRodape';
 import GerenciamentoSessoes from './GerenciamentoSessoes';
 import OrganizarFuncoesModal from './OrganizarFuncoesModal';
-import { FaUser, FaEdit, FaTrash, FaShieldAlt, FaChevronRight, FaChevronDown, FaFolder, FaEye, FaEyeSlash, FaPlus, FaTimes, FaCog, FaBars, FaCreditCard, FaQuestionCircle, FaLink, FaLayerGroup } from 'react-icons/fa';
+import { useDragAndDrop } from '../hooks/useDragAndDrop';
+import { FaUser, FaEdit, FaTrash, FaShieldAlt, FaChevronRight, FaChevronDown, FaFolder, FaEye, FaEyeSlash, FaPlus, FaTimes, FaCog, FaBars, FaCreditCard, FaQuestionCircle, FaLink, FaLayerGroup, FaGripVertical } from 'react-icons/fa';
 import * as FaIcons from 'react-icons/fa';
 import './AdminPanel.css';
 
@@ -58,11 +59,74 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
   const [showGerenciamentoSessoes, setShowGerenciamentoSessoes] = useState(false);
   const [showOrganizarFuncoes, setShowOrganizarFuncoes] = useState(false);
 
+  // Estrutura dos botões de gerenciamento com ordem
+  interface GerenciamentoButton {
+    id: string;
+    titulo: string;
+    descricao: string;
+    icone: React.ReactNode;
+    onClick: () => void;
+    ordem: number;
+  }
+
+  const [botoesGerenciamento, setBotoesGerenciamento] = useState<GerenciamentoButton[]>([
+    { id: 'funcoes', titulo: 'Gerenciar Funções da Landing Page', descricao: 'Gerencie as funções exibidas na landing page. Configure quais funções estão ativas e quais são de IA.', icone: <FaCog />, onClick: () => setShowGerenciamentoFuncoes(true), ordem: 1 },
+    { id: 'menu', titulo: 'Gerenciar Menu', descricao: 'Escolha quais seções da landing page aparecem no menu de navegação do header.', icone: <FaBars />, onClick: () => setShowGerenciamentoMenu(true), ordem: 2 },
+    { id: 'sessoes', titulo: 'Gerenciar Sessões da Landing Page', descricao: 'Gerencie quais sessões da landing page devem ser exibidas. Lembre-se: todas as sessões com funções são uma sessão só.', icone: <FaLayerGroup />, onClick: () => setShowGerenciamentoSessoes(true), ordem: 3 },
+    { id: 'planos', titulo: 'Gerenciar Planos', descricao: 'Gerencie os planos de pagamento: valores, benefícios, descontos, tipo de pagamento e outras configurações.', icone: <FaCreditCard />, onClick: () => setShowGerenciamentoPlanos(true), ordem: 4 },
+    { id: 'faq', titulo: 'Gerenciar FAQ', descricao: 'Gerencie as perguntas frequentes (FAQ) exibidas na landing page.', icone: <FaQuestionCircle />, onClick: () => setShowGerenciamentoFAQ(true), ordem: 5 },
+    { id: 'rodape', titulo: 'Gerenciar Rodapé', descricao: 'Gerencie as colunas e links do rodapé da landing page.', icone: <FaLink />, onClick: () => setShowGerenciamentoRodape(true), ordem: 6 },
+  ]);
+
+  // Mapa de IDs para títulos dos botões (para exibição no botão)
+  const titulosBotoes: Record<string, string> = {
+    'funcoes': 'Gerenciar Funções',
+    'menu': 'Gerenciar Menu',
+    'sessoes': 'Gerenciar Sessões',
+    'planos': 'Gerenciar Planos',
+    'faq': 'Gerenciar FAQ',
+    'rodape': 'Gerenciar Rodapé',
+  };
+
   useEffect(() => {
     if (isOpen) {
       carregarUsuarios();
+      carregarOrdemBotoesGerenciamento();
     }
   }, [isOpen]);
+
+  const carregarOrdemBotoesGerenciamento = async () => {
+    try {
+      const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
+      const token = getToken();
+      const response = await fetch(`${API_BASE}/api/admin/ordem-gerenciamentos`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.ordem && Array.isArray(data.ordem)) {
+          // Reordenar botões baseado na ordem salva
+          const ordemMap = new Map(data.ordem.map((id: string, index: number) => [id, index + 1]));
+          setBotoesGerenciamento(prev => {
+            const novosBotoes = [...prev];
+            novosBotoes.sort((a, b) => {
+              const ordemA = ordemMap.get(a.id) || a.ordem;
+              const ordemB = ordemMap.get(b.id) || b.ordem;
+              return ordemA - ordemB;
+            });
+            // Atualizar ordem dos botões
+            return novosBotoes.map((botao, index) => ({ ...botao, ordem: index + 1 }));
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar ordem dos botões de gerenciamento:', error);
+      // Continuar com ordem padrão em caso de erro
+    }
+  };
 
   const carregarUsuarios = async () => {
     try {
@@ -383,6 +447,55 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
     setShowGerenciamentoSessoes(false);
   }, []);
 
+  // Drag and drop para reordenar botões de gerenciamento
+  const handleReorderBotoes = async (novosBotoes: GerenciamentoButton[]) => {
+    // Atualizar ordem localmente
+    const botoesComOrdemAtualizada = novosBotoes.map((botao, index) => ({
+      ...botao,
+      ordem: index + 1
+    }));
+    setBotoesGerenciamento(botoesComOrdemAtualizada);
+
+    try {
+      // Salvar ordem no servidor
+      const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
+      const token = getToken();
+      const ordem = botoesComOrdemAtualizada.map(b => b.id);
+      
+      const response = await fetch(`${API_BASE}/api/admin/ordem-gerenciamentos`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ ordem }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao salvar ordem dos botões');
+      }
+    } catch (error) {
+      console.error('Erro ao salvar ordem dos botões:', error);
+      await mostrarAlert('Erro', 'Erro ao salvar ordem dos botões. Tente novamente.');
+      // Recarregar ordem original em caso de erro
+      await carregarOrdemBotoesGerenciamento();
+    }
+  };
+
+  // Garantir que todos os botões tenham ID para o drag and drop
+  const botoesComIds = botoesGerenciamento.map((b, index) => ({
+    ...b,
+    id: b.id || `botao-${index}`
+  }));
+
+  const {
+    handleDragStart: handleDragStartBotao,
+    handleDragEnd: handleDragEndBotao,
+    handleDragOver: handleDragOverBotao,
+    handleDrop: handleDropBotao,
+    handleDragLeave: handleDragLeaveBotao,
+  } = useDragAndDrop(botoesComIds, handleReorderBotoes);
+
   if (!isOpen) return null;
 
   return (
@@ -430,103 +543,42 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
           <div className="admin-section" style={{ marginBottom: '30px', paddingBottom: '30px', borderBottom: 'none' }}>
             <h3>Gerenciamento da Landing Page</h3>
             <div className="admin-buttons-list" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div>
-                <h4 style={{ marginBottom: '8px', fontSize: '16px', fontWeight: '500' }}>
-                  <FaCog /> Gerenciar Funções da Landing Page
-                </h4>
-                <div style={{ borderBottom: '1px solid #e9ecef', marginBottom: '12px' }}></div>
-                <p style={{ marginBottom: '12px', color: '#666', fontSize: '14px' }}>
-                  Gerencie as funções exibidas na landing page. Configure quais funções estão ativas e quais são de IA.
-                </p>
-                <button 
-                  onClick={() => setShowGerenciamentoFuncoes(true)}
-                  className="btn-primary"
-                  style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left' }}
-                >
-                  <FaCog /> Gerenciar Funções
-                </button>
-              </div>
-              <div>
-                <h4 style={{ marginBottom: '8px', fontSize: '16px', fontWeight: '500' }}>
-                  <FaBars /> Gerenciar Menu
-                </h4>
-                <div style={{ borderBottom: '1px solid #e9ecef', marginBottom: '12px' }}></div>
-                <p style={{ marginBottom: '12px', color: '#666', fontSize: '14px' }}>
-                  Escolha quais seções da landing page aparecem no menu de navegação do header.
-                </p>
-              <button 
-                onClick={() => setShowGerenciamentoMenu(true)}
-                className="btn-primary"
-                style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left' }}
-              >
-                <FaBars /> Gerenciar Menu
-              </button>
-              </div>
-              <div>
-                <h4 style={{ marginBottom: '8px', fontSize: '16px', fontWeight: '500' }}>
-                  <FaLayerGroup /> Gerenciar Sessões da Landing Page
-                </h4>
-                <div style={{ borderBottom: '1px solid #e9ecef', marginBottom: '12px' }}></div>
-                <p style={{ marginBottom: '12px', color: '#666', fontSize: '14px' }}>
-                  Gerencie quais sessões da landing page devem ser exibidas. Lembre-se: todas as sessões com funções são uma sessão só.
-                </p>
-                <button 
-                  onClick={() => setShowGerenciamentoSessoes(true)}
-                  className="btn-primary"
-                  style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left' }}
-                >
-                  <FaLayerGroup /> Gerenciar Sessões
-                </button>
-              </div>
-              <div>
-                <h4 style={{ marginBottom: '8px', fontSize: '16px', fontWeight: '500' }}>
-                  <FaCreditCard /> Gerenciar Planos
-                </h4>
-                <div style={{ borderBottom: '1px solid #e9ecef', marginBottom: '12px' }}></div>
-                <p style={{ marginBottom: '12px', color: '#666', fontSize: '14px' }}>
-                  Gerencie os planos de pagamento: valores, benefícios, descontos, tipo de pagamento e outras configurações.
-                </p>
-                <button 
-                  onClick={() => setShowGerenciamentoPlanos(true)}
-                  className="btn-primary"
-                  style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left' }}
-                >
-                  <FaCreditCard /> Gerenciar Planos
-                </button>
-              </div>
-              <div>
-                <h4 style={{ marginBottom: '8px', fontSize: '16px', fontWeight: '500' }}>
-                  <FaQuestionCircle /> Gerenciar FAQ
-                </h4>
-                <div style={{ borderBottom: '1px solid #e9ecef', marginBottom: '12px' }}></div>
-                <p style={{ marginBottom: '12px', color: '#666', fontSize: '14px' }}>
-                  Gerencie as perguntas frequentes (FAQ) exibidas na landing page.
-                </p>
-                <button
-                  onClick={() => setShowGerenciamentoFAQ(true)}
-                  className="btn-primary"
-                  style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left' }}
-                >
-                  <FaQuestionCircle /> Gerenciar FAQ
-                </button>
-                
-                <div style={{ marginTop: '20px', marginBottom: '30px' }}>
-                  <h4 style={{ marginBottom: '8px', fontSize: '16px', fontWeight: '500' }}>
-                    <FaLink /> Gerenciar Rodapé
-                  </h4>
-                  <div style={{ borderBottom: '1px solid #e9ecef', marginBottom: '12px' }}></div>
-                  <p style={{ marginBottom: '12px', color: '#666', fontSize: '14px' }}>
-                    Gerencie as colunas e links do rodapé da landing page.
-                  </p>
-                  <button
-                    onClick={() => setShowGerenciamentoRodape(true)}
-                    className="btn-primary"
-                    style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left' }}
+              {botoesComIds.map((botao) => {
+                const botaoId = botao.id;
+                return (
+                  <div
+                    key={botaoId}
+                    className="admin-botao-item"
+                    draggable
+                    onDragStart={(e) => handleDragStartBotao(e, botaoId, 'item')}
+                    onDragEnd={handleDragEndBotao}
+                    onDragOver={(e) => handleDragOverBotao(e, botaoId)}
+                    onDrop={(e) => handleDropBotao(e, botaoId)}
+                    onDragLeave={handleDragLeaveBotao}
+                    style={{ position: 'relative' }}
                   >
-                    <FaLink /> Gerenciar Rodapé
-                  </button>
-                </div>
-              </div>
+                    <div className="admin-botao-drag-handle" style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', cursor: 'grab', color: '#999', zIndex: 1 }}>
+                      <FaGripVertical />
+                    </div>
+                    <div style={{ paddingLeft: '30px' }}>
+                      <h4 style={{ marginBottom: '8px', fontSize: '16px', fontWeight: '500' }}>
+                        {botao.icone} {botao.titulo}
+                      </h4>
+                      <div style={{ borderBottom: '1px solid #e9ecef', marginBottom: '12px' }}></div>
+                      <p style={{ marginBottom: '12px', color: '#666', fontSize: '14px' }}>
+                        {botao.descricao}
+                      </p>
+                      <button
+                        onClick={botao.onClick}
+                        className="btn-primary"
+                        style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left' }}
+                      >
+                        {botao.icone} {titulosBotoes[botao.id] || botao.titulo.replace('Gerenciar ', '')}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 

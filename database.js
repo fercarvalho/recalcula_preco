@@ -558,6 +558,26 @@ async function inicializar() {
             )
         `);
         
+        // Criar tabela para ordem dos botões de gerenciamento no painel admin
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS admin_gerenciamentos_ordem (
+                id SERIAL PRIMARY KEY,
+                ordem JSONB NOT NULL DEFAULT '[]'::jsonb,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        // Inicializar ordem padrão se não existir
+        const ordemExistente = await pool.query('SELECT COUNT(*) as count FROM admin_gerenciamentos_ordem');
+        if (parseInt(ordemExistente.rows[0].count) === 0) {
+            const ordemPadrao = ['funcoes', 'menu', 'sessoes', 'planos', 'faq', 'rodape'];
+            await pool.query(
+                'INSERT INTO admin_gerenciamentos_ordem (ordem) VALUES ($1)',
+                [JSON.stringify(ordemPadrao)]
+            );
+        }
+        
         // Inicializar links do rodapé padrão se não existir
         await inicializarRodapePadrao();
         
@@ -3314,6 +3334,64 @@ async function atualizarOrdemColunasRodape(nomesColunas) {
     }
 }
 
+// ========== FUNÇÕES DE ORDEM DOS BOTÕES DE GERENCIAMENTO ==========
+
+// Obter ordem dos botões de gerenciamento
+async function obterOrdemGerenciamentos() {
+    try {
+        const result = await pool.query(
+            'SELECT ordem FROM admin_gerenciamentos_ordem ORDER BY id DESC LIMIT 1'
+        );
+        
+        if (result.rows.length === 0) {
+            // Retornar ordem padrão se não existir
+            return ['funcoes', 'menu', 'sessoes', 'planos', 'faq', 'rodape'];
+        }
+        
+        // Se ordem for JSONB, já vem como array, senão precisa fazer parse
+        const ordem = result.rows[0].ordem;
+        if (Array.isArray(ordem)) {
+            return ordem;
+        }
+        if (typeof ordem === 'string') {
+            return JSON.parse(ordem);
+        }
+        return ordem || ['funcoes', 'menu', 'sessoes', 'planos', 'faq', 'rodape'];
+    } catch (error) {
+        console.error('Erro ao obter ordem dos gerenciamentos:', error);
+        throw error;
+    }
+}
+
+// Atualizar ordem dos botões de gerenciamento
+async function atualizarOrdemGerenciamentos(ordem) {
+    try {
+        if (!Array.isArray(ordem)) {
+            throw new Error('Ordem deve ser um array');
+        }
+
+        // Verificar se já existe uma ordem salva
+        const existente = await pool.query('SELECT id FROM admin_gerenciamentos_ordem ORDER BY id DESC LIMIT 1');
+        
+        if (existente.rows.length > 0) {
+            // Atualizar ordem existente
+            await pool.query(
+                'UPDATE admin_gerenciamentos_ordem SET ordem = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+                [JSON.stringify(ordem), existente.rows[0].id]
+            );
+        } else {
+            // Criar nova ordem
+            await pool.query(
+                'INSERT INTO admin_gerenciamentos_ordem (ordem) VALUES ($1)',
+                [JSON.stringify(ordem)]
+            );
+        }
+    } catch (error) {
+        console.error('Erro ao atualizar ordem dos gerenciamentos:', error);
+        throw error;
+    }
+}
+
 // Atualizar ordem dos links do rodapé
 async function atualizarOrdemRodapeLinks(linkIds) {
     try {
@@ -4570,6 +4648,9 @@ module.exports = {
     obterColunasRodape,
     atualizarOrdemRodapeLinks,
     atualizarOrdemColunasRodape,
+    // Funções de ordem dos botões de gerenciamento
+    obterOrdemGerenciamentos,
+    atualizarOrdemGerenciamentos,
     fechar
 };
 

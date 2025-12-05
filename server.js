@@ -592,7 +592,63 @@ app.post('/api/stripe/customer-portal', authenticateToken, async (req, res) => {
 
 // ========== ROTAS DE ADMINISTRAÇÃO ==========
 
+// Obter ordem dos botões de gerenciamento
+app.get('/api/admin/ordem-gerenciamentos', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const ordem = await db.obterOrdemGerenciamentos();
+        res.json({ ordem });
+    } catch (error) {
+        console.error('Erro ao obter ordem dos gerenciamentos:', error);
+        res.status(500).json({ error: 'Erro ao obter ordem dos gerenciamentos' });
+    }
+});
+
+// Atualizar ordem dos botões de gerenciamento
+app.put('/api/admin/ordem-gerenciamentos', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { ordem } = req.body;
+        
+        if (!Array.isArray(ordem)) {
+            return res.status(400).json({ error: 'Ordem deve ser um array' });
+        }
+        
+        await db.atualizarOrdemGerenciamentos(ordem);
+        res.json({ success: true, ordem });
+    } catch (error) {
+        console.error('Erro ao atualizar ordem dos gerenciamentos:', error);
+        res.status(500).json({ error: 'Erro ao atualizar ordem dos gerenciamentos' });
+    }
+});
+
 // Listar todos os usuários (apenas admin)
+// Obter ordem dos botões de gerenciamento
+app.get('/api/admin/ordem-gerenciamentos', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const ordem = await db.obterOrdemGerenciamentos();
+        res.json({ ordem });
+    } catch (error) {
+        console.error('Erro ao obter ordem dos gerenciamentos:', error);
+        res.status(500).json({ error: 'Erro ao obter ordem dos gerenciamentos' });
+    }
+});
+
+// Atualizar ordem dos botões de gerenciamento
+app.put('/api/admin/ordem-gerenciamentos', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { ordem } = req.body;
+        
+        if (!Array.isArray(ordem)) {
+            return res.status(400).json({ error: 'Ordem deve ser um array' });
+        }
+        
+        await db.atualizarOrdemGerenciamentos(ordem);
+        res.json({ success: true, ordem });
+    } catch (error) {
+        console.error('Erro ao atualizar ordem dos gerenciamentos:', error);
+        res.status(500).json({ error: 'Erro ao atualizar ordem dos gerenciamentos' });
+    }
+});
+
 app.get('/api/admin/usuarios', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const usuarios = await db.listarUsuarios();
