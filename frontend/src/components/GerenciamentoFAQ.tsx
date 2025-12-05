@@ -214,13 +214,13 @@ const GerenciamentoFAQ = ({ isOpen, onClose }: GerenciamentoFAQProps) => {
         className="modal-nested"
         footer={
           <>
-            <button onClick={onClose} className="btn-secondary">
+            <button onClick={onClose} className="btn-secondary" style={{ fontSize: '0.75rem', lineHeight: '1.2' }}>
               Fechar
             </button>
-            <button onClick={handleRestaurarPadrao} className="btn-secondary" disabled={loading || faq.length === 0}>
+            <button onClick={handleRestaurarPadrao} className="btn-secondary" disabled={loading || faq.length === 0} style={{ fontSize: '0.75rem', lineHeight: '1.2' }}>
               <FaUndo /> Restaurar Padrão
             </button>
-            <button onClick={handleAdicionar} className="btn-primary">
+            <button onClick={handleAdicionar} className="btn-primary" style={{ fontSize: '0.75rem', lineHeight: '1.2' }}>
               <FaPlus /> Adicionar Pergunta
             </button>
           </>

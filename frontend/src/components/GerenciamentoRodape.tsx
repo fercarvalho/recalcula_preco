@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { FaLink, FaPlus, FaEdit, FaTrash, FaSave, FaGripVertical, FaToggleOn, FaToggleOff } from 'react-icons/fa';
+import { FaLink, FaPlus, FaEdit, FaTrash, FaSave, FaGripVertical, FaToggleOn, FaToggleOff, FaUndo } from 'react-icons/fa';
 import Modal from './Modal';
 import { mostrarAlert, mostrarConfirm, mostrarPrompt } from '../utils/modals';
 import { apiService } from '../services/api';
@@ -27,6 +27,8 @@ const GerenciamentoRodape = ({ isOpen, onClose }: GerenciamentoRodapeProps) => {
   const [showModalLink, setShowModalLink] = useState(false);
   const [linkEditando, setLinkEditando] = useState<RodapeLink | null>(null);
   const [colunaSelecionada, setColunaSelecionada] = useState<string>('');
+  // Guardar ordem padrão quando o modal é aberto (por link ID)
+  const ordemPadraoRef = useRef<Map<number, number>>(new Map());
 
   useEffect(() => {
     if (isOpen) {
@@ -50,6 +52,14 @@ const GerenciamentoRodape = ({ isOpen, onClose }: GerenciamentoRodapeProps) => {
       
       setLinks(linksComIds);
       setColunas(colunasCarregadas);
+      
+      // Salvar ordem padrão (ordem atual quando o modal é aberto)
+      ordemPadraoRef.current.clear();
+      linksComIds.forEach(link => {
+        if (link.id && typeof link.id === 'number') {
+          ordemPadraoRef.current.set(link.id, link.ordem || 0);
+        }
+      });
     } catch (error) {
       console.error('Erro ao carregar dados do rodapé:', error);
       await mostrarAlert('Erro', 'Erro ao carregar dados do rodapé. Tente novamente.');
@@ -378,7 +388,102 @@ const GerenciamentoRodape = ({ isOpen, onClose }: GerenciamentoRodapeProps) => {
     }
   };
 
-  // Agrupar links por coluna
+
+  // Restaurar ordem padrão de uma coluna específica
+  const handleRestaurarPadraoColuna = async (coluna: string) => {
+    try {
+      setLoading(true);
+      
+      // Obter links da coluna atual
+      const linksDaColuna = links.filter(l => l.coluna === coluna);
+      
+      // Restaurar ordem padrão para cada link da coluna
+      const linksRestaurados = linksDaColuna.map(link => {
+        if (link.id && typeof link.id === 'number') {
+          const ordemPadrao = ordemPadraoRef.current.get(link.id);
+          return {
+            ...link,
+            ordem: ordemPadrao !== undefined ? ordemPadrao : (link.ordem || 0)
+          };
+        }
+        return link;
+      });
+      
+      // Ordenar pela ordem padrão
+      linksRestaurados.sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+      
+      // Atualizar todas as links mantendo outras colunas intactas
+      const outrasLinks = links.filter(l => l.coluna !== coluna);
+      const todasLinks = [...outrasLinks, ...linksRestaurados];
+      setLinks(todasLinks);
+      
+      // Atualizar ordem global no servidor (a ordem é gerenciada pela posição no array)
+      const linkIds = todasLinks
+        .map(l => l.id)
+        .filter((id): id is number => id !== undefined && id !== null && typeof id === 'number');
+      
+      if (linkIds.length > 0) {
+        await apiService.atualizarOrdemRodapeLinks(linkIds);
+      }
+      
+      // Disparar evento para atualizar o rodapé na landing page
+      window.dispatchEvent(new CustomEvent('rodape-updated'));
+      
+      await mostrarAlert('Sucesso', `Ordem padrão da coluna "${coluna}" restaurada!`);
+    } catch (error) {
+      console.error('Erro ao restaurar ordem padrão da coluna:', error);
+      await mostrarAlert('Erro', 'Erro ao restaurar ordem padrão. Tente novamente.');
+      await carregarDados();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Restaurar ordem padrão de todas as colunas
+  const handleRestaurarPadraoTodas = async () => {
+    try {
+      setLoading(true);
+      
+      // Restaurar ordem padrão para todas as links
+      const linksRestaurados = links.map(link => {
+        if (link.id && typeof link.id === 'number') {
+          const ordemPadrao = ordemPadraoRef.current.get(link.id);
+          return {
+            ...link,
+            ordem: ordemPadrao !== undefined ? ordemPadrao : (link.ordem || 0)
+          };
+        }
+        return link;
+      });
+      
+      // Ordenar pela ordem padrão
+      linksRestaurados.sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+      
+      setLinks(linksRestaurados);
+      
+      // Atualizar ordem global no servidor (a ordem é gerenciada pela posição no array)
+      const linkIds = linksRestaurados
+        .map(l => l.id)
+        .filter((id): id is number => id !== undefined && id !== null && typeof id === 'number');
+      
+      if (linkIds.length > 0) {
+        await apiService.atualizarOrdemRodapeLinks(linkIds);
+      }
+      
+      // Disparar evento para atualizar o rodapé na landing page
+      window.dispatchEvent(new CustomEvent('rodape-updated'));
+      
+      await mostrarAlert('Sucesso', 'Ordem padrão de todas as colunas restaurada!');
+    } catch (error) {
+      console.error('Erro ao restaurar ordem padrão de todas as colunas:', error);
+      await mostrarAlert('Erro', 'Erro ao restaurar ordem padrão. Tente novamente.');
+      await carregarDados();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Agrupar links por coluna - ordenar pela ordem do banco para exibição
   const linksPorColuna = colunas.reduce((acc, coluna) => {
     acc[coluna] = linksComIds
       .filter(link => link.coluna === coluna)
@@ -398,13 +503,16 @@ const GerenciamentoRodape = ({ isOpen, onClose }: GerenciamentoRodapeProps) => {
         className="modal-nested"
         footer={
           <>
-            <button onClick={onClose} className="btn-secondary">
+            <button onClick={handleRestaurarPadraoTodas} className="btn-secondary" disabled={loading || links.length === 0} style={{ fontSize: '0.75rem', lineHeight: '1.2' }}>
+              <FaUndo /> Restaurar Padrões (Todos)
+            </button>
+            <button onClick={onClose} className="btn-secondary" style={{ fontSize: '0.75rem', lineHeight: '1.2' }}>
               Fechar
             </button>
-            <button onClick={handleAdicionarColuna} className="btn-secondary">
+            <button onClick={handleAdicionarColuna} className="btn-secondary" style={{ fontSize: '0.75rem', lineHeight: '1.2' }}>
               <FaPlus /> Adicionar Coluna
             </button>
-            <button onClick={() => handleAdicionar()} className="btn-primary">
+            <button onClick={() => handleAdicionar()} className="btn-primary" style={{ fontSize: '0.75rem', lineHeight: '1.2' }}>
               <FaPlus /> Adicionar Link
             </button>
           </>
@@ -449,58 +557,72 @@ const GerenciamentoRodape = ({ isOpen, onClose }: GerenciamentoRodapeProps) => {
                         {linksPorColuna[coluna]?.length === 0 ? (
                           <p className="empty-coluna">Nenhum link nesta coluna</p>
                         ) : (
-                          linksPorColuna[coluna]?.map((link) => {
-                            const linkId = link.id;
-                            return (
-                              <div
-                                key={linkId}
-                                className="rodape-link-item"
-                                draggable
-                                onDragStart={(e) => handleDragStartLink(e, linkId, 'item')}
-                                onDragEnd={handleDragEndLink}
-                                onDragOver={(e) => handleDragOverLink(e, linkId)}
-                                onDrop={(e) => handleDropLink(e, linkId)}
-                                onDragLeave={handleDragLeaveLink}
-                              >
-                                <div className="rodape-link-drag-handle">
-                                  <FaGripVertical />
-                                </div>
-                                <div className="rodape-link-content">
-                                  <div className="rodape-link-texto">
-                                    <strong>{link.texto}</strong>
+                          <>
+                            {linksPorColuna[coluna]?.map((link) => {
+                              const linkId = link.id;
+                              return (
+                                <div
+                                  key={linkId}
+                                  className="rodape-link-item"
+                                  draggable
+                                  onDragStart={(e) => handleDragStartLink(e, linkId, 'item')}
+                                  onDragEnd={handleDragEndLink}
+                                  onDragOver={(e) => handleDragOverLink(e, linkId)}
+                                  onDrop={(e) => handleDropLink(e, linkId)}
+                                  onDragLeave={handleDragLeaveLink}
+                                >
+                                  <div className="rodape-link-drag-handle">
+                                    <FaGripVertical />
                                   </div>
-                                  {link.eh_link && link.link && (
-                                    <div className="rodape-link-url">
-                                      {link.link}
+                                  <div className="rodape-link-content">
+                                    <div className="rodape-link-texto">
+                                      <strong>{link.texto}</strong>
                                     </div>
-                                  )}
-                                  {!link.eh_link && (
-                                    <div className="rodape-link-tipo" style={{ color: '#6c757d', fontSize: '0.85rem', fontStyle: 'italic' }}>
-                                      Texto
-                                    </div>
-                                  )}
+                                    {link.eh_link && link.link && (
+                                      <div className="rodape-link-url">
+                                        {link.link}
+                                      </div>
+                                    )}
+                                    {!link.eh_link && (
+                                      <div className="rodape-link-tipo" style={{ color: '#6c757d', fontSize: '0.85rem', fontStyle: 'italic' }}>
+                                        Texto
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="rodape-link-actions">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEditar(link)}
+                                      className="btn-edit-link"
+                                      title="Editar"
+                                    >
+                                      <FaEdit />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeletar(link)}
+                                      className="btn-delete-link"
+                                      title="Excluir"
+                                    >
+                                      <FaTrash />
+                                    </button>
+                                  </div>
                                 </div>
-                                <div className="rodape-link-actions">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleEditar(link)}
-                                    className="btn-edit-link"
-                                    title="Editar"
-                                  >
-                                    <FaEdit />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeletar(link)}
-                                    className="btn-delete-link"
-                                    title="Excluir"
-                                  >
-                                    <FaTrash />
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          })
+                              );
+                            })}
+                            {/* Botão de restaurar padrão - só aparece se houver 2 ou mais itens */}
+                            {linksPorColuna[coluna] && linksPorColuna[coluna].length >= 2 && (
+                              <button
+                                onClick={() => handleRestaurarPadraoColuna(coluna)}
+                                className="btn-secondary"
+                                disabled={loading}
+                                title={`Restaurar ordem padrão da coluna "${coluna}"`}
+                                style={{ width: '100%', marginTop: '12px', fontSize: '0.75rem', lineHeight: '1.2' }}
+                              >
+                                <FaUndo /> Restaurar Padrão
+                              </button>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>

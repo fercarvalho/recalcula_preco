@@ -339,10 +339,10 @@ const OrganizarFuncoesModal = ({ isOpen, onClose, onUpdate }: OrganizarFuncoesMo
       className="modal-nested"
       footer={
         <>
-          <button onClick={handleRestaurarPadraoTodas} className="btn-secondary" disabled={loading}>
+          <button onClick={handleRestaurarPadraoTodas} className="btn-secondary" disabled={loading} style={{ fontSize: '0.75rem', lineHeight: '1.2' }}>
             <FaUndo /> Restaurar Padrões (Todos)
           </button>
-          <button onClick={onClose} className="btn-secondary" disabled={loading}>Fechar</button>
+          <button onClick={onClose} className="btn-secondary" disabled={loading} style={{ fontSize: '0.75rem', lineHeight: '1.2' }}>Fechar</button>
         </>
       }
     >

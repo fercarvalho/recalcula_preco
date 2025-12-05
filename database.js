@@ -2891,11 +2891,7 @@ async function inicializarRodapePadrao() {
             if (!colunasExistentes.includes('Recalcula Preço')) {
                 await pool.query(
                     'INSERT INTO rodape_links (texto, link, coluna, ordem, eh_link) VALUES ($1, $2, $3, $4, $5)',
-                    ['Recalcula Preço', '', 'Recalcula Preço', 1, false]
-                );
-                await pool.query(
-                    'INSERT INTO rodape_links (texto, link, coluna, ordem, eh_link) VALUES ($1, $2, $3, $4, $5)',
-                    ['Sua ferramenta completa para gerenciar preços e aplicar reajustes de forma inteligente.', '', 'Recalcula Preço', 2, false]
+                    ['Sua ferramenta completa para gerenciar preços e aplicar reajustes de forma inteligente.', '', 'Recalcula Preço', 1, false]
                 );
                 console.log('Coluna "Recalcula Preço" adicionada ao rodapé');
             }
@@ -2903,15 +2899,11 @@ async function inicializarRodapePadrao() {
             if (!colunasExistentes.includes('Contato')) {
                 await pool.query(
                     'INSERT INTO rodape_links (texto, link, coluna, ordem, eh_link) VALUES ($1, $2, $3, $4, $5)',
-                    ['Contato', '', 'Contato', 1, false]
+                    ['Dúvidas ou suporte?', '', 'Contato', 1, false]
                 );
                 await pool.query(
                     'INSERT INTO rodape_links (texto, link, coluna, ordem, eh_link) VALUES ($1, $2, $3, $4, $5)',
-                    ['Dúvidas ou suporte?', '', 'Contato', 2, false]
-                );
-                await pool.query(
-                    'INSERT INTO rodape_links (texto, link, coluna, ordem, eh_link) VALUES ($1, $2, $3, $4, $5)',
-                    ['Entre em contato conosco', '', 'Contato', 3, false]
+                    ['Entre em contato conosco', '', 'Contato', 2, false]
                 );
                 console.log('Coluna "Contato" adicionada ao rodapé');
             }
@@ -2926,13 +2918,11 @@ async function inicializarRodapePadrao() {
             { texto: 'Planos', link: '#planos', coluna: 'Links', ordem: 4 },
             { texto: 'FAQ', link: '#faq', coluna: 'Links', ordem: 5 },
             { texto: 'Login', link: '#login', coluna: 'Links', ordem: 6, eh_link: true },
-            // Coluna "Recalcula Preço" - título e descrição
-            { texto: 'Recalcula Preço', link: '', coluna: 'Recalcula Preço', ordem: 1, eh_link: false },
-            { texto: 'Sua ferramenta completa para gerenciar preços e aplicar reajustes de forma inteligente.', link: '', coluna: 'Recalcula Preço', ordem: 2, eh_link: false },
+            // Coluna "Recalcula Preço"
+            { texto: 'Sua ferramenta completa para gerenciar preços e aplicar reajustes de forma inteligente.', link: '', coluna: 'Recalcula Preço', ordem: 1, eh_link: false },
             // Coluna "Contato"
-            { texto: 'Contato', link: '', coluna: 'Contato', ordem: 1, eh_link: false },
-            { texto: 'Dúvidas ou suporte?', link: '', coluna: 'Contato', ordem: 2, eh_link: false },
-            { texto: 'Entre em contato conosco', link: '', coluna: 'Contato', ordem: 3, eh_link: false }
+            { texto: 'Dúvidas ou suporte?', link: '', coluna: 'Contato', ordem: 1, eh_link: false },
+            { texto: 'Entre em contato conosco', link: '', coluna: 'Contato', ordem: 2, eh_link: false }
         ];
         
         for (const link of linksPadrao) {
@@ -4582,3 +4572,4 @@ module.exports = {
     atualizarOrdemColunasRodape,
     fechar
 };
+
