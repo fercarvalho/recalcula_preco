@@ -123,6 +123,14 @@ const requirePayment = async (req, res, next) => {
         const acesso = await db.verificarAcessoAtivo(req.userId);
 
         if (!acesso.temAcesso) {
+            // Se o usuário tem acesso pago mas email não validado
+            if (acesso.emailNaoValidado) {
+                return res.status(403).json({ 
+                    error: 'É necessário validar seu email para continuar usando o sistema. Verifique sua caixa de entrada.',
+                    codigo: 'EMAIL_NAO_VALIDADO'
+                });
+            }
+            
             return res.status(403).json({ 
                 error: 'Acesso negado. É necessário ter uma assinatura ativa ou pagamento único para usar o sistema.',
                 codigo: 'PAGAMENTO_REQUERIDO'

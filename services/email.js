@@ -304,8 +304,140 @@ const enviarEmailRecuperacao = async (email, token, username) => {
   }
 };
 
+// Enviar email de validação
+const enviarEmailValidacao = async (email, token, username) => {
+  try {
+    const transporter = await createTransporter();
+    
+    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+    const validationUrl = `${baseUrl}/validar-email?token=${token}`;
+    
+    const mailOptions = {
+      from: process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@calculadora.com',
+      to: email,
+      subject: 'Valide seu email - Recalcula Preço',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              line-height: 1.6;
+              color: #333;
+            }
+            .container {
+              max-width: 600px;
+              margin: 0 auto;
+              padding: 20px;
+            }
+            .header {
+              background-color: #FF6B35;
+              color: white;
+              padding: 20px;
+              text-align: center;
+              border-radius: 5px 5px 0 0;
+            }
+            .content {
+              background-color: #f9f9f9;
+              padding: 30px;
+              border-radius: 0 0 5px 5px;
+            }
+            .button {
+              display: inline-block;
+              padding: 12px 30px;
+              background-color: #FF6B35;
+              color: white;
+              text-decoration: none;
+              border-radius: 5px;
+              margin: 20px 0;
+            }
+            .footer {
+              margin-top: 20px;
+              font-size: 12px;
+              color: #666;
+              text-align: center;
+            }
+            .token-info {
+              background-color: #fff;
+              padding: 15px;
+              border-left: 4px solid #FF6B35;
+              margin: 20px 0;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Validação de Email</h1>
+            </div>
+            <div class="content">
+              <p>Olá, <strong>${username}</strong>!</p>
+              <p>Obrigado por se cadastrar no Recalcula Preço!</p>
+              <p>Para continuar usando o sistema após adquirir um plano, você precisa validar seu email.</p>
+              <p>Clique no botão abaixo para validar seu email:</p>
+              <div style="text-align: center;">
+                <a href="${validationUrl}" class="button">Validar Email</a>
+              </div>
+              <div class="token-info">
+                <p><strong>Ou copie e cole este link no seu navegador:</strong></p>
+                <p style="word-break: break-all; color: #666;">${validationUrl}</p>
+              </div>
+              <p><strong>Este link expira em 7 dias.</strong></p>
+              <p>Se você não se cadastrou, ignore este email.</p>
+            </div>
+            <div class="footer">
+              <p>Este é um email automático, por favor não responda.</p>
+              <p>&copy; ${new Date().getFullYear()} Recalcula Preço</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `
+        Olá, ${username}!
+        
+        Obrigado por se cadastrar no Recalcula Preço!
+        
+        Para continuar usando o sistema após adquirir um plano, você precisa validar seu email.
+        
+        Acesse o link abaixo para validar:
+        ${validationUrl}
+        
+        Este link expira em 7 dias.
+        
+        Se você não se cadastrou, ignore este email.
+      `
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    
+    // Se estiver usando Ethereal Email, mostrar o link de preview no console
+    if (!process.env.SMTP_HOST && !process.env.SMTP_USER) {
+      const previewUrl = nodemailer.getTestMessageUrl(info);
+      console.log('\n═══════════════════════════════════════════════════════');
+      console.log('📧 EMAIL DE VALIDAÇÃO ENVIADO (MODO DESENVOLVIMENTO)');
+      console.log('═══════════════════════════════════════════════════════');
+      console.log('Para:', email);
+      console.log('Assunto:', mailOptions.subject);
+      console.log('\n🔗 LINK DE PREVIEW (clique para ver o email):');
+      console.log(previewUrl);
+      console.log('═══════════════════════════════════════════════════════\n');
+    } else {
+      console.log(`✅ Email de validação enviado para: ${email}`);
+    }
+    
+    return info;
+  } catch (error) {
+    console.error('Erro ao enviar email de validação:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   enviarEmailRecuperacao,
-  enviarEmailRecuperacaoMultiplos
+  enviarEmailRecuperacaoMultiplos,
+  enviarEmailValidacao
 };
 

@@ -18,9 +18,16 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
   } | null>(null);
 
   useEffect(() => {
+    // Limpar estado de carregamento ao montar o componente
+    setCarregando(null);
     verificarStatus();
     carregarPlanos();
   }, []);
+
+  // Debug: verificar estado de carregando
+  useEffect(() => {
+    console.log('Estado carregando:', carregando);
+  }, [carregando]);
 
   const carregarPlanos = async () => {
     try {
@@ -92,11 +99,13 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
 
   const handlePlanoClick = async (plano: Plano) => {
     try {
-      const nomeLower = plano.nome.toLowerCase();
-      const isAnual = plano.tipo === 'recorrente' && (nomeLower.includes('anual') || nomeLower.includes('anual'));
-      const isUnico = plano.tipo === 'unico' || nomeLower.includes('único') || nomeLower.includes('unico');
+      // Determinar tipo de plano de forma mais robusta
+      const nomeLower = (plano.nome || '').toLowerCase();
+      const tipoLower = (plano.tipo || '').toLowerCase();
+      const isRecorrente = tipoLower === 'recorrente' || nomeLower.includes('anual');
+      const isUnico = tipoLower === 'unico' || nomeLower.includes('único') || nomeLower.includes('unico');
       
-      if (isAnual) {
+      if (isRecorrente) {
         setCarregando('anual');
         const { url } = await apiService.criarCheckoutAnual();
         window.location.href = url;
@@ -144,6 +153,7 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
           <div>Carregando planos...</div>
         ) : (
           planos.map((plano) => {
+            console.log(`Mapeando plano: ${plano.nome}, tipo: "${plano.tipo}", tipo === 'recorrente': ${plano.tipo === 'recorrente'}, typeof: ${typeof plano.tipo}`);
             const temDescontoPercentual = !!(plano.desconto_percentual && plano.desconto_percentual > 0);
             const temDescontoValor = !!(plano.desconto_valor && plano.desconto_valor > 0);
             const temDesconto = temDescontoPercentual || temDescontoValor;
@@ -211,14 +221,37 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
                 </ul>
                 <button
                   className={`btn-plano ${plano.mais_popular ? 'btn-plano-anual' : 'btn-plano-unico'}`}
-                  onClick={() => handlePlanoClick(plano)}
-                  disabled={carregando !== null}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Botão clicado:', plano.nome, 'Tipo:', plano.tipo, 'Carregando:', carregando);
+                    if (!carregando) {
+                      handlePlanoClick(plano);
+                    }
+                  }}
+                  disabled={(() => {
+                    // Detectar tipo de plano de forma mais robusta
+                    const nomeLower = (plano.nome || '').toLowerCase();
+                    const tipoLower = (plano.tipo || '').toLowerCase();
+                    const isRecorrente = tipoLower === 'recorrente' || nomeLower.includes('anual');
+                    const isUnico = tipoLower === 'unico' || nomeLower.includes('único') || nomeLower.includes('unico');
+                    
+                    const loadingType = isRecorrente ? 'anual' : (isUnico ? 'unico' : null);
+                    const isDisabled = carregando === loadingType;
+                    
+                    console.log(`Plano ${plano.nome}: tipo="${plano.tipo}", isRecorrente=${isRecorrente}, loadingType=${loadingType}, carregando=${carregando}, disabled=${isDisabled}`);
+                    return isDisabled;
+                  })()}
+                  style={{ pointerEvents: 'auto', cursor: 'pointer' }}
                 >
                   {(() => {
-                    const nomeLower = plano.nome.toLowerCase();
-                    const isAnual = plano.tipo === 'recorrente' && (nomeLower.includes('anual'));
-                    const isUnico = plano.tipo === 'unico' || nomeLower.includes('único') || nomeLower.includes('unico');
-                    const loadingType = isAnual ? 'anual' : (isUnico ? 'unico' : null);
+                    // Detectar tipo de plano de forma mais robusta
+                    const nomeLower = (plano.nome || '').toLowerCase();
+                    const tipoLower = (plano.tipo || '').toLowerCase();
+                    const isRecorrente = tipoLower === 'recorrente' || nomeLower.includes('anual');
+                    const isUnico = tipoLower === 'unico' || nomeLower.includes('único') || nomeLower.includes('unico');
+                    
+                    const loadingType = isRecorrente ? 'anual' : (isUnico ? 'unico' : null);
                     
                     if (carregando === loadingType) {
                       return 'Processando...';
@@ -226,10 +259,10 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
                     if (isUnico) {
                       return 'Comprar Acesso Único';
                     }
-                    if (isAnual) {
+                    if (isRecorrente) {
                       return 'Assinar Plano Anual';
                     }
-                    return plano.tipo === 'unico' ? 'Comprar' : 'Assinar';
+                    return 'Assinar';
                   })()}
                 </button>
               </div>

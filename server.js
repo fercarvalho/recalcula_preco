@@ -5,7 +5,7 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const db = require('./database');
 const { authenticateToken, requireAdmin, requirePayment, generateToken } = require('./middleware/auth');
-const { enviarEmailRecuperacao, enviarEmailRecuperacaoMultiplos } = require('./services/email');
+const { enviarEmailRecuperacao, enviarEmailRecuperacaoMultiplos, enviarEmailValidacao } = require('./services/email');
 const stripeService = require('./services/stripe');
 
 const app = express();
@@ -192,6 +192,15 @@ app.post('/api/auth/register', async (req, res) => {
         }
 
         const usuario = await db.criarUsuario(username, email, senha);
+        
+        // Enviar email de validação
+        try {
+            await enviarEmailValidacao(usuario.email, usuario.tokenValidacao, usuario.username);
+        } catch (emailError) {
+            console.error('Erro ao enviar email de validação:', emailError);
+            // Não falhar o registro se o email não for enviado
+        }
+        
         const token = generateToken(usuario.id);
         
         res.json({
@@ -292,6 +301,55 @@ app.post('/api/auth/logout', authenticateToken, async (req, res) => {
         console.error('Erro ao finalizar sessão:', error);
         // Não retornar erro para não impedir o logout
         res.json({ message: 'Sessão finalizada' });
+    }
+});
+
+// Validar email via token
+app.get('/api/auth/validar-email/:token', async (req, res) => {
+    try {
+        const { token } = req.params;
+        const resultado = await db.validarTokenEmail(token);
+        
+        if (!resultado.valido) {
+            return res.status(400).json({ error: resultado.erro || 'Token inválido ou expirado' });
+        }
+        
+        res.json({ 
+            message: 'Email validado com sucesso!',
+            usuarioId: resultado.usuarioId
+        });
+    } catch (error) {
+        console.error('Erro ao validar email:', error);
+        res.status(500).json({ error: 'Erro ao validar email' });
+    }
+});
+
+// Reenviar email de validação
+app.post('/api/auth/reenviar-email-validacao', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const usuario = await db.obterUsuarioPorId(userId);
+        
+        if (!usuario) {
+            return res.status(404).json({ error: 'Usuário não encontrado' });
+        }
+        
+        // Verificar se já está validado
+        const emailValidado = await db.verificarEmailValidado(userId);
+        if (emailValidado) {
+            return res.status(400).json({ error: 'Email já foi validado' });
+        }
+        
+        // Criar novo token
+        const token = await db.criarTokenValidacaoEmail(userId);
+        
+        // Enviar email
+        await enviarEmailValidacao(usuario.email, token, usuario.username);
+        
+        res.json({ message: 'Email de validação reenviado com sucesso!' });
+    } catch (error) {
+        console.error('Erro ao reenviar email de validação:', error);
+        res.status(500).json({ error: 'Erro ao reenviar email de validação' });
     }
 });
 
@@ -594,6 +652,7 @@ app.get('/api/stripe/status', authenticateToken, async (req, res) => {
         res.json({
             temAcesso: acesso.temAcesso,
             tipo: acesso.tipo === 'vitalicio' ? 'anual' : acesso.tipo, // Retornar 'anual' para compatibilidade com frontend
+            emailNaoValidado: acesso.emailNaoValidado || false,
             assinatura: acesso.tipo === 'vitalicio' ? {
                 status: 'active',
                 plano_tipo: 'vitalicio',

@@ -1,0 +1,63 @@
+.validar-email-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+}
+
+.validar-email-card {
+  background: white;
+  border-radius: 15px;
+  padding: 40px;
+  max-width: 500px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.validar-email-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+}
+
+.validar-email-icon.success {
+  color: #4caf50;
+}
+
+.validar-email-icon.error {
+  color: #f44336;
+}
+
+.validar-email-card h2 {
+  color: #333;
+  margin-bottom: 15px;
+}
+
+.validar-email-card p {
+  color: #666;
+  line-height: 1.6;
+}
+
+.validar-email-redirect {
+  font-size: 0.9rem;
+  color: #999;
+  margin-top: 10px;
+}
+
+.validar-email-spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #FF6B35;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+

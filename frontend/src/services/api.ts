@@ -131,6 +131,7 @@ export const apiService = {
   async verificarStatusPagamento(): Promise<{
     temAcesso: boolean;
     tipo: 'anual' | 'unico' | null;
+    emailNaoValidado?: boolean;
     assinatura: {
       status: string;
       plano_tipo: string;
@@ -141,6 +142,7 @@ export const apiService = {
     const response = await api.get<{
       temAcesso: boolean;
       tipo: 'anual' | 'unico' | null;
+      emailNaoValidado?: boolean;
       assinatura: {
         status: string;
         plano_tipo: string;
@@ -552,6 +554,14 @@ export const apiService = {
   },
   async finalizarSessao(): Promise<void> {
     await api.post('/api/auth/logout');
+  },
+  // Validação de email
+  async validarEmail(token: string): Promise<any> {
+    const response = await api.get(`/api/auth/validar-email/${token}`);
+    return response.data;
+  },
+  async reenviarEmailValidacao(): Promise<void> {
+    await api.post('/api/auth/reenviar-email-validacao');
   },
 };
 

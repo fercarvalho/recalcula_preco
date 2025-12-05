@@ -141,6 +141,30 @@ async function inicializar() {
             await pool.query('ALTER TABLE usuarios ADD COLUMN current_session_start TIMESTAMP');
         }
         
+        // Adicionar coluna email_validado se não existir
+        if (!(await colunaExiste('usuarios', 'email_validado'))) {
+            await pool.query('ALTER TABLE usuarios ADD COLUMN email_validado BOOLEAN DEFAULT FALSE');
+        }
+        
+        // Criar tabela de tokens de validação de email
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS email_validation_tokens (
+                id SERIAL PRIMARY KEY,
+                usuario_id INTEGER REFERENCES usuarios(id) ON DELETE CASCADE,
+                token VARCHAR(255) UNIQUE NOT NULL,
+                expires_at TIMESTAMP NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        // Criar índices para melhor performance
+        try {
+            await pool.query('CREATE INDEX IF NOT EXISTS idx_email_validation_tokens_token ON email_validation_tokens(token)');
+            await pool.query('CREATE INDEX IF NOT EXISTS idx_email_validation_tokens_usuario_id ON email_validation_tokens(usuario_id)');
+        } catch (error) {
+            // Ignorar erro se o índice já existir
+        }
+        
         // Adicionar coluna email se não existir
         if (!(await colunaExiste('usuarios', 'email'))) {
             await pool.query('ALTER TABLE usuarios ADD COLUMN email VARCHAR(255)');
@@ -1282,6 +1306,120 @@ async function verificarCredenciaisPorId(usuarioId, senha) {
     }
 }
 
+// ========== FUNÇÕES DE VALIDAÇÃO DE EMAIL ==========
+
+// Criar token de validação de email (validade de 7 dias)
+async function criarTokenValidacaoEmail(usuarioId) {
+    try {
+        const crypto = require('crypto');
+        const token = crypto.randomBytes(32).toString('hex');
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 7); // 7 dias
+        
+        // Deletar tokens antigos do usuário
+        await pool.query(
+            'DELETE FROM email_validation_tokens WHERE usuario_id = $1',
+            [usuarioId]
+        );
+        
+        // Criar novo token
+        await pool.query(
+            'INSERT INTO email_validation_tokens (usuario_id, token, expires_at) VALUES ($1, $2, $3)',
+            [usuarioId, token, expiresAt]
+        );
+        
+        return token;
+    } catch (error) {
+        console.error('Erro ao criar token de validação de email:', error);
+        throw error;
+    }
+}
+
+// Validar token de email
+async function validarTokenEmail(token) {
+    try {
+        const result = await pool.query(
+            'SELECT usuario_id, expires_at FROM email_validation_tokens WHERE token = $1',
+            [token]
+        );
+        
+        if (result.rows.length === 0) {
+            return { valido: false, erro: 'Token inválido' };
+        }
+        
+        const tokenData = result.rows[0];
+        const expiresAt = new Date(tokenData.expires_at);
+        const agora = new Date();
+        
+        if (agora > expiresAt) {
+            // Deletar token expirado
+            await pool.query('DELETE FROM email_validation_tokens WHERE token = $1', [token]);
+            return { valido: false, erro: 'Token expirado' };
+        }
+        
+        // Marcar email como validado
+        await pool.query(
+            'UPDATE usuarios SET email_validado = TRUE WHERE id = $1',
+            [tokenData.usuario_id]
+        );
+        
+        // Deletar token usado
+        await pool.query('DELETE FROM email_validation_tokens WHERE token = $1', [token]);
+        
+        return { valido: true, usuarioId: tokenData.usuario_id };
+    } catch (error) {
+        console.error('Erro ao validar token de email:', error);
+        throw error;
+    }
+}
+
+// Verificar se email foi validado
+async function verificarEmailValidado(usuarioId) {
+    try {
+        const result = await pool.query(
+            'SELECT email_validado FROM usuarios WHERE id = $1',
+            [usuarioId]
+        );
+        
+        if (result.rows.length === 0) {
+            return false;
+        }
+        
+        return result.rows[0].email_validado || false;
+    } catch (error) {
+        console.error('Erro ao verificar email validado:', error);
+        return false;
+    }
+}
+
+// Obter token de validação do usuário (para reenvio)
+async function obterTokenValidacaoEmail(usuarioId) {
+    try {
+        const result = await pool.query(
+            'SELECT token, expires_at FROM email_validation_tokens WHERE usuario_id = $1 ORDER BY created_at DESC LIMIT 1',
+            [usuarioId]
+        );
+        
+        if (result.rows.length === 0) {
+            return null;
+        }
+        
+        const tokenData = result.rows[0];
+        const expiresAt = new Date(tokenData.expires_at);
+        const agora = new Date();
+        
+        // Se expirado, retornar null
+        if (agora > expiresAt) {
+            return null;
+        }
+        
+        return tokenData.token;
+    } catch (error) {
+        console.error('Erro ao obter token de validação:', error);
+        return null;
+    }
+}
+
 // Criar novo usuário
 async function criarUsuario(username, email, senha) {
     try {
@@ -1320,14 +1458,20 @@ async function criarUsuario(username, email, senha) {
 
         // Criar usuário
         const result = await pool.query(
-            'INSERT INTO usuarios (username, email, senha_hash) VALUES ($1, $2, $3) RETURNING id, username, email',
-            [username.trim(), email.trim().toLowerCase(), senhaHash]
+            'INSERT INTO usuarios (username, email, senha_hash, email_validado) VALUES ($1, $2, $3, $4) RETURNING id, username, email',
+            [username.trim(), email.trim().toLowerCase(), senhaHash, false] // email_validado = false por padrão
         );
 
+        const novoUsuario = result.rows[0];
+        
+        // Criar token de validação de email
+        const token = await criarTokenValidacaoEmail(novoUsuario.id);
+
         return {
-            id: result.rows[0].id,
-            username: result.rows[0].username,
-            email: result.rows[0].email
+            id: novoUsuario.id,
+            username: novoUsuario.username,
+            email: novoUsuario.email,
+            tokenValidacao: token // Retornar token para envio de email
         };
     } catch (error) {
         console.error('Erro ao criar usuário:', error);
@@ -2306,11 +2450,24 @@ async function verificarAcessoAtivo(usuarioId) {
         `, [usuarioId]);
 
         if (assinatura.rows.length > 0) {
-            return {
+            const acessoAnual = {
                 temAcesso: true,
                 tipo: 'anual',
                 assinatura: assinatura.rows[0]
             };
+            
+            // Se o usuário tem acesso pago, verificar se email foi validado
+            const emailValidado = await verificarEmailValidado(usuarioId);
+            if (!emailValidado) {
+                return {
+                    temAcesso: false,
+                    tipo: null,
+                    emailNaoValidado: true, // Flag indicando que precisa validar email
+                    acesso: acessoAnual // Manter dados do acesso para não perder
+                };
+            }
+            
+            return acessoAnual;
         }
 
         // Verificar pagamento único não usado e não expirado (24 horas)
@@ -2323,11 +2480,24 @@ async function verificarAcessoAtivo(usuarioId) {
         `, [usuarioId]);
 
         if (pagamentoUnico.rows.length > 0) {
-            return {
+            const acessoUnico = {
                 temAcesso: true,
                 tipo: 'unico',
                 pagamento: pagamentoUnico.rows[0]
             };
+            
+            // Se o usuário tem acesso pago, verificar se email foi validado
+            const emailValidado = await verificarEmailValidado(usuarioId);
+            if (!emailValidado) {
+                return {
+                    temAcesso: false,
+                    tipo: null,
+                    emailNaoValidado: true, // Flag indicando que precisa validar email
+                    acesso: acessoUnico // Manter dados do acesso para não perder
+                };
+            }
+            
+            return acessoUnico;
         }
 
         return {
@@ -4942,6 +5112,11 @@ module.exports = {
     obterEstatisticasUsuario,
     obterEstatisticasTodosUsuarios,
     finalizarSessao,
+    // Funções de validação de email
+    criarTokenValidacaoEmail,
+    validarTokenEmail,
+    verificarEmailValidado,
+    obterTokenValidacaoEmail,
     fechar
 };
 

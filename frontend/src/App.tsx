@@ -17,6 +17,7 @@ import EditarItemModal from './components/EditarItemModal';
 import ResetarSenhaModal from './components/ResetarSenhaModal';
 import { SelecaoPlanos } from './components/SelecaoPlanos';
 import Modal from './components/Modal';
+import ValidarEmailModal from './components/ValidarEmailModal';
 import { isAuthenticated, getToken, getUser, saveAuth } from './services/auth';
 import { carregarPlataformasSync, carregarPlataformas } from './utils/plataformas';
 
@@ -56,6 +57,7 @@ function App() {
   const [verificandoPagamento, setVerificandoPagamento] = useState(true);
   const [showModalPlanos, setShowModalPlanos] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
+  const [showValidarEmail, setShowValidarEmail] = useState(false);
 
   useEffect(() => {
     // Verificar autenticação
@@ -164,6 +166,14 @@ function App() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
+    const validationToken = urlParams.get('token');
+    const path = window.location.pathname;
+    
+    // Verificar se é rota de validação de email
+    if (path.includes('/validar-email') && validationToken) {
+      // Não fazer nada aqui, a página ValidarEmail vai lidar com isso
+      return;
+    }
     
     if (token) {
       // Se houver token na URL, abrir modal de reset de senha
@@ -207,6 +217,11 @@ function App() {
 
       const status = await apiService.verificarStatusPagamento();
       setTemAcesso(status.temAcesso);
+      
+      // Verificar se precisa validar email
+      if (status.emailNaoValidado) {
+        setShowValidarEmail(true);
+      }
       // Sempre carregar itens, mesmo sem acesso pago (modo trial)
       await carregarItens();
       // Carregar plataformas após autenticação
@@ -239,8 +254,14 @@ function App() {
         setTemAcesso(true);
         carregarItens();
       } else {
-        // Se for erro de pagamento requerido, não tem acesso mas pode usar o sistema
-        if (error.response?.status === 403 && error.response?.data?.codigo === 'PAGAMENTO_REQUERIDO') {
+        // Se for erro de email não validado, mostrar modal
+        if (error.response?.status === 403 && error.response?.data?.codigo === 'EMAIL_NAO_VALIDADO') {
+          setTemAcesso(false);
+          setShowValidarEmail(true);
+          // Ainda assim, carregar itens para modo trial
+          carregarItens();
+        } else if (error.response?.status === 403 && error.response?.data?.codigo === 'PAGAMENTO_REQUERIDO') {
+          // Se for erro de pagamento requerido, não tem acesso mas pode usar o sistema
           setTemAcesso(false);
           // Ainda assim, carregar itens para modo trial
           carregarItens();
@@ -514,6 +535,16 @@ function App() {
   // Não bloquear acesso - permitir modo trial
   // Usuários sem acesso pago podem usar o sistema, mas não ver preços das plataformas
 
+  // Verificar se está na rota de validação de email
+  const urlParams = new URLSearchParams(window.location.search);
+  const validationToken = urlParams.get('token');
+  const isValidationRoute = window.location.pathname.includes('/validar-email') || (validationToken && window.location.href.includes('validar-email'));
+  
+  if (isValidationRoute) {
+    const ValidarEmail = require('./pages/ValidarEmail').default;
+    return <ValidarEmail />;
+  }
+
   if (loading) {
     return (
       <div className="loading-container">
@@ -766,6 +797,14 @@ function App() {
           setShowModalPlanos(false);
         }} />
       </Modal>
+      <ValidarEmailModal
+        isOpen={showValidarEmail}
+        onClose={() => setShowValidarEmail(false)}
+        onValidado={async () => {
+          setShowValidarEmail(false);
+          await verificarPagamento();
+        }}
+      />
     </div>
   );
 }
