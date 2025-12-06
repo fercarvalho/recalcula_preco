@@ -3,7 +3,34 @@ import { FaCamera, FaSpinner } from 'react-icons/fa';
 import Modal from './Modal';
 import { mostrarAlert } from '../utils/modals';
 import { apiService } from '../services/api';
+import DatePicker from './DatePicker';
 import './AlterarDadosModal.css';
+
+// Lista de países
+const PAISES = [
+  'Brasil', 'Afeganistão', 'África do Sul', 'Albânia', 'Alemanha', 'Andorra', 'Angola', 'Antígua e Barbuda',
+  'Arábia Saudita', 'Argélia', 'Argentina', 'Armênia', 'Austrália', 'Áustria', 'Azerbaijão', 'Bahamas',
+  'Bangladesh', 'Barbados', 'Barein', 'Bélgica', 'Belize', 'Benim', 'Bielorrússia', 'Bolívia', 'Bósnia e Herzegovina',
+  'Botsuana', 'Brunei', 'Bulgária', 'Burkina Faso', 'Burundi', 'Butão', 'Cabo Verde', 'Camarões', 'Camboja',
+  'Canadá', 'Catar', 'Cazaquistão', 'Chade', 'Chile', 'China', 'Chipre', 'Colômbia', 'Comores', 'Congo',
+  'Coreia do Norte', 'Coreia do Sul', 'Costa do Marfim', 'Costa Rica', 'Croácia', 'Cuba', 'Dinamarca', 'Djibuti',
+  'Dominica', 'Egito', 'El Salvador', 'Emirados Árabes Unidos', 'Equador', 'Eritreia', 'Eslováquia', 'Eslovênia',
+  'Espanha', 'Estados Unidos', 'Estônia', 'Eswatini', 'Etiópia', 'Fiji', 'Filipinas', 'Finlândia', 'França',
+  'Gabão', 'Gâmbia', 'Gana', 'Geórgia', 'Granada', 'Grécia', 'Guatemala', 'Guiana', 'Guiné', 'Guiné-Bissau',
+  'Guiné Equatorial', 'Haiti', 'Honduras', 'Hungria', 'Iêmen', 'Índia', 'Indonésia', 'Irã', 'Iraque', 'Irlanda',
+  'Islândia', 'Israel', 'Itália', 'Jamaica', 'Japão', 'Jordânia', 'Kiribati', 'Kuwait', 'Laos', 'Lesoto',
+  'Letônia', 'Líbano', 'Libéria', 'Líbia', 'Liechtenstein', 'Lituânia', 'Luxemburgo', 'Madagáscar', 'Malásia',
+  'Maláui', 'Maldivas', 'Mali', 'Malta', 'Marrocos', 'Maurícia', 'Mauritânia', 'México', 'Micronésia', 'Moçambique',
+  'Moldávia', 'Mônaco', 'Mongólia', 'Montenegro', 'Myanmar', 'Namíbia', 'Nauru', 'Nepal', 'Nicarágua', 'Níger',
+  'Nigéria', 'Noruega', 'Nova Zelândia', 'Omã', 'Países Baixos', 'Palau', 'Palestina', 'Panamá', 'Papua-Nova Guiné',
+  'Paquistão', 'Paraguai', 'Peru', 'Polônia', 'Portugal', 'Quênia', 'Quirguistão', 'Reino Unido', 'República Centro-Africana',
+  'República Democrática do Congo', 'República Dominicana', 'Romênia', 'Ruanda', 'Rússia', 'Salomão', 'Samoa', 'San Marino',
+  'Santa Lúcia', 'São Cristóvão e Névis', 'São Tomé e Príncipe', 'São Vicente e Granadinas', 'Seicheles', 'Senegal',
+  'Serra Leoa', 'Sérvia', 'Singapura', 'Síria', 'Somália', 'Sri Lanka', 'Sudão', 'Sudão do Sul', 'Suécia', 'Suíça',
+  'Suriname', 'Tadjiquistão', 'Tailândia', 'Tanzânia', 'Timor-Leste', 'Togo', 'Tonga', 'Trindade e Tobago', 'Tunísia',
+  'Turcomenistão', 'Turquia', 'Tuvalu', 'Ucrânia', 'Uganda', 'Uruguai', 'Uzbequistão', 'Vanuatu', 'Vaticano', 'Venezuela',
+  'Vietnã', 'Zâmbia', 'Zimbábue'
+].sort();
 
 interface AlterarDadosModalProps {
   isOpen: boolean;
@@ -24,12 +51,14 @@ interface DadosUsuario {
   complemento_residencial: string;
   cidade_residencial: string;
   estado_residencial: string;
+  pais_residencial: string;
   cep_comercial: string;
   endereco_comercial: string;
   numero_comercial: string;
   complemento_comercial: string;
   cidade_comercial: string;
   estado_comercial: string;
+  pais_comercial: string;
   foto_perfil: string | null;
 }
 
@@ -55,14 +84,19 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
     complemento_residencial: '',
     cidade_residencial: '',
     estado_residencial: '',
+    pais_residencial: 'Brasil',
     cep_comercial: '',
     endereco_comercial: '',
     numero_comercial: '',
     complemento_comercial: '',
     cidade_comercial: '',
     estado_comercial: '',
+    pais_comercial: 'Brasil',
     foto_perfil: null,
   });
+  const [naoResidoBrasilResidencial, setNaoResidoBrasilResidencial] = useState(false);
+  const [naoResidoBrasilComercial, setNaoResidoBrasilComercial] = useState(false);
+  const [naoPossuiCpf, setNaoPossuiCpf] = useState(false);
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
 
   // Carregar dados do usuário ao abrir o modal
@@ -105,15 +139,22 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
           complemento_residencial: userData.complemento_residencial || '',
           cidade_residencial: userData.cidade_residencial || '',
           estado_residencial: userData.estado_residencial || '',
+          pais_residencial: userData.pais_residencial || 'Brasil',
           cep_comercial: userData.cep_comercial || '',
           endereco_comercial: userData.endereco_comercial || '',
           numero_comercial: userData.numero_comercial || '',
           complemento_comercial: userData.complemento_comercial || '',
           cidade_comercial: userData.cidade_comercial || '',
           estado_comercial: userData.estado_comercial || '',
+          pais_comercial: userData.pais_comercial || 'Brasil',
           foto_perfil: userData.foto_perfil || null,
         });
         setFotoPreview(userData.foto_perfil || null);
+        // Verificar se o país não é Brasil para habilitar o checkbox
+        setNaoResidoBrasilResidencial(userData.pais_residencial && userData.pais_residencial !== 'Brasil');
+        setNaoResidoBrasilComercial(userData.pais_comercial && userData.pais_comercial !== 'Brasil');
+        // Verificar se não possui CPF (se CPF estiver vazio, considerar que não possui)
+        setNaoPossuiCpf(!userData.cpf || userData.cpf.trim() === '');
       }
     } catch (error: any) {
       console.error('Erro ao carregar dados:', error);
@@ -213,9 +254,11 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
         numero_residencial: prev.numero_comercial,
         cidade_residencial: prev.cidade_comercial,
         estado_residencial: prev.estado_comercial,
+        pais_residencial: prev.pais_comercial,
         // complemento_residencial não é copiado
       }));
       setCepResidencialBuscado(cepComercialBuscado);
+      setNaoResidoBrasilResidencial(naoResidoBrasilComercial);
     } else {
       // Limpar campos residenciais quando desmarcar
       setDados(prev => ({
@@ -225,9 +268,11 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
         numero_residencial: '',
         cidade_residencial: '',
         estado_residencial: '',
+        pais_residencial: 'Brasil',
         // complemento_residencial não é limpo
       }));
       setCepResidencialBuscado(false);
+      setNaoResidoBrasilResidencial(false);
     }
   };
 
@@ -404,21 +449,36 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                   value={dados.cpf}
                   onChange={(e) => setDados(prev => ({ ...prev, cpf: formatarCpf(e.target.value) }))}
                   placeholder="000.000.000-00"
-                  disabled={loading}
+                  disabled={loading || naoPossuiCpf}
                 />
+                <div className="form-group checkbox-group" style={{ marginTop: '10px' }}>
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={naoPossuiCpf}
+                      onChange={(e) => {
+                        setNaoPossuiCpf(e.target.checked);
+                        if (e.target.checked) {
+                          setDados(prev => ({ ...prev, cpf: '' }));
+                        }
+                      }}
+                      disabled={loading}
+                    />
+                    <span>Sou estrangeiro e não possuo CPF</span>
+                  </label>
+                </div>
               </div>
             </div>
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="data-nascimento">Data de Nascimento:</label>
-                <input
+                <DatePicker
                   id="data-nascimento"
-                  type="date"
-                  className="form-input date-input"
                   value={dados.data_nascimento}
-                  onChange={(e) => setDados(prev => ({ ...prev, data_nascimento: e.target.value }))}
+                  onChange={(value) => setDados(prev => ({ ...prev, data_nascimento: value }))}
                   max={new Date().toISOString().split('T')[0]}
                   disabled={loading}
+                  className="date-input"
                 />
               </div>
               <div className="form-group">
@@ -476,7 +536,7 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                   }}
                   onBlur={handleCepComercialBlur}
                   placeholder="00000-000"
-                  disabled={loading}
+                  disabled={loading || naoResidoBrasilComercial}
                 />
                 {buscandoCepComercial && <FaSpinner className="spinner-inline" />}
               </div>
@@ -499,7 +559,7 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                   });
                 }}
                 placeholder="Rua, Avenida, etc."
-                disabled={loading}
+                disabled={loading || naoResidoBrasilComercial}
               />
             </div>
             <div className="form-row">
@@ -523,7 +583,7 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                     });
                   }}
                   placeholder="Número"
-                  disabled={loading}
+                  disabled={loading || naoResidoBrasilComercial}
                   required={cepComercialBuscado}
                 />
               </div>
@@ -536,7 +596,7 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                   value={dados.complemento_comercial}
                   onChange={(e) => setDados(prev => ({ ...prev, complemento_comercial: e.target.value }))}
                   placeholder="Apto, Bloco, etc."
-                  disabled={loading}
+                  disabled={loading || naoResidoBrasilComercial}
                 />
               </div>
             </div>
@@ -559,7 +619,7 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                     });
                   }}
                   placeholder="Cidade"
-                  disabled={loading}
+                  disabled={loading || naoResidoBrasilComercial}
                 />
               </div>
               <div className="form-group">
@@ -581,10 +641,56 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                   }}
                   placeholder="UF"
                   maxLength={2}
-                  disabled={loading}
+                  disabled={loading || naoResidoBrasilComercial}
                 />
               </div>
             </div>
+            <div className="form-group checkbox-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={naoResidoBrasilComercial}
+                  onChange={(e) => {
+                    setNaoResidoBrasilComercial(e.target.checked);
+                    if (!e.target.checked) {
+                      setDados(prev => ({ ...prev, pais_comercial: 'Brasil' }));
+                      if (mesmoEndereco) {
+                        setDados(prev => ({ ...prev, pais_residencial: 'Brasil' }));
+                        setNaoResidoBrasilResidencial(false);
+                      }
+                    }
+                  }}
+                  disabled={loading}
+                />
+                <span>Não resido no Brasil</span>
+              </label>
+            </div>
+            {naoResidoBrasilComercial && (
+              <div className="form-group">
+                <label htmlFor="pais-comercial">País:</label>
+                <select
+                  id="pais-comercial"
+                  className="form-input"
+                  value={dados.pais_comercial}
+                  onChange={(e) => {
+                    const novoValor = e.target.value;
+                    setDados(prev => {
+                      const novosDados = { ...prev, pais_comercial: novoValor };
+                      if (mesmoEndereco) {
+                        novosDados.pais_residencial = novoValor;
+                        setNaoResidoBrasilResidencial(novoValor !== 'Brasil');
+                      }
+                      return novosDados;
+                    });
+                  }}
+                  disabled={loading}
+                >
+                  {PAISES.map(pais => (
+                    <option key={pais} value={pais}>{pais}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* Endereço Residencial */}
@@ -612,7 +718,7 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                   onChange={(e) => setDados(prev => ({ ...prev, cep_residencial: formatarCep(e.target.value) }))}
                   onBlur={handleCepResidencialBlur}
                   placeholder="00000-000"
-                  disabled={loading || mesmoEndereco}
+                  disabled={loading || mesmoEndereco || naoResidoBrasilResidencial}
                 />
                 {buscandoCepResidencial && <FaSpinner className="spinner-inline" />}
               </div>
@@ -626,7 +732,7 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                 value={dados.endereco_residencial}
                 onChange={(e) => setDados(prev => ({ ...prev, endereco_residencial: e.target.value }))}
                 placeholder="Rua, Avenida, etc."
-                disabled={loading || mesmoEndereco}
+                disabled={loading || mesmoEndereco || naoResidoBrasilResidencial}
               />
             </div>
             <div className="form-row">
@@ -641,7 +747,7 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                   value={dados.numero_residencial}
                   onChange={(e) => setDados(prev => ({ ...prev, numero_residencial: e.target.value }))}
                   placeholder="Número"
-                  disabled={loading || mesmoEndereco}
+                  disabled={loading || mesmoEndereco || naoResidoBrasilResidencial}
                   required={cepResidencialBuscado}
                 />
               </div>
@@ -654,7 +760,7 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                   value={dados.complemento_residencial}
                   onChange={(e) => setDados(prev => ({ ...prev, complemento_residencial: e.target.value }))}
                   placeholder="Apto, Bloco, etc."
-                  disabled={loading}
+                  disabled={loading || naoResidoBrasilResidencial}
                 />
               </div>
             </div>
@@ -668,7 +774,7 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                   value={dados.cidade_residencial}
                   onChange={(e) => setDados(prev => ({ ...prev, cidade_residencial: e.target.value }))}
                   placeholder="Cidade"
-                  disabled={loading || mesmoEndereco}
+                  disabled={loading || mesmoEndereco || naoResidoBrasilResidencial}
                 />
               </div>
               <div className="form-group">
@@ -681,10 +787,46 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                   onChange={(e) => setDados(prev => ({ ...prev, estado_residencial: e.target.value.toUpperCase() }))}
                   placeholder="UF"
                   maxLength={2}
-                  disabled={loading || mesmoEndereco}
+                  disabled={loading || mesmoEndereco || naoResidoBrasilResidencial}
                 />
               </div>
             </div>
+            {!mesmoEndereco && (
+              <>
+                <div className="form-group checkbox-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={naoResidoBrasilResidencial}
+                      onChange={(e) => {
+                        setNaoResidoBrasilResidencial(e.target.checked);
+                        if (!e.target.checked) {
+                          setDados(prev => ({ ...prev, pais_residencial: 'Brasil' }));
+                        }
+                      }}
+                      disabled={loading}
+                    />
+                    <span>Não resido no Brasil</span>
+                  </label>
+                </div>
+                {naoResidoBrasilResidencial && (
+                  <div className="form-group">
+                    <label htmlFor="pais-residencial">País:</label>
+                    <select
+                      id="pais-residencial"
+                      className="form-input"
+                      value={dados.pais_residencial}
+                      onChange={(e) => setDados(prev => ({ ...prev, pais_residencial: e.target.value }))}
+                      disabled={loading}
+                    >
+                      {PAISES.map(pais => (
+                        <option key={pais} value={pais}>{pais}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </form>
       )}
