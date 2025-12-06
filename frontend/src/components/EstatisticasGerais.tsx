@@ -18,6 +18,12 @@ interface EstatisticasGerais {
   usuarios_ativos_hoje: number;
   usuarios_ativos_semana: number;
   usuarios_ativos_mes: number;
+  por_genero: Array<{ genero: string; total: number }>;
+  por_estado_comercial: Array<{ estado: string; total: number }>;
+  por_pais_comercial: Array<{ pais: string; total: number }>;
+  por_estado_residencial: Array<{ estado: string; total: number }>;
+  por_pais_residencial: Array<{ pais: string; total: number }>;
+  por_faixa_idade: Array<{ faixa: string; total: number }>;
 }
 
 interface EstatisticasGeraisProps {
@@ -42,6 +48,13 @@ const EstatisticasGerais = ({ isOpen, onClose }: EstatisticasGeraisProps) => {
     try {
       setLoading(true);
       const stats = await apiService.obterEstatisticasGerais();
+      console.log('Estatísticas recebidas:', stats);
+      console.log('Por gênero:', stats.por_genero);
+      console.log('Por estado comercial:', stats.por_estado_comercial);
+      console.log('Por país comercial:', stats.por_pais_comercial);
+      console.log('Por estado residencial:', stats.por_estado_residencial);
+      console.log('Por país residencial:', stats.por_pais_residencial);
+      console.log('Por faixa idade:', stats.por_faixa_idade);
       setEstatisticas(stats);
     } catch (error: any) {
       console.error('Erro ao carregar estatísticas gerais:', error);
@@ -215,6 +228,125 @@ const EstatisticasGerais = ({ isOpen, onClose }: EstatisticasGeraisProps) => {
                 <span className="info-label">Tempo Total de Sessões:</span>
                 <span className="info-value">{formatarTempo(estatisticas.tempo_total_sessoes)}</span>
               </div>
+            </div>
+          </div>
+
+          {/* Estatísticas de Cadastro */}
+          <div className="estatisticas-section">
+            <h3>Estatísticas de Cadastro</h3>
+            
+            {/* Por Gênero */}
+            <div className="estatisticas-cadastro">
+              <h4>Por Gênero</h4>
+              {estatisticas.por_genero && Array.isArray(estatisticas.por_genero) && estatisticas.por_genero.length > 0 ? (
+                <div className="estatisticas-lista">
+                  {estatisticas.por_genero.map((item, index) => (
+                    <div key={index} className="estatistica-item">
+                      <span className="estatistica-label">{item.genero}:</span>
+                      <span className="estatistica-valor">{formatarNumero(item.total)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="estatisticas-vazio">
+                  <p>Nenhum dado disponível</p>
+                </div>
+              )}
+            </div>
+
+            {/* Por Estado Comercial */}
+            <div className="estatisticas-cadastro">
+              <h4>Por Estado (Empresa)</h4>
+              {estatisticas.por_estado_comercial && Array.isArray(estatisticas.por_estado_comercial) && estatisticas.por_estado_comercial.length > 0 ? (
+                <div className="estatisticas-lista">
+                  {estatisticas.por_estado_comercial.map((item, index) => (
+                    <div key={index} className="estatistica-item">
+                      <span className="estatistica-label">{item.estado}:</span>
+                      <span className="estatistica-valor">{formatarNumero(item.total)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="estatisticas-vazio">
+                  <p>Nenhum dado disponível</p>
+                </div>
+              )}
+            </div>
+
+            {/* Por País Comercial */}
+            <div className="estatisticas-cadastro">
+              <h4>Por País (Empresa)</h4>
+              {estatisticas.por_pais_comercial && Array.isArray(estatisticas.por_pais_comercial) && estatisticas.por_pais_comercial.length > 0 ? (
+                <div className="estatisticas-lista">
+                  {estatisticas.por_pais_comercial.map((item, index) => (
+                    <div key={index} className="estatistica-item">
+                      <span className="estatistica-label">{item.pais}:</span>
+                      <span className="estatistica-valor">{formatarNumero(item.total)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="estatisticas-vazio">
+                  <p>Nenhum dado disponível</p>
+                </div>
+              )}
+            </div>
+
+            {/* Por Estado Residencial */}
+            <div className="estatisticas-cadastro">
+              <h4>Por Estado (Residência)</h4>
+              {estatisticas.por_estado_residencial && Array.isArray(estatisticas.por_estado_residencial) && estatisticas.por_estado_residencial.length > 0 ? (
+                <div className="estatisticas-lista">
+                  {estatisticas.por_estado_residencial.map((item, index) => (
+                    <div key={index} className="estatistica-item">
+                      <span className="estatistica-label">{item.estado}:</span>
+                      <span className="estatistica-valor">{formatarNumero(item.total)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="estatisticas-vazio">
+                  <p>Nenhum dado disponível</p>
+                </div>
+              )}
+            </div>
+
+            {/* Por País Residencial */}
+            <div className="estatisticas-cadastro">
+              <h4>Por País (Residência)</h4>
+              {estatisticas.por_pais_residencial && Array.isArray(estatisticas.por_pais_residencial) && estatisticas.por_pais_residencial.length > 0 ? (
+                <div className="estatisticas-lista">
+                  {estatisticas.por_pais_residencial.map((item, index) => (
+                    <div key={index} className="estatistica-item">
+                      <span className="estatistica-label">{item.pais}:</span>
+                      <span className="estatistica-valor">{formatarNumero(item.total)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="estatisticas-vazio">
+                  <p>Nenhum dado disponível</p>
+                </div>
+              )}
+            </div>
+
+            {/* Por Faixa de Idade */}
+            <div className="estatisticas-cadastro">
+              <h4>Por Faixa de Idade</h4>
+              {estatisticas.por_faixa_idade && Array.isArray(estatisticas.por_faixa_idade) && estatisticas.por_faixa_idade.length > 0 ? (
+                <div className="estatisticas-lista">
+                  {estatisticas.por_faixa_idade.map((item, index) => (
+                    <div key={index} className="estatistica-item">
+                      <span className="estatistica-label">{item.faixa}:</span>
+                      <span className="estatistica-valor">{formatarNumero(item.total)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="estatisticas-vazio">
+                  <p>Nenhum dado disponível</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -5146,6 +5146,152 @@ async function obterEstatisticasGerais() {
         `, [inicioMes]);
         const usuariosAtivosMesCount = parseInt(usuariosAtivosMes.rows[0].total) || 0;
 
+        // Estatísticas por gênero
+        const statsGenero = await pool.query(`
+            SELECT 
+                genero,
+                COUNT(*) as total
+            FROM usuarios
+            WHERE genero IS NOT NULL AND genero != ''
+            GROUP BY genero
+            ORDER BY total DESC
+        `);
+        const porGenero = statsGenero.rows.map(row => ({
+            genero: row.genero,
+            total: parseInt(row.total) || 0
+        }));
+
+        // Estatísticas por estado comercial
+        const statsEstadoComercial = await pool.query(`
+            SELECT 
+                estado_comercial,
+                COUNT(*) as total
+            FROM usuarios
+            WHERE estado_comercial IS NOT NULL AND estado_comercial != ''
+            GROUP BY estado_comercial
+            ORDER BY total DESC
+        `);
+        const porEstadoComercial = statsEstadoComercial.rows.map(row => ({
+            estado: row.estado_comercial,
+            total: parseInt(row.total) || 0
+        }));
+
+        // Estatísticas por país comercial
+        const statsPaisComercial = await pool.query(`
+            SELECT 
+                pais_comercial,
+                COUNT(*) as total
+            FROM usuarios
+            WHERE pais_comercial IS NOT NULL AND pais_comercial != ''
+            GROUP BY pais_comercial
+            ORDER BY total DESC
+        `);
+        const porPaisComercial = statsPaisComercial.rows.map(row => ({
+            pais: row.pais_comercial,
+            total: parseInt(row.total) || 0
+        }));
+
+        // Estatísticas por estado residencial
+        const statsEstadoResidencial = await pool.query(`
+            SELECT 
+                estado_residencial,
+                COUNT(*) as total
+            FROM usuarios
+            WHERE estado_residencial IS NOT NULL AND estado_residencial != ''
+            GROUP BY estado_residencial
+            ORDER BY total DESC
+        `);
+        const porEstadoResidencial = statsEstadoResidencial.rows.map(row => ({
+            estado: row.estado_residencial,
+            total: parseInt(row.total) || 0
+        }));
+
+        // Estatísticas por país residencial
+        const statsPaisResidencial = await pool.query(`
+            SELECT 
+                pais_residencial,
+                COUNT(*) as total
+            FROM usuarios
+            WHERE pais_residencial IS NOT NULL AND pais_residencial != ''
+            GROUP BY pais_residencial
+            ORDER BY total DESC
+        `);
+        const porPaisResidencial = statsPaisResidencial.rows.map(row => ({
+            pais: row.pais_residencial,
+            total: parseInt(row.total) || 0
+        }));
+
+        // Estatísticas por faixa de idade
+        // Buscar todos os usuários e calcular idade no JavaScript para evitar problemas com SQL
+        const usuariosComDataNascimento = await pool.query(`
+            SELECT id, data_nascimento
+            FROM usuarios
+        `);
+        
+        const faixasIdade = {
+            'Não informado': 0,
+            'Menor de 18 anos': 0,
+            '18-25 anos': 0,
+            '26-35 anos': 0,
+            '36-45 anos': 0,
+            '46-55 anos': 0,
+            '56-65 anos': 0,
+            'Acima de 65 anos': 0
+        };
+        
+        // Reutilizar a variável 'agora' já declarada acima
+        usuariosComDataNascimento.rows.forEach(usuario => {
+            let faixa = 'Não informado';
+            
+            if (usuario.data_nascimento) {
+                const dataNasc = new Date(usuario.data_nascimento);
+                const idade = agora.getFullYear() - dataNasc.getFullYear();
+                const mesAtual = agora.getMonth();
+                const mesNasc = dataNasc.getMonth();
+                const diaAtual = agora.getDate();
+                const diaNasc = dataNasc.getDate();
+                
+                // Ajustar idade se ainda não fez aniversário este ano
+                const idadeAjustada = (mesAtual < mesNasc || (mesAtual === mesNasc && diaAtual < diaNasc)) 
+                    ? idade - 1 
+                    : idade;
+                
+                if (idadeAjustada < 18) {
+                    faixa = 'Menor de 18 anos';
+                } else if (idadeAjustada >= 18 && idadeAjustada <= 25) {
+                    faixa = '18-25 anos';
+                } else if (idadeAjustada >= 26 && idadeAjustada <= 35) {
+                    faixa = '26-35 anos';
+                } else if (idadeAjustada >= 36 && idadeAjustada <= 45) {
+                    faixa = '36-45 anos';
+                } else if (idadeAjustada >= 46 && idadeAjustada <= 55) {
+                    faixa = '46-55 anos';
+                } else if (idadeAjustada >= 56 && idadeAjustada <= 65) {
+                    faixa = '56-65 anos';
+                } else {
+                    faixa = 'Acima de 65 anos';
+                }
+            }
+            
+            faixasIdade[faixa] = (faixasIdade[faixa] || 0) + 1;
+        });
+        
+        const porFaixaIdade = Object.entries(faixasIdade)
+            .map(([faixa, total]) => ({ faixa, total }))
+            .sort((a, b) => {
+                const ordem = {
+                    'Não informado': 0,
+                    'Menor de 18 anos': 1,
+                    '18-25 anos': 2,
+                    '26-35 anos': 3,
+                    '36-45 anos': 4,
+                    '46-55 anos': 5,
+                    '56-65 anos': 6,
+                    'Acima de 65 anos': 7
+                };
+                return (ordem[a.faixa] || 999) - (ordem[b.faixa] || 999);
+            });
+
         return {
             total_usuarios: totalUsuariosCount,
             total_logins: totalLoginsCount,
@@ -5158,7 +5304,13 @@ async function obterEstatisticasGerais() {
             media_tempo_sessao: mediaTempoSessao,
             usuarios_ativos_hoje: usuariosAtivosHojeCount,
             usuarios_ativos_semana: usuariosAtivosSemanaCount,
-            usuarios_ativos_mes: usuariosAtivosMesCount
+            usuarios_ativos_mes: usuariosAtivosMesCount,
+            por_genero: porGenero,
+            por_estado_comercial: porEstadoComercial,
+            por_pais_comercial: porPaisComercial,
+            por_estado_residencial: porEstadoResidencial,
+            por_pais_residencial: porPaisResidencial,
+            por_faixa_idade: porFaixaIdade
         };
     } catch (error) {
         console.error('Erro ao obter estatísticas gerais:', error);
