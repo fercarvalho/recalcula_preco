@@ -3,6 +3,7 @@ import Modal from './Modal';
 import { apiService } from '../services/api';
 import { mostrarAlert } from '../utils/modals';
 import { FaUsers, FaSignInAlt, FaClock, FaChartLine, FaSpinner } from 'react-icons/fa';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import './EstatisticasGerais.css';
 
 interface EstatisticasGerais {
@@ -94,6 +95,25 @@ const EstatisticasGerais = ({ isOpen, onClose }: EstatisticasGeraisProps) => {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2 
     });
+  };
+
+  // Cores para os gráficos (tema laranja)
+  const CORES_GRAFICO = [
+    '#FF6B35', // Laranja principal
+    '#FF8C5A', // Laranja claro
+    '#FFA07A', // Laranja médio
+    '#FFB88C', // Laranja suave
+    '#FFC8A0', // Laranja muito claro
+    '#FFD4B4', // Laranja pastel
+    '#FFE0C8', // Laranja muito pastel
+    '#FFEBDC', // Laranja quase branco
+    '#F4A460', // Marrom areia
+    '#D2691E', // Chocolate
+  ];
+
+  // Função para gerar cores baseadas no índice
+  const obterCor = (index: number) => {
+    return CORES_GRAFICO[index % CORES_GRAFICO.length];
   };
 
   return (
@@ -239,14 +259,38 @@ const EstatisticasGerais = ({ isOpen, onClose }: EstatisticasGeraisProps) => {
             <div className="estatisticas-cadastro">
               <h4>Por Gênero</h4>
               {estatisticas.por_genero && Array.isArray(estatisticas.por_genero) && estatisticas.por_genero.length > 0 ? (
-                <div className="estatisticas-lista">
-                  {estatisticas.por_genero.map((item, index) => (
-                    <div key={index} className="estatistica-item">
-                      <span className="estatistica-label">{item.genero}:</span>
-                      <span className="estatistica-valor">{formatarNumero(item.total)}</span>
-                    </div>
-                  ))}
-                </div>
+                <>
+                  <div className="grafico-container">
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={estatisticas.por_genero}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ genero, total, percent }) => `${genero}: ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={100}
+                          fill="#8884d8"
+                          dataKey="total"
+                        >
+                          {estatisticas.por_genero.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={obterCor(index)} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value: number) => formatarNumero(value)} />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="estatisticas-lista">
+                    {estatisticas.por_genero.map((item, index) => (
+                      <div key={index} className="estatistica-item">
+                        <span className="estatistica-label">{item.genero}:</span>
+                        <span className="estatistica-valor">{formatarNumero(item.total)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
               ) : (
                 <div className="estatisticas-vazio">
                   <p>Nenhum dado disponível</p>
@@ -258,14 +302,28 @@ const EstatisticasGerais = ({ isOpen, onClose }: EstatisticasGeraisProps) => {
             <div className="estatisticas-cadastro">
               <h4>Por Estado (Empresa)</h4>
               {estatisticas.por_estado_comercial && Array.isArray(estatisticas.por_estado_comercial) && estatisticas.por_estado_comercial.length > 0 ? (
-                <div className="estatisticas-lista">
-                  {estatisticas.por_estado_comercial.map((item, index) => (
-                    <div key={index} className="estatistica-item">
-                      <span className="estatistica-label">{item.estado}:</span>
-                      <span className="estatistica-valor">{formatarNumero(item.total)}</span>
-                    </div>
-                  ))}
-                </div>
+                <>
+                  <div className="grafico-container">
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={estatisticas.por_estado_comercial}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="estado" angle={-45} textAnchor="end" height={100} />
+                        <YAxis />
+                        <Tooltip formatter={(value: number) => formatarNumero(value)} />
+                        <Legend />
+                        <Bar dataKey="total" fill="#FF6B35" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="estatisticas-lista">
+                    {estatisticas.por_estado_comercial.map((item, index) => (
+                      <div key={index} className="estatistica-item">
+                        <span className="estatistica-label">{item.estado}:</span>
+                        <span className="estatistica-valor">{formatarNumero(item.total)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
               ) : (
                 <div className="estatisticas-vazio">
                   <p>Nenhum dado disponível</p>
@@ -277,14 +335,28 @@ const EstatisticasGerais = ({ isOpen, onClose }: EstatisticasGeraisProps) => {
             <div className="estatisticas-cadastro">
               <h4>Por País (Empresa)</h4>
               {estatisticas.por_pais_comercial && Array.isArray(estatisticas.por_pais_comercial) && estatisticas.por_pais_comercial.length > 0 ? (
-                <div className="estatisticas-lista">
-                  {estatisticas.por_pais_comercial.map((item, index) => (
-                    <div key={index} className="estatistica-item">
-                      <span className="estatistica-label">{item.pais}:</span>
-                      <span className="estatistica-valor">{formatarNumero(item.total)}</span>
-                    </div>
-                  ))}
-                </div>
+                <>
+                  <div className="grafico-container">
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={estatisticas.por_pais_comercial}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="pais" angle={-45} textAnchor="end" height={100} />
+                        <YAxis />
+                        <Tooltip formatter={(value: number) => formatarNumero(value)} />
+                        <Legend />
+                        <Bar dataKey="total" fill="#FF8C5A" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="estatisticas-lista">
+                    {estatisticas.por_pais_comercial.map((item, index) => (
+                      <div key={index} className="estatistica-item">
+                        <span className="estatistica-label">{item.pais}:</span>
+                        <span className="estatistica-valor">{formatarNumero(item.total)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
               ) : (
                 <div className="estatisticas-vazio">
                   <p>Nenhum dado disponível</p>
@@ -296,14 +368,28 @@ const EstatisticasGerais = ({ isOpen, onClose }: EstatisticasGeraisProps) => {
             <div className="estatisticas-cadastro">
               <h4>Por Estado (Residência)</h4>
               {estatisticas.por_estado_residencial && Array.isArray(estatisticas.por_estado_residencial) && estatisticas.por_estado_residencial.length > 0 ? (
-                <div className="estatisticas-lista">
-                  {estatisticas.por_estado_residencial.map((item, index) => (
-                    <div key={index} className="estatistica-item">
-                      <span className="estatistica-label">{item.estado}:</span>
-                      <span className="estatistica-valor">{formatarNumero(item.total)}</span>
-                    </div>
-                  ))}
-                </div>
+                <>
+                  <div className="grafico-container">
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={estatisticas.por_estado_residencial}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="estado" angle={-45} textAnchor="end" height={100} />
+                        <YAxis />
+                        <Tooltip formatter={(value: number) => formatarNumero(value)} />
+                        <Legend />
+                        <Bar dataKey="total" fill="#FFA07A" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="estatisticas-lista">
+                    {estatisticas.por_estado_residencial.map((item, index) => (
+                      <div key={index} className="estatistica-item">
+                        <span className="estatistica-label">{item.estado}:</span>
+                        <span className="estatistica-valor">{formatarNumero(item.total)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
               ) : (
                 <div className="estatisticas-vazio">
                   <p>Nenhum dado disponível</p>
@@ -315,14 +401,28 @@ const EstatisticasGerais = ({ isOpen, onClose }: EstatisticasGeraisProps) => {
             <div className="estatisticas-cadastro">
               <h4>Por País (Residência)</h4>
               {estatisticas.por_pais_residencial && Array.isArray(estatisticas.por_pais_residencial) && estatisticas.por_pais_residencial.length > 0 ? (
-                <div className="estatisticas-lista">
-                  {estatisticas.por_pais_residencial.map((item, index) => (
-                    <div key={index} className="estatistica-item">
-                      <span className="estatistica-label">{item.pais}:</span>
-                      <span className="estatistica-valor">{formatarNumero(item.total)}</span>
-                    </div>
-                  ))}
-                </div>
+                <>
+                  <div className="grafico-container">
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={estatisticas.por_pais_residencial}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="pais" angle={-45} textAnchor="end" height={100} />
+                        <YAxis />
+                        <Tooltip formatter={(value: number) => formatarNumero(value)} />
+                        <Legend />
+                        <Bar dataKey="total" fill="#FFB88C" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="estatisticas-lista">
+                    {estatisticas.por_pais_residencial.map((item, index) => (
+                      <div key={index} className="estatistica-item">
+                        <span className="estatistica-label">{item.pais}:</span>
+                        <span className="estatistica-valor">{formatarNumero(item.total)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
               ) : (
                 <div className="estatisticas-vazio">
                   <p>Nenhum dado disponível</p>
@@ -334,14 +434,28 @@ const EstatisticasGerais = ({ isOpen, onClose }: EstatisticasGeraisProps) => {
             <div className="estatisticas-cadastro">
               <h4>Por Faixa de Idade</h4>
               {estatisticas.por_faixa_idade && Array.isArray(estatisticas.por_faixa_idade) && estatisticas.por_faixa_idade.length > 0 ? (
-                <div className="estatisticas-lista">
-                  {estatisticas.por_faixa_idade.map((item, index) => (
-                    <div key={index} className="estatistica-item">
-                      <span className="estatistica-label">{item.faixa}:</span>
-                      <span className="estatistica-valor">{formatarNumero(item.total)}</span>
-                    </div>
-                  ))}
-                </div>
+                <>
+                  <div className="grafico-container">
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={estatisticas.por_faixa_idade}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="faixa" angle={-45} textAnchor="end" height={100} />
+                        <YAxis />
+                        <Tooltip formatter={(value: number) => formatarNumero(value)} />
+                        <Legend />
+                        <Bar dataKey="total" fill="#FFC8A0" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="estatisticas-lista">
+                    {estatisticas.por_faixa_idade.map((item, index) => (
+                      <div key={index} className="estatistica-item">
+                        <span className="estatistica-label">{item.faixa}:</span>
+                        <span className="estatistica-valor">{formatarNumero(item.total)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
               ) : (
                 <div className="estatisticas-vazio">
                   <p>Nenhum dado disponível</p>
