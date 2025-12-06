@@ -29,6 +29,9 @@ const ValidarEmail = () => {
         setStatus('success');
         setMensagem('Email validado com sucesso! Você já pode usar o sistema normalmente.');
         
+        // Disparar evento para abrir modal de dados se necessário
+        window.dispatchEvent(new CustomEvent('email-validado'));
+        
         // Redirecionar para a página principal após 3 segundos
         setTimeout(() => {
           window.location.href = '/';

@@ -19,6 +19,7 @@ import { SelecaoPlanos } from './components/SelecaoPlanos';
 import Modal from './components/Modal';
 import ValidarEmailModal from './components/ValidarEmailModal';
 import ValidarEmail from './pages/ValidarEmail';
+import AlterarDadosModal from './components/AlterarDadosModal';
 import { isAuthenticated, getToken, getUser, saveAuth } from './services/auth';
 import { carregarPlataformasSync, carregarPlataformas } from './utils/plataformas';
 
@@ -70,6 +71,7 @@ function App() {
   const [showModalPlanos, setShowModalPlanos] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [showValidarEmail, setShowValidarEmail] = useState(false);
+  const [showAlterarDados, setShowAlterarDados] = useState(false);
 
   useEffect(() => {
     // Verificar autenticação
@@ -131,6 +133,25 @@ function App() {
     
     return () => {
       window.removeEventListener('plataformas-updated', handlePlataformasUpdate);
+    };
+  }, []);
+
+  // Listener para quando email for validado
+  useEffect(() => {
+    const handleEmailValidado = async () => {
+      // Aguardar um pouco para garantir que o backend atualizou
+      setTimeout(async () => {
+        const dadosVazios = await verificarDadosVazios();
+        if (dadosVazios) {
+          setShowAlterarDados(true);
+        }
+      }, 1000);
+    };
+    
+    window.addEventListener('email-validado', handleEmailValidado);
+    
+    return () => {
+      window.removeEventListener('email-validado', handleEmailValidado);
     };
   }, []);
 
@@ -197,6 +218,65 @@ function App() {
     }
   }, []);
 
+  // Função para verificar se os dados do usuário estão vazios
+  const verificarDadosVazios = async (): Promise<boolean> => {
+    try {
+      console.log('verificarDadosVazios - Iniciando verificação...');
+      const response = await apiService.obterDadosUsuario();
+      console.log('verificarDadosVazios - Response completa:', response);
+      
+      // O backend retorna { user: { ... } }, então precisamos acessar response.user
+      const dados = response?.user || response;
+      console.log('verificarDadosVazios - Dados do usuário:', dados);
+      
+      if (!dados || !dados.email_validado) {
+        console.log('verificarDadosVazios - Email não validado ou dados não encontrados. email_validado:', dados?.email_validado);
+        return false; // Se email não está validado, não precisa verificar
+      }
+      
+      console.log('verificarDadosVazios - Email validado, verificando campos...');
+      
+      // Verificar se os campos obrigatórios estão vazios
+      const camposVazios = 
+        !dados.nome?.trim() ||
+        !dados.sobrenome?.trim() ||
+        !dados.telefone?.trim() ||
+        (!dados.nao_possui_cpf && !dados.cpf?.trim()) ||
+        !dados.data_nascimento ||
+        !dados.genero ||
+        !dados.nome_estabelecimento?.trim() ||
+        (!dados.nao_resido_brasil_comercial && (
+          !dados.cep_comercial?.trim() ||
+          !dados.endereco_comercial?.trim() ||
+          !dados.numero_comercial?.trim() ||
+          !dados.cidade_comercial?.trim() ||
+          !dados.estado_comercial?.trim()
+        )) ||
+        (!dados.nao_resido_brasil_residencial && !dados.mesmo_endereco && (
+          !dados.cep_residencial?.trim() ||
+          !dados.endereco_residencial?.trim() ||
+          !dados.numero_residencial?.trim() ||
+          !dados.cidade_residencial?.trim() ||
+          !dados.estado_residencial?.trim()
+        ));
+      
+      console.log('verificarDadosVazios - Campos vazios?', camposVazios);
+      console.log('verificarDadosVazios - Detalhes:', {
+        nome: dados.nome?.trim() || 'VAZIO',
+        sobrenome: dados.sobrenome?.trim() || 'VAZIO',
+        telefone: dados.telefone?.trim() || 'VAZIO',
+        cpf: dados.cpf?.trim() || 'VAZIO',
+        data_nascimento: dados.data_nascimento || 'VAZIO',
+        genero: dados.genero || 'VAZIO',
+        nome_estabelecimento: dados.nome_estabelecimento?.trim() || 'VAZIO'
+      });
+      return camposVazios;
+    } catch (error) {
+      console.error('Erro ao verificar dados vazios:', error);
+      return false;
+    }
+  };
+
   const verificarPagamento = async () => {
     try {
       const user = getUser();
@@ -224,6 +304,17 @@ function App() {
           });
         }
         setVerificandoPagamento(false);
+        
+        // Verificar se precisa abrir modal de dados após login (apenas para admins)
+        setTimeout(async () => {
+          console.log('App - Verificando dados vazios para admin...');
+          const dadosVazios = await verificarDadosVazios();
+          console.log('App - Dados vazios (admin)?', dadosVazios);
+          if (dadosVazios) {
+            console.log('App - Abrindo modal de alterar dados (admin)');
+            setShowAlterarDados(true);
+          }
+        }, 1000);
         return;
       }
 
@@ -233,6 +324,12 @@ function App() {
       // Verificar se precisa validar email
       if (status.emailNaoValidado) {
         setShowValidarEmail(true);
+      } else {
+        // Se email está validado, verificar se dados estão vazios
+        const dadosVazios = await verificarDadosVazios();
+        if (dadosVazios) {
+          setShowAlterarDados(true);
+        }
       }
       // Sempre carregar itens, mesmo sem acesso pago (modo trial)
       await carregarItens();
@@ -534,11 +631,24 @@ function App() {
   if (!authenticated) {
     if (showLogin) {
       return <Login onLoginSuccess={async () => {
+        console.log('App - onLoginSuccess chamado');
         setAuthenticated(true);
         // Aplicar configurações do usuário (cores e logo) após login
         aplicarConfiguracoesUsuario();
         await verificarPagamento();
         setShowLogin(false);
+        
+        // Verificar se precisa abrir modal de dados após login
+        // Aguardar um pouco mais para garantir que tudo foi carregado
+        setTimeout(async () => {
+          console.log('App - Verificando dados vazios após login...');
+          const dadosVazios = await verificarDadosVazios();
+          console.log('App - Dados vazios?', dadosVazios);
+          if (dadosVazios) {
+            console.log('App - Abrindo modal de alterar dados');
+            setShowAlterarDados(true);
+          }
+        }, 1000);
       }} />;
     }
     return <LandingPage onLoginClick={() => setShowLogin(true)} />;
@@ -806,7 +916,19 @@ function App() {
         onValidado={async () => {
           setShowValidarEmail(false);
           await verificarPagamento();
+          
+          // Verificar se precisa abrir modal de dados após validação
+          setTimeout(async () => {
+            const dadosVazios = await verificarDadosVazios();
+            if (dadosVazios) {
+              setShowAlterarDados(true);
+            }
+          }, 500);
         }}
+      />
+      <AlterarDadosModal
+        isOpen={showAlterarDados}
+        onClose={() => setShowAlterarDados(false)}
       />
     </div>
   );
