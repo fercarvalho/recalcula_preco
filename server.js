@@ -392,6 +392,12 @@ app.put('/api/auth/alterar-login', authenticateToken, async (req, res) => {
             return res.status(400).json({ error: 'O login deve ter pelo menos 3 caracteres' });
         }
 
+        // Validar que não tenha espaços ou acentos
+        const usernameRegex = /^[a-zA-Z0-9_-]+$/;
+        if (!usernameRegex.test(novoLogin.trim())) {
+            return res.status(400).json({ error: 'O login não pode conter espaços ou acentos. Use apenas letras, números, underscore (_) ou hífen (-)' });
+        }
+
         const usuario = await db.alterarLogin(req.userId, novoLogin, senha);
         
         // Gerar novo token com o novo username

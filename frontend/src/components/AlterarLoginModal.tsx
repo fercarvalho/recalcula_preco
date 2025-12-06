@@ -25,6 +25,18 @@ const AlterarLoginModal = ({ isOpen, onClose }: AlterarLoginModalProps) => {
       return;
     }
 
+    if (novoLogin.trim().length < 3) {
+      await mostrarAlert('Erro', 'O login deve ter pelo menos 3 caracteres.');
+      return;
+    }
+
+    // Validar que não tenha espaços ou acentos
+    const usernameRegex = /^[a-zA-Z0-9_-]+$/;
+    if (!usernameRegex.test(novoLogin.trim())) {
+      await mostrarAlert('Erro', 'O login não pode conter espaços ou acentos. Use apenas letras, números, underscore (_) ou hífen (-).');
+      return;
+    }
+
     if (novoLogin.trim() === user?.username) {
       await mostrarAlert('Atenção', 'O novo login deve ser diferente do atual.');
       return;
@@ -121,7 +133,7 @@ const AlterarLoginModal = ({ isOpen, onClose }: AlterarLoginModalProps) => {
             className="form-input"
             value={novoLogin}
             onChange={(e) => setNovoLogin(e.target.value)}
-            placeholder="Digite o novo login"
+            placeholder="Digite o novo login (sem espaços ou acentos)"
             autoFocus
             disabled={loading}
             required

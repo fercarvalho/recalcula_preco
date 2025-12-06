@@ -34,6 +34,13 @@ const RegistroModal = ({ isOpen, onClose, onRegisterSuccess }: RegistroModalProp
       return;
     }
 
+    // Validar que não tenha espaços ou acentos
+    const usernameRegex = /^[a-zA-Z0-9_-]+$/;
+    if (!usernameRegex.test(username.trim())) {
+      await mostrarAlert('Erro', 'O nome de usuário não pode conter espaços ou acentos. Use apenas letras, números, underscore (_) ou hífen (-).');
+      return;
+    }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
       await mostrarAlert('Erro', 'Por favor, insira um email válido.');
@@ -122,7 +129,7 @@ const RegistroModal = ({ isOpen, onClose, onRegisterSuccess }: RegistroModalProp
             className="form-input"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            placeholder="Digite o nome de usuário (mínimo 3 caracteres)"
+            placeholder="Digite o nome de usuário (sem espaços ou acentos)"
             autoFocus
             disabled={loading}
             required

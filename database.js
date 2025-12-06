@@ -1250,6 +1250,16 @@ async function alterarLogin(usuarioId, novoLogin, senha) {
             throw new Error('Este login já está em uso por outro usuário');
         }
 
+        // Validar que não tenha espaços ou acentos
+        if (novoLogin.trim().length < 3) {
+            throw new Error('O login deve ter pelo menos 3 caracteres');
+        }
+
+        const usernameRegex = /^[a-zA-Z0-9_-]+$/;
+        if (!usernameRegex.test(novoLogin.trim())) {
+            throw new Error('O login não pode conter espaços ou acentos. Use apenas letras, números, underscore (_) ou hífen (-)');
+        }
+
         // Atualizar login
         const result = await pool.query(
             'UPDATE usuarios SET username = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id, username',
@@ -1555,6 +1565,12 @@ async function criarUsuario(username, email, senha) {
         // Validar username
         if (username.trim().length < 3) {
             throw new Error('O nome de usuário deve ter pelo menos 3 caracteres');
+        }
+
+        // Validar que não tenha espaços ou acentos
+        const usernameRegex = /^[a-zA-Z0-9_-]+$/;
+        if (!usernameRegex.test(username.trim())) {
+            throw new Error('O nome de usuário não pode conter espaços ou acentos. Use apenas letras, números, underscore (_) ou hífen (-)');
         }
 
         // Validar email
