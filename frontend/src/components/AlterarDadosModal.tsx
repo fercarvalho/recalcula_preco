@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FaCamera, FaSpinner } from 'react-icons/fa';
+import { FaCamera, FaSpinner, FaExclamationTriangle } from 'react-icons/fa';
 import Modal from './Modal';
 import { mostrarAlert } from '../utils/modals';
 import { apiService } from '../services/api';
@@ -266,6 +266,7 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
   const [mesmoEndereco, setMesmoEndereco] = useState(false);
   const [cepResidencialBuscado, setCepResidencialBuscado] = useState(false);
   const [cepComercialBuscado, setCepComercialBuscado] = useState(false);
+  const [emailValidado, setEmailValidado] = useState(false);
   
   // Função helper para garantir que valores nunca sejam undefined
   const garantirString = (valor: string | undefined | null): string => {
@@ -365,6 +366,9 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
         // Definir código do país do telefone baseado no país residencial ou comercial
         const paisParaTelefone = userData.pais_residencial || userData.pais_comercial || 'Brasil';
         setCodigoPaisTelefone(CODIGOS_PAIS[paisParaTelefone] || '+55');
+        
+        // Verificar se o email está validado
+        setEmailValidado(userData.email_validado === true);
       }
     } catch (error: any) {
       console.error('Erro ao carregar dados:', error);
@@ -530,8 +534,145 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
     }
   };
 
+  // Função para verificar se há campos obrigatórios vazios
+  const verificarCamposObrigatoriosVazios = (): string[] => {
+    const camposVazios: string[] = [];
+    
+    if (!emailValidado) {
+      return camposVazios; // Se email não está validado, não há campos obrigatórios
+    }
+    
+    if (!dados.nome.trim()) camposVazios.push('Nome');
+    if (!dados.sobrenome.trim()) camposVazios.push('Sobrenome');
+    if (!dados.telefone.trim()) camposVazios.push('Telefone');
+    if (!naoPossuiCpf && !dados.cpf.trim()) camposVazios.push('CPF');
+    if (!dados.data_nascimento) camposVazios.push('Data de Nascimento');
+    if (!dados.genero) camposVazios.push('Gênero');
+    if (!dados.nome_estabelecimento.trim()) camposVazios.push('Nome do Estabelecimento');
+    
+    // Validar endereço comercial
+    if (!naoResidoBrasilComercial) {
+      if (!dados.cep_comercial.trim()) camposVazios.push('CEP Comercial');
+      if (!dados.endereco_comercial.trim()) camposVazios.push('Endereço Comercial');
+      if (!dados.numero_comercial.trim()) camposVazios.push('Número Comercial');
+      if (!dados.cidade_comercial.trim()) camposVazios.push('Cidade Comercial');
+      if (!dados.estado_comercial.trim()) camposVazios.push('Estado Comercial');
+    }
+    
+    // Validar endereço residencial
+    if (!naoResidoBrasilResidencial && !mesmoEndereco) {
+      if (!dados.cep_residencial.trim()) camposVazios.push('CEP Residencial');
+      if (!dados.endereco_residencial.trim()) camposVazios.push('Endereço Residencial');
+      if (!dados.numero_residencial.trim()) camposVazios.push('Número Residencial');
+      if (!dados.cidade_residencial.trim()) camposVazios.push('Cidade Residencial');
+      if (!dados.estado_residencial.trim()) camposVazios.push('Estado Residencial');
+    }
+    
+    return camposVazios;
+  };
+
+  // Interceptar o fechamento do modal
+  const handleClose = async () => {
+    if (!emailValidado) {
+      onClose();
+      return;
+    }
+    
+    const camposVazios = verificarCamposObrigatoriosVazios();
+    if (camposVazios.length > 0) {
+      const camposLista = camposVazios.join(', ');
+      await mostrarAlert(
+        'Atenção - Cadastro Incompleto',
+        `Você possui campos obrigatórios não preenchidos:\n\n${camposLista}\n\nÉ necessário preencher todos os campos obrigatórios para continuar usando o sistema.`
+      );
+      // Não fechar o modal - apenas mostrar o aviso
+      return;
+    }
+    onClose();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Se o email estiver validado, validar campos obrigatórios
+    if (emailValidado) {
+      if (!dados.nome.trim()) {
+        await mostrarAlert('Erro', 'O nome é obrigatório quando o email está validado.');
+        return;
+      }
+      if (!dados.sobrenome.trim()) {
+        await mostrarAlert('Erro', 'O sobrenome é obrigatório quando o email está validado.');
+        return;
+      }
+      if (!dados.telefone.trim()) {
+        await mostrarAlert('Erro', 'O telefone é obrigatório quando o email está validado.');
+        return;
+      }
+      if (!naoPossuiCpf && !dados.cpf.trim()) {
+        await mostrarAlert('Erro', 'O CPF é obrigatório quando o email está validado (ou marque "Não possuo CPF").');
+        return;
+      }
+      if (!dados.data_nascimento) {
+        await mostrarAlert('Erro', 'A data de nascimento é obrigatória quando o email está validado.');
+        return;
+      }
+      if (!dados.genero) {
+        await mostrarAlert('Erro', 'O gênero é obrigatório quando o email está validado.');
+        return;
+      }
+      if (!dados.nome_estabelecimento.trim()) {
+        await mostrarAlert('Erro', 'O nome do estabelecimento é obrigatório quando o email está validado.');
+        return;
+      }
+      
+      // Validar endereço comercial
+      if (!naoResidoBrasilComercial) {
+        if (!dados.cep_comercial.trim()) {
+          await mostrarAlert('Erro', 'O CEP comercial é obrigatório quando o email está validado.');
+          return;
+        }
+        if (!dados.endereco_comercial.trim()) {
+          await mostrarAlert('Erro', 'O endereço comercial é obrigatório quando o email está validado.');
+          return;
+        }
+        if (!dados.numero_comercial.trim()) {
+          await mostrarAlert('Erro', 'O número comercial é obrigatório quando o email está validado.');
+          return;
+        }
+        if (!dados.cidade_comercial.trim()) {
+          await mostrarAlert('Erro', 'A cidade comercial é obrigatória quando o email está validado.');
+          return;
+        }
+        if (!dados.estado_comercial.trim()) {
+          await mostrarAlert('Erro', 'O estado comercial é obrigatório quando o email está validado.');
+          return;
+        }
+      }
+      
+      // Validar endereço residencial
+      if (!naoResidoBrasilResidencial) {
+        if (!dados.cep_residencial.trim()) {
+          await mostrarAlert('Erro', 'O CEP residencial é obrigatório quando o email está validado.');
+          return;
+        }
+        if (!dados.endereco_residencial.trim()) {
+          await mostrarAlert('Erro', 'O endereço residencial é obrigatório quando o email está validado.');
+          return;
+        }
+        if (!dados.numero_residencial.trim()) {
+          await mostrarAlert('Erro', 'O número residencial é obrigatório quando o email está validado.');
+          return;
+        }
+        if (!dados.cidade_residencial.trim()) {
+          await mostrarAlert('Erro', 'A cidade residencial é obrigatória quando o email está validado.');
+          return;
+        }
+        if (!dados.estado_residencial.trim()) {
+          await mostrarAlert('Erro', 'O estado residencial é obrigatório quando o email está validado.');
+          return;
+        }
+      }
+    }
     
     // Validar número obrigatório quando CEP foi buscado
     if (cepComercialBuscado && !dados.numero_comercial.trim()) {
@@ -547,12 +688,25 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
     setLoading(true);
 
     try {
-      await apiService.atualizarDadosUsuario(dados);
+      // Incluir mesmoEndereco nos dados para o backend validar corretamente
+      const dadosParaEnviar = {
+        ...dados,
+        mesmo_endereco: mesmoEndereco
+      };
+      await apiService.atualizarDadosUsuario(dadosParaEnviar);
       await mostrarAlert('Sucesso', 'Dados atualizados com sucesso!');
       onClose();
     } catch (error: any) {
       console.error('Erro ao atualizar dados:', error);
-      await mostrarAlert('Erro', error.message || 'Erro ao atualizar dados. Tente novamente.');
+      let mensagemErro = 'Erro ao atualizar dados. Tente novamente.';
+      
+      if (error.response?.data?.error) {
+        mensagemErro = error.response.data.error;
+      } else if (error.message) {
+        mensagemErro = error.message;
+      }
+      
+      await mostrarAlert('Erro ao Salvar', mensagemErro);
     } finally {
       setLoading(false);
     }
@@ -561,12 +715,12 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       title="Alterar Dados"
       size="large"
       footer={
         <>
-          <button onClick={onClose} className="btn-secondary" disabled={loading}>
+          <button onClick={handleClose} className="btn-secondary" disabled={loading}>
             Cancelar
           </button>
           <button onClick={handleSubmit} className="btn-primary" disabled={loading || carregandoDados}>
@@ -582,6 +736,15 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="alterar-dados-form">
+          {emailValidado && (
+            <div className="aviso-obrigatorio">
+              <FaExclamationTriangle className="aviso-icon" />
+              <div>
+                <strong>Campos Obrigatórios</strong>
+                <p>Como seu email está validado, é necessário preencher todos os campos marcados com <span className="required">*</span> para continuar usando o sistema.</p>
+              </div>
+            </div>
+          )}
           {/* Foto de Perfil */}
           <div className="form-section">
             <h3>Foto de Perfil</h3>
@@ -613,33 +776,35 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
             <h3>Dados Pessoais</h3>
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="nome">Nome:</label>
+                <label htmlFor="nome">Nome {emailValidado && <span className="required">*</span>}:</label>
                 <input
                   id="nome"
                   type="text"
-                  className="form-input"
+                  className={`form-input ${emailValidado ? 'required-field' : ''}`}
                   value={dados.nome || ''}
                   onChange={(e) => setDados(prev => ({ ...prev, nome: e.target.value }))}
                   placeholder="Digite seu nome"
                   disabled={loading}
+                  required={emailValidado}
                 />
               </div>
               <div className="form-group">
-                <label htmlFor="sobrenome">Sobrenome:</label>
+                <label htmlFor="sobrenome">Sobrenome {emailValidado && <span className="required">*</span>}:</label>
                 <input
                   id="sobrenome"
                   type="text"
-                  className="form-input"
+                  className={`form-input ${emailValidado ? 'required-field' : ''}`}
                   value={dados.sobrenome || ''}
                   onChange={(e) => setDados(prev => ({ ...prev, sobrenome: e.target.value }))}
                   placeholder="Digite seu sobrenome"
                   disabled={loading}
+                  required={emailValidado}
                 />
               </div>
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="telefone">Telefone:</label>
+                <label htmlFor="telefone">Telefone {emailValidado && <span className="required">*</span>}:</label>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                   <select
                     className="form-input"
@@ -661,11 +826,12 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                     placeholder="(00) 00000-0000"
                     disabled={loading}
                     style={{ flex: 1 }}
+                    required={emailValidado}
                   />
                 </div>
               </div>
               <div className="form-group">
-                <label htmlFor="cpf">CPF:</label>
+                <label htmlFor="cpf">CPF {emailValidado && !naoPossuiCpf && <span className="required">*</span>}:</label>
                 <input
                   id="cpf"
                   type="text"
@@ -674,6 +840,7 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                   onChange={(e) => setDados(prev => ({ ...prev, cpf: formatarCpf(e.target.value) }))}
                   placeholder="000.000.000-00"
                   disabled={loading || naoPossuiCpf}
+                  required={emailValidado && !naoPossuiCpf}
                 />
                 <div className="form-group checkbox-group" style={{ marginTop: '10px' }}>
                   <label className="checkbox-label">
@@ -695,24 +862,26 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="data-nascimento">Data de Nascimento:</label>
+                <label htmlFor="data-nascimento">Data de Nascimento {emailValidado && <span className="required">*</span>}:</label>
                 <DatePicker
                   id="data-nascimento"
                   value={dados.data_nascimento || ''}
                   onChange={(value) => setDados(prev => ({ ...prev, data_nascimento: value || '' }))}
                   max={new Date().toISOString().split('T')[0]}
                   disabled={loading}
-                  className="date-input"
+                  className={`date-input ${emailValidado ? 'required-field' : ''}`}
+                  required={emailValidado}
                 />
               </div>
               <div className="form-group">
-                <label htmlFor="genero">Gênero:</label>
+                <label htmlFor="genero">Gênero {emailValidado && <span className="required">*</span>}:</label>
                 <select
                   id="genero"
-                  className="form-input"
+                  className={`form-input ${emailValidado ? 'required-field' : ''}`}
                   value={dados.genero || ''}
                   onChange={(e) => setDados(prev => ({ ...prev, genero: e.target.value }))}
                   disabled={loading}
+                  required={emailValidado}
                 >
                   <option value="">Selecione...</option>
                   <option value="masculino">Masculino</option>
@@ -724,29 +893,30 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
               </div>
             </div>
             <div className="form-group">
-              <label htmlFor="nome-estabelecimento">Nome do Estabelecimento:</label>
+              <label htmlFor="nome-estabelecimento">Nome do Estabelecimento {emailValidado && <span className="required">*</span>}:</label>
               <input
                 id="nome-estabelecimento"
                 type="text"
-                className="form-input"
+                className={`form-input ${emailValidado ? 'required-field' : ''}`}
                 value={dados.nome_estabelecimento || ''}
                 onChange={(e) => setDados(prev => ({ ...prev, nome_estabelecimento: e.target.value }))}
                 placeholder="Digite o nome do estabelecimento"
                 disabled={loading}
+                required={emailValidado}
               />
             </div>
           </div>
 
           {/* Endereço Comercial */}
           <div className="form-section">
-            <h3>Endereço Comercial</h3>
+            <h3>Endereço Comercial {emailValidado && !naoResidoBrasilComercial && <span className="required">*</span>}</h3>
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="cep-comercial">CEP:</label>
+                <label htmlFor="cep-comercial">CEP {emailValidado && !naoResidoBrasilComercial && <span className="required">*</span>}:</label>
                 <input
                   id="cep-comercial"
                   type="text"
-                  className="form-input"
+                  className={`form-input ${emailValidado && !naoResidoBrasilComercial ? 'required-field' : ''}`}
                   value={dados.cep_comercial || ''}
                   onChange={(e) => {
                     const novoValor = formatarCep(e.target.value);
@@ -761,16 +931,17 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                   onBlur={handleCepComercialBlur}
                   placeholder="00000-000"
                   disabled={loading || naoResidoBrasilComercial}
+                  required={emailValidado && !naoResidoBrasilComercial}
                 />
                 {buscandoCepComercial && <FaSpinner className="spinner-inline" />}
               </div>
             </div>
             <div className="form-group">
-              <label htmlFor="endereco-comercial">Endereço:</label>
+              <label htmlFor="endereco-comercial">Endereço {emailValidado && !naoResidoBrasilComercial && <span className="required">*</span>}:</label>
               <input
                 id="endereco-comercial"
                 type="text"
-                className="form-input"
+                className={`form-input ${emailValidado && !naoResidoBrasilComercial ? 'required-field' : ''}`}
                 value={dados.endereco_comercial || ''}
                 onChange={(e) => {
                   const novoValor = e.target.value;
@@ -784,17 +955,18 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                 }}
                 placeholder="Rua, Avenida, etc."
                 disabled={loading || naoResidoBrasilComercial}
+                required={emailValidado && !naoResidoBrasilComercial}
               />
             </div>
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="numero-comercial">
-                  Número {cepComercialBuscado && <span className="required">*</span>}:
+                  Número {(cepComercialBuscado || (emailValidado && !naoResidoBrasilComercial)) && <span className="required">*</span>}:
                 </label>
                 <input
                   id="numero-comercial"
                   type="text"
-                  className="form-input"
+                  className={`form-input ${(cepComercialBuscado || (emailValidado && !naoResidoBrasilComercial)) ? 'required-field' : ''}`}
                   value={dados.numero_comercial || ''}
                   onChange={(e) => {
                     const novoValor = e.target.value;
@@ -808,7 +980,7 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                   }}
                   placeholder="Número"
                   disabled={loading || naoResidoBrasilComercial}
-                  required={cepComercialBuscado}
+                  required={cepComercialBuscado || (emailValidado && !naoResidoBrasilComercial)}
                 />
               </div>
               <div className="form-group">
@@ -826,11 +998,11 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="cidade-comercial">Cidade:</label>
+                <label htmlFor="cidade-comercial">Cidade {emailValidado && !naoResidoBrasilComercial && <span className="required">*</span>}:</label>
                 <input
                   id="cidade-comercial"
                   type="text"
-                  className="form-input"
+                  className={`form-input ${emailValidado && !naoResidoBrasilComercial ? 'required-field' : ''}`}
                   value={dados.cidade_comercial || ''}
                   onChange={(e) => {
                     const novoValor = e.target.value;
@@ -844,14 +1016,15 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                   }}
                   placeholder="Cidade"
                   disabled={loading || naoResidoBrasilComercial}
+                  required={emailValidado && !naoResidoBrasilComercial}
                 />
               </div>
               <div className="form-group">
-                <label htmlFor="estado-comercial">Estado:</label>
+                <label htmlFor="estado-comercial">Estado {emailValidado && !naoResidoBrasilComercial && <span className="required">*</span>}:</label>
                 <input
                   id="estado-comercial"
                   type="text"
-                  className="form-input"
+                  className={`form-input ${emailValidado && !naoResidoBrasilComercial ? 'required-field' : ''}`}
                   value={garantirString(dados.estado_comercial)}
                   onChange={(e) => {
                     const novoValor = (e.target.value || '').toUpperCase();
@@ -866,6 +1039,7 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                   placeholder="UF"
                   maxLength={2}
                   disabled={loading || naoResidoBrasilComercial}
+                  required={emailValidado && !naoResidoBrasilComercial}
                 />
               </div>
             </div>
@@ -928,7 +1102,7 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
 
           {/* Endereço Residencial */}
           <div className="form-section">
-            <h3>Endereço Residencial</h3>
+            <h3>Endereço Residencial {emailValidado && !mesmoEndereco && !naoResidoBrasilResidencial && <span className="required">*</span>}</h3>
             <div className="form-group checkbox-group">
               <label className="checkbox-label">
                 <input
@@ -942,46 +1116,48 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="cep-residencial">CEP:</label>
+                <label htmlFor="cep-residencial">CEP {emailValidado && !mesmoEndereco && !naoResidoBrasilResidencial && <span className="required">*</span>}:</label>
                 <input
                   id="cep-residencial"
                   type="text"
-                  className="form-input"
+                  className={`form-input ${emailValidado && !mesmoEndereco && !naoResidoBrasilResidencial ? 'required-field' : ''}`}
                   value={dados.cep_residencial || ''}
                   onChange={(e) => setDados(prev => ({ ...prev, cep_residencial: formatarCep(e.target.value) }))}
                   onBlur={handleCepResidencialBlur}
                   placeholder="00000-000"
                   disabled={loading || mesmoEndereco || naoResidoBrasilResidencial}
+                  required={emailValidado && !mesmoEndereco && !naoResidoBrasilResidencial}
                 />
                 {buscandoCepResidencial && <FaSpinner className="spinner-inline" />}
               </div>
             </div>
             <div className="form-group">
-              <label htmlFor="endereco-residencial">Endereço:</label>
+              <label htmlFor="endereco-residencial">Endereço {emailValidado && !mesmoEndereco && !naoResidoBrasilResidencial && <span className="required">*</span>}:</label>
               <input
                 id="endereco-residencial"
                 type="text"
-                className="form-input"
+                className={`form-input ${emailValidado && !mesmoEndereco && !naoResidoBrasilResidencial ? 'required-field' : ''}`}
                 value={dados.endereco_residencial || ''}
                 onChange={(e) => setDados(prev => ({ ...prev, endereco_residencial: e.target.value }))}
                 placeholder="Rua, Avenida, etc."
                 disabled={loading || mesmoEndereco || naoResidoBrasilResidencial}
+                required={emailValidado && !mesmoEndereco && !naoResidoBrasilResidencial}
               />
             </div>
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="numero-residencial">
-                  Número {cepResidencialBuscado && <span className="required">*</span>}:
+                  Número {(cepResidencialBuscado || (emailValidado && !mesmoEndereco && !naoResidoBrasilResidencial)) && <span className="required">*</span>}:
                 </label>
                 <input
                   id="numero-residencial"
                   type="text"
-                  className="form-input"
+                  className={`form-input ${(cepResidencialBuscado || (emailValidado && !mesmoEndereco && !naoResidoBrasilResidencial)) ? 'required-field' : ''}`}
                   value={dados.numero_residencial || ''}
                   onChange={(e) => setDados(prev => ({ ...prev, numero_residencial: e.target.value }))}
                   placeholder="Número"
                   disabled={loading || mesmoEndereco || naoResidoBrasilResidencial}
-                  required={cepResidencialBuscado}
+                  required={cepResidencialBuscado || (emailValidado && !mesmoEndereco && !naoResidoBrasilResidencial)}
                 />
               </div>
               <div className="form-group">
@@ -999,28 +1175,30 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="cidade-residencial">Cidade:</label>
+                <label htmlFor="cidade-residencial">Cidade {emailValidado && !mesmoEndereco && !naoResidoBrasilResidencial && <span className="required">*</span>}:</label>
                 <input
                   id="cidade-residencial"
                   type="text"
-                  className="form-input"
+                  className={`form-input ${emailValidado && !mesmoEndereco && !naoResidoBrasilResidencial ? 'required-field' : ''}`}
                   value={dados.cidade_residencial || ''}
                   onChange={(e) => setDados(prev => ({ ...prev, cidade_residencial: e.target.value }))}
                   placeholder="Cidade"
                   disabled={loading || mesmoEndereco || naoResidoBrasilResidencial}
+                  required={emailValidado && !mesmoEndereco && !naoResidoBrasilResidencial}
                 />
               </div>
               <div className="form-group">
-                <label htmlFor="estado-residencial">Estado:</label>
+                <label htmlFor="estado-residencial">Estado {emailValidado && !mesmoEndereco && !naoResidoBrasilResidencial && <span className="required">*</span>}:</label>
                 <input
                   id="estado-residencial"
                   type="text"
-                  className="form-input"
+                  className={`form-input ${emailValidado && !mesmoEndereco && !naoResidoBrasilResidencial ? 'required-field' : ''}`}
                   value={dados.estado_residencial || ''}
                   onChange={(e) => setDados(prev => ({ ...prev, estado_residencial: e.target.value.toUpperCase() }))}
                   placeholder="UF"
                   maxLength={2}
                   disabled={loading || mesmoEndereco || naoResidoBrasilResidencial}
+                  required={emailValidado && !mesmoEndereco && !naoResidoBrasilResidencial}
                 />
               </div>
             </div>

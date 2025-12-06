@@ -471,7 +471,13 @@ app.get('/api/auth/dados', authenticateToken, async (req, res) => {
             return res.status(404).json({ error: 'Usuário não encontrado' });
         }
         
-        res.json({ user: usuario });
+        // Garantir que email_validado está incluído
+        res.json({ 
+            user: {
+                ...usuario,
+                email_validado: usuario.email_validado !== undefined ? usuario.email_validado : false
+            }
+        });
     } catch (error) {
         console.error('Erro ao obter dados do usuário:', error);
         res.status(500).json({ error: error.message || 'Erro ao obter dados do usuário' });
@@ -491,6 +497,12 @@ app.put('/api/auth/alterar-dados', authenticateToken, async (req, res) => {
         });
     } catch (error) {
         console.error('Erro ao atualizar dados:', error);
+        console.error('Stack trace:', error.stack);
+        // Se for um erro de validação (contém "obrigatório" ou "obrigatória"), retornar 400
+        if (error.message && (error.message.includes('obrigatório') || error.message.includes('obrigatória'))) {
+            return res.status(400).json({ error: error.message });
+        }
+        // Para outros erros, retornar 500
         res.status(500).json({ error: error.message || 'Erro ao atualizar dados' });
     }
 });

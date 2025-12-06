@@ -1031,7 +1031,7 @@ async function verificarCredenciais(identificador, senha) {
 async function obterUsuarioPorId(id) {
     try {
         const result = await pool.query(
-            'SELECT id, username, email, is_admin, tutorial_completed, nome, sobrenome, telefone, cpf, nome_estabelecimento, cep_residencial, endereco_residencial, numero_residencial, complemento_residencial, cidade_residencial, estado_residencial, pais_residencial, cep_comercial, endereco_comercial, numero_comercial, complemento_comercial, cidade_comercial, estado_comercial, pais_comercial, foto_perfil, data_nascimento, genero FROM usuarios WHERE id = $1',
+            'SELECT id, username, email, is_admin, tutorial_completed, email_validado, nome, sobrenome, telefone, cpf, nome_estabelecimento, cep_residencial, endereco_residencial, numero_residencial, complemento_residencial, cidade_residencial, estado_residencial, pais_residencial, cep_comercial, endereco_comercial, numero_comercial, complemento_comercial, cidade_comercial, estado_comercial, pais_comercial, foto_perfil, data_nascimento, genero FROM usuarios WHERE id = $1',
             [id]
         );
         
@@ -1046,6 +1046,7 @@ async function obterUsuarioPorId(id) {
             email: row.email,
             is_admin: row.is_admin || false,
             tutorial_completed: row.tutorial_completed || false,
+            email_validado: row.email_validado || false,
             nome: row.nome || null,
             sobrenome: row.sobrenome || null,
             telefone: row.telefone || null,
@@ -5464,6 +5465,128 @@ async function finalizarSessao(usuarioId) {
 // Atualizar dados pessoais do usuário
 async function atualizarDadosUsuario(usuarioId, dados) {
     try {
+        // Verificar se o email está validado e obter dados atuais do usuário
+        const usuarioAtual = await pool.query(
+            'SELECT email_validado, cpf, pais_comercial, pais_residencial, cep_comercial, endereco_comercial, numero_comercial, cidade_comercial, estado_comercial, cep_residencial, endereco_residencial, numero_residencial, cidade_residencial, estado_residencial, nome, sobrenome, telefone, data_nascimento, genero, nome_estabelecimento FROM usuarios WHERE id = $1', 
+            [usuarioId]
+        );
+        if (usuarioAtual.rows.length === 0) {
+            throw new Error('Usuário não encontrado');
+        }
+        
+        const emailValidado = usuarioAtual.rows[0].email_validado === true;
+        const dadosAtuais = usuarioAtual.rows[0];
+        
+        // Função helper para verificar se um campo está preenchido
+        const campoPreenchido = (valor) => {
+            if (valor === undefined || valor === null) {
+                return false;
+            }
+            // Para datas, verificar se é uma data válida
+            if (valor instanceof Date) {
+                return !isNaN(valor.getTime());
+            }
+            // Para strings, verificar se não está vazia
+            if (typeof valor === 'string') {
+                return valor.trim() !== '';
+            }
+            // Para outros tipos, considerar preenchido se não for null/undefined
+            return true;
+        };
+        
+        // Se o email estiver validado, validar campos obrigatórios
+        if (emailValidado) {
+            // Validar campos básicos obrigatórios
+            const camposObrigatorios = {
+                'nome': 'O nome é obrigatório quando o email está validado',
+                'sobrenome': 'O sobrenome é obrigatório quando o email está validado',
+                'telefone': 'O telefone é obrigatório quando o email está validado',
+                'data_nascimento': 'A data de nascimento é obrigatória quando o email está validado',
+                'genero': 'O gênero é obrigatório quando o email está validado',
+                'nome_estabelecimento': 'O nome do estabelecimento é obrigatório quando o email está validado'
+            };
+            
+            for (const [campo, mensagem] of Object.entries(camposObrigatorios)) {
+                // Se o campo não está sendo atualizado, verificar se já existe no banco
+                if (dados[campo] === undefined) {
+                    if (!campoPreenchido(dadosAtuais[campo])) {
+                        throw new Error(mensagem);
+                    }
+                } else if (!campoPreenchido(dados[campo])) {
+                    throw new Error(mensagem);
+                }
+            }
+            
+            // Validar CPF - verificar se está sendo atualizado ou se já existe
+            if (dados.cpf !== undefined) {
+                if (!campoPreenchido(dados.cpf)) {
+                    // Se está sendo atualizado para vazio, verificar se já tinha no banco
+                    if (!campoPreenchido(dadosAtuais.cpf)) {
+                        throw new Error('O CPF é obrigatório quando o email está validado (ou marque "Não possuo CPF")');
+                    }
+                }
+            } else {
+                // CPF não está sendo atualizado, verificar se já existe
+                if (!campoPreenchido(dadosAtuais.cpf)) {
+                    throw new Error('O CPF é obrigatório quando o email está validado (ou marque "Não possuo CPF")');
+                }
+            }
+            
+            // Validar endereço comercial (se não estiver marcado como "não resido no Brasil")
+            const paisComercial = dados.pais_comercial !== undefined ? dados.pais_comercial : dadosAtuais.pais_comercial;
+            if (!paisComercial || paisComercial === 'Brasil') {
+                const camposEnderecoComercial = {
+                    'cep_comercial': 'O CEP comercial é obrigatório quando o email está validado',
+                    'endereco_comercial': 'O endereço comercial é obrigatório quando o email está validado',
+                    'numero_comercial': 'O número comercial é obrigatório quando o email está validado',
+                    'cidade_comercial': 'A cidade comercial é obrigatória quando o email está validado',
+                    'estado_comercial': 'O estado comercial é obrigatório quando o email está validado'
+                };
+                
+                for (const [campo, mensagem] of Object.entries(camposEnderecoComercial)) {
+                    if (dados[campo] === undefined) {
+                        // Campo não está sendo atualizado, verificar se já existe
+                        if (!campoPreenchido(dadosAtuais[campo])) {
+                            throw new Error(mensagem);
+                        }
+                    } else if (!campoPreenchido(dados[campo])) {
+                        throw new Error(mensagem);
+                    }
+                }
+            }
+            
+            // Validar endereço residencial (se não estiver marcado como "não resido no Brasil" e não for o mesmo que comercial)
+            // Verificar se mesmoEndereco foi passado nos dados ou se precisamos verificar pelos endereços
+            const paisResidencial = dados.pais_residencial !== undefined ? dados.pais_residencial : dadosAtuais.pais_residencial;
+            // Verificar se os endereços são iguais para determinar se mesmoEndereco é true
+            const mesmoEndereco = dados.mesmo_endereco !== undefined ? dados.mesmo_endereco : 
+                (dadosAtuais.cep_residencial && dadosAtuais.cep_comercial &&
+                 dadosAtuais.cep_residencial === dadosAtuais.cep_comercial && 
+                 dadosAtuais.endereco_residencial === dadosAtuais.endereco_comercial &&
+                 dadosAtuais.numero_residencial === dadosAtuais.numero_comercial);
+            
+            if ((!paisResidencial || paisResidencial === 'Brasil') && !mesmoEndereco) {
+                const camposEnderecoResidencial = {
+                    'cep_residencial': 'O CEP residencial é obrigatório quando o email está validado',
+                    'endereco_residencial': 'O endereço residencial é obrigatório quando o email está validado',
+                    'numero_residencial': 'O número residencial é obrigatório quando o email está validado',
+                    'cidade_residencial': 'A cidade residencial é obrigatória quando o email está validado',
+                    'estado_residencial': 'O estado residencial é obrigatório quando o email está validado'
+                };
+                
+                for (const [campo, mensagem] of Object.entries(camposEnderecoResidencial)) {
+                    if (dados[campo] === undefined) {
+                        // Campo não está sendo atualizado, verificar se já existe
+                        if (!campoPreenchido(dadosAtuais[campo])) {
+                            throw new Error(mensagem);
+                        }
+                    } else if (!campoPreenchido(dados[campo])) {
+                        throw new Error(mensagem);
+                    }
+                }
+            }
+        }
+        
         const updates = [];
         const values = [];
         let paramIndex = 1;
@@ -5481,7 +5604,13 @@ async function atualizarDadosUsuario(usuarioId, dados) {
         for (const campo of campos) {
             if (dados[campo] !== undefined) {
                 updates.push(`${campo} = $${paramIndex++}`);
-                values.push(dados[campo] || null);
+                // Para campos vazios, enviar null ao invés de string vazia
+                const valor = dados[campo];
+                if (valor === '' || (typeof valor === 'string' && valor.trim() === '')) {
+                    values.push(null);
+                } else {
+                    values.push(valor);
+                }
             }
         }
 
@@ -5502,7 +5631,13 @@ async function atualizarDadosUsuario(usuarioId, dados) {
         return result.rows[0];
     } catch (error) {
         console.error('Erro ao atualizar dados do usuário:', error);
-        throw error;
+        console.error('Stack trace:', error.stack);
+        // Se for um erro de validação, relançar com a mensagem original
+        if (error.message && (error.message.includes('obrigatório') || error.message.includes('obrigatória'))) {
+            throw error;
+        }
+        // Para outros erros, adicionar mais contexto
+        throw new Error(error.message || 'Erro ao atualizar dados do usuário');
     }
 }
 
