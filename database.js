@@ -4997,6 +4997,85 @@ async function obterEstatisticasUsuario(usuarioId) {
         
         const statsSessoes = sessoes.rows[0];
         
+        // Calcular tempo desde o último login (em segundos)
+        let tempoSemLogin = null;
+        if (dados.last_login) {
+            const lastLogin = new Date(dados.last_login);
+            const agora = new Date();
+            tempoSemLogin = Math.floor((agora - lastLogin) / 1000);
+        }
+        
+        // Obter todos os valores para calcular percentis
+        const todosUsuarios = await pool.query(`
+            SELECT 
+                login_count,
+                total_usage_time,
+                last_login,
+                current_session_start
+            FROM usuarios
+            WHERE login_count IS NOT NULL AND total_usage_time IS NOT NULL
+        `);
+        
+        // Calcular percentis
+        const valoresLoginCount = todosUsuarios.rows.map(u => u.login_count || 0).sort((a, b) => a - b);
+        const valoresUsageTime = todosUsuarios.rows.map(u => u.total_usage_time || 0).sort((a, b) => a - b);
+        
+        // Calcular tempos sem login
+        const agora = new Date();
+        const temposSemLogin = todosUsuarios.rows
+            .map(u => {
+                if (!u.last_login) return null;
+                const lastLogin = new Date(u.last_login);
+                return Math.floor((agora - lastLogin) / 1000);
+            })
+            .filter(t => t !== null)
+            .sort((a, b) => a - b);
+        
+        // Calcular percentis
+        const calcularPercentil = (valor, valoresOrdenados) => {
+            if (valoresOrdenados.length === 0) return 0;
+            const menoresOuIguais = valoresOrdenados.filter(v => v <= valor).length;
+            return Math.round((menoresOuIguais / valoresOrdenados.length) * 100);
+        };
+        
+        const percentilLoginCount = calcularPercentil(dados.login_count || 0, valoresLoginCount);
+        const percentilUsageTime = calcularPercentil(dados.total_usage_time || 0, valoresUsageTime);
+        const percentilTempoSemLogin = tempoSemLogin !== null 
+            ? calcularPercentil(tempoSemLogin, temposSemLogin)
+            : null;
+        
+        // Calcular percentil de sessões
+        const todasSessoes = await pool.query(`
+            SELECT usuario_id, COUNT(*) as total_sessoes
+            FROM user_sessions
+            GROUP BY usuario_id
+        `);
+        const valoresSessoes = todasSessoes.rows.map(s => parseInt(s.total_sessoes) || 0).sort((a, b) => a - b);
+        const totalSessoesUsuario = parseInt(statsSessoes.total_sessoes) || 0;
+        const percentilSessoes = calcularPercentil(totalSessoesUsuario, valoresSessoes);
+        
+        // Calcular percentil de tempo médio por sessão
+        const tempoMedioSessao = totalSessoesUsuario > 0 
+            ? (parseInt(statsSessoes.tempo_total_sessoes) || 0) / totalSessoesUsuario 
+            : 0;
+        
+        const todasSessoesTempo = await pool.query(`
+            SELECT usuario_id, 
+                   COUNT(*) as total_sessoes,
+                   SUM(duration) as tempo_total
+            FROM user_sessions
+            GROUP BY usuario_id
+            HAVING COUNT(*) > 0
+        `);
+        const valoresTempoMedioSessao = todasSessoesTempo.rows
+            .map(s => {
+                const total = parseInt(s.total_sessoes) || 0;
+                const tempo = parseInt(s.tempo_total) || 0;
+                return total > 0 ? tempo / total : 0;
+            })
+            .sort((a, b) => a - b);
+        const percentilTempoMedioSessao = calcularPercentil(tempoMedioSessao, valoresTempoMedioSessao);
+        
         return {
             id: dados.id,
             username: dados.username,
@@ -5008,9 +5087,16 @@ async function obterEstatisticasUsuario(usuarioId) {
             last_activity: dados.last_activity,
             current_session_start: dados.current_session_start,
             current_session_duration: tempoSessaoAtual,
-            total_sessions: parseInt(statsSessoes.total_sessoes) || 0,
+            total_sessions: totalSessoesUsuario,
             total_sessions_time: parseInt(statsSessoes.tempo_total_sessoes) || 0,
-            last_session: statsSessoes.ultima_sessao
+            tempo_sem_login: tempoSemLogin,
+            percentis: {
+                login_count: percentilLoginCount,
+                total_usage_time: percentilUsageTime,
+                tempo_sem_login: percentilTempoSemLogin,
+                total_sessions: percentilSessoes,
+                tempo_medio_sessao: percentilTempoMedioSessao
+            }
         };
     } catch (error) {
         console.error('Erro ao obter estatísticas do usuário:', error);

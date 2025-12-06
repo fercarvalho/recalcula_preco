@@ -18,6 +18,14 @@ interface EstatisticasUsuario {
   current_session_duration: number;
   total_sessions: number;
   total_sessions_time: number;
+  tempo_sem_login?: number | null;
+  percentis?: {
+    login_count: number;
+    total_usage_time: number;
+    tempo_sem_login: number | null;
+    total_sessions: number;
+    tempo_medio_sessao: number;
+  };
 }
 
 interface EstatisticasUsuariosProps {
@@ -165,6 +173,15 @@ const EstatisticasUsuarios = ({ isOpen, onClose, usuarioId, username }: Estatist
                       {stat.last_login && (
                         <span className="estatistica-subvalue">{formatarData(stat.last_login)}</span>
                       )}
+                      {stat.percentis && stat.percentis.tempo_sem_login !== null && stat.tempo_sem_login !== null && (
+                        <span className="estatistica-comparativo">
+                          {stat.percentis.tempo_sem_login >= 90 
+                            ? `${100 - stat.percentis.tempo_sem_login}% dos usuários ficam mais tempo sem logar` 
+                            : stat.percentis.tempo_sem_login >= 50
+                            ? `${100 - stat.percentis.tempo_sem_login}% dos usuários ficam mais tempo sem logar`
+                            : `Somente ${100 - stat.percentis.tempo_sem_login}% dos usuários ficam mais tempo sem logar`}
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -173,6 +190,15 @@ const EstatisticasUsuarios = ({ isOpen, onClose, usuarioId, username }: Estatist
                     <div>
                       <span className="estatistica-label">Total de logins:</span>
                       <span className="estatistica-value">{stat.login_count}</span>
+                      {stat.percentis && (
+                        <span className="estatistica-comparativo">
+                          {stat.percentis.login_count >= 90 
+                            ? `Top ${100 - stat.percentis.login_count}% dos usuários` 
+                            : stat.percentis.login_count >= 50
+                            ? `${100 - stat.percentis.login_count}% dos usuários logam mais vezes`
+                            : `Somente ${100 - stat.percentis.login_count}% dos usuários logam mais vezes`}
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -181,6 +207,15 @@ const EstatisticasUsuarios = ({ isOpen, onClose, usuarioId, username }: Estatist
                     <div>
                       <span className="estatistica-label">Tempo total de uso:</span>
                       <span className="estatistica-value">{formatarTempo(stat.total_usage_time)}</span>
+                      {stat.percentis && (
+                        <span className="estatistica-comparativo">
+                          {stat.percentis.total_usage_time >= 90 
+                            ? `Top ${100 - stat.percentis.total_usage_time}% dos usuários` 
+                            : stat.percentis.total_usage_time >= 50
+                            ? `${100 - stat.percentis.total_usage_time}% dos usuários usam mais tempo`
+                            : `Somente ${100 - stat.percentis.total_usage_time}% dos usuários usam mais tempo`}
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -211,6 +246,34 @@ const EstatisticasUsuarios = ({ isOpen, onClose, usuarioId, username }: Estatist
                       <div>
                         <span className="estatistica-label">Total de sessões:</span>
                         <span className="estatistica-value">{stat.total_sessions}</span>
+                        {stat.percentis && (
+                          <span className="estatistica-comparativo">
+                            {stat.percentis.total_sessions >= 90 
+                              ? `Top ${100 - stat.percentis.total_sessions}% dos usuários` 
+                              : stat.percentis.total_sessions >= 50
+                              ? `${100 - stat.percentis.total_sessions}% dos usuários têm mais sessões`
+                              : `Somente ${100 - stat.percentis.total_sessions}% dos usuários têm mais sessões`}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {stat.total_sessions > 0 && stat.percentis && (
+                    <div className="estatistica-item">
+                      <FaClock className="estatistica-item-icon" />
+                      <div>
+                        <span className="estatistica-label">Tempo médio por sessão:</span>
+                        <span className="estatistica-value">
+                          {formatarTempo(stat.total_sessions_time / stat.total_sessions)}
+                        </span>
+                        <span className="estatistica-comparativo">
+                          {stat.percentis.tempo_medio_sessao >= 90 
+                            ? `Top ${100 - stat.percentis.tempo_medio_sessao}% dos usuários` 
+                            : stat.percentis.tempo_medio_sessao >= 50
+                            ? `${100 - stat.percentis.tempo_medio_sessao}% dos usuários têm sessões mais longas`
+                            : `Somente ${100 - stat.percentis.tempo_medio_sessao}% dos usuários têm sessões mais longas`}
+                        </span>
                       </div>
                     </div>
                   )}
