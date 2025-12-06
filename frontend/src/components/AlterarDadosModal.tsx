@@ -15,6 +15,8 @@ interface DadosUsuario {
   sobrenome: string;
   telefone: string;
   cpf: string;
+  data_nascimento: string;
+  genero: string;
   nome_estabelecimento: string;
   cep_residencial: string;
   endereco_residencial: string;
@@ -44,6 +46,8 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
     sobrenome: '',
     telefone: '',
     cpf: '',
+    data_nascimento: '',
+    genero: '',
     nome_estabelecimento: '',
     cep_residencial: '',
     endereco_residencial: '',
@@ -77,11 +81,23 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
       const response = await apiService.obterDadosUsuario();
       if (response.user) {
         const userData = response.user;
+        
+        // Formatar data de nascimento para o input (YYYY-MM-DD)
+        let dataNascimentoFormatada = '';
+        if (userData.data_nascimento) {
+          const data = new Date(userData.data_nascimento);
+          if (!isNaN(data.getTime())) {
+            dataNascimentoFormatada = data.toISOString().split('T')[0];
+          }
+        }
+        
         setDados({
           nome: userData.nome || '',
           sobrenome: userData.sobrenome || '',
           telefone: userData.telefone || '',
           cpf: userData.cpf || '',
+          data_nascimento: dataNascimentoFormatada,
+          genero: userData.genero || '',
           nome_estabelecimento: userData.nome_estabelecimento || '',
           cep_residencial: userData.cep_residencial || '',
           endereco_residencial: userData.endereco_residencial || '',
@@ -390,6 +406,37 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                   placeholder="000.000.000-00"
                   disabled={loading}
                 />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="data-nascimento">Data de Nascimento:</label>
+                <input
+                  id="data-nascimento"
+                  type="date"
+                  className="form-input date-input"
+                  value={dados.data_nascimento}
+                  onChange={(e) => setDados(prev => ({ ...prev, data_nascimento: e.target.value }))}
+                  max={new Date().toISOString().split('T')[0]}
+                  disabled={loading}
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="genero">Gênero:</label>
+                <select
+                  id="genero"
+                  className="form-input"
+                  value={dados.genero}
+                  onChange={(e) => setDados(prev => ({ ...prev, genero: e.target.value }))}
+                  disabled={loading}
+                >
+                  <option value="">Selecione...</option>
+                  <option value="masculino">Masculino</option>
+                  <option value="feminino">Feminino</option>
+                  <option value="nao-binario">Não-binário</option>
+                  <option value="outro">Outro</option>
+                  <option value="prefiro-nao-informar">Prefiro não informar</option>
+                </select>
               </div>
             </div>
             <div className="form-group">

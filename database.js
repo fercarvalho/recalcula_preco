@@ -165,7 +165,9 @@ async function inicializar() {
             { nome: 'complemento_comercial', tipo: 'VARCHAR(255)' },
             { nome: 'cidade_comercial', tipo: 'VARCHAR(100)' },
             { nome: 'estado_comercial', tipo: 'VARCHAR(2)' },
-            { nome: 'foto_perfil', tipo: 'VARCHAR(500)' }
+            { nome: 'foto_perfil', tipo: 'VARCHAR(500)' },
+            { nome: 'data_nascimento', tipo: 'DATE' },
+            { nome: 'genero', tipo: 'VARCHAR(50)' }
         ];
         
         for (const coluna of colunasDadosPessoais) {
@@ -1027,7 +1029,7 @@ async function verificarCredenciais(identificador, senha) {
 async function obterUsuarioPorId(id) {
     try {
         const result = await pool.query(
-            'SELECT id, username, email, is_admin, tutorial_completed, nome, sobrenome, telefone, cpf, nome_estabelecimento, cep_residencial, endereco_residencial, numero_residencial, complemento_residencial, cidade_residencial, estado_residencial, cep_comercial, endereco_comercial, numero_comercial, complemento_comercial, cidade_comercial, estado_comercial, foto_perfil FROM usuarios WHERE id = $1',
+            'SELECT id, username, email, is_admin, tutorial_completed, nome, sobrenome, telefone, cpf, nome_estabelecimento, cep_residencial, endereco_residencial, numero_residencial, complemento_residencial, cidade_residencial, estado_residencial, cep_comercial, endereco_comercial, numero_comercial, complemento_comercial, cidade_comercial, estado_comercial, foto_perfil, data_nascimento, genero FROM usuarios WHERE id = $1',
             [id]
         );
         
@@ -1059,7 +1061,9 @@ async function obterUsuarioPorId(id) {
             complemento_comercial: row.complemento_comercial || null,
             cidade_comercial: row.cidade_comercial || null,
             estado_comercial: row.estado_comercial || null,
-            foto_perfil: row.foto_perfil || null
+            foto_perfil: row.foto_perfil || null,
+            data_nascimento: row.data_nascimento || null,
+            genero: row.genero || null
         };
     } catch (error) {
         console.error('Erro ao obter usuário:', error);
@@ -5212,7 +5216,7 @@ async function atualizarDadosUsuario(usuarioId, dados) {
             'complemento_residencial', 'cidade_residencial', 'estado_residencial',
             'cep_comercial', 'endereco_comercial', 'numero_comercial',
             'complemento_comercial', 'cidade_comercial', 'estado_comercial',
-            'foto_perfil'
+            'foto_perfil', 'data_nascimento', 'genero'
         ];
 
         for (const campo of campos) {
@@ -5229,7 +5233,7 @@ async function atualizarDadosUsuario(usuarioId, dados) {
         updates.push('updated_at = CURRENT_TIMESTAMP');
         values.push(usuarioId);
 
-        const query = `UPDATE usuarios SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, nome, sobrenome, telefone, cpf, nome_estabelecimento, cep_residencial, endereco_residencial, numero_residencial, complemento_residencial, cidade_residencial, estado_residencial, cep_comercial, endereco_comercial, numero_comercial, complemento_comercial, cidade_comercial, estado_comercial, foto_perfil`;
+        const query = `UPDATE usuarios SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, nome, sobrenome, telefone, cpf, nome_estabelecimento, cep_residencial, endereco_residencial, numero_residencial, complemento_residencial, cidade_residencial, estado_residencial, cep_comercial, endereco_comercial, numero_comercial, complemento_comercial, cidade_comercial, estado_comercial, foto_perfil, data_nascimento, genero`;
         const result = await pool.query(query, values);
 
         if (result.rows.length === 0) {

@@ -57,6 +57,33 @@
   cursor: not-allowed;
 }
 
+.date-input {
+  position: relative;
+}
+
+.date-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 1;
+  filter: invert(0.5) sepia(1) saturate(5) hue-rotate(0deg);
+}
+
+.date-input::-webkit-calendar-picker-indicator:hover {
+  opacity: 0.8;
+}
+
+.form-input select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 35px;
+  cursor: pointer;
+}
+
+.form-input select:disabled {
+  cursor: not-allowed;
+}
+
 .checkbox-group {
   margin-bottom: 20px;
 }
