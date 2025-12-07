@@ -150,6 +150,38 @@ const GerenciamentoFuncoes = ({ isOpen, onClose, onOpenOrganizar }: Gerenciament
     }
   };
 
+  const handleToggleBeta = async (funcao: Funcao) => {
+    if (!funcao.id) return;
+    
+    try {
+      const novaEmBeta = !funcao.em_beta;
+      const funcaoAtualizada = {
+        titulo: funcao.titulo,
+        descricao: funcao.descricao,
+        icone: funcao.icone || null,
+        icone_upload: funcao.icone_upload || null,
+        ativa: funcao.ativa,
+        eh_ia: funcao.eh_ia,
+        em_beta: novaEmBeta,
+        ordem: funcao.ordem || 0
+      };
+      await apiService.atualizarFuncao(funcao.id, funcaoAtualizada);
+      
+      // Atualizar localmente sem recarregar toda a lista
+      setFuncoes(prevFuncoes => 
+        prevFuncoes.map(f => 
+          f.id === funcao.id ? { ...f, em_beta: novaEmBeta } : f
+        )
+      );
+    } catch (error: any) {
+      console.error('Erro ao atualizar função:', error);
+      const mensagem = error.response?.data?.error || error.message || 'Erro ao atualizar função. Tente novamente.';
+      await mostrarAlert('Erro', mensagem);
+      // Em caso de erro, recarregar para garantir sincronização
+      await carregarFuncoes();
+    }
+  };
+
   const handleDeletar = async (funcao: Funcao) => {
     const confirmado = await mostrarConfirm(
       'Confirmar Exclusão',

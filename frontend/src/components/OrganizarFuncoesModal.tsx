@@ -47,12 +47,16 @@ const CATEGORIAS: Categoria[] = [
 interface CategoriaFuncoesProps {
   categoria: Categoria;
   funcoes: Funcao[];
+  todasFuncoes: Funcao[];
   onReorder: (categoria: CategoriaTipo, novasFuncoes: Funcao[]) => void;
   onRestaurarPadrao: (categoria: CategoriaTipo) => void;
   loading: boolean;
 }
 
-const CategoriaFuncoes = ({ categoria, funcoes, onReorder, onRestaurarPadrao, loading }: CategoriaFuncoesProps) => {
+const CategoriaFuncoes = ({ categoria, funcoes, todasFuncoes, onReorder, onRestaurarPadrao, loading }: CategoriaFuncoesProps) => {
+  const [dragOverCategoria, setDragOverCategoria] = useState(false);
+  const [funcaoArrastando, setFuncaoArrastando] = useState<Funcao | null>(null);
+
   // Garantir que todas as funções tenham ID
   const funcoesComIds = funcoes.map((f, index) => ({
     ...f,
@@ -70,8 +74,78 @@ const CategoriaFuncoes = ({ categoria, funcoes, onReorder, onRestaurarPadrao, lo
     onReorder(categoria.id, novasFuncoes);
   });
 
+  const handleDragStartItem = (e: React.DragEvent, funcao: Funcao) => {
+    const funcaoCompleta = todasFuncoes.find(f => f.id === funcao.id) || funcao;
+    setFuncaoArrastando(funcaoCompleta);
+    handleDragStart(e, funcao.id || 0, 'item');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('funcao-id', String(funcao.id || 0));
+    e.dataTransfer.setData('categoria-origem', categoria.id);
+    e.dataTransfer.setData('application/json', JSON.stringify(funcaoCompleta));
+  };
+
+  const handleDragOverCategoria = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverCategoria(true);
+  };
+
+  const handleDragLeaveCategoria = (e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setDragOverCategoria(false);
+    }
+  };
+
+  const handleDropCategoria = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverCategoria(false);
+
+    try {
+      const funcaoData = e.dataTransfer.getData('application/json');
+      if (!funcaoData) {
+        // Tentar obter do estado como fallback
+        if (!funcaoArrastando) return;
+        const funcaoJaNaCategoria = funcoes.find(f => f.id === funcaoArrastando.id);
+        if (funcaoJaNaCategoria) return;
+        const novasFuncoes = [...funcoes, funcaoArrastando];
+        onReorder(categoria.id, novasFuncoes);
+        setFuncaoArrastando(null);
+        return;
+      }
+
+      const funcaoArrastada: Funcao = JSON.parse(funcaoData);
+      
+      // Se a função já está nesta categoria, apenas reordenar (deixa o drag and drop interno lidar)
+      const funcaoJaNaCategoria = funcoes.find(f => f.id === funcaoArrastada.id);
+      if (funcaoJaNaCategoria) {
+        setFuncaoArrastando(null);
+        return;
+      }
+
+      // Adicionar função à categoria
+      const novasFuncoes = [...funcoes, funcaoArrastada];
+      onReorder(categoria.id, novasFuncoes);
+    } catch (error) {
+      console.error('Erro ao processar drop:', error);
+    }
+    setFuncaoArrastando(null);
+  };
+
+  const handleDragEndItem = (e: React.DragEvent) => {
+    handleDragEnd(e);
+    setFuncaoArrastando(null);
+    setDragOverCategoria(false);
+  };
+
   return (
-    <div className="funcao-categoria">
+    <div 
+      className={`funcao-categoria ${dragOverCategoria ? 'drag-over-categoria' : ''}`}
+      onDragOver={handleDragOverCategoria}
+      onDragLeave={handleDragLeaveCategoria}
+      onDrop={handleDropCategoria}
+    >
       <div className="funcao-categoria-header">
         <div className="funcao-categoria-header-left">
           <h3>{categoria.titulo}</h3>
@@ -92,8 +166,8 @@ const CategoriaFuncoes = ({ categoria, funcoes, onReorder, onRestaurarPadrao, lo
                   key={funcaoId}
                   className="funcao-item"
                   draggable
-                  onDragStart={(e) => handleDragStart(e, funcaoId, 'item')}
-                  onDragEnd={handleDragEnd}
+                  onDragStart={(e) => handleDragStartItem(e, funcao)}
+                  onDragEnd={handleDragEndItem}
                   onDragOver={(e) => handleDragOver(e, funcaoId)}
                   onDrop={(e) => handleDrop(e, funcaoId)}
                   onDragLeave={handleDragLeave}
@@ -171,11 +245,15 @@ const OrganizarFuncoesModal = ({ isOpen, onClose, onUpdate }: OrganizarFuncoesMo
             // Funções de IA em Beta: em_beta = true E eh_ia = true
             return f.em_beta === true && f.eh_ia === true;
           } else if (categoria.id === 'beta') {
-            // Funções em Beta: em_beta = true (qualquer função)
-            return f.em_beta === true;
+            // Funções em Beta: em_beta = true E eh_ia = false (não-IA)
+            return f.em_beta === true && f.eh_ia === false;
           }
         }
-        // Para outras categorias, usar lógica original
+        // Para outras categorias, usar lógica original, mas excluir funções em beta
+        // Funções em beta não devem aparecer em "Funções Lançadas" ou "Funções de IA Lançadas"
+        if (f.em_beta === true) {
+          return false; // Funções em beta não aparecem em categorias normais
+        }
         return f.ativa === categoria.ativa && f.eh_ia === categoria.eh_ia;
       })
       .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
@@ -311,23 +389,92 @@ const OrganizarFuncoesModal = ({ isOpen, onClose, onUpdate }: OrganizarFuncoesMo
 
   // Drag and drop para reordenar funções dentro de uma categoria específica
   const handleReorderFuncoesCategoria = async (categoria: CategoriaTipo, novasFuncoesCategoria: Funcao[]) => {
+    const categoriaInfo = CATEGORIAS.find(c => c.id === categoria);
+    if (!categoriaInfo) return;
+
+    // Identificar funções que estavam na categoria antes
+    const funcoesAnterioresNaCategoria = funcoes.filter(f => {
+      if (categoriaInfo.em_beta !== undefined) {
+        if (categoriaInfo.id === 'ia-beta') {
+          return f.em_beta === true && f.eh_ia === true;
+        } else if (categoriaInfo.id === 'beta') {
+          return f.em_beta === true && f.eh_ia === false;
+        }
+      }
+      return f.ativa === categoriaInfo.ativa && f.eh_ia === categoriaInfo.eh_ia;
+    });
+
+    // Identificar funções que foram adicionadas à categoria (não estavam antes)
+    const funcoesAdicionadas = novasFuncoesCategoria.filter(nova => 
+      !funcoesAnterioresNaCategoria.some(antiga => antiga.id === nova.id)
+    );
+
+    // Identificar funções que foram removidas da categoria (estavam antes mas não estão mais)
+    const funcoesRemovidas = funcoesAnterioresNaCategoria.filter(antiga =>
+      !novasFuncoesCategoria.some(nova => nova.id === antiga.id)
+    );
+
+    // Atualizar propriedades das funções baseado na categoria
+    const funcoesAtualizadas = funcoes.map(f => {
+      // Se a função foi adicionada à categoria beta, atualizar em_beta
+      if (categoriaInfo.id === 'beta' && funcoesAdicionadas.some(adicionada => adicionada.id === f.id)) {
+        return { ...f, em_beta: true };
+      }
+      
+      // Se a função foi adicionada à categoria ia-beta, atualizar em_beta e garantir eh_ia
+      if (categoriaInfo.id === 'ia-beta' && funcoesAdicionadas.some(adicionada => adicionada.id === f.id)) {
+        return { ...f, em_beta: true, eh_ia: true };
+      }
+      
+      // Se a função foi removida da categoria beta, atualizar em_beta para false
+      if ((categoriaInfo.id === 'beta' || categoriaInfo.id === 'ia-beta') && 
+          funcoesRemovidas.some(removida => removida.id === f.id)) {
+        return { ...f, em_beta: false };
+      }
+      
+      return f;
+    });
+
     // Criar nova lista completa mantendo outras categorias intactas
-    const outrasFuncoes = funcoes.filter(f => {
+    const outrasFuncoes = funcoesAtualizadas.filter(f => {
       const categoriaFuncao = CATEGORIAS.find(c => {
         // Para categorias beta, verificar em_beta
         if (c.em_beta !== undefined) {
           if (c.id === 'ia-beta') {
             return f.em_beta === true && f.eh_ia === true;
           } else if (c.id === 'beta') {
-            return f.em_beta === true;
+            return f.em_beta === true && f.eh_ia === false;
           }
         }
         // Para outras categorias, usar lógica original
-        return c.ativa === f.ativa && c.eh_ia === f.eh_ia;
+        return c.ativa === f.ativa && c.eh_ia === f.eh_ia && (c.em_beta === undefined || f.em_beta === false);
       });
       return categoriaFuncao?.id !== categoria;
     });
-    const todasFuncoes = [...outrasFuncoes, ...novasFuncoesCategoria];
+    
+    // Atualizar as funções que estão na nova categoria com as propriedades corretas
+    const novasFuncoesComPropriedades = novasFuncoesCategoria.map(f => {
+      const funcaoOriginal = funcoesAtualizadas.find(orig => orig.id === f.id) || f;
+      
+      // Se está sendo movida para beta, garantir em_beta = true
+      if (categoriaInfo.id === 'beta') {
+        return { ...funcaoOriginal, em_beta: true, eh_ia: false };
+      }
+      
+      // Se está sendo movida para ia-beta, garantir em_beta = true e eh_ia = true
+      if (categoriaInfo.id === 'ia-beta') {
+        return { ...funcaoOriginal, em_beta: true, eh_ia: true };
+      }
+      
+      // Para outras categorias, garantir em_beta = false
+      if (categoriaInfo.em_beta === undefined) {
+        return { ...funcaoOriginal, em_beta: false };
+      }
+      
+      return funcaoOriginal;
+    });
+    
+    const todasFuncoes = [...outrasFuncoes, ...novasFuncoesComPropriedades];
     
     // Recalcular ordem sequencial dentro da categoria específica
     const funcoesDaCategoria = todasFuncoes
@@ -338,17 +485,17 @@ const OrganizarFuncoesModal = ({ isOpen, onClose, onUpdate }: OrganizarFuncoesMo
             if (c.id === 'ia-beta') {
               return f.em_beta === true && f.eh_ia === true;
             } else if (c.id === 'beta') {
-              return f.em_beta === true;
+              return f.em_beta === true && f.eh_ia === false;
             }
           }
           // Para outras categorias, usar lógica original
-          return c.ativa === f.ativa && c.eh_ia === f.eh_ia;
+          return c.ativa === f.ativa && c.eh_ia === f.eh_ia && (c.em_beta === undefined || f.em_beta === false);
         });
         return categoriaFuncao?.id === categoria;
       })
       .sort((a, b) => {
-        const indexA = todasFuncoes.findIndex(f => f.id === a.id);
-        const indexB = todasFuncoes.findIndex(f => f.id === b.id);
+        const indexA = novasFuncoesComPropriedades.findIndex(f => f.id === a.id);
+        const indexB = novasFuncoesComPropriedades.findIndex(f => f.id === b.id);
         return indexA - indexB;
       });
     
@@ -423,6 +570,7 @@ const OrganizarFuncoesModal = ({ isOpen, onClose, onUpdate }: OrganizarFuncoesMo
                   key={categoria.id}
                   categoria={categoria}
                   funcoes={funcoesDaCategoria}
+                  todasFuncoes={funcoes}
                   onReorder={handleReorderFuncoesCategoria}
                   onRestaurarPadrao={handleRestaurarPadraoCategoria}
                   loading={loading}
@@ -437,3 +585,4 @@ const OrganizarFuncoesModal = ({ isOpen, onClose, onUpdate }: OrganizarFuncoesMo
 };
 
 export default OrganizarFuncoesModal;
+

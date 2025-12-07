@@ -15,6 +15,13 @@
   border-radius: 8px;
   padding: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s;
+}
+
+.funcao-categoria.drag-over-categoria {
+  border-color: var(--cor-primaria, #FF6B35);
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+  background: #fff5f0;
 }
 
 .funcao-categoria-header {
