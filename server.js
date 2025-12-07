@@ -1882,13 +1882,18 @@ app.delete('/api/admin/planos/:id', authenticateToken, requireAdmin, async (req,
 app.put('/api/admin/beneficios/:id', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
-        const { texto, eh_aviso } = req.body;
+        const { texto, eh_aviso, em_beta } = req.body;
         
         if (!texto || texto.trim() === '') {
             return res.status(400).json({ error: 'Texto do benefício é obrigatório' });
         }
         
-        const beneficio = await db.atualizarBeneficio(parseInt(id), texto.trim(), eh_aviso !== undefined ? eh_aviso : null);
+        const beneficio = await db.atualizarBeneficio(
+            parseInt(id), 
+            texto.trim(), 
+            eh_aviso !== undefined ? eh_aviso : null,
+            em_beta !== undefined ? em_beta : null
+        );
         if (!beneficio) {
             return res.status(404).json({ error: 'Benefício não encontrado' });
         }

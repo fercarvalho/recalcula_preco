@@ -11,6 +11,7 @@ export interface Beneficio {
   texto: string;
   ordem?: number;
   eh_aviso?: boolean;
+  em_beta?: boolean;
 }
 
 export interface Plano {
@@ -363,11 +364,17 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
     return plano.beneficios.map((b, index) => {
       if (typeof b === 'string') {
         const ehAviso = b.startsWith('⚠️');
+      const emBeta = b.startsWith('🚀');
+      let textoLimpo = b;
+      if (ehAviso) textoLimpo = textoLimpo.substring(2).trim();
+      if (emBeta) textoLimpo = textoLimpo.substring(2).trim();
+      if (!ehAviso && b.startsWith('🚀')) textoLimpo = b.substring(2).trim();
         return {
           id: `temp-${index}`, // ID temporário para benefícios sem ID
-          texto: ehAviso ? b.substring(1).trim() : b,
+          texto: textoLimpo,
           ordem: index + 1,
-          eh_aviso: ehAviso
+          eh_aviso: ehAviso,
+          em_beta: emBeta
         };
       }
       return b;
@@ -408,11 +415,17 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
       const beneficiosFormatados = (plano.beneficios || []).map((b, index) => {
         if (typeof b === 'string') {
           const ehAviso = b.startsWith('⚠️');
+          const emBeta = b.startsWith('🚀');
+          let textoLimpo = b;
+          if (ehAviso) textoLimpo = textoLimpo.substring(2).trim();
+          if (emBeta) textoLimpo = textoLimpo.substring(2).trim();
+          if (!ehAviso && b.startsWith('🚀')) textoLimpo = b.substring(2).trim();
           return {
             id: `temp-${index}`, // ID temporário para benefícios sem ID
-            texto: ehAviso ? b.substring(1).trim() : b,
+            texto: textoLimpo,
             ordem: index + 1,
-            eh_aviso: ehAviso
+            eh_aviso: ehAviso,
+            em_beta: emBeta
           };
         }
         return b;
@@ -438,10 +451,16 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
     if (novoBeneficio.trim()) {
       const texto = novoBeneficio.trim();
       const ehAviso = texto.startsWith('⚠️');
+      const emBeta = texto.startsWith('🚀');
+      let textoLimpo = texto;
+      if (ehAviso) textoLimpo = textoLimpo.substring(2).trim();
+      if (emBeta) textoLimpo = textoLimpo.substring(2).trim();
+      if (!ehAviso && texto.startsWith('🚀')) textoLimpo = texto.substring(2).trim();
       const novo: Beneficio = {
-        texto: ehAviso ? texto.substring(1).trim() : texto,
+        texto: textoLimpo,
         ordem: beneficios.length + 1,
-        eh_aviso: ehAviso
+        eh_aviso: ehAviso,
+        em_beta: emBeta
       };
       setBeneficios([...beneficios, novo]);
       setNovoBeneficio('');
@@ -456,7 +475,8 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
         id: beneficio.id,
         texto: beneficio.texto,
         ordem: beneficios.length + 1,
-        eh_aviso: beneficio.eh_aviso || false
+        eh_aviso: beneficio.eh_aviso || false,
+        em_beta: beneficio.em_beta || false
       };
       setBeneficios([...beneficios, novo]);
       setBuscaBeneficio('');
@@ -515,7 +535,10 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
 
   const handleIniciarEdicao = (beneficio: Beneficio) => {
     setBeneficioEditando(beneficio.id ? Number(beneficio.id) : null);
-    setTextoEditando(beneficio.eh_aviso ? `⚠️ ${beneficio.texto}` : beneficio.texto);
+    let textoComPrefixo = beneficio.texto;
+    if (beneficio.eh_aviso) textoComPrefixo = `⚠️ ${textoComPrefixo}`;
+    if (beneficio.em_beta) textoComPrefixo = `🚀 ${textoComPrefixo}`;
+    setTextoEditando(textoComPrefixo);
   };
 
   const handleCancelarEdicao = () => {
@@ -531,12 +554,17 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
     
     const texto = textoEditando.trim();
     const ehAviso = texto.startsWith('⚠️');
-    const textoLimpo = ehAviso ? texto.substring(1).trim() : texto;
+    const emBeta = texto.startsWith('🚀');
+    let textoLimpo = texto;
+    if (ehAviso) textoLimpo = textoLimpo.substring(2).trim();
+    if (textoLimpo.startsWith('🚀')) textoLimpo = textoLimpo.substring(2).trim();
+    if (emBeta && !ehAviso) textoLimpo = texto.substring(2).trim();
+    if (textoLimpo.startsWith('⚠️')) textoLimpo = textoLimpo.substring(2).trim();
     
     if (!beneficio.id) {
       // Se não tem ID, é um benefício novo - apenas atualizar localmente
       setBeneficios(beneficios.map(b => 
-        b === beneficio ? { ...b, texto: textoLimpo, eh_aviso: ehAviso } : b
+        b === beneficio ? { ...b, texto: textoLimpo, eh_aviso: ehAviso, em_beta: emBeta } : b
       ));
       setBeneficioEditando(null);
       setTextoEditando('');
@@ -545,7 +573,7 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
     
     try {
       setLoading(true);
-      const beneficioAtualizado = await apiService.atualizarBeneficio(Number(beneficio.id), textoLimpo, ehAviso);
+      const beneficioAtualizado = await apiService.atualizarBeneficio(Number(beneficio.id), textoLimpo, ehAviso, emBeta);
       setBeneficios(beneficios.map(b => 
         b.id === beneficio.id ? beneficioAtualizado : b
       ));
@@ -1142,7 +1170,7 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
                 ) : (
                   <>
                     <span style={{ color: beneficio.eh_aviso ? '#ffc107' : 'inherit' }}>
-                      {beneficio.eh_aviso ? '⚠️ ' : ''}{beneficio.texto}
+                      {beneficio.eh_aviso ? '⚠️ ' : ''}{beneficio.em_beta ? '🚀 ' : ''}{beneficio.texto}
                     </span>
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                       <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', cursor: 'pointer' }}>
@@ -1152,7 +1180,7 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
                           onChange={(e) => {
                             if (beneficio.id) {
                               // Se tem ID, atualizar no banco
-                              apiService.atualizarBeneficio(Number(beneficio.id), beneficio.texto, e.target.checked)
+                              apiService.atualizarBeneficio(Number(beneficio.id), beneficio.texto, e.target.checked, beneficio.em_beta)
                                 .then(beneficioAtualizado => {
                                   setBeneficios(beneficios.map(b => 
                                     b.id === beneficio.id ? beneficioAtualizado : b
@@ -1172,6 +1200,34 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
                           disabled={loading}
                         />
                         Aviso
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={beneficio.em_beta || false}
+                          onChange={(e) => {
+                            if (beneficio.id) {
+                              // Se tem ID, atualizar no banco
+                              apiService.atualizarBeneficio(Number(beneficio.id), beneficio.texto, beneficio.eh_aviso, e.target.checked)
+                                .then(beneficioAtualizado => {
+                                  setBeneficios(beneficios.map(b => 
+                                    b.id === beneficio.id ? beneficioAtualizado : b
+                                  ));
+                                })
+                                .catch(error => {
+                                  console.error('Erro ao atualizar benefício:', error);
+                                  mostrarAlert('Erro', 'Erro ao atualizar benefício. Tente novamente.');
+                                });
+                            } else {
+                              // Se não tem ID, apenas atualizar localmente
+                              setBeneficios(beneficios.map(b => 
+                                b === beneficio ? { ...b, em_beta: e.target.checked } : b
+                              ));
+                            }
+                          }}
+                          disabled={loading}
+                        />
+                        Em Beta
                       </label>
                       <button
                         type="button"

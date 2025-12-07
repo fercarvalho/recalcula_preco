@@ -630,16 +630,29 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
                           const ehAviso = typeof beneficio === 'string' 
                             ? texto.startsWith('⚠️')
                             : (beneficio.eh_aviso || false);
-                          const textoLimpo = typeof beneficio === 'string' && texto.startsWith('⚠️')
-                            ? texto.substring(1).trim()
-                            : texto;
+                          const emBeta = typeof beneficio === 'string'
+                            ? texto.startsWith('🚀')
+                            : (beneficio.em_beta || false);
+                          let textoLimpo = texto;
+                          if (typeof beneficio === 'string') {
+                            if (texto.startsWith('⚠️')) textoLimpo = texto.substring(2).trim();
+                            if (textoLimpo.startsWith('🚀')) textoLimpo = textoLimpo.substring(2).trim();
+                            if (texto.startsWith('🚀')) textoLimpo = texto.substring(2).trim();
+                            if (textoLimpo.startsWith('⚠️')) textoLimpo = textoLimpo.substring(2).trim();
+                          } else {
+                            textoLimpo = texto;
+                          }
                           return (
                             <li 
                               key={typeof beneficio === 'string' ? index : (beneficio.id || index)}
-                              className={ehAviso ? 'texto-aviso' : ''}
+                              className={ehAviso ? 'texto-aviso' : (emBeta ? 'texto-beta' : '')}
                             >
                               {ehAviso ? (
                                 <>⚠️ {textoLimpo}</>
+                              ) : emBeta ? (
+                                <>
+                                  <FaCheck /> <span className="texto-beneficio">{textoLimpo}</span> <span className="badge-beta">Em Beta</span>
+                                </>
                               ) : (
                                 <><FaCheck /> {textoLimpo}</>
                               )}

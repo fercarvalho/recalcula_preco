@@ -345,12 +345,13 @@ export const apiService = {
   },
 
   // ========== BENEFÍCIOS ==========
-  async atualizarBeneficio(id: number, texto: string, eh_aviso?: boolean): Promise<{
+  async atualizarBeneficio(id: number, texto: string, eh_aviso?: boolean, em_beta?: boolean): Promise<{
     id: number;
     texto: string;
     eh_aviso: boolean;
+    em_beta: boolean;
   }> {
-    const response = await api.put(`/api/admin/beneficios/${id}`, { texto, eh_aviso });
+    const response = await api.put(`/api/admin/beneficios/${id}`, { texto, eh_aviso, em_beta });
     return response.data;
   },
 
@@ -366,6 +367,7 @@ export const apiService = {
     id: number;
     texto: string;
     eh_aviso: boolean;
+    em_beta: boolean;
   }>> {
     const response = await api.get('/api/admin/beneficios');
     return response.data;

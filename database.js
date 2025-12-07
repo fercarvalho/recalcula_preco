@@ -594,6 +594,12 @@ async function inicializar() {
             ADD COLUMN IF NOT EXISTS eh_aviso BOOLEAN DEFAULT FALSE
         `);
         
+        // Adicionar coluna em_beta se não existir (para tabelas já criadas)
+        await pool.query(`
+            ALTER TABLE beneficios 
+            ADD COLUMN IF NOT EXISTS em_beta BOOLEAN DEFAULT FALSE
+        `);
+        
         // Remover plano_id se existir (migração)
         await pool.query(`
             DO $$ 
@@ -4379,7 +4385,7 @@ async function obterPlanos(apenasAtivos = false) {
         for (const row of result.rows) {
             // Buscar benefícios através da tabela intermediária
             const beneficiosResult = await pool.query(
-                `SELECT b.id, b.texto, pb.ordem, b.eh_aviso 
+                `SELECT b.id, b.texto, pb.ordem, b.eh_aviso, b.em_beta 
                  FROM beneficios b
                  INNER JOIN plano_beneficios pb ON b.id = pb.beneficio_id
                  WHERE pb.plano_id = $1 
@@ -4391,7 +4397,8 @@ async function obterPlanos(apenasAtivos = false) {
                 id: b.id,
                 texto: b.texto,
                 ordem: b.ordem,
-                eh_aviso: b.eh_aviso || false
+                eh_aviso: b.eh_aviso || false,
+                em_beta: b.em_beta || false
             }));
             
             planos.push({
@@ -4431,7 +4438,7 @@ async function obterPlanoPorId(id) {
         
         // Buscar benefícios através da tabela intermediária
         const beneficiosResult = await pool.query(
-            `SELECT b.id, b.texto, pb.ordem, b.eh_aviso 
+            `SELECT b.id, b.texto, pb.ordem, b.eh_aviso, b.em_beta 
              FROM beneficios b
              INNER JOIN plano_beneficios pb ON b.id = pb.beneficio_id
              WHERE pb.plano_id = $1 
@@ -4443,7 +4450,8 @@ async function obterPlanoPorId(id) {
             id: b.id,
             texto: b.texto,
             ordem: b.ordem,
-            eh_aviso: b.eh_aviso || false
+            eh_aviso: b.eh_aviso || false,
+            em_beta: b.em_beta || false
         }));
         
         return {
@@ -4511,12 +4519,15 @@ async function criarPlano(plano) {
                 const ehAviso = typeof beneficio === 'string' 
                     ? texto.startsWith('⚠️')
                     : (beneficio.eh_aviso || false);
+                const emBeta = typeof beneficio === 'string' 
+                    ? false
+                    : (beneficio.em_beta || false);
                 const textoLimpo = typeof beneficio === 'string' && texto.startsWith('⚠️')
                     ? texto.substring(1).trim()
                     : texto;
                 
                 // Obter ou criar benefício único
-                const beneficioId = await obterOuCriarBeneficio(textoLimpo, ehAviso);
+                const beneficioId = await obterOuCriarBeneficio(textoLimpo, ehAviso, emBeta);
                 
                 // Criar relacionamento
                 await pool.query(
@@ -4526,7 +4537,7 @@ async function criarPlano(plano) {
                 
                 // Buscar dados do benefício para retornar
                 const beneficioResult = await pool.query(
-                    'SELECT id, texto, eh_aviso FROM beneficios WHERE id = $1',
+                    'SELECT id, texto, eh_aviso, em_beta FROM beneficios WHERE id = $1',
                     [beneficioId]
                 );
                 
@@ -4534,7 +4545,8 @@ async function criarPlano(plano) {
                     id: beneficioResult.rows[0].id,
                     texto: beneficioResult.rows[0].texto,
                     ordem: ordem,
-                    eh_aviso: beneficioResult.rows[0].eh_aviso || false
+                    eh_aviso: beneficioResult.rows[0].eh_aviso || false,
+                    em_beta: beneficioResult.rows[0].em_beta || false
                 });
             }
         }
@@ -4622,12 +4634,15 @@ async function atualizarPlano(id, plano) {
                     const ehAviso = typeof beneficio === 'string' 
                         ? texto.startsWith('⚠️')
                         : (beneficio.eh_aviso || false);
+                    const emBeta = typeof beneficio === 'string' 
+                        ? false
+                        : (beneficio.em_beta || false);
                     const textoLimpo = typeof beneficio === 'string' && texto.startsWith('⚠️')
                         ? texto.substring(1).trim()
                         : texto;
                     
                     // Obter ou criar benefício único
-                    const beneficioId = await obterOuCriarBeneficio(textoLimpo, ehAviso);
+                    const beneficioId = await obterOuCriarBeneficio(textoLimpo, ehAviso, emBeta);
                     
                     // Criar relacionamento
                     await pool.query(
@@ -4646,7 +4661,7 @@ async function atualizarPlano(id, plano) {
         
         // Buscar benefícios atualizados através da tabela intermediária
         const beneficiosResult = await pool.query(
-            `SELECT b.id, b.texto, pb.ordem, b.eh_aviso 
+            `SELECT b.id, b.texto, pb.ordem, b.eh_aviso, b.em_beta 
              FROM beneficios b
              INNER JOIN plano_beneficios pb ON b.id = pb.beneficio_id
              WHERE pb.plano_id = $1 
@@ -4658,7 +4673,8 @@ async function atualizarPlano(id, plano) {
             id: b.id,
             texto: b.texto,
             ordem: b.ordem,
-            eh_aviso: b.eh_aviso || false
+            eh_aviso: b.eh_aviso || false,
+            em_beta: b.em_beta || false
         }));
         
         return {
@@ -4816,12 +4832,13 @@ async function atualizarOrdemBeneficios(planoId, beneficiosIds) {
 async function obterTodosBeneficios() {
     try {
         const result = await pool.query(
-            'SELECT id, texto, eh_aviso FROM beneficios ORDER BY texto ASC'
+            'SELECT id, texto, eh_aviso, em_beta FROM beneficios ORDER BY texto ASC'
         );
         return result.rows.map(row => ({
             id: row.id,
             texto: row.texto,
-            eh_aviso: row.eh_aviso || false
+            eh_aviso: row.eh_aviso || false,
+            em_beta: row.em_beta || false
         }));
     } catch (error) {
         console.error('Erro ao obter todos os benefícios:', error);
@@ -4830,13 +4847,13 @@ async function obterTodosBeneficios() {
 }
 
 // Obter ou criar benefício único (compartilhado entre planos)
-async function obterOuCriarBeneficio(texto, ehAviso = false) {
+async function obterOuCriarBeneficio(texto, ehAviso = false, emBeta = false) {
     try {
         const textoLimpo = texto.trim();
         
         // Tentar buscar benefício existente
         const result = await pool.query(
-            'SELECT id, texto, eh_aviso FROM beneficios WHERE texto = $1',
+            'SELECT id, texto, eh_aviso, em_beta FROM beneficios WHERE texto = $1',
             [textoLimpo]
         );
         
@@ -4846,8 +4863,8 @@ async function obterOuCriarBeneficio(texto, ehAviso = false) {
         
         // Criar novo benefício
         const insertResult = await pool.query(
-            'INSERT INTO beneficios (texto, eh_aviso) VALUES ($1, $2) RETURNING id',
-            [textoLimpo, ehAviso]
+            'INSERT INTO beneficios (texto, eh_aviso, em_beta) VALUES ($1, $2, $3) RETURNING id',
+            [textoLimpo, ehAviso, emBeta]
         );
         
         return insertResult.rows[0].id;
@@ -4858,7 +4875,7 @@ async function obterOuCriarBeneficio(texto, ehAviso = false) {
 }
 
 // Atualizar benefício (afeta todos os planos que o utilizam)
-async function atualizarBeneficio(id, texto, ehAviso = null) {
+async function atualizarBeneficio(id, texto, ehAviso = null, emBeta = null) {
     try {
         const textoLimpo = texto.trim();
         
@@ -4873,14 +4890,23 @@ async function atualizarBeneficio(id, texto, ehAviso = null) {
         }
         
         let query = 'UPDATE beneficios SET texto = $1, updated_at = CURRENT_TIMESTAMP';
-        const params = [textoLimpo, id];
+        const params = [textoLimpo];
+        let paramIndex = 2;
         
         if (ehAviso !== null) {
-            query += ', eh_aviso = $3';
+            query += `, eh_aviso = $${paramIndex}`;
             params.push(ehAviso);
+            paramIndex++;
         }
         
-        query += ' WHERE id = $2 RETURNING *';
+        if (emBeta !== null) {
+            query += `, em_beta = $${paramIndex}`;
+            params.push(emBeta);
+            paramIndex++;
+        }
+        
+        query += ` WHERE id = $${paramIndex} RETURNING *`;
+        params.push(id);
         
         const result = await pool.query(query, params);
         if (result.rows.length === 0) {
@@ -4890,7 +4916,8 @@ async function atualizarBeneficio(id, texto, ehAviso = null) {
         return {
             id: row.id,
             texto: row.texto,
-            eh_aviso: row.eh_aviso || false
+            eh_aviso: row.eh_aviso || false,
+            em_beta: row.em_beta || false
         };
     } catch (error) {
         console.error('Erro ao atualizar benefício:', error);
