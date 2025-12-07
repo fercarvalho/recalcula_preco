@@ -290,8 +290,6 @@ const MenuUsuario = ({ onLogout, onReiniciarSistema, onReexibirTutorial, onOpenA
               <span>Alterar Senha</span>
             </button>
 
-            {/* Debug: mostrar estado do email */}
-            {console.log('MenuUsuario - Render - emailNaoValidado:', emailNaoValidado, 'statusPagamento?.emailNaoValidado:', statusPagamento?.emailNaoValidado)}
             
             {/* Mostrar APENAS se emailNaoValidado for true (email não validado) */}
             {/* Não mostrar se emailNaoValidado for false (email validado) ou null (ainda não verificado) */}

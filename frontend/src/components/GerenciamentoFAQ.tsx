@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { FaQuestionCircle, FaPlus, FaEdit, FaTrash, FaSave, FaGripVertical, FaUndo } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaSave, FaGripVertical, FaUndo } from 'react-icons/fa';
 import Modal from './Modal';
 import { mostrarAlert, mostrarConfirm } from '../utils/modals';
 import { apiService } from '../services/api';
@@ -328,7 +328,7 @@ const ModalFAQ = ({ faq, onClose, onSave }: ModalFAQProps) => {
     setLoading(true);
     try {
       if (faq?.id) {
-        await apiService.atualizarFAQ(faq.id, pergunta.trim(), resposta.trim());
+        await apiService.atualizarFAQ(Number(faq.id), pergunta.trim(), resposta.trim());
         await mostrarAlert('Sucesso', 'Pergunta atualizada com sucesso!');
       } else {
         await apiService.criarFAQ(pergunta.trim(), resposta.trim());

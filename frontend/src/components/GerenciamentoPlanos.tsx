@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FaCreditCard, FaPlus, FaEdit, FaTrash, FaToggleOn, FaToggleOff, FaSave, FaStar, FaGripVertical } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaToggleOn, FaToggleOff, FaSave, FaStar, FaGripVertical } from 'react-icons/fa';
 import Modal from './Modal';
 import { mostrarAlert, mostrarConfirm, mostrarChoice } from '../utils/modals';
 import { apiService } from '../services/api';
@@ -101,13 +101,17 @@ const GerenciamentoPlanos = ({ isOpen, onClose }: GerenciamentoPlanosProps) => {
     handleDragOver,
     handleDrop,
     handleDragLeave,
-  } = useDragAndDrop(planos, handleReorderPlanos);
+  } = useDragAndDrop(planos.map(p => ({ ...p, id: p.id || 0 })), handleReorderPlanos);
 
   const carregarPlanos = async () => {
     try {
       setLoading(true);
       const planosCarregados = await apiService.obterPlanosAdmin();
-      setPlanos(planosCarregados);
+      setPlanos(planosCarregados.map(p => ({
+        ...p,
+        tipo: p.tipo as 'unico' | 'parcelado' | 'recorrente',
+        beneficios: p.beneficios || []
+      })));
     } catch (error) {
       console.error('Erro ao carregar planos:', error);
       await mostrarAlert('Erro', 'Erro ao carregar planos. Tente novamente.');
@@ -148,7 +152,13 @@ const GerenciamentoPlanos = ({ isOpen, onClose }: GerenciamentoPlanosProps) => {
         ...plano,
         ativo: !plano.ativo
       };
-      await apiService.atualizarPlano(plano.id, planoAtualizado);
+      const planoParaEnviar = {
+        ...planoAtualizado,
+        beneficios: Array.isArray(planoAtualizado.beneficios) 
+          ? planoAtualizado.beneficios.map(b => typeof b === 'string' ? b : b.texto || '')
+          : []
+      };
+      await apiService.atualizarPlano(plano.id, planoParaEnviar);
       await carregarPlanos();
       
       // Disparar evento para atualizar os planos na landing page
@@ -167,7 +177,13 @@ const GerenciamentoPlanos = ({ isOpen, onClose }: GerenciamentoPlanosProps) => {
         ...plano,
         mais_popular: !plano.mais_popular
       };
-      await apiService.atualizarPlano(plano.id, planoAtualizado);
+      const planoParaEnviar = {
+        ...planoAtualizado,
+        beneficios: Array.isArray(planoAtualizado.beneficios) 
+          ? planoAtualizado.beneficios.map(b => typeof b === 'string' ? b : b.texto || '')
+          : []
+      };
+      await apiService.atualizarPlano(plano.id, planoParaEnviar);
       await carregarPlanos();
       
       // Disparar evento para atualizar os planos na landing page
@@ -482,12 +498,12 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
     try {
       if (escolha === 'option1') {
         // Remover apenas do plano atual
-        await apiService.removerBeneficioDoPlano(plano.id, beneficio.id);
+        await apiService.removerBeneficioDoPlano(plano.id, Number(beneficio.id));
         setBeneficios(beneficios.filter(b => b.id !== beneficio.id));
         await mostrarAlert('Sucesso', 'Benefício removido do plano com sucesso!');
       } else if (escolha === 'option2') {
         // Deletar completamente (afeta todos os planos)
-        await apiService.deletarBeneficio(beneficio.id);
+        await apiService.deletarBeneficio(Number(beneficio.id));
         setBeneficios(beneficios.filter(b => b.id !== beneficio.id));
         await mostrarAlert('Sucesso', 'Benefício deletado completamente com sucesso!');
       }
@@ -498,7 +514,7 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
   };
 
   const handleIniciarEdicao = (beneficio: Beneficio) => {
-    setBeneficioEditando(beneficio.id || null);
+    setBeneficioEditando(beneficio.id ? Number(beneficio.id) : null);
     setTextoEditando(beneficio.eh_aviso ? `⚠️ ${beneficio.texto}` : beneficio.texto);
   };
 
@@ -529,7 +545,7 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
     
     try {
       setLoading(true);
-      const beneficioAtualizado = await apiService.atualizarBeneficio(beneficio.id, textoLimpo, ehAviso);
+      const beneficioAtualizado = await apiService.atualizarBeneficio(Number(beneficio.id), textoLimpo, ehAviso);
       setBeneficios(beneficios.map(b => 
         b.id === beneficio.id ? beneficioAtualizado : b
       ));
@@ -601,7 +617,7 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
     handleDragOver: handleDragOverBeneficio,
     handleDrop: handleDropBeneficio,
     handleDragLeave: handleDragLeaveBeneficio,
-  } = useDragAndDrop(beneficios, handleReorderBeneficios);
+  } = useDragAndDrop(beneficios.map(b => ({ ...b, id: b.id || 0 })), handleReorderBeneficios);
 
   const handleSalvar = async () => {
     if (!nome.trim()) {
@@ -659,10 +675,18 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
       };
 
       if (plano?.id) {
-        await apiService.atualizarPlano(plano.id, planoData);
+        const planoParaEnviar = {
+          ...planoData,
+          beneficios: beneficiosComOrdem.map(b => typeof b === 'string' ? b : b.texto || '')
+        };
+        await apiService.atualizarPlano(plano.id, planoParaEnviar);
         await mostrarAlert('Sucesso', 'Plano atualizado com sucesso!');
       } else {
-        await apiService.criarPlano(planoData);
+        const planoParaEnviar = {
+          ...planoData,
+          beneficios: beneficiosComOrdem.map(b => typeof b === 'string' ? b : b.texto || '')
+        };
+        await apiService.criarPlano(planoParaEnviar);
         await mostrarAlert('Sucesso', 'Plano criado com sucesso!');
       }
 
@@ -1128,7 +1152,7 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
                           onChange={(e) => {
                             if (beneficio.id) {
                               // Se tem ID, atualizar no banco
-                              apiService.atualizarBeneficio(beneficio.id, beneficio.texto, e.target.checked)
+                              apiService.atualizarBeneficio(Number(beneficio.id), beneficio.texto, e.target.checked)
                                 .then(beneficioAtualizado => {
                                   setBeneficios(beneficios.map(b => 
                                     b.id === beneficio.id ? beneficioAtualizado : b

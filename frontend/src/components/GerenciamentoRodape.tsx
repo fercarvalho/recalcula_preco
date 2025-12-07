@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { FaLink, FaPlus, FaEdit, FaTrash, FaSave, FaGripVertical, FaToggleOn, FaToggleOff, FaUndo } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaSave, FaGripVertical, FaToggleOn, FaToggleOff, FaUndo } from 'react-icons/fa';
 import Modal from './Modal';
 import { mostrarAlert, mostrarConfirm, mostrarPrompt } from '../utils/modals';
 import { apiService } from '../services/api';
@@ -261,7 +261,6 @@ const GerenciamentoRodape = ({ isOpen, onClose }: GerenciamentoRodapeProps) => {
 
   // Estado para controlar o drag and drop das colunas
   const [draggedColuna, setDraggedColuna] = useState<string | null>(null);
-  const [dragOverColuna, setDragOverColuna] = useState<string | null>(null);
   const [dragOverPosition, setDragOverPosition] = useState<'before' | 'after' | null>(null);
 
   // Drag and drop para reordenar colunas
@@ -286,7 +285,7 @@ const GerenciamentoRodape = ({ isOpen, onClose }: GerenciamentoRodapeProps) => {
   };
 
   // Handlers customizados para drag and drop de colunas (strings)
-  const handleDragStartColuna = (e: React.DragEvent, coluna: string, type: 'categoria' | 'item' | 'plano') => {
+  const handleDragStartColuna = (e: React.DragEvent, coluna: string) => {
     console.log('Drag start coluna:', coluna);
     setDraggedColuna(coluna);
     e.dataTransfer.effectAllowed = 'move';
@@ -305,7 +304,6 @@ const GerenciamentoRodape = ({ isOpen, onClose }: GerenciamentoRodapeProps) => {
     });
 
     setDraggedColuna(null);
-    setDragOverColuna(null);
     setDragOverPosition(null);
   };
 
@@ -333,7 +331,6 @@ const GerenciamentoRodape = ({ isOpen, onClose }: GerenciamentoRodapeProps) => {
     element.classList.remove('drag-over-top', 'drag-over-bottom');
     element.classList.add(`drag-over-${position}`);
 
-    setDragOverColuna(coluna);
     setDragOverPosition(position);
   };
 
@@ -348,7 +345,6 @@ const GerenciamentoRodape = ({ isOpen, onClose }: GerenciamentoRodapeProps) => {
 
     if (!draggedColuna || draggedColuna === coluna) {
       setDraggedColuna(null);
-      setDragOverColuna(null);
       setDragOverPosition(null);
       return;
     }
@@ -361,7 +357,6 @@ const GerenciamentoRodape = ({ isOpen, onClose }: GerenciamentoRodapeProps) => {
     if (draggedIndex === -1 || dropIndex === -1) {
       console.error('Índices inválidos');
       setDraggedColuna(null);
-      setDragOverColuna(null);
       setDragOverPosition(null);
       return;
     }
@@ -377,7 +372,6 @@ const GerenciamentoRodape = ({ isOpen, onClose }: GerenciamentoRodapeProps) => {
     handleReorderColunas(newColunas);
     
     setDraggedColuna(null);
-    setDragOverColuna(null);
     setDragOverPosition(null);
   };
 
@@ -534,7 +528,7 @@ const GerenciamentoRodape = ({ isOpen, onClose }: GerenciamentoRodapeProps) => {
                       key={coluna}
                       className="rodape-coluna"
                       draggable
-                      onDragStart={(e) => handleDragStartColuna(e, coluna, 'categoria')}
+                      onDragStart={(e) => handleDragStartColuna(e, coluna)}
                       onDragEnd={handleDragEndColuna}
                       onDragOver={(e) => handleDragOverColuna(e, coluna)}
                       onDrop={(e) => handleDropColuna(e, coluna)}

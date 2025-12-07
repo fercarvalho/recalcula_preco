@@ -121,9 +121,9 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
           setBotoesGerenciamento(prev => {
             const novosBotoes = [...prev];
             novosBotoes.sort((a, b) => {
-              const ordemA = ordemMap.get(a.id) || a.ordem;
-              const ordemB = ordemMap.get(b.id) || b.ordem;
-              return ordemA - ordemB;
+              const ordemA = ordemMap.get(a.id) ?? a.ordem ?? 0;
+              const ordemB = ordemMap.get(b.id) ?? b.ordem ?? 0;
+              return Number(ordemA) - Number(ordemB);
             });
             // Atualizar ordem dos botões
             return novosBotoes.map((botao, index) => ({ ...botao, ordem: index + 1 }));

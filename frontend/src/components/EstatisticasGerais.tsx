@@ -268,12 +268,12 @@ const EstatisticasGerais = ({ isOpen, onClose }: EstatisticasGeraisProps) => {
                           cx="50%"
                           cy="50%"
                           labelLine={false}
-                          label={({ genero, total, percent }) => `${genero}: ${(percent * 100).toFixed(0)}%`}
+                          label={(props: any) => `${props.genero || ''}: ${((props.percent || 0) * 100).toFixed(0)}%`}
                           outerRadius={100}
                           fill="#8884d8"
                           dataKey="total"
                         >
-                          {estatisticas.por_genero.map((entry, index) => (
+                          {estatisticas.por_genero.map((_entry, index) => (
                             <Cell key={`cell-${index}`} fill={obterCor(index)} />
                           ))}
                         </Pie>

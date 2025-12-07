@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Modal from './Modal';
 import { apiService } from '../services/api';
 import { mostrarAlert } from '../utils/modals';
-import { FaEnvelope, FaCheckCircle, FaExclamationTriangle } from 'react-icons/fa';
+import { FaEnvelope, FaExclamationTriangle } from 'react-icons/fa';
 import './ValidarEmailModal.css';
 
 interface ValidarEmailModalProps {
@@ -11,7 +11,7 @@ interface ValidarEmailModalProps {
   onValidado?: () => void;
 }
 
-const ValidarEmailModal = ({ isOpen, onClose, onValidado }: ValidarEmailModalProps) => {
+const ValidarEmailModal = ({ isOpen, onClose }: ValidarEmailModalProps) => {
   const [reenviando, setReenviando] = useState(false);
 
   const handleReenviar = async () => {

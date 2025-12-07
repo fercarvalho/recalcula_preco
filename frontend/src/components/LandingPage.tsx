@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react';
-import { FaCheck, FaChevronDown, FaChevronUp, FaCalculator, FaChartLine, FaMobileAlt, FaShieldAlt, FaSync, FaUsers, FaRocket, FaQrcode, FaMoneyBillWave, FaFileAlt, FaWhatsapp } from 'react-icons/fa';
+import { FaCheck, FaChevronDown, FaChevronUp, FaCalculator, FaRocket, FaWhatsapp } from 'react-icons/fa';
 import * as FaIcons from 'react-icons/fa';
 import RegistroModal from './RegistroModal';
 import { apiService } from '../services/api';
 import type { Funcao } from './GerenciamentoFuncoes';
-import { obterSecoesMenuAtivas } from './GerenciamentoMenu';
-import { obterSessoesAtivas } from './GerenciamentoSessoes';
 import type { Plano } from './GerenciamentoPlanos';
 import './LandingPage.css';
 
@@ -15,7 +13,6 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
   const [funcoes, setFuncoes] = useState<Funcao[]>([]);
   const [secoesMenuAtivas, setSecoesMenuAtivas] = useState<string[]>([]);
   const [sessoesAtivas, setSessoesAtivas] = useState<string[]>([]);
-  const [sessoesComOrdem, setSessoesComOrdem] = useState<Array<{ id: string; nome: string; ativa: boolean; ordem: number }>>([]);
   const [planos, setPlanos] = useState<Plano[]>([]);
   const [faqs, setFaqs] = useState<Array<{ id: number; pergunta: string; resposta: string }>>([]);
   const [rodapeLinks, setRodapeLinks] = useState<Array<{ id: number; texto: string; link: string; coluna: string; ordem: number; eh_link: boolean }>>([]);
@@ -175,12 +172,10 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
       
       // Salvar tanto os IDs quanto as configurações completas
       setSessoesAtivas(sessoesAtivasOrdenadas);
-      setSessoesComOrdem(todasSessoes);
     } catch (error) {
       console.error('Erro ao carregar sessões:', error);
       // Em caso de erro, mostrar todas as sessões como padrão
       setSessoesAtivas(['hero', 'sobre', 'funcionalidades', 'whatsapp-ia-ativas', 'roadmap', 'whatsapp-integracao', 'planos', 'faq', 'cta-final']);
-      setSessoesComOrdem([]);
     }
   };
 
@@ -499,9 +494,9 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
                   const temDesconto = temDescontoPercentual || temDescontoValor;
                   
                   const valorComDesconto = temDescontoPercentual
-                    ? plano.valor * (1 - plano.desconto_percentual / 100)
+                    ? plano.valor * (1 - (plano.desconto_percentual || 0) / 100)
                     : temDescontoValor
-                    ? plano.valor - plano.desconto_valor
+                    ? plano.valor - (plano.desconto_valor || 0)
                     : plano.valor;
 
                   return (

@@ -18,9 +18,6 @@ export interface Funcao {
   ordem?: number;
 }
 
-// Re-exportar para uso em outros componentes
-export type { Funcao };
-
 interface GerenciamentoFuncoesProps {
   isOpen: boolean;
   onClose: () => void;
@@ -32,7 +29,6 @@ const GerenciamentoFuncoes = ({ isOpen, onClose, onOpenOrganizar }: Gerenciament
   const [loading, setLoading] = useState(false);
   const [showModalAdicionar, setShowModalAdicionar] = useState(false);
   const [funcaoEditando, setFuncaoEditando] = useState<Funcao | null>(null);
-  const [showIconeModal, setShowIconeModal] = useState(false);
   const carregandoRef = useRef(false);
   const jaCarregouRef = useRef(false);
 
@@ -338,14 +334,12 @@ const ModalAdicionarFuncao = ({ funcao, onClose, onSave }: ModalAdicionarFuncaoP
   const [iconeUpload, setIconeUpload] = useState(funcao?.icone_upload || '');
   const [ativa, setAtiva] = useState(funcao?.ativa ?? true);
   const [ehIA, setEhIA] = useState(funcao?.eh_ia ?? false);
-  const [iconeSelecionado, setIconeSelecionado] = useState<string | null>(null);
   const [showIconeModal, setShowIconeModal] = useState(false);
 
   const handleIconeSelecionado = (iconeNome: string) => {
     // Garantir que o nome do ícone tenha o prefixo "Fa" se necessário
     const nomeIcone = iconeNome.startsWith('Fa') ? iconeNome : `Fa${iconeNome}`;
     setIcone(nomeIcone);
-    setIconeSelecionado(nomeIcone);
     setShowIconeModal(false);
   };
 

@@ -9,6 +9,7 @@ interface DatePickerProps {
   disabled?: boolean;
   id?: string;
   className?: string;
+  required?: boolean;
 }
 
 const DatePicker = ({ value, onChange, max, disabled, id, className = '' }: DatePickerProps) => {
