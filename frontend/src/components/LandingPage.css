@@ -896,6 +896,12 @@
   margin-top: 0.5rem;
 }
 
+.plano-frase-reforco-landing {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 0.25rem;
+}
+
 .plano-beneficios-landing {
   list-style: none;
   padding: 0;

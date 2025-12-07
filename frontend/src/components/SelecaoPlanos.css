@@ -121,6 +121,12 @@
   margin-top: 0.5rem;
 }
 
+.plano-frase-reforco {
+  font-size: 0.9rem;
+  color: #888;
+  margin-top: 0.25rem;
+}
+
 .plano-beneficios {
   list-style: none;
   padding: 0;

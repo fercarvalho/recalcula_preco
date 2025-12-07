@@ -45,7 +45,8 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
         ativo: p.ativo,
         ordem: p.ordem,
         beneficios: p.beneficios,
-        stripe_price_id: p.stripe_price_id || null
+        stripe_price_id: p.stripe_price_id || null,
+        frase_reforco: p.frase_reforco || null
       }));
       
       // Ordenar por ordem
@@ -185,11 +186,11 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
                       {formatarPeriodo(plano.tipo, plano.periodo, plano.valor_parcelado)}
                     </span>
                   </div>
-                  {plano.periodo && plano.tipo === 'unico' && (
-                    <p className="plano-descricao">Acesso por {plano.periodo}</p>
-                  )}
-                  {plano.tipo === 'recorrente' && (
+                  {plano.tipo === 'recorrente' && !plano.frase_reforco && (
                     <p className="plano-descricao">Acesso completo por 12 meses</p>
+                  )}
+                  {plano.frase_reforco && (
+                    <p className="plano-frase-reforco">{plano.frase_reforco}</p>
                   )}
                 </div>
                 <ul className="plano-beneficios">

@@ -192,6 +192,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
         valor_total: p.valor_total,
         periodo: p.periodo,
         desconto_percentual: p.desconto_percentual,
+        frase_reforco: p.frase_reforco || null,
         desconto_valor: p.desconto_valor,
         mais_popular: p.mais_popular,
         mostrar_valor_total: p.mostrar_valor_total,
@@ -620,8 +621,8 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
                             {plano.tipo === 'recorrente' && plano.periodo === 'mensal' && ' por ano'}
                           </p>
                         )}
-                        {plano.periodo && plano.tipo === 'unico' && (
-                          <p className="plano-descricao-landing">Acesso por {plano.periodo}</p>
+                        {plano.frase_reforco && (
+                          <p className="plano-frase-reforco-landing">{plano.frase_reforco}</p>
                         )}
                       </div>
                       <ul className="plano-beneficios-landing">

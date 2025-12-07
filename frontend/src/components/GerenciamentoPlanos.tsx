@@ -31,6 +31,7 @@ export interface Plano {
   ordem?: number;
   beneficios?: Beneficio[] | string[];
   stripe_price_id?: string | null;
+  frase_reforco?: string | null;
 }
 
 interface GerenciamentoPlanosProps {
@@ -388,6 +389,7 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
   const [buscaBeneficio, setBuscaBeneficio] = useState('');
   const [mostrarResultadosBusca, setMostrarResultadosBusca] = useState(false);
   const [stripePriceId, setStripePriceId] = useState(plano?.stripe_price_id || '');
+  const [fraseReforco, setFraseReforco] = useState(plano?.frase_reforco || '');
 
   useEffect(() => {
     if (plano) {
@@ -410,6 +412,8 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
       setMostrarValorTotal(plano.mostrar_valor_total !== undefined ? plano.mostrar_valor_total : true);
       setMostrarValorParcelado(plano.mostrar_valor_parcelado !== undefined ? plano.mostrar_valor_parcelado : true);
       setAtivo(plano.ativo !== undefined ? plano.ativo : true);
+      setFraseReforco(plano.frase_reforco || '');
+      setStripePriceId(plano.stripe_price_id || '');
       // Ordem é gerenciada pelo drag and drop, não precisa ser setada aqui
       // Converter benefícios para formato Beneficio[]
       const beneficiosFormatados = (plano.beneficios || []).map((b, index) => {
@@ -699,7 +703,8 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
         ativo,
         ordem: plano?.ordem || (planos.length > 0 ? Math.max(...planos.map(p => p.ordem || 0)) + 1 : 1), // Manter ordem atual ao editar, ou adicionar no final se for novo
         beneficios: beneficiosComOrdem,
-        stripe_price_id: stripePriceId.trim() || null
+        stripe_price_id: stripePriceId.trim() || null,
+        frase_reforco: fraseReforco.trim() || null
       };
 
       if (plano?.id) {
@@ -1059,6 +1064,22 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
               ID do preço (Price) criado no Stripe Dashboard. Deixe em branco para usar o padrão do .env
             </small>
           </div>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="plano-frase-reforco">Frase de Reforço:</label>
+          <input
+            type="text"
+            id="plano-frase-reforco"
+            value={fraseReforco}
+            onChange={(e) => setFraseReforco(e.target.value)}
+            className="form-input"
+            placeholder="Ex: Acesse por 24 horas"
+            disabled={loading}
+          />
+          <small style={{ color: '#666', fontSize: '12px', display: 'block', marginTop: '4px' }}>
+            Frase que aparecerá logo abaixo da descrição do período (ex: "Acesse por 24 horas" para plano único, ou outra frase para planos recorrentes)
+          </small>
         </div>
 
         <div className="form-group switches-container">

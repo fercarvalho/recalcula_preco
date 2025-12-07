@@ -242,6 +242,7 @@ export const apiService = {
     tipo: string;
     valor: number;
     valor_parcelado: number | null;
+    frase_reforco: string | null;
     valor_total: number | null;
     periodo: string | null;
     desconto_percentual: number;
@@ -274,6 +275,7 @@ export const apiService = {
     ativo: boolean;
     ordem: number;
     beneficios: string[];
+    frase_reforco: string | null;
   }>> {
     const response = await api.get('/api/admin/planos');
     return response.data;

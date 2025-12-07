@@ -577,6 +577,11 @@ async function inicializar() {
             await pool.query('ALTER TABLE planos ADD COLUMN stripe_price_id VARCHAR(255)');
         }
         
+        // Adicionar coluna frase_reforco se não existir
+        if (!(await colunaExiste('planos', 'frase_reforco'))) {
+            await pool.query('ALTER TABLE planos ADD COLUMN frase_reforco TEXT');
+        }
+        
         // Criar tabela de benefícios (sem plano_id - benefícios são compartilhados)
         await pool.query(`
             CREATE TABLE IF NOT EXISTS beneficios (
@@ -4416,6 +4421,8 @@ async function obterPlanos(apenasAtivos = false) {
                 mostrar_valor_parcelado: row.mostrar_valor_parcelado,
                 ativo: row.ativo,
                 ordem: row.ordem,
+                stripe_price_id: row.stripe_price_id,
+                frase_reforco: row.frase_reforco,
                 beneficios: beneficios
             });
         }
@@ -4484,9 +4491,9 @@ async function criarPlano(plano) {
             `INSERT INTO planos (
                 nome, tipo, valor, valor_parcelado, valor_total, periodo,
                 desconto_percentual, desconto_valor, mais_popular,
-                mostrar_valor_total, mostrar_valor_parcelado, ativo, ordem, stripe_price_id,
+                mostrar_valor_total, mostrar_valor_parcelado, ativo, ordem, stripe_price_id, frase_reforco,
                 created_at, updated_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             RETURNING *`,
             [
                 plano.nome,
@@ -4502,7 +4509,8 @@ async function criarPlano(plano) {
                 plano.mostrar_valor_parcelado !== undefined ? plano.mostrar_valor_parcelado : true,
                 plano.ativo !== undefined ? plano.ativo : true,
                 plano.ordem || 0,
-                plano.stripe_price_id || null
+                plano.stripe_price_id || null,
+                plano.frase_reforco || null
             ]
         );
         const row = result.rows[0];
@@ -4566,6 +4574,8 @@ async function criarPlano(plano) {
             mostrar_valor_parcelado: row.mostrar_valor_parcelado,
             ativo: row.ativo,
             ordem: row.ordem,
+            stripe_price_id: row.stripe_price_id,
+            frase_reforco: row.frase_reforco,
             beneficios: beneficios
         };
     } catch (error) {
@@ -4598,8 +4608,9 @@ async function atualizarPlano(id, plano) {
                 ativo = $12,
                 ordem = $13,
                 stripe_price_id = $14,
+                frase_reforco = $15,
                 updated_at = CURRENT_TIMESTAMP
-            WHERE id = $15
+            WHERE id = $16
             RETURNING *`,
             [
                 plano.nome,
@@ -4616,6 +4627,7 @@ async function atualizarPlano(id, plano) {
                 plano.ativo !== undefined ? plano.ativo : true,
                 plano.ordem || 0,
                 plano.stripe_price_id || null,
+                plano.frase_reforco || null,
                 id
             ]
         );
@@ -4692,6 +4704,8 @@ async function atualizarPlano(id, plano) {
             mostrar_valor_parcelado: row.mostrar_valor_parcelado,
             ativo: row.ativo,
             ordem: row.ordem,
+            stripe_price_id: row.stripe_price_id,
+            frase_reforco: row.frase_reforco,
             beneficios: beneficios
         };
     } catch (error) {
