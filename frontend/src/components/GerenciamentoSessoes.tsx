@@ -50,7 +50,7 @@ const GerenciamentoSessoes = ({ isOpen, onClose }: GerenciamentoSessoesProps) =>
   };
 
   // IDs das sessões relacionadas a funções
-  const sessoesFuncoes = ['funcionalidades', 'whatsapp-ia-ativas', 'roadmap', 'whatsapp-integracao'];
+  const sessoesFuncoes = ['funcionalidades', 'funcionalidades-beta', 'whatsapp-ia-ativas', 'whatsapp-ia-beta', 'roadmap', 'whatsapp-integracao'];
 
   // Verificar se todas as sessões de funções estão ativas
   const todasFuncoesAtivas = () => {

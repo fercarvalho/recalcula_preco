@@ -504,11 +504,17 @@ async function inicializar() {
                 icone_upload TEXT,
                 ativa BOOLEAN DEFAULT TRUE,
                 eh_ia BOOLEAN DEFAULT FALSE,
+                em_beta BOOLEAN DEFAULT FALSE,
                 ordem INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
+        
+        // Adicionar coluna em_beta se não existir
+        if (!(await colunaExiste('funcoes', 'em_beta'))) {
+            await pool.query('ALTER TABLE funcoes ADD COLUMN em_beta BOOLEAN DEFAULT FALSE');
+        }
         
         // Criar tabela de configurações do menu
         await pool.query(`
@@ -2875,6 +2881,7 @@ async function obterFuncoes() {
             icone_upload: row.icone_upload,
             ativa: row.ativa,
             eh_ia: row.eh_ia,
+            em_beta: row.em_beta || false,
             ordem: row.ordem
         }));
     } catch (error) {
@@ -3095,13 +3102,13 @@ async function inicializarFuncoesPadrao() {
 }
 
 // Criar função
-async function criarFuncao(titulo, descricao, icone, icone_upload, ativa, eh_ia, ordem) {
+async function criarFuncao(titulo, descricao, icone, icone_upload, ativa, eh_ia, em_beta, ordem) {
     try {
         const result = await pool.query(
-            `INSERT INTO funcoes (titulo, descricao, icone, icone_upload, ativa, eh_ia, ordem, created_at, updated_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            `INSERT INTO funcoes (titulo, descricao, icone, icone_upload, ativa, eh_ia, em_beta, ordem, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
              RETURNING *`,
-            [titulo, descricao, icone || null, icone_upload || null, ativa, eh_ia, ordem || 0]
+            [titulo, descricao, icone || null, icone_upload || null, ativa, eh_ia, em_beta !== undefined ? em_beta : false, ordem || 0]
         );
         const row = result.rows[0];
         return {
@@ -3112,6 +3119,7 @@ async function criarFuncao(titulo, descricao, icone, icone_upload, ativa, eh_ia,
             icone_upload: row.icone_upload,
             ativa: row.ativa,
             eh_ia: row.eh_ia,
+            em_beta: row.em_beta || false,
             ordem: row.ordem
         };
     } catch (error) {
@@ -3121,14 +3129,14 @@ async function criarFuncao(titulo, descricao, icone, icone_upload, ativa, eh_ia,
 }
 
 // Atualizar função
-async function atualizarFuncao(id, titulo, descricao, icone, icone_upload, ativa, eh_ia, ordem) {
+async function atualizarFuncao(id, titulo, descricao, icone, icone_upload, ativa, eh_ia, em_beta, ordem) {
     try {
         const result = await pool.query(
             `UPDATE funcoes 
-             SET titulo = $1, descricao = $2, icone = $3, icone_upload = $4, ativa = $5, eh_ia = $6, ordem = $7, updated_at = CURRENT_TIMESTAMP
-             WHERE id = $8
+             SET titulo = $1, descricao = $2, icone = $3, icone_upload = $4, ativa = $5, eh_ia = $6, em_beta = $7, ordem = $8, updated_at = CURRENT_TIMESTAMP
+             WHERE id = $9
              RETURNING *`,
-            [titulo, descricao, icone || null, icone_upload || null, ativa, eh_ia, ordem || 0, id]
+            [titulo, descricao, icone || null, icone_upload || null, ativa, eh_ia, em_beta !== undefined ? em_beta : false, ordem || 0, id]
         );
         if (result.rows.length === 0) {
             return null;
@@ -3142,6 +3150,7 @@ async function atualizarFuncao(id, titulo, descricao, icone, icone_upload, ativa
             icone_upload: row.icone_upload,
             ativa: row.ativa,
             eh_ia: row.eh_ia,
+            em_beta: row.em_beta || false,
             ordem: row.ordem
         };
     } catch (error) {
@@ -3954,12 +3963,14 @@ async function inicializarConfiguracoesSessoesPadrao() {
             { sessao_id: 'hero', nome: 'Hero (Seção Principal)', ativa: true, ordem: 0 },
             { sessao_id: 'sobre', nome: 'Sobre', ativa: true, ordem: 1 },
             { sessao_id: 'funcionalidades', nome: 'Funcionalidades (Todas as funções)', ativa: true, ordem: 2 },
-            { sessao_id: 'whatsapp-ia-ativas', nome: 'WhatsApp IA - Funções Ativas', ativa: true, ordem: 3 },
-            { sessao_id: 'roadmap', nome: 'Roadmap (O que vem por aí)', ativa: true, ordem: 4 },
-            { sessao_id: 'whatsapp-integracao', nome: 'WhatsApp IA - Integração', ativa: true, ordem: 5 },
-            { sessao_id: 'planos', nome: 'Planos', ativa: true, ordem: 6 },
-            { sessao_id: 'faq', nome: 'FAQ', ativa: true, ordem: 7 },
-            { sessao_id: 'cta-final', nome: 'CTA Final', ativa: true, ordem: 8 }
+            { sessao_id: 'funcionalidades-beta', nome: 'Funcionalidades em Beta', ativa: true, ordem: 3 },
+            { sessao_id: 'whatsapp-ia-ativas', nome: 'WhatsApp IA - Funções Ativas', ativa: true, ordem: 4 },
+            { sessao_id: 'whatsapp-ia-beta', nome: 'WhatsApp IA - Funções em Beta', ativa: true, ordem: 5 },
+            { sessao_id: 'roadmap', nome: 'Roadmap (O que vem por aí)', ativa: true, ordem: 6 },
+            { sessao_id: 'whatsapp-integracao', nome: 'WhatsApp IA - Integração', ativa: true, ordem: 7 },
+            { sessao_id: 'planos', nome: 'Planos', ativa: true, ordem: 8 },
+            { sessao_id: 'faq', nome: 'FAQ', ativa: true, ordem: 9 },
+            { sessao_id: 'cta-final', nome: 'CTA Final', ativa: true, ordem: 10 }
         ];
 
         for (const sessao of sessoesPadrao) {

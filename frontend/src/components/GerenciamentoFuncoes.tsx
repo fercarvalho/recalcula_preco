@@ -15,6 +15,7 @@ export interface Funcao {
   icone_upload?: string;
   ativa: boolean;
   eh_ia: boolean;
+  em_beta?: boolean;
   ordem?: number;
 }
 
@@ -96,6 +97,8 @@ const GerenciamentoFuncoes = ({ isOpen, onClose, onOpenOrganizar }: Gerenciament
         ativa: novaAtiva,
         // Manter o eh_ia como está - não resetar automaticamente
         eh_ia: funcao.eh_ia,
+        // Se desativar a função, também desativar em_beta
+        em_beta: novaAtiva ? (funcao.em_beta || false) : false,
         ordem: funcao.ordem || 0
       };
       await apiService.atualizarFuncao(funcao.id, funcaoAtualizada);
@@ -127,6 +130,7 @@ const GerenciamentoFuncoes = ({ isOpen, onClose, onOpenOrganizar }: Gerenciament
         icone_upload: funcao.icone_upload || null,
         ativa: funcao.ativa,
         eh_ia: novaEhIA,
+        em_beta: funcao.em_beta || false,
         ordem: funcao.ordem || 0
       };
       await apiService.atualizarFuncao(funcao.id, funcaoAtualizada);
@@ -281,6 +285,23 @@ const GerenciamentoFuncoes = ({ isOpen, onClose, onOpenOrganizar }: Gerenciament
                         </button>
                       </label>
                     </div>
+                    {funcao.ativa && (
+                      <div className="switch-group">
+                        <label>
+                          <span>Função em Beta</span>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleToggleBeta(funcao);
+                            }}
+                            className={`switch-btn ${funcao.em_beta ? 'active' : ''}`}
+                          >
+                            {funcao.em_beta ? <FaToggleOn /> : <FaToggleOff />}
+                          </button>
+                        </label>
+                      </div>
+                    )}
                   </div>
                   <div className="funcao-actions">
                     <button
@@ -334,6 +355,7 @@ const ModalAdicionarFuncao = ({ funcao, onClose, onSave }: ModalAdicionarFuncaoP
   const [iconeUpload, setIconeUpload] = useState(funcao?.icone_upload || '');
   const [ativa, setAtiva] = useState(funcao?.ativa ?? true);
   const [ehIA, setEhIA] = useState(funcao?.eh_ia ?? false);
+  const [emBeta, setEmBeta] = useState(funcao?.em_beta ?? false);
   const [showIconeModal, setShowIconeModal] = useState(false);
 
   const handleIconeSelecionado = (iconeNome: string) => {
@@ -375,6 +397,7 @@ const ModalAdicionarFuncao = ({ funcao, onClose, onSave }: ModalAdicionarFuncaoP
       icone_upload: iconeUpload || undefined,
       ativa,
       eh_ia: ehIA,
+      em_beta: ativa ? emBeta : false, // Só pode estar em beta se estiver ativa
       ordem: funcao?.ordem,
     };
 
@@ -467,7 +490,12 @@ const ModalAdicionarFuncao = ({ funcao, onClose, onSave }: ModalAdicionarFuncaoP
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  setAtiva(!ativa);
+                  const novaAtiva = !ativa;
+                  setAtiva(novaAtiva);
+                  // Se desativar, também desativar em_beta
+                  if (!novaAtiva) {
+                    setEmBeta(false);
+                  }
                 }}
                 className={`switch-btn ${ativa ? 'active' : ''}`}
               >

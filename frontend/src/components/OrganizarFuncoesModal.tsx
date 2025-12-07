@@ -14,6 +14,7 @@ export interface Funcao {
   icone_upload?: string;
   ativa: boolean;
   eh_ia: boolean;
+  em_beta?: boolean;
   ordem?: number;
 }
 
@@ -23,13 +24,14 @@ interface OrganizarFuncoesModalProps {
   onUpdate: () => void;
 }
 
-type CategoriaTipo = 'lançadas' | 'desenvolvimento' | 'ia-lançadas' | 'ia-desenvolvimento';
+type CategoriaTipo = 'lançadas' | 'desenvolvimento' | 'ia-lançadas' | 'ia-desenvolvimento' | 'beta' | 'ia-beta';
 
 interface Categoria {
   id: CategoriaTipo;
   titulo: string;
-  ativa: boolean;
-  eh_ia: boolean;
+  ativa?: boolean;
+  eh_ia?: boolean;
+  em_beta?: boolean;
 }
 
 const CATEGORIAS: Categoria[] = [
@@ -37,6 +39,8 @@ const CATEGORIAS: Categoria[] = [
   { id: 'desenvolvimento', titulo: 'Funções em Desenvolvimento', ativa: false, eh_ia: false },
   { id: 'ia-lançadas', titulo: 'Funções de IA Lançadas', ativa: true, eh_ia: true },
   { id: 'ia-desenvolvimento', titulo: 'Funções de IA em Desenvolvimento', ativa: false, eh_ia: true },
+  { id: 'beta', titulo: 'Funções em Beta', em_beta: true },
+  { id: 'ia-beta', titulo: 'Funções de IA em Beta', em_beta: true, eh_ia: true },
 ];
 
 // Componente para renderizar funções de uma categoria com drag and drop
@@ -160,7 +164,20 @@ const OrganizarFuncoesModal = ({ isOpen, onClose, onUpdate }: OrganizarFuncoesMo
   // Agrupar funções por categoria
   const funcoesPorCategoria = CATEGORIAS.reduce((acc, categoria) => {
     acc[categoria.id] = funcoes
-      .filter(f => f.ativa === categoria.ativa && f.eh_ia === categoria.eh_ia)
+      .filter(f => {
+        // Para categorias beta, verificar em_beta
+        if (categoria.em_beta !== undefined) {
+          if (categoria.id === 'ia-beta') {
+            // Funções de IA em Beta: em_beta = true E eh_ia = true
+            return f.em_beta === true && f.eh_ia === true;
+          } else if (categoria.id === 'beta') {
+            // Funções em Beta: em_beta = true (qualquer função)
+            return f.em_beta === true;
+          }
+        }
+        // Para outras categorias, usar lógica original
+        return f.ativa === categoria.ativa && f.eh_ia === categoria.eh_ia;
+      })
       .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
     return acc;
   }, {} as Record<CategoriaTipo, Funcao[]>);
@@ -172,7 +189,18 @@ const OrganizarFuncoesModal = ({ isOpen, onClose, onUpdate }: OrganizarFuncoesMo
       
       // Obter funções da categoria atual
       const funcoesDaCategoria = funcoes.filter(f => {
-        const categoriaFuncao = CATEGORIAS.find(c => c.ativa === f.ativa && c.eh_ia === f.eh_ia);
+        const categoriaFuncao = CATEGORIAS.find(c => {
+          // Para categorias beta, verificar em_beta
+          if (c.em_beta !== undefined) {
+            if (c.id === 'ia-beta') {
+              return f.em_beta === true && f.eh_ia === true;
+            } else if (c.id === 'beta') {
+              return f.em_beta === true;
+            }
+          }
+          // Para outras categorias, usar lógica original
+          return c.ativa === f.ativa && c.eh_ia === f.eh_ia;
+        });
         return categoriaFuncao?.id === categoria;
       });
       
@@ -187,7 +215,18 @@ const OrganizarFuncoesModal = ({ isOpen, onClose, onUpdate }: OrganizarFuncoesMo
       
       // Atualizar todas as funções mantendo outras categorias intactas
       const outrasFuncoes = funcoes.filter(f => {
-        const categoriaFuncao = CATEGORIAS.find(c => c.ativa === f.ativa && c.eh_ia === f.eh_ia);
+        const categoriaFuncao = CATEGORIAS.find(c => {
+          // Para categorias beta, verificar em_beta
+          if (c.em_beta !== undefined) {
+            if (c.id === 'ia-beta') {
+              return f.em_beta === true && f.eh_ia === true;
+            } else if (c.id === 'beta') {
+              return f.em_beta === true;
+            }
+          }
+          // Para outras categorias, usar lógica original
+          return c.ativa === f.ativa && c.eh_ia === f.eh_ia;
+        });
         return categoriaFuncao?.id !== categoria;
       });
       
@@ -204,6 +243,7 @@ const OrganizarFuncoesModal = ({ isOpen, onClose, onUpdate }: OrganizarFuncoesMo
             icone_upload: funcao.icone_upload || null,
             ativa: funcao.ativa,
             eh_ia: funcao.eh_ia,
+            em_beta: funcao.em_beta || false,
             ordem: funcao.ordem || 0
           });
         }
@@ -249,6 +289,7 @@ const OrganizarFuncoesModal = ({ isOpen, onClose, onUpdate }: OrganizarFuncoesMo
             icone_upload: funcao.icone_upload || null,
             ativa: funcao.ativa,
             eh_ia: funcao.eh_ia,
+            em_beta: funcao.em_beta || false,
             ordem: funcao.ordem || 0
           });
         }
@@ -272,7 +313,18 @@ const OrganizarFuncoesModal = ({ isOpen, onClose, onUpdate }: OrganizarFuncoesMo
   const handleReorderFuncoesCategoria = async (categoria: CategoriaTipo, novasFuncoesCategoria: Funcao[]) => {
     // Criar nova lista completa mantendo outras categorias intactas
     const outrasFuncoes = funcoes.filter(f => {
-      const categoriaFuncao = CATEGORIAS.find(c => c.ativa === f.ativa && c.eh_ia === f.eh_ia);
+      const categoriaFuncao = CATEGORIAS.find(c => {
+        // Para categorias beta, verificar em_beta
+        if (c.em_beta !== undefined) {
+          if (c.id === 'ia-beta') {
+            return f.em_beta === true && f.eh_ia === true;
+          } else if (c.id === 'beta') {
+            return f.em_beta === true;
+          }
+        }
+        // Para outras categorias, usar lógica original
+        return c.ativa === f.ativa && c.eh_ia === f.eh_ia;
+      });
       return categoriaFuncao?.id !== categoria;
     });
     const todasFuncoes = [...outrasFuncoes, ...novasFuncoesCategoria];
@@ -280,7 +332,18 @@ const OrganizarFuncoesModal = ({ isOpen, onClose, onUpdate }: OrganizarFuncoesMo
     // Recalcular ordem sequencial dentro da categoria específica
     const funcoesDaCategoria = todasFuncoes
       .filter(f => {
-        const categoriaFuncao = CATEGORIAS.find(c => c.ativa === f.ativa && c.eh_ia === f.eh_ia);
+        const categoriaFuncao = CATEGORIAS.find(c => {
+          // Para categorias beta, verificar em_beta
+          if (c.em_beta !== undefined) {
+            if (c.id === 'ia-beta') {
+              return f.em_beta === true && f.eh_ia === true;
+            } else if (c.id === 'beta') {
+              return f.em_beta === true;
+            }
+          }
+          // Para outras categorias, usar lógica original
+          return c.ativa === f.ativa && c.eh_ia === f.eh_ia;
+        });
         return categoriaFuncao?.id === categoria;
       })
       .sort((a, b) => {
@@ -310,6 +373,7 @@ const OrganizarFuncoesModal = ({ isOpen, onClose, onUpdate }: OrganizarFuncoesMo
             icone_upload: funcao.icone_upload || null,
             ativa: funcao.ativa,
             eh_ia: funcao.eh_ia,
+            em_beta: funcao.em_beta || false,
             ordem: funcao.ordem || 0
           });
         }

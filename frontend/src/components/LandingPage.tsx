@@ -274,6 +274,14 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
     descricao: f.descricao
   }));
 
+  // Filtrar funções em beta para a seção de funcionalidades beta
+  const funcoesBeta = funcoes.filter(f => f.em_beta === true);
+  const beneficiosBeta = funcoesBeta.map(f => ({
+    icone: renderIcone(f),
+    titulo: f.titulo,
+    descricao: f.descricao
+  }));
+
   // Filtrar funções inativas (não-IA) para a seção "em breve"
   const funcoesEmBreve = funcoes.filter(f => !f.ativa && !f.eh_ia);
   const roadmapItens = funcoesEmBreve.map(f => ({
@@ -285,6 +293,9 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
   // Filtrar funções de IA para a seção WhatsApp
   const funcoesIA = funcoes.filter(f => f.eh_ia);
   const funcoesIAAtivas = funcoes.filter(f => f.eh_ia && f.ativa);
+  
+  // Filtrar funções de IA em beta
+  const funcoesIABeta = funcoes.filter(f => f.eh_ia && f.em_beta === true);
 
   // Mapear cada sessão para seu componente JSX
   const renderizarSessao = (sessaoId: string) => {
@@ -384,6 +395,28 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
           </section>
         ) : null;
 
+      case 'funcionalidades-beta':
+        return sessoesAtivas.includes('funcionalidades-beta') && beneficiosBeta.length > 0 ? (
+          <section key="funcionalidades-beta" id="funcionalidades-beta" className="funcionalidades-section">
+            <div className="container">
+              <h2 className="section-title">Funcionalidades em Beta</h2>
+              <p className="roadmap-intro" style={{ marginBottom: '30px' }}>
+                Estamos testando essas funcionalidades! Elas estão disponíveis, mas ainda em fase de aprimoramento.
+              </p>
+              <div className="beneficios-grid">
+                {beneficiosBeta.map((beneficio, index) => (
+                  <div key={index} className="beneficio-card">
+                    <div className="beneficio-icon">{beneficio.icone}</div>
+                    <h3>{beneficio.titulo}</h3>
+                    <p>{beneficio.descricao}</p>
+                    <span className="roadmap-tag" style={{ marginTop: '10px', display: 'inline-block' }}>Em Beta</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        ) : null;
+
       case 'whatsapp-ia-ativas':
         return sessoesAtivas.includes('whatsapp-ia-ativas') && funcoesIAAtivas.length > 0 ? (
           <section key="whatsapp-ia-ativas" id="whatsapp-ia-ativas" className="whatsapp-section">
@@ -412,6 +445,43 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
                       </div>
                       <h3>{funcao.titulo}</h3>
                       <p>{funcao.descricao}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+        ) : null;
+
+      case 'whatsapp-ia-beta':
+        return sessoesAtivas.includes('whatsapp-ia-beta') && funcoesIABeta.length > 0 ? (
+          <section key="whatsapp-ia-beta" id="whatsapp-ia-beta" className="whatsapp-section">
+            <div className="container">
+              <h2 className="section-title">
+                Integração com Inteligência Artificial <span className="roadmap-subtitle">(pelo WhatsApp) - Em Beta</span>
+              </h2>
+              <p className="whatsapp-intro">
+                Estamos testando essas funcionalidades de IA! Elas estão disponíveis, mas ainda em fase de aprimoramento.
+              </p>
+              <div className="whatsapp-placeholder">
+                <div className="whatsapp-features">
+                  {funcoesIABeta.map((funcao) => (
+                    <div key={funcao.id} className="whatsapp-feature-card">
+                      <div className="whatsapp-icon-inline-wrapper">
+                        {funcao.icone_upload ? (
+                          <img src={funcao.icone_upload} alt={funcao.titulo} style={{ width: '48px', height: '48px' }} />
+                        ) : funcao.icone ? (
+                          (() => {
+                            const IconComponent = FaIcons[funcao.icone as keyof typeof FaIcons] as React.ComponentType<any>;
+                            return IconComponent ? <IconComponent className="whatsapp-icon-inline" /> : <FaWhatsapp className="whatsapp-icon-inline" />;
+                          })()
+                        ) : (
+                          <FaWhatsapp className="whatsapp-icon-inline" />
+                        )}
+                      </div>
+                      <h3>{funcao.titulo}</h3>
+                      <p>{funcao.descricao}</p>
+                      <span className="roadmap-tag" style={{ marginTop: '10px', display: 'inline-block' }}>Em Beta</span>
                     </div>
                   ))}
                 </div>
@@ -678,6 +748,13 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
                       document.getElementById('funcionalidades')?.scrollIntoView({ behavior: 'smooth' });
                     }}>Funcionalidades</a>
                   );
+                case 'funcionalidades-beta':
+                  return beneficiosBeta.length > 0 ? (
+                    <a key="funcionalidades-beta" href="#funcionalidades-beta" onClick={(e) => {
+                      e.preventDefault();
+                      document.getElementById('funcionalidades-beta')?.scrollIntoView({ behavior: 'smooth' });
+                    }}>Funcionalidades em Beta</a>
+                  ) : null;
                 case 'roadmap':
                   return (
                     <a key="roadmap" href="#roadmap" onClick={(e) => {
@@ -805,6 +882,12 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
                     e.preventDefault();
                     document.getElementById('funcionalidades')?.scrollIntoView({ behavior: 'smooth' });
                   }}>Funcionalidades</a>
+                  {beneficiosBeta.length > 0 && (
+                    <a href="#funcionalidades-beta" onClick={(e) => {
+                      e.preventDefault();
+                      document.getElementById('funcionalidades-beta')?.scrollIntoView({ behavior: 'smooth' });
+                    }}>Funcionalidades em Beta</a>
+                  )}
                   <a href="#roadmap" onClick={(e) => {
                     e.preventDefault();
                     document.getElementById('roadmap')?.scrollIntoView({ behavior: 'smooth' });

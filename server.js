@@ -1585,7 +1585,7 @@ app.get('/api/funcoes', async (req, res) => {
 // Criar função (apenas admin)
 app.post('/api/funcoes', authenticateToken, requireAdmin, async (req, res) => {
     try {
-        const { titulo, descricao, icone, icone_upload, ativa, eh_ia, ordem } = req.body;
+        const { titulo, descricao, icone, icone_upload, ativa, eh_ia, em_beta, ordem } = req.body;
         
         if (!titulo || !descricao) {
             return res.status(400).json({ error: 'Título e descrição são obrigatórios' });
@@ -1598,6 +1598,7 @@ app.post('/api/funcoes', authenticateToken, requireAdmin, async (req, res) => {
             icone_upload || null,
             ativa !== undefined ? ativa : true,
             eh_ia !== undefined ? eh_ia : false,
+            em_beta !== undefined ? em_beta : false,
             ordem || 0
         );
         res.json(funcao);
@@ -1611,7 +1612,7 @@ app.post('/api/funcoes', authenticateToken, requireAdmin, async (req, res) => {
 app.put('/api/funcoes/:id', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
-        const { titulo, descricao, icone, icone_upload, ativa, eh_ia, ordem } = req.body;
+        const { titulo, descricao, icone, icone_upload, ativa, eh_ia, em_beta, ordem } = req.body;
         
         if (!titulo || !descricao) {
             return res.status(400).json({ error: 'Título e descrição são obrigatórios' });
@@ -1625,6 +1626,7 @@ app.put('/api/funcoes/:id', authenticateToken, requireAdmin, async (req, res) =>
             icone_upload || null,
             ativa !== undefined ? ativa : true,
             eh_ia !== undefined ? eh_ia : false,
+            em_beta !== undefined ? em_beta : false,
             ordem || 0
         );
         
