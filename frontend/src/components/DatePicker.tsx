@@ -182,6 +182,77 @@ const DatePicker = ({ value, onChange, max, disabled, id, className = '' }: Date
 
   const days = getDaysInMonth(currentMonth);
   const displayValue = formatDisplayDate(selectedDate);
+  const [inputValue, setInputValue] = useState(displayValue);
+
+  // Sincronizar inputValue quando displayValue mudar (quando selecionar pelo calendário)
+  useEffect(() => {
+    setInputValue(displayValue);
+  }, [displayValue]);
+
+  // Função para validar e formatar data digitada (DD/MM/AAAA)
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+
+    // Remover tudo que não for número
+    const numbers = value.replace(/\D/g, '');
+
+    // Limitar a 8 dígitos
+    if (numbers.length > 8) return;
+
+    // Formatar como DD/MM/AAAA enquanto digita
+    let formatted = numbers;
+    if (numbers.length > 2) {
+      formatted = `${numbers.slice(0, 2)}/${numbers.slice(2)}`;
+    }
+    if (numbers.length > 4) {
+      formatted = `${numbers.slice(0, 2)}/${numbers.slice(2, 4)}/${numbers.slice(4)}`;
+    }
+
+    setInputValue(formatted);
+
+    // Se tiver 10 caracteres (DD/MM/AAAA completo), validar e converter
+    if (numbers.length === 8) {
+      const day = parseInt(numbers.slice(0, 2), 10);
+      const month = parseInt(numbers.slice(2, 4), 10);
+      const year = parseInt(numbers.slice(4, 8), 10);
+
+      // Validar data
+      if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
+        const date = new Date(year, month - 1, day);
+        
+        // Verificar se a data é válida (ex: não permite 31/02)
+        if (date.getDate() === day && date.getMonth() === month - 1 && date.getFullYear() === year) {
+          // Verificar se não excede max
+          if (max) {
+            const [maxYear, maxMonth, maxDay] = max.split('-').map(Number);
+            if (year > maxYear || (year === maxYear && month > maxMonth) || 
+                (year === maxYear && month === maxMonth && day > maxDay)) {
+              return; // Data maior que max, não atualizar
+            }
+          }
+
+          setSelectedDate(date);
+          setCurrentMonth(date);
+          // Converter para YYYY-MM-DD
+          const formattedDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          onChange(formattedDate);
+        }
+      }
+    }
+  };
+
+  const handleInputBlur = () => {
+    // Se o valor digitado não for válido, restaurar o valor anterior
+    if (inputValue && inputValue.length === 10) {
+      const numbers = inputValue.replace(/\D/g, '');
+      if (numbers.length !== 8) {
+        setInputValue(displayValue);
+      }
+    } else if (inputValue && inputValue.length > 0 && inputValue.length < 10) {
+      // Se não completou a data, restaurar
+      setInputValue(displayValue);
+    }
+  };
 
   return (
     <div className={`date-picker-wrapper ${className}`} ref={pickerRef}>
@@ -190,12 +261,12 @@ const DatePicker = ({ value, onChange, max, disabled, id, className = '' }: Date
           id={id}
           type="text"
           className="form-input date-picker-input"
-          value={displayValue}
-          readOnly
-          onClick={() => !disabled && setIsOpen(!isOpen)}
-          onFocus={() => !disabled && setIsOpen(true)}
+          value={inputValue}
+          onChange={handleInputChange}
+          onBlur={handleInputBlur}
           disabled={disabled}
           placeholder="DD/MM/AAAA"
+          maxLength={10}
         />
         <button
           type="button"
