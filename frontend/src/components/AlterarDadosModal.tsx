@@ -517,19 +517,57 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
     return value;
   };
 
-  const handleFotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        mostrarAlert('Erro', 'A foto deve ter no máximo 5MB.');
+        await mostrarAlert('Erro', 'A foto deve ter no máximo 5MB.');
         return;
       }
 
+      // Redimensionar e comprimir a imagem antes de converter para base64
       const reader = new FileReader();
       reader.onloadend = () => {
-        const base64 = reader.result as string;
-        setFotoPreview(base64);
-        setDados(prev => ({ ...prev, foto_perfil: base64 }));
+        const img = new Image();
+        img.onload = () => {
+          // Criar canvas para redimensionar
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 400;
+          const MAX_HEIGHT = 400;
+          let width = img.width;
+          let height = img.height;
+
+          // Calcular novas dimensões mantendo proporção
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height = (height * MAX_WIDTH) / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width = (width * MAX_HEIGHT) / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          // Desenhar imagem redimensionada
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            // Converter para base64 com qualidade reduzida (0.7 = 70% de qualidade)
+            // Isso reduz significativamente o tamanho do base64
+            const base64 = canvas.toDataURL('image/jpeg', 0.7);
+            setFotoPreview(base64);
+            setDados(prev => ({ ...prev, foto_perfil: base64 }));
+          }
+        };
+        img.onerror = async () => {
+          await mostrarAlert('Erro', 'Erro ao processar a imagem. Tente novamente.');
+        };
+        img.src = reader.result as string;
       };
       reader.readAsDataURL(file);
     }

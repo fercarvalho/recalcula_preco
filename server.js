@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
 // Rotas da API (ANTES do express.static para evitar conflitos)
 
@@ -146,7 +146,9 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
 });
 
 // Agora aplicar bodyParser.json para todas as outras rotas
-app.use(bodyParser.json());
+// Aumentar limite para 50MB para permitir upload de imagens em base64
+app.use(bodyParser.json({ limit: '50mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
 // ========== ROTAS DE AUTENTICAÇÃO (SEM MIDDLEWARE) ==========
 

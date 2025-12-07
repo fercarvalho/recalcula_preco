@@ -167,7 +167,7 @@ async function inicializar() {
             { nome: 'estado_comercial', tipo: 'VARCHAR(2)' },
             { nome: 'pais_residencial', tipo: 'VARCHAR(100)' },
             { nome: 'pais_comercial', tipo: 'VARCHAR(100)' },
-            { nome: 'foto_perfil', tipo: 'VARCHAR(500)' },
+            { nome: 'foto_perfil', tipo: 'TEXT' },
             { nome: 'data_nascimento', tipo: 'DATE' },
             { nome: 'genero', tipo: 'VARCHAR(50)' }
         ];
@@ -175,6 +175,27 @@ async function inicializar() {
         for (const coluna of colunasDadosPessoais) {
             if (!(await colunaExiste('usuarios', coluna.nome))) {
                 await pool.query(`ALTER TABLE usuarios ADD COLUMN ${coluna.nome} ${coluna.tipo}`);
+            } else if (coluna.nome === 'foto_perfil') {
+                // Atualizar tipo do campo foto_perfil se já existir e for VARCHAR(500)
+                try {
+                    const colunaInfo = await pool.query(`
+                        SELECT data_type, character_maximum_length 
+                        FROM information_schema.columns 
+                        WHERE table_name = 'usuarios' AND column_name = 'foto_perfil'
+                    `);
+                    if (colunaInfo.rows.length > 0) {
+                        const info = colunaInfo.rows[0];
+                        // Se for VARCHAR com limite pequeno, alterar para TEXT
+                        if (info.data_type === 'character varying' && 
+                            (info.character_maximum_length === null || info.character_maximum_length <= 500)) {
+                            await pool.query('ALTER TABLE usuarios ALTER COLUMN foto_perfil TYPE TEXT');
+                            console.log('Campo foto_perfil atualizado para TEXT');
+                        }
+                    }
+                } catch (error) {
+                    console.error('Erro ao atualizar campo foto_perfil:', error);
+                    // Continuar mesmo se houver erro
+                }
             }
         }
         
