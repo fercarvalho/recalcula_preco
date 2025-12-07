@@ -361,8 +361,9 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
         // Verificar se o país não é Brasil para habilitar o checkbox
         setNaoResidoBrasilResidencial(userData.pais_residencial && userData.pais_residencial !== 'Brasil');
         setNaoResidoBrasilComercial(userData.pais_comercial && userData.pais_comercial !== 'Brasil');
-        // Verificar se não possui CPF (se CPF estiver vazio, considerar que não possui)
-        setNaoPossuiCpf(!userData.cpf || userData.cpf.trim() === '');
+        // Por padrão, o checkbox "Não possuo CPF" deve estar desmarcado
+        // O usuário deve marcar explicitamente se for estrangeiro
+        setNaoPossuiCpf(false);
         // Definir código do país do telefone baseado no país residencial ou comercial
         const paisParaTelefone = userData.pais_residencial || userData.pais_comercial || 'Brasil';
         setCodigoPaisTelefone(CODIGOS_PAIS[paisParaTelefone] || '+55');
@@ -688,10 +689,11 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
     setLoading(true);
 
     try {
-      // Incluir mesmoEndereco nos dados para o backend validar corretamente
+      // Incluir mesmoEndereco e nao_possui_cpf nos dados para o backend validar corretamente
       const dadosParaEnviar = {
         ...dados,
-        mesmo_endereco: mesmoEndereco
+        mesmo_endereco: mesmoEndereco,
+        nao_possui_cpf: naoPossuiCpf
       };
       await apiService.atualizarDadosUsuario(dadosParaEnviar);
       await mostrarAlert('Sucesso', 'Dados atualizados com sucesso!');

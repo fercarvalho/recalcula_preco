@@ -5518,17 +5518,21 @@ async function atualizarDadosUsuario(usuarioId, dados) {
             }
             
             // Validar CPF - verificar se está sendo atualizado ou se já existe
-            if (dados.cpf !== undefined) {
-                if (!campoPreenchido(dados.cpf)) {
-                    // Se está sendo atualizado para vazio, verificar se já tinha no banco
+            // Se o usuário marcou "Não possuo CPF", não validar o CPF
+            const naoPossuiCpf = dados.nao_possui_cpf === true;
+            if (!naoPossuiCpf) {
+                if (dados.cpf !== undefined) {
+                    if (!campoPreenchido(dados.cpf)) {
+                        // Se está sendo atualizado para vazio, verificar se já tinha no banco
+                        if (!campoPreenchido(dadosAtuais.cpf)) {
+                            throw new Error('O CPF é obrigatório quando o email está validado (ou marque "Não possuo CPF")');
+                        }
+                    }
+                } else {
+                    // CPF não está sendo atualizado, verificar se já existe
                     if (!campoPreenchido(dadosAtuais.cpf)) {
                         throw new Error('O CPF é obrigatório quando o email está validado (ou marque "Não possuo CPF")');
                     }
-                }
-            } else {
-                // CPF não está sendo atualizado, verificar se já existe
-                if (!campoPreenchido(dadosAtuais.cpf)) {
-                    throw new Error('O CPF é obrigatório quando o email está validado (ou marque "Não possuo CPF")');
                 }
             }
             
