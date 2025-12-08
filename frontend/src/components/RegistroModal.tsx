@@ -128,12 +128,19 @@ const RegistroModal = ({ isOpen, onClose, onRegisterSuccess }: RegistroModalProp
             type="text"
             className="form-input"
             value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            onChange={(e) => {
+              // Remover espaços e caracteres acentuados em tempo real
+              const value = e.target.value.replace(/[\s\u00C0-\u017F]/g, '');
+              // Permitir apenas letras, números, underscore e hífen
+              const sanitized = value.replace(/[^a-zA-Z0-9_-]/g, '');
+              setUsername(sanitized);
+            }}
             placeholder="Digite o nome de usuário (sem espaços ou acentos)"
             autoFocus
             disabled={loading}
             required
             minLength={3}
+            pattern="[a-zA-Z0-9_-]+"
           />
         </div>
 

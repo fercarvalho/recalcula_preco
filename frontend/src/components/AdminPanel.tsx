@@ -1010,6 +1010,18 @@ const EditarUsuarioModal = ({ isOpen, onClose, usuario, onUsuarioAtualizado }: E
       return;
     }
 
+    if (username.trim().length < 3) {
+      await mostrarAlert('Erro', 'O nome de usuário deve ter pelo menos 3 caracteres.');
+      return;
+    }
+
+    // Validar que não tenha espaços ou acentos
+    const usernameRegex = /^[a-zA-Z0-9_-]+$/;
+    if (!usernameRegex.test(username.trim())) {
+      await mostrarAlert('Erro', 'O nome de usuário não pode conter espaços ou acentos. Use apenas letras, números, underscore (_) ou hífen (-).');
+      return;
+    }
+
     if (!email.trim()) {
       await mostrarAlert('Erro', 'O email é obrigatório.');
       return;
@@ -1091,9 +1103,16 @@ const EditarUsuarioModal = ({ isOpen, onClose, usuario, onUsuarioAtualizado }: E
             type="text"
             className="form-input"
             value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            onChange={(e) => {
+              // Remover espaços e caracteres acentuados em tempo real
+              const value = e.target.value.replace(/[\s\u00C0-\u017F]/g, '');
+              // Permitir apenas letras, números, underscore e hífen
+              const sanitized = value.replace(/[^a-zA-Z0-9_-]/g, '');
+              setUsername(sanitized);
+            }}
             disabled={loading}
             required
+            pattern="[a-zA-Z0-9_-]+"
           />
         </div>
 

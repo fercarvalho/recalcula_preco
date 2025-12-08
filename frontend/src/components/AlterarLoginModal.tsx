@@ -132,11 +132,18 @@ const AlterarLoginModal = ({ isOpen, onClose }: AlterarLoginModalProps) => {
             type="text"
             className="form-input"
             value={novoLogin}
-            onChange={(e) => setNovoLogin(e.target.value)}
+            onChange={(e) => {
+              // Remover espaços e caracteres acentuados em tempo real
+              const value = e.target.value.replace(/[\s\u00C0-\u017F]/g, '');
+              // Permitir apenas letras, números, underscore e hífen
+              const sanitized = value.replace(/[^a-zA-Z0-9_-]/g, '');
+              setNovoLogin(sanitized);
+            }}
             placeholder="Digite o novo login (sem espaços ou acentos)"
             autoFocus
             disabled={loading}
             required
+            pattern="[a-zA-Z0-9_-]+"
           />
         </div>
 

@@ -1219,6 +1219,17 @@ async function atualizarUsuario(usuarioId, novoUsername, novoEmail, novaSenha, i
         let paramIndex = 1;
 
         if (novoUsername) {
+            // Validar username
+            if (novoUsername.trim().length < 3) {
+                throw new Error('O nome de usuário deve ter pelo menos 3 caracteres');
+            }
+
+            // Validar que não tenha espaços ou acentos
+            const usernameRegex = /^[a-zA-Z0-9_-]+$/;
+            if (!usernameRegex.test(novoUsername.trim())) {
+                throw new Error('O nome de usuário não pode conter espaços ou acentos. Use apenas letras, números, underscore (_) ou hífen (-)');
+            }
+
             // Verificar se o novo username já existe (case-insensitive)
             const existente = await pool.query(
                 'SELECT id FROM usuarios WHERE LOWER(username) = LOWER($1) AND id != $2',
