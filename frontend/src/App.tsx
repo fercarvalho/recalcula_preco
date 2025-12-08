@@ -17,6 +17,7 @@ import EditarItemModal from './components/EditarItemModal';
 import ResetarSenhaModal from './components/ResetarSenhaModal';
 import { SelecaoPlanos } from './components/SelecaoPlanos';
 import Modal from './components/Modal';
+import ModalUpgrade from './components/ModalUpgrade';
 import ValidarEmailModal from './components/ValidarEmailModal';
 import ValidarEmail from './pages/ValidarEmail';
 import Cardapio from './pages/Cardapio';
@@ -77,6 +78,7 @@ function App() {
   const [temAcesso, setTemAcesso] = useState<boolean | null>(null);
   const [verificandoPagamento, setVerificandoPagamento] = useState(true);
   const [showModalPlanos, setShowModalPlanos] = useState(false);
+  const [showModalUpgrade, setShowModalUpgrade] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [showValidarEmail, setShowValidarEmail] = useState(false);
   const [showAlterarDados, setShowAlterarDados] = useState(false);
@@ -725,6 +727,8 @@ function App() {
               }
               setShowEditarItemModal(true);
             }}
+            onOpenModalPlanos={() => setShowModalPlanos(true)}
+            onOpenModalUpgrade={() => setShowModalUpgrade(true)}
           />
 
               <ItensSection
@@ -918,6 +922,11 @@ function App() {
           setShowModalPlanos(false);
         }} />
       </Modal>
+
+      <ModalUpgrade
+        isOpen={showModalUpgrade}
+        onClose={() => setShowModalUpgrade(false)}
+      />
       <ValidarEmailModal
         isOpen={showValidarEmail}
         onClose={() => setShowValidarEmail(false)}

@@ -17,28 +17,38 @@ interface AdicionarProdutoSectionProps {
   onOpenPainelAdmin?: () => void;
   onOpenAdicionarCategoria?: () => void;
   onOpenAdicionarItem?: () => void;
+  onOpenModalPlanos?: () => void;
+  onOpenModalUpgrade?: () => void;
 }
 
-const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, onOpenPainelAdmin, onOpenAdicionarCategoria, onOpenAdicionarItem }: AdicionarProdutoSectionProps) => {
+const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, onOpenPainelAdmin, onOpenAdicionarCategoria, onOpenAdicionarItem, onOpenModalPlanos, onOpenModalUpgrade }: AdicionarProdutoSectionProps) => {
   const [showAdicionarCategoriaModal, setShowAdicionarCategoriaModal] = useState(false);
   const [showEditarItemModal, setShowEditarItemModal] = useState(false);
   const [cardapioPublico, setCardapioPublico] = useState(false);
   const [username, setUsername] = useState<string>('');
+  const [statusPagamento, setStatusPagamento] = useState<{
+    temAcesso: boolean;
+    tipo: 'anual' | 'unico' | null;
+  } | null>(null);
 
-  // Carregar estado do cardápio público
+  // Carregar estado do cardápio público e status de pagamento
   useEffect(() => {
-    const carregarCardapioPublico = async () => {
+    const carregarDados = async () => {
       try {
         const response = await apiService.obterDadosUsuario();
         if (response.user) {
           setCardapioPublico(response.user.cardapio_publico === true);
           setUsername(response.user.username || '');
         }
+        
+        // Carregar status de pagamento
+        const status = await apiService.verificarStatusPagamento();
+        setStatusPagamento(status);
       } catch (error) {
-        console.error('Erro ao carregar estado do cardápio:', error);
+        console.error('Erro ao carregar dados:', error);
       }
     };
-    carregarCardapioPublico();
+    carregarDados();
   }, []);
 
   const handleAdicionarProduto = () => {
@@ -397,6 +407,38 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
               type="button"
               onClick={async (e) => {
                 e.preventDefault();
+                
+                // Se está tentando ativar, verificar se tem plano anual
+                if (!cardapioPublico) {
+                  // Verificar status de pagamento
+                  const status = await apiService.verificarStatusPagamento();
+                  
+                  if (!status.temAcesso) {
+                    // Usuário não tem plano ativo - abrir modal de planos
+                    if (onOpenModalPlanos) {
+                      onOpenModalPlanos();
+                    }
+                    return;
+                  }
+                  
+                  if (status.tipo === 'unico') {
+                    // Usuário tem plano único - abrir modal de upgrade
+                    if (onOpenModalUpgrade) {
+                      onOpenModalUpgrade();
+                    }
+                    return;
+                  }
+                  
+                  if (status.tipo !== 'anual') {
+                    // Usuário não tem plano anual - abrir modal de planos
+                    if (onOpenModalPlanos) {
+                      onOpenModalPlanos();
+                    }
+                    return;
+                  }
+                }
+                
+                // Se chegou aqui, pode ativar/desativar
                 const novoValor = !cardapioPublico;
                 setCardapioPublico(novoValor);
                 try {

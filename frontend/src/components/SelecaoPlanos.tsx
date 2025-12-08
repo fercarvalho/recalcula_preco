@@ -144,6 +144,16 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
       <div className="planos-header">
         <h1>Escolha seu Plano</h1>
         <p>Selecione o plano que melhor se adequa às suas necessidades</p>
+        <div className="aviso-beta-planos" style={{
+          marginTop: '1rem',
+          padding: '1rem',
+          backgroundColor: '#fff3cd',
+          border: '1px solid #ffc107',
+          borderRadius: '8px',
+          color: '#856404'
+        }}>
+          <strong>⚠️ Aviso:</strong> As funções em Beta (como Modo Cardápio) estão disponíveis apenas para usuários do Plano Anual.
+        </div>
       </div>
 
       <div className="planos-grid">
@@ -155,13 +165,12 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
             const temDescontoValor = !!(plano.desconto_valor && plano.desconto_valor > 0);
             const temDesconto = temDescontoPercentual || temDescontoValor;
             
-            // Calcular valor a exibir
-            let valorExibir = plano.valor;
-            if (plano.tipo === 'parcelado' && plano.mostrar_valor_parcelado && plano.valor_parcelado) {
-              valorExibir = plano.valor_parcelado;
-            } else if (plano.tipo === 'recorrente' && plano.mostrar_valor_total && plano.valor_total) {
-              valorExibir = plano.valor_total;
-            }
+            // Calcular valor com desconto (igual à landing page)
+            const valorComDesconto = temDescontoPercentual
+              ? plano.valor * (1 - (plano.desconto_percentual || 0) / 100)
+              : temDescontoValor
+              ? plano.valor - (plano.desconto_valor || 0)
+              : plano.valor;
 
             return (
               <div
@@ -181,10 +190,40 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
                 <div className="plano-header">
                   <h2>{plano.nome}</h2>
                   <div className="plano-preco">
-                    <span className="preco-valor">R$ {formatarValor(valorExibir)}</span>
+                    {temDesconto && (
+                      <div className="preco-original" style={{
+                        marginBottom: '0.5rem',
+                        fontSize: '0.9rem',
+                        color: '#999',
+                        textDecoration: 'line-through'
+                      }}>
+                        De: R$ {formatarValor(plano.valor)}
+                      </div>
+                    )}
+                    <span className="preco-valor">R$ {formatarValor(valorComDesconto)}</span>
                     <span className="preco-periodo">
                       {formatarPeriodo(plano.tipo, plano.periodo, plano.valor_parcelado)}
                     </span>
+                    {temDescontoPercentual && (
+                      <p className="desconto-info" style={{
+                        marginTop: '0.5rem',
+                        color: '#4CAF50',
+                        fontWeight: 600,
+                        fontSize: '0.9rem'
+                      }}>
+                        Economize {plano.desconto_percentual}%
+                      </p>
+                    )}
+                    {temDescontoValor && !temDescontoPercentual && (
+                      <p className="desconto-info" style={{
+                        marginTop: '0.5rem',
+                        color: '#4CAF50',
+                        fontWeight: 600,
+                        fontSize: '0.9rem'
+                      }}>
+                        Economize R$ {formatarValor(plano.desconto_valor!)}
+                      </p>
+                    )}
                   </div>
                   {plano.tipo === 'recorrente' && !plano.frase_reforco && (
                     <p className="plano-descricao">Acesso completo por 12 meses</p>
