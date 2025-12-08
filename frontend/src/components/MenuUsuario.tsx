@@ -26,7 +26,7 @@ const MenuUsuario = ({ onLogout, onReiniciarSistema, onReexibirTutorial, onOpenA
   const [user, setUser] = useState(getUser());
   const [statusPagamento, setStatusPagamento] = useState<{
     temAcesso: boolean;
-    tipo: 'anual' | 'unico' | null;
+    tipo: 'anual' | 'unico' | 'vitalicio' | null;
     emailNaoValidado?: boolean;
     assinatura: {
       status: string;

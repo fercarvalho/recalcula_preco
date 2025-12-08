@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FaStar, FaTimes } from 'react-icons/fa';
+import { FaStar } from 'react-icons/fa';
 import { apiService } from '../services/api';
 import { mostrarAlert } from '../utils/modals';
 import Modal from './Modal';

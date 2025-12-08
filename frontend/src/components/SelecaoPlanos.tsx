@@ -14,7 +14,7 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
   const [planos, setPlanos] = useState<Plano[]>([]);
   const [statusPagamento, setStatusPagamento] = useState<{
     temAcesso: boolean;
-    tipo: 'anual' | 'unico' | null;
+    tipo: 'anual' | 'unico' | 'vitalicio' | null;
   } | null>(null);
 
   useEffect(() => {

@@ -245,12 +245,7 @@ const Cardapio = () => {
     );
   }
 
-  const categorias = Object.keys(cardapio.itens).sort((a, b) => {
-    const itensA = cardapio.itens[a];
-    const itensB = cardapio.itens[b];
-    // Manter ordem original se houver ordem definida, senão ordenar alfabeticamente
-    return 0; // A ordem já vem ordenada do backend
-  });
+  const categorias = Object.keys(cardapio.itens);
 
   return (
     <div className="cardapio-container" ref={cardapioRef}>

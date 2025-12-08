@@ -54,7 +54,6 @@ function App() {
   // Verificar se está na rota de cardápio (formato: /username/cardapio)
   const cardapioMatch = pathname.match(/^\/([^\/]+)\/cardapio$/);
   if (cardapioMatch) {
-    const username = cardapioMatch[1];
     return <Cardapio />;
   }
 
