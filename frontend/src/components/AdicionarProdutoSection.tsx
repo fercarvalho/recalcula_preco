@@ -180,9 +180,19 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
             <button
               className="btn-compartilhar-cardapio"
               disabled={!cardapioPublico}
-              onClick={() => {
-                // TODO: Implementar compartilhamento em PDF
-                mostrarAlert('Info', 'Funcionalidade de compartilhar em PDF será implementada em breve.');
+              onClick={async () => {
+                if (!cardapioPublico || !username) {
+                  await mostrarAlert('Atenção', 'Ative o modo cardápio primeiro.');
+                  return;
+                }
+                try {
+                  // Abrir o cardápio em uma nova aba com parâmetro para gerar o PDF
+                  const cardapioUrl = `${window.location.origin}/${username}/cardapio?gerar_pdf=true`;
+                  window.open(cardapioUrl, '_blank');
+                } catch (error: any) {
+                  console.error('Erro ao gerar PDF do cardápio:', error);
+                  await mostrarAlert('Erro', 'Erro ao gerar PDF do cardápio. Tente novamente.');
+                }
               }}
               style={{
                 opacity: cardapioPublico ? 1 : 0.5,

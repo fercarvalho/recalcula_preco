@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import type { ItensPorCategoria } from '../types';
 import { carregarConfiguracoes, aplicarConfiguracoes } from '../components/PainelAdmin';
 import './Cardapio.css';
@@ -126,6 +127,86 @@ const Cardapio = () => {
           console.log('Imagem exibida com sucesso');
         } catch (err) {
           console.error('Erro ao gerar imagem do cardápio:', err);
+          if (err instanceof Error) {
+            console.error('Detalhes do erro:', err.message, err.stack);
+          }
+        }
+      }, 2000);
+      
+      return () => {
+        clearTimeout(timeoutId);
+      };
+    }
+  }, [cardapio, loading]);
+
+  // Gerar PDF quando o parâmetro gerar_pdf estiver na URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const gerarPdf = urlParams.get('gerar_pdf');
+    
+    if (gerarPdf === 'true' && cardapio && !loading) {
+      // Aguardar um pouco mais para garantir que tudo está totalmente renderizado
+      const timeoutId = setTimeout(async () => {
+        try {
+          // Verificar novamente se o ref está disponível
+          if (!cardapioRef.current) {
+            console.error('cardapioRef.current não está disponível após timeout');
+            return;
+          }
+          
+          console.log('Iniciando geração de PDF...');
+          
+          // Gerar canvas do cardápio
+          const canvas = await html2canvas(cardapioRef.current, {
+            backgroundColor: null,
+            scale: 2,
+            logging: false,
+            useCORS: true,
+            allowTaint: false,
+            scrollX: 0,
+            scrollY: 0,
+            windowWidth: cardapioRef.current.scrollWidth,
+            windowHeight: cardapioRef.current.scrollHeight,
+          });
+          
+          console.log('Canvas gerado, dimensões:', canvas.width, 'x', canvas.height);
+          
+          // Converter canvas para imagem
+          const imgData = canvas.toDataURL('image/png');
+          
+          // Calcular dimensões do PDF (A4 em pixels a 96 DPI)
+          const pdfWidth = 210; // mm (A4 width)
+          const pdfHeight = (canvas.height * pdfWidth) / canvas.width; // mm (mantendo proporção)
+          
+          // Criar PDF
+          const pdf = new jsPDF({
+            orientation: pdfHeight > pdfWidth ? 'portrait' : 'landscape',
+            unit: 'mm',
+            format: [pdfWidth, pdfHeight]
+          });
+          
+          // Adicionar imagem ao PDF
+          pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+          
+          // Gerar nome do arquivo
+          const fileName = `cardapio-${cardapio.usuario.username}-${new Date().toISOString().split('T')[0]}.pdf`;
+          
+          // Salvar PDF
+          pdf.save(fileName);
+          
+          console.log('PDF gerado com sucesso');
+          
+          // Fechar a aba após um pequeno delay
+          setTimeout(() => {
+            try {
+              window.close();
+            } catch (e) {
+              // Ignorar erro se não conseguir fechar
+              console.log('Não foi possível fechar a aba automaticamente');
+            }
+          }, 500);
+        } catch (err) {
+          console.error('Erro ao gerar PDF do cardápio:', err);
           if (err instanceof Error) {
             console.error('Detalhes do erro:', err.message, err.stack);
           }
