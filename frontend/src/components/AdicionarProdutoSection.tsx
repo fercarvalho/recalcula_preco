@@ -4,6 +4,10 @@ import { mostrarAlert } from '../utils/modals';
 import AdicionarCategoriaModal from './AdicionarCategoriaModal';
 import EditarItemModal from './EditarItemModal';
 import { FaPlusCircle, FaFolderPlus, FaStore, FaCog, FaToggleOn, FaToggleOff, FaImage, FaFilePdf } from 'react-icons/fa';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+import { carregarConfiguracoes, aplicarConfiguracoes } from './PainelAdmin';
+import '../pages/Cardapio.css';
 import './AdicionarProdutoSection.css';
 
 interface AdicionarProdutoSectionProps {
@@ -74,6 +78,291 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
       } else {
         await mostrarAlert('Erro', mensagemErro);
       }
+    }
+  };
+
+  const gerarImagemCardapio = async () => {
+    try {
+      // Buscar dados do cardápio
+      const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
+      const response = await fetch(`${API_BASE}/api/cardapio/${username}`);
+      if (!response.ok) {
+        throw new Error('Erro ao carregar cardápio');
+      }
+      const cardapioData = await response.json();
+
+      // Aplicar configurações de cores
+      if (cardapioData.usuario?.id) {
+        const config = carregarConfiguracoes(cardapioData.usuario.id);
+        aplicarConfiguracoes(config, cardapioData.usuario.id);
+      }
+
+      // Criar elemento oculto para renderizar o cardápio
+      const container = document.createElement('div');
+      container.style.position = 'absolute';
+      container.style.left = '-9999px';
+      container.style.top = '0';
+      container.style.width = '1200px';
+      container.className = 'cardapio-container';
+      document.body.appendChild(container);
+
+      // Renderizar cardápio no elemento oculto
+      const header = document.createElement('div');
+      header.className = 'cardapio-header';
+      const titulo = document.createElement('h1');
+      titulo.className = 'cardapio-titulo';
+      const usuarioSpan = document.createElement('span');
+      usuarioSpan.className = 'cardapio-usuario';
+      usuarioSpan.textContent = `Cardápio do ${cardapioData.usuario.username.charAt(0).toUpperCase() + cardapioData.usuario.username.slice(1).toLowerCase()}`;
+      titulo.appendChild(usuarioSpan);
+      if (cardapioData.usuario.nome_estabelecimento) {
+        const estabelecimentoSpan = document.createElement('span');
+        estabelecimentoSpan.className = 'cardapio-estabelecimento';
+        estabelecimentoSpan.textContent = cardapioData.usuario.nome_estabelecimento;
+        titulo.appendChild(estabelecimentoSpan);
+        const subtitulo = document.createElement('p');
+        subtitulo.className = 'cardapio-subtitulo';
+        subtitulo.textContent = 'Cardápio Digital';
+        header.appendChild(subtitulo);
+      }
+      header.appendChild(titulo);
+      container.appendChild(header);
+
+      const content = document.createElement('div');
+      content.className = 'cardapio-content';
+      
+      const categorias = Object.keys(cardapioData.itens).sort();
+      categorias.forEach((categoria) => {
+        const itens = cardapioData.itens[categoria];
+        if (!itens || itens.length === 0) return;
+
+        const categoriaDiv = document.createElement('div');
+        categoriaDiv.className = 'cardapio-categoria';
+        
+        const categoriaTitulo = document.createElement('h2');
+        categoriaTitulo.className = 'categoria-titulo';
+        categoriaTitulo.textContent = categoria;
+        categoriaDiv.appendChild(categoriaTitulo);
+
+        const itensDiv = document.createElement('div');
+        itensDiv.className = 'cardapio-itens';
+        
+        itens.forEach((item: any) => {
+          const itemDiv = document.createElement('div');
+          itemDiv.className = 'cardapio-item';
+          
+          const nomeSpan = document.createElement('span');
+          nomeSpan.className = 'item-nome';
+          nomeSpan.textContent = item.nome;
+          
+          const valorSpan = document.createElement('span');
+          valorSpan.className = 'item-valor';
+          valorSpan.textContent = `R$ ${item.valor.toFixed(2).replace('.', ',')}`;
+          
+          itemDiv.appendChild(nomeSpan);
+          itemDiv.appendChild(valorSpan);
+          itensDiv.appendChild(itemDiv);
+        });
+        
+        categoriaDiv.appendChild(itensDiv);
+        content.appendChild(categoriaDiv);
+      });
+      
+      container.appendChild(content);
+
+      // Aguardar um pouco para garantir renderização
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Gerar canvas
+      const canvas = await html2canvas(container, {
+        backgroundColor: null,
+        scale: 2,
+        logging: false,
+        useCORS: true,
+        allowTaint: false,
+      });
+
+      // Remover elemento oculto
+      document.body.removeChild(container);
+
+      // Converter para imagem e abrir em nova aba
+      const imageUrl = canvas.toDataURL('image/png');
+      const newWindow = window.open('', '_blank');
+      if (newWindow) {
+        newWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>Cardápio - ${cardapioData.usuario.username}</title>
+              <meta charset="UTF-8">
+              <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body {
+                  margin: 0;
+                  padding: 20px;
+                  background: #f5f5f5;
+                  display: flex;
+                  justify-content: center;
+                  align-items: center;
+                  min-height: 100vh;
+                }
+                img {
+                  max-width: 100%;
+                  height: auto;
+                  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                  border-radius: 8px;
+                  display: block;
+                }
+              </style>
+            </head>
+            <body>
+              <img src="${imageUrl}" alt="Cardápio" />
+            </body>
+          </html>
+        `);
+        newWindow.document.close();
+      }
+    } catch (error: any) {
+      console.error('Erro ao gerar imagem do cardápio:', error);
+      await mostrarAlert('Erro', 'Erro ao gerar imagem do cardápio. Tente novamente.');
+    }
+  };
+
+  const gerarPdfCardapio = async () => {
+    try {
+      // Buscar dados do cardápio
+      const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
+      const response = await fetch(`${API_BASE}/api/cardapio/${username}`);
+      if (!response.ok) {
+        throw new Error('Erro ao carregar cardápio');
+      }
+      const cardapioData = await response.json();
+
+      // Aplicar configurações de cores
+      if (cardapioData.usuario?.id) {
+        const config = carregarConfiguracoes(cardapioData.usuario.id);
+        aplicarConfiguracoes(config, cardapioData.usuario.id);
+      }
+
+      // Criar elemento oculto para renderizar o cardápio
+      const container = document.createElement('div');
+      container.style.position = 'absolute';
+      container.style.left = '-9999px';
+      container.style.top = '0';
+      container.style.width = '1200px';
+      container.className = 'cardapio-container';
+      document.body.appendChild(container);
+
+      // Renderizar cardápio no elemento oculto (mesmo código da função de imagem)
+      const header = document.createElement('div');
+      header.className = 'cardapio-header';
+      const titulo = document.createElement('h1');
+      titulo.className = 'cardapio-titulo';
+      const usuarioSpan = document.createElement('span');
+      usuarioSpan.className = 'cardapio-usuario';
+      usuarioSpan.textContent = `Cardápio do ${cardapioData.usuario.username.charAt(0).toUpperCase() + cardapioData.usuario.username.slice(1).toLowerCase()}`;
+      titulo.appendChild(usuarioSpan);
+      if (cardapioData.usuario.nome_estabelecimento) {
+        const estabelecimentoSpan = document.createElement('span');
+        estabelecimentoSpan.className = 'cardapio-estabelecimento';
+        estabelecimentoSpan.textContent = cardapioData.usuario.nome_estabelecimento;
+        titulo.appendChild(estabelecimentoSpan);
+        const subtitulo = document.createElement('p');
+        subtitulo.className = 'cardapio-subtitulo';
+        subtitulo.textContent = 'Cardápio Digital';
+        header.appendChild(subtitulo);
+      }
+      header.appendChild(titulo);
+      container.appendChild(header);
+
+      const content = document.createElement('div');
+      content.className = 'cardapio-content';
+      
+      const categorias = Object.keys(cardapioData.itens).sort();
+      categorias.forEach((categoria) => {
+        const itens = cardapioData.itens[categoria];
+        if (!itens || itens.length === 0) return;
+
+        const categoriaDiv = document.createElement('div');
+        categoriaDiv.className = 'cardapio-categoria';
+        
+        const categoriaTitulo = document.createElement('h2');
+        categoriaTitulo.className = 'categoria-titulo';
+        categoriaTitulo.textContent = categoria;
+        categoriaDiv.appendChild(categoriaTitulo);
+
+        const itensDiv = document.createElement('div');
+        itensDiv.className = 'cardapio-itens';
+        
+        itens.forEach((item: any) => {
+          const itemDiv = document.createElement('div');
+          itemDiv.className = 'cardapio-item';
+          
+          const nomeSpan = document.createElement('span');
+          nomeSpan.className = 'item-nome';
+          nomeSpan.textContent = item.nome;
+          
+          const valorSpan = document.createElement('span');
+          valorSpan.className = 'item-valor';
+          valorSpan.textContent = `R$ ${item.valor.toFixed(2).replace('.', ',')}`;
+          
+          itemDiv.appendChild(nomeSpan);
+          itemDiv.appendChild(valorSpan);
+          itensDiv.appendChild(itemDiv);
+        });
+        
+        categoriaDiv.appendChild(itensDiv);
+        content.appendChild(categoriaDiv);
+      });
+      
+      container.appendChild(content);
+
+      // Aguardar um pouco para garantir renderização
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Gerar canvas
+      const canvas = await html2canvas(container, {
+        backgroundColor: null,
+        scale: 2,
+        logging: false,
+        useCORS: true,
+        allowTaint: false,
+      });
+
+      // Remover elemento oculto
+      document.body.removeChild(container);
+
+      // Converter para imagem e criar PDF
+      const imgData = canvas.toDataURL('image/png');
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      
+      // Calcular dimensões do PDF em mm (A4 width = 210mm)
+      const pdfWidth = 210; // mm
+      const pdfHeight = (imgHeight * pdfWidth) / imgWidth; // mm (mantendo proporção)
+
+      console.log('Criando PDF com dimensões:', pdfWidth, 'x', pdfHeight, 'mm');
+
+      // Criar PDF
+      const pdf = new jsPDF({
+        orientation: pdfHeight > pdfWidth ? 'portrait' : 'landscape',
+        unit: 'mm',
+        format: [pdfWidth, pdfHeight]
+      });
+
+      // Adicionar imagem ao PDF
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+      
+      // Gerar nome do arquivo
+      const fileName = `cardapio_${cardapioData.usuario.username}.pdf`;
+      
+      // Salvar PDF
+      pdf.save(fileName);
+      
+      console.log('PDF gerado e salvo com sucesso:', fileName);
+    } catch (error: any) {
+      console.error('Erro ao gerar PDF do cardápio:', error);
+      await mostrarAlert('Erro', 'Erro ao gerar PDF do cardápio. Tente novamente.');
     }
   };
 
@@ -161,14 +450,7 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
                   await mostrarAlert('Atenção', 'Ative o modo cardápio primeiro.');
                   return;
                 }
-                try {
-                  // Abrir o cardápio em uma nova aba com parâmetro para gerar a imagem
-                  const cardapioUrl = `${window.location.origin}/${username}/cardapio?gerar_imagem=true`;
-                  window.open(cardapioUrl, '_blank');
-                } catch (error: any) {
-                  console.error('Erro ao gerar imagem do cardápio:', error);
-                  await mostrarAlert('Erro', 'Erro ao gerar imagem do cardápio. Tente novamente.');
-                }
+                await gerarImagemCardapio();
               }}
               style={{
                 opacity: cardapioPublico ? 1 : 0.5,
@@ -185,14 +467,7 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
                   await mostrarAlert('Atenção', 'Ative o modo cardápio primeiro.');
                   return;
                 }
-                try {
-                  // Abrir o cardápio em uma nova aba com parâmetro para gerar o PDF
-                  const cardapioUrl = `${window.location.origin}/${username}/cardapio?gerar_pdf=true`;
-                  window.open(cardapioUrl, '_blank');
-                } catch (error: any) {
-                  console.error('Erro ao gerar PDF do cardápio:', error);
-                  await mostrarAlert('Erro', 'Erro ao gerar PDF do cardápio. Tente novamente.');
-                }
+                await gerarPdfCardapio();
               }}
               style={{
                 opacity: cardapioPublico ? 1 : 0.5,
