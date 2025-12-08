@@ -19,6 +19,7 @@ import { SelecaoPlanos } from './components/SelecaoPlanos';
 import Modal from './components/Modal';
 import ValidarEmailModal from './components/ValidarEmailModal';
 import ValidarEmail from './pages/ValidarEmail';
+import Cardapio from './pages/Cardapio';
 import AlterarDadosModal from './components/AlterarDadosModal';
 import { isAuthenticated, getToken, getUser, saveAuth } from './services/auth';
 import { carregarPlataformasSync, carregarPlataformas } from './utils/plataformas';
@@ -45,6 +46,13 @@ function App() {
   
   if (isValidationRoute) {
     return <ValidarEmail />;
+  }
+
+  // Verificar se está na rota de cardápio (formato: /username/cardapio)
+  const cardapioMatch = pathname.match(/^\/([^\/]+)\/cardapio$/);
+  if (cardapioMatch) {
+    const username = cardapioMatch[1];
+    return <Cardapio />;
   }
 
   const [itensPorCategoria, setItensPorCategoria] = useState<ItensPorCategoria>({});

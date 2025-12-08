@@ -169,7 +169,9 @@ async function inicializar() {
             { nome: 'pais_comercial', tipo: 'VARCHAR(100)' },
             { nome: 'foto_perfil', tipo: 'TEXT' },
             { nome: 'data_nascimento', tipo: 'DATE' },
-            { nome: 'genero', tipo: 'VARCHAR(50)' }
+            { nome: 'genero', tipo: 'VARCHAR(50)' },
+            { nome: 'cardapio_publico', tipo: 'BOOLEAN DEFAULT FALSE' },
+            { nome: 'cardapio_compartilhar', tipo: 'BOOLEAN DEFAULT FALSE' }
         ];
         
         for (const coluna of colunasDadosPessoais) {
@@ -1069,7 +1071,7 @@ async function verificarCredenciais(identificador, senha) {
 async function obterUsuarioPorId(id) {
     try {
         const result = await pool.query(
-            'SELECT id, username, email, is_admin, tutorial_completed, email_validado, nome, sobrenome, telefone, cpf, nome_estabelecimento, cep_residencial, endereco_residencial, numero_residencial, complemento_residencial, cidade_residencial, estado_residencial, pais_residencial, cep_comercial, endereco_comercial, numero_comercial, complemento_comercial, cidade_comercial, estado_comercial, pais_comercial, foto_perfil, data_nascimento, genero FROM usuarios WHERE id = $1',
+            'SELECT id, username, email, is_admin, tutorial_completed, email_validado, nome, sobrenome, telefone, cpf, nome_estabelecimento, cep_residencial, endereco_residencial, numero_residencial, complemento_residencial, cidade_residencial, estado_residencial, pais_residencial, cep_comercial, endereco_comercial, numero_comercial, complemento_comercial, cidade_comercial, estado_comercial, pais_comercial, foto_perfil, data_nascimento, genero, cardapio_publico, cardapio_compartilhar FROM usuarios WHERE id = $1',
             [id]
         );
         
@@ -1106,7 +1108,9 @@ async function obterUsuarioPorId(id) {
             pais_comercial: row.pais_comercial || null,
             foto_perfil: row.foto_perfil || null,
             data_nascimento: row.data_nascimento || null,
-            genero: row.genero || null
+            genero: row.genero || null,
+            cardapio_publico: row.cardapio_publico || false,
+            cardapio_compartilhar: row.cardapio_compartilhar || false
         };
     } catch (error) {
         console.error('Erro ao obter usuário:', error);
@@ -2391,6 +2395,130 @@ async function obterUsuarioPorUsername(username) {
         return result.rows[0];
     } catch (error) {
         console.error('Erro ao obter usuário por username:', error);
+        throw error;
+    }
+}
+
+// Obter cardápio público por username
+async function obterCardapioPublico(username) {
+    try {
+        // Primeiro verificar se o usuário existe e se o cardápio é público
+        const usuarioResult = await pool.query(
+            'SELECT id, username, nome_estabelecimento, cardapio_publico FROM usuarios WHERE LOWER(username) = LOWER($1)',
+            [username.trim()]
+        );
+        
+        if (usuarioResult.rows.length === 0) {
+            return null;
+        }
+        
+        const usuario = usuarioResult.rows[0];
+        
+        // Se o cardápio não for público, retornar null
+        if (!usuario.cardapio_publico) {
+            return null;
+        }
+        
+        // Obter itens do usuário (mesma lógica de obterTodosItens)
+        const categoriasResult = await pool.query(
+            'SELECT nome, ordem FROM categorias WHERE usuario_id = $1 ORDER BY CASE WHEN ordem IS NULL THEN 1 ELSE 0 END, ordem, nome',
+            [usuario.id]
+        );
+        const categoriasOrdenadas = categoriasResult.rows;
+        
+        const ordemMap = {};
+        categoriasOrdenadas.forEach((cat) => {
+            ordemMap[cat.nome] = cat.ordem !== null && cat.ordem !== undefined ? cat.ordem : 999;
+        });
+        
+        const itensResult = await pool.query(
+            'SELECT * FROM itens WHERE usuario_id = $1 ORDER BY categoria, CASE WHEN ordem IS NULL THEN 1 ELSE 0 END, ordem, nome',
+            [usuario.id]
+        );
+        const rows = itensResult.rows;
+        
+        const itensPorCategoria = {};
+        
+        for (const row of rows) {
+            if (!itensPorCategoria[row.categoria]) {
+                itensPorCategoria[row.categoria] = [];
+            }
+            
+            // Usar valorNovo se existir, senão usar valor
+            const valorExibicao = row.valor_novo !== null && row.valor_novo !== undefined 
+                ? parseFloat(row.valor_novo) 
+                : parseFloat(row.valor);
+            
+            itensPorCategoria[row.categoria].push({
+                id: row.id,
+                nome: row.nome,
+                valor: valorExibicao,
+                ordem: row.ordem !== null && row.ordem !== undefined ? row.ordem : 999
+            });
+        }
+        
+        // Incluir categorias que não têm itens
+        categoriasOrdenadas.forEach(cat => {
+            if (!itensPorCategoria[cat.nome]) {
+                itensPorCategoria[cat.nome] = [];
+            }
+        });
+        
+        // Ordenar categorias pela ordem salva
+        const todasCategorias = new Set([
+            ...Object.keys(itensPorCategoria),
+            ...categoriasOrdenadas.map(cat => cat.nome)
+        ]);
+        
+        const categoriasOrdenadasArray = Array.from(todasCategorias).sort((a, b) => {
+            const ordemA = ordemMap[a] !== undefined ? ordemMap[a] : 999;
+            const ordemB = ordemMap[b] !== undefined ? ordemMap[b] : 999;
+            return ordemA - ordemB;
+        });
+        
+        const itensPorCategoriaOrdenado = {};
+        categoriasOrdenadasArray.forEach(categoria => {
+            itensPorCategoriaOrdenado[categoria] = itensPorCategoria[categoria] || [];
+        });
+        
+        return {
+            usuario: {
+                id: usuario.id,
+                username: usuario.username,
+                nome_estabelecimento: usuario.nome_estabelecimento || null
+            },
+            itens: itensPorCategoriaOrdenado
+        };
+    } catch (error) {
+        console.error('Erro ao obter cardápio público:', error);
+        throw error;
+    }
+}
+
+// Atualizar visibilidade do cardápio
+async function atualizarCardapioPublico(usuarioId, cardapioPublico) {
+    try {
+        await pool.query(
+            'UPDATE usuarios SET cardapio_publico = $1 WHERE id = $2',
+            [cardapioPublico, usuarioId]
+        );
+        return true;
+    } catch (error) {
+        console.error('Erro ao atualizar visibilidade do cardápio:', error);
+        throw error;
+    }
+}
+
+// Atualizar modo compartilhar cardápio
+async function atualizarCardapioCompartilhar(usuarioId, cardapioCompartilhar) {
+    try {
+        await pool.query(
+            'UPDATE usuarios SET cardapio_compartilhar = $1 WHERE id = $2',
+            [cardapioCompartilhar, usuarioId]
+        );
+        return true;
+    } catch (error) {
+        console.error('Erro ao atualizar modo compartilhar cardápio:', error);
         throw error;
     }
 }
@@ -5839,6 +5967,9 @@ module.exports = {
     validarTokenEmail,
     verificarEmailValidado,
     obterTokenValidacaoEmail,
+    obterCardapioPublico,
+    atualizarCardapioPublico,
+    atualizarCardapioCompartilhar,
     fechar
 };
 

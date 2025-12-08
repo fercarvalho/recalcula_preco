@@ -25,7 +25,8 @@ body {
   }
 }
 
-body:has(.landing-page) {
+body:has(.landing-page),
+body:has(.cardapio-container) {
   padding: 0 !important;
   margin: 0 !important;
   overflow-x: hidden;

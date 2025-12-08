@@ -585,5 +585,16 @@ export const apiService = {
     const response = await api.post('/api/auth/upload-foto', { fotoBase64 });
     return response.data;
   },
+
+  // Cardápio
+  async atualizarCardapioPublico(cardapioPublico: boolean): Promise<any> {
+    const response = await api.put('/api/auth/cardapio-publico', { cardapio_publico: cardapioPublico });
+    return response.data;
+  },
+
+  async atualizarCardapioCompartilhar(cardapioCompartilhar: boolean): Promise<any> {
+    const response = await api.put('/api/auth/cardapio-compartilhar', { cardapio_compartilhar: cardapioCompartilhar });
+    return response.data;
+  },
 };
 

@@ -509,6 +509,57 @@ app.put('/api/auth/alterar-dados', authenticateToken, async (req, res) => {
     }
 });
 
+// Obter cardápio público por username (rota pública, sem autenticação)
+app.get('/api/cardapio/:username', async (req, res) => {
+    try {
+        const { username } = req.params;
+        const cardapio = await db.obterCardapioPublico(username);
+        
+        if (!cardapio) {
+            return res.status(404).json({ error: 'Cardápio não encontrado ou não está público' });
+        }
+        
+        res.json(cardapio);
+    } catch (error) {
+        console.error('Erro ao obter cardápio público:', error);
+        res.status(500).json({ error: 'Erro ao obter cardápio público' });
+    }
+});
+
+// Atualizar visibilidade do cardápio
+app.put('/api/auth/cardapio-publico', authenticateToken, async (req, res) => {
+    try {
+        const { cardapio_publico } = req.body;
+        
+        if (typeof cardapio_publico !== 'boolean') {
+            return res.status(400).json({ error: 'cardapio_publico deve ser um booleano' });
+        }
+        
+        await db.atualizarCardapioPublico(req.userId, cardapio_publico);
+        res.json({ message: 'Visibilidade do cardápio atualizada com sucesso', cardapio_publico });
+    } catch (error) {
+        console.error('Erro ao atualizar visibilidade do cardápio:', error);
+        res.status(500).json({ error: 'Erro ao atualizar visibilidade do cardápio' });
+    }
+});
+
+// Atualizar modo compartilhar cardápio
+app.put('/api/auth/cardapio-compartilhar', authenticateToken, async (req, res) => {
+    try {
+        const { cardapio_compartilhar } = req.body;
+        
+        if (typeof cardapio_compartilhar !== 'boolean') {
+            return res.status(400).json({ error: 'cardapio_compartilhar deve ser um booleano' });
+        }
+        
+        await db.atualizarCardapioCompartilhar(req.userId, cardapio_compartilhar);
+        res.json({ message: 'Modo compartilhar cardápio atualizado com sucesso', cardapio_compartilhar });
+    } catch (error) {
+        console.error('Erro ao atualizar modo compartilhar cardápio:', error);
+        res.status(500).json({ error: 'Erro ao atualizar modo compartilhar cardápio' });
+    }
+});
+
 // Upload de foto de perfil
 app.post('/api/auth/upload-foto', authenticateToken, async (req, res) => {
     try {
