@@ -3,8 +3,16 @@
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
+html {
+  margin: 0;
+  padding: 0;
+  background: var(--cor-fundo, #1a1a1a);
+}
+
 body {
   margin: 0;
+  padding: 0;
   min-width: 320px;
   min-height: 100vh;
+  background: var(--cor-fundo, #1a1a1a);
 }

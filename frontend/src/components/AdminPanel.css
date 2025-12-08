@@ -5,6 +5,16 @@
   max-height: 70vh;
 }
 
+.admin-section {
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.admin-buttons-list {
+  margin-bottom: 0;
+  padding-bottom: 30px;
+}
+
 .admin-usuarios-list {
   flex: 1;
   min-width: 300px;
@@ -20,16 +30,20 @@
 
 .admin-busca-usuario {
   margin-bottom: 15px;
+  width: 100%;
 }
 
 .admin-busca-usuario input {
   width: 100%;
-  padding: 10px 12px 10px 40px;
+  padding: 10px 16px 10px 40px;
   border: 1px solid #ddd;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 0.9rem;
   outline: none;
   transition: border-color 0.2s ease;
+  box-sizing: border-box;
+  height: auto;
+  line-height: 1.4;
 }
 
 .admin-busca-usuario input:focus {

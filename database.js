@@ -171,7 +171,8 @@ async function inicializar() {
             { nome: 'data_nascimento', tipo: 'DATE' },
             { nome: 'genero', tipo: 'VARCHAR(50)' },
             { nome: 'cardapio_publico', tipo: 'BOOLEAN DEFAULT FALSE' },
-            { nome: 'cardapio_compartilhar', tipo: 'BOOLEAN DEFAULT FALSE' }
+            { nome: 'cardapio_compartilhar', tipo: 'BOOLEAN DEFAULT FALSE' },
+            { nome: 'feedback_beta_enviado', tipo: 'BOOLEAN DEFAULT FALSE' }
         ];
         
         for (const coluna of colunasDadosPessoais) {
@@ -746,6 +747,30 @@ async function inicializar() {
         // Migrar benefícios existentes para estrutura many-to-many
         await migrarBeneficiosParaManyToMany();
         
+        // Criar tabela para feedbacks sobre funções beta
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS feedbacks_beta (
+                id SERIAL PRIMARY KEY,
+                usuario_id INTEGER REFERENCES usuarios(id) ON DELETE CASCADE,
+                funcao_id INTEGER REFERENCES funcoes(id) ON DELETE SET NULL,
+                funcao_titulo TEXT,
+                avaliacao INTEGER NOT NULL CHECK (avaliacao >= 1 AND avaliacao <= 5),
+                comentario TEXT,
+                sugestoes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        // Adicionar coluna funcao_titulo se não existir (migração)
+        try {
+            await pool.query(`
+                ALTER TABLE feedbacks_beta 
+                ADD COLUMN IF NOT EXISTS funcao_titulo TEXT
+            `);
+        } catch (error) {
+            // Coluna já existe, ignorar erro
+        }
+        
         // Inicializar planos padrão se não existirem
         await inicializarPlanosPadrao();
         
@@ -1071,7 +1096,7 @@ async function verificarCredenciais(identificador, senha) {
 async function obterUsuarioPorId(id) {
     try {
         const result = await pool.query(
-            'SELECT id, username, email, is_admin, tutorial_completed, email_validado, nome, sobrenome, telefone, cpf, nome_estabelecimento, cep_residencial, endereco_residencial, numero_residencial, complemento_residencial, cidade_residencial, estado_residencial, pais_residencial, cep_comercial, endereco_comercial, numero_comercial, complemento_comercial, cidade_comercial, estado_comercial, pais_comercial, foto_perfil, data_nascimento, genero, cardapio_publico, cardapio_compartilhar FROM usuarios WHERE id = $1',
+            'SELECT id, username, email, is_admin, tutorial_completed, email_validado, nome, sobrenome, telefone, cpf, nome_estabelecimento, cep_residencial, endereco_residencial, numero_residencial, complemento_residencial, cidade_residencial, estado_residencial, pais_residencial, cep_comercial, endereco_comercial, numero_comercial, complemento_comercial, cidade_comercial, estado_comercial, pais_comercial, foto_perfil, data_nascimento, genero, cardapio_publico, cardapio_compartilhar, feedback_beta_enviado FROM usuarios WHERE id = $1',
             [id]
         );
         
@@ -1110,7 +1135,8 @@ async function obterUsuarioPorId(id) {
             data_nascimento: row.data_nascimento || null,
             genero: row.genero || null,
             cardapio_publico: row.cardapio_publico || false,
-            cardapio_compartilhar: row.cardapio_compartilhar || false
+            cardapio_compartilhar: row.cardapio_compartilhar || false,
+            feedback_beta_enviado: row.feedback_beta_enviado || false
         };
     } catch (error) {
         console.error('Erro ao obter usuário:', error);
@@ -2519,6 +2545,118 @@ async function atualizarCardapioCompartilhar(usuarioId, cardapioCompartilhar) {
         return true;
     } catch (error) {
         console.error('Erro ao atualizar modo compartilhar cardápio:', error);
+        throw error;
+    }
+}
+
+// ========== FUNÇÕES DE FEEDBACK BETA ==========
+
+// Verificar se usuário já enviou feedback
+async function verificarFeedbackEnviado(usuarioId) {
+    try {
+        const result = await pool.query(
+            'SELECT feedback_beta_enviado FROM usuarios WHERE id = $1',
+            [usuarioId]
+        );
+        if (result.rows.length === 0) return false;
+        return result.rows[0].feedback_beta_enviado || false;
+    } catch (error) {
+        console.error('Erro ao verificar feedback enviado:', error);
+        throw error;
+    }
+}
+
+// Verificar se usuário tem funções beta ativas
+async function verificarFuncoesBetaAtivas(usuarioId) {
+    try {
+        // Verificar se usuário tem plano anual ou vitalício
+        const acesso = await verificarAcessoAtivo(usuarioId);
+        if (!acesso.temAcesso || (acesso.tipo !== 'anual' && acesso.tipo !== 'vitalicio')) {
+            return false;
+        }
+        
+        // Verificar se há funções beta ativas no sistema
+        const result = await pool.query(
+            'SELECT COUNT(*) as count FROM funcoes WHERE em_beta = true AND ativa = true'
+        );
+        return parseInt(result.rows[0].count) > 0;
+    } catch (error) {
+        console.error('Erro ao verificar funções beta ativas:', error);
+        throw error;
+    }
+}
+
+// Criar feedback beta
+async function criarFeedbackBeta(usuarioId, dadosFeedback) {
+    try {
+        const { funcao_id, funcao_titulo, avaliacao, comentario, sugestoes } = dadosFeedback;
+        
+        await pool.query(
+            `INSERT INTO feedbacks_beta (usuario_id, funcao_id, funcao_titulo, avaliacao, comentario, sugestoes)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [usuarioId, funcao_id || null, funcao_titulo || null, avaliacao, comentario || null, sugestoes || null]
+        );
+        
+        // Marcar que usuário já enviou feedback
+        await pool.query(
+            'UPDATE usuarios SET feedback_beta_enviado = true WHERE id = $1',
+            [usuarioId]
+        );
+        
+        return true;
+    } catch (error) {
+        console.error('Erro ao criar feedback beta:', error);
+        throw error;
+    }
+}
+
+// Obter todos os feedbacks beta (para admin)
+async function obterTodosFeedbacksBeta() {
+    try {
+        const result = await pool.query(`
+            SELECT 
+                fb.id,
+                fb.usuario_id,
+                fb.funcao_id,
+                fb.funcao_titulo,
+                fb.avaliacao,
+                fb.comentario,
+                fb.sugestoes,
+                fb.created_at,
+                u.username,
+                u.email,
+                f.titulo as funcao_titulo_db
+            FROM feedbacks_beta fb
+            LEFT JOIN usuarios u ON fb.usuario_id = u.id
+            LEFT JOIN funcoes f ON fb.funcao_id = f.id
+            ORDER BY fb.created_at DESC
+        `);
+        
+        return result.rows.map(row => {
+            // Usar funcao_titulo do campo direto se existir, senão usar o da tabela funcoes
+            const tituloFuncao = row.funcao_titulo || row.funcao_titulo_db;
+            
+            return {
+                id: row.id,
+                usuario_id: row.usuario_id,
+                usuario: {
+                    id: row.usuario_id,
+                    username: row.username,
+                    email: row.email
+                },
+                funcao_id: row.funcao_id,
+                funcao: tituloFuncao ? {
+                    id: row.funcao_id,
+                    titulo: tituloFuncao
+                } : null,
+                avaliacao: row.avaliacao,
+                comentario: row.comentario,
+                sugestoes: row.sugestoes,
+                created_at: row.created_at
+            };
+        });
+    } catch (error) {
+        console.error('Erro ao obter feedbacks beta:', error);
         throw error;
     }
 }
@@ -5970,6 +6108,11 @@ module.exports = {
     obterCardapioPublico,
     atualizarCardapioPublico,
     atualizarCardapioCompartilhar,
+    // Funções de feedback beta
+    verificarFeedbackEnviado,
+    verificarFuncoesBetaAtivas,
+    criarFeedbackBeta,
+    obterTodosFeedbacksBeta,
     fechar
 };
 

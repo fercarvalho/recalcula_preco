@@ -130,7 +130,7 @@ export const apiService = {
 
   async verificarStatusPagamento(): Promise<{
     temAcesso: boolean;
-    tipo: 'anual' | 'unico' | null;
+    tipo: 'anual' | 'unico' | 'vitalicio' | null;
     emailNaoValidado?: boolean;
     assinatura: {
       status: string;
@@ -141,7 +141,7 @@ export const apiService = {
   }> {
     const response = await api.get<{
       temAcesso: boolean;
-      tipo: 'anual' | 'unico' | null;
+      tipo: 'anual' | 'unico' | 'vitalicio' | null;
       emailNaoValidado?: boolean;
       assinatura: {
         status: string;
@@ -594,6 +594,33 @@ export const apiService = {
 
   async atualizarCardapioCompartilhar(cardapioCompartilhar: boolean): Promise<any> {
     const response = await api.put('/api/auth/cardapio-compartilhar', { cardapio_compartilhar: cardapioCompartilhar });
+    return response.data;
+  },
+
+  // Feedback Beta
+  async verificarFeedbackBeta(): Promise<{
+    deveMostrar: boolean;
+    feedbackEnviado: boolean;
+    temFuncoesBeta: boolean;
+  }> {
+    const response = await api.get('/api/auth/feedback-beta/verificar');
+    return response.data;
+  },
+
+  async criarFeedbackBeta(dados: {
+    funcao_id?: number | null;
+    funcao_titulo?: string | null;
+    avaliacao: number;
+    comentario?: string | null;
+    sugestoes?: string | null;
+  }): Promise<any> {
+    const response = await api.post('/api/auth/feedback-beta', dados);
+    return response.data;
+  },
+
+  // Admin - Feedbacks Beta
+  async obterFeedbacksBeta(): Promise<any[]> {
+    const response = await api.get('/api/admin/feedbacks-beta');
     return response.data;
   },
 };

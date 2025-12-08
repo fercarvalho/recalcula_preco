@@ -3,7 +3,8 @@ import { apiService } from '../services/api';
 import { mostrarAlert } from '../utils/modals';
 import AdicionarCategoriaModal from './AdicionarCategoriaModal';
 import EditarItemModal from './EditarItemModal';
-import { FaPlusCircle, FaFolderPlus, FaStore, FaCog, FaToggleOn, FaToggleOff, FaImage, FaFilePdf } from 'react-icons/fa';
+import { FaPlusCircle, FaFolderPlus, FaStore, FaCog, FaToggleOn, FaToggleOff, FaImage, FaFilePdf, FaComment } from 'react-icons/fa';
+import ModalFeedbackBeta from './ModalFeedbackBeta';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { carregarConfiguracoes, aplicarConfiguracoes } from './PainelAdmin';
@@ -28,8 +29,10 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
   const [username, setUsername] = useState<string>('');
   const [statusPagamento, setStatusPagamento] = useState<{
     temAcesso: boolean;
-    tipo: 'anual' | 'unico' | null;
+    tipo: 'anual' | 'unico' | 'vitalicio' | null;
   } | null>(null);
+  const [showModalFeedback, setShowModalFeedback] = useState(false);
+  const [funcaoFeedback, setFuncaoFeedback] = useState<string>('');
 
   // Carregar estado do cardápio público e status de pagamento
   useEffect(() => {
@@ -399,9 +402,24 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
       <div className="cardapio-section">
         <div className="cardapio-switch-container">
           <label className="cardapio-switch-label">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
               <span className="cardapio-switch-text">Modo Cardápio</span>
               <span className="roadmap-tag">Em Beta</span>
+              {(statusPagamento?.tipo === 'anual' || statusPagamento?.tipo === 'vitalicio') && statusPagamento?.temAcesso && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setFuncaoFeedback('Modo Cardápio');
+                    setShowModalFeedback(true);
+                  }}
+                  className="btn-feedback-beta"
+                  title="Enviar feedback sobre esta função"
+                >
+                  <FaComment /> Feedback
+                </button>
+              )}
             </div>
             <button
               type="button"
@@ -476,9 +494,22 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
       </div>
       <div className="cardapio-section">
         <div className="cardapio-switch-container">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
             <span className="cardapio-switch-text">Modo Compartilhar Cardápio</span>
             <span className="roadmap-tag">Em Beta</span>
+            {(statusPagamento?.tipo === 'anual' || statusPagamento?.tipo === 'vitalicio') && statusPagamento?.temAcesso && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFuncaoFeedback('Modo Compartilhar Cardápio');
+                  setShowModalFeedback(true);
+                }}
+                className="btn-feedback-beta"
+                title="Enviar feedback sobre esta função"
+              >
+                <FaComment /> Feedback
+              </button>
+            )}
           </div>
           <small className="cardapio-switch-description" style={{ marginBottom: '1rem', display: 'block' }}>
             Compartilhe seu cardápio em diferentes formatos. Ative o modo cardápio para habilitar os botões.
@@ -533,6 +564,15 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
         modoAdicionar={true}
         onClose={() => setShowEditarItemModal(false)}
         onSave={handleSalvarItem}
+      />
+
+      <ModalFeedbackBeta
+        isOpen={showModalFeedback}
+        onClose={() => {
+          setShowModalFeedback(false);
+          setFuncaoFeedback('');
+        }}
+        funcaoTitulo={funcaoFeedback}
       />
     </>
   );

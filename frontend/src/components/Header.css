@@ -2,6 +2,10 @@ header {
   background: var(--cor-primaria, #FF6B35);
   color: white;
   padding: 30px;
+  margin: -20px -20px 20px -20px;
+  width: calc(100% + 40px);
+  box-sizing: border-box;
+  border-radius: 15px 15px 0 0;
 }
 
 .header-content {

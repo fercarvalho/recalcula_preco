@@ -18,6 +18,7 @@ import ResetarSenhaModal from './components/ResetarSenhaModal';
 import { SelecaoPlanos } from './components/SelecaoPlanos';
 import Modal from './components/Modal';
 import ModalUpgrade from './components/ModalUpgrade';
+import ModalFeedbackBeta from './components/ModalFeedbackBeta';
 import ValidarEmailModal from './components/ValidarEmailModal';
 import ValidarEmail from './pages/ValidarEmail';
 import Cardapio from './pages/Cardapio';
@@ -35,6 +36,7 @@ const aplicarConfiguracoesUsuario = () => {
   aplicarConfiguracoes(config, userId);
 };
 import { mostrarAlert, mostrarConfirm } from './utils/modals';
+import { FaComment } from 'react-icons/fa';
 import './App.css';
 
 function App() {
@@ -79,6 +81,9 @@ function App() {
   const [verificandoPagamento, setVerificandoPagamento] = useState(true);
   const [showModalPlanos, setShowModalPlanos] = useState(false);
   const [showModalUpgrade, setShowModalUpgrade] = useState(false);
+  const [showModalFeedbackBeta, setShowModalFeedbackBeta] = useState(false);
+  const [showModalFeedbackGeral, setShowModalFeedbackGeral] = useState(false);
+  const [funcaoFeedbackBeta, setFuncaoFeedbackBeta] = useState<string>('');
   const [showLogin, setShowLogin] = useState(false);
   const [showValidarEmail, setShowValidarEmail] = useState(false);
   const [showAlterarDados, setShowAlterarDados] = useState(false);
@@ -162,6 +167,19 @@ function App() {
     
     return () => {
       window.removeEventListener('email-validado', handleEmailValidado);
+    };
+  }, []);
+
+  // Listener para quando feedback for enviado
+  useEffect(() => {
+    const handleFeedbackEnviado = () => {
+      setShowModalFeedbackBeta(false);
+    };
+    
+    window.addEventListener('feedback-enviado', handleFeedbackEnviado);
+    
+    return () => {
+      window.removeEventListener('feedback-enviado', handleFeedbackEnviado);
     };
   }, []);
 
@@ -287,6 +305,42 @@ function App() {
     }
   };
 
+  const verificarFeedbackBeta = async () => {
+    try {
+      const resultado = await apiService.verificarFeedbackBeta();
+      if (resultado.deveMostrar) {
+        // Buscar funções beta ativas para determinar qual função mostrar
+        try {
+          const funcoes = await apiService.obterFuncoes();
+          const funcoesBeta = funcoes.filter((f: any) => f.em_beta === true && f.ativa === true);
+          
+          // Se houver apenas uma função beta, usar o título dela
+          if (funcoesBeta.length === 1) {
+            setFuncaoFeedbackBeta(funcoesBeta[0].titulo);
+          } else if (funcoesBeta.length > 1) {
+            // Se houver múltiplas, verificar se há "Modo Cardápio" e priorizar
+            const modoCardapio = funcoesBeta.find((f: any) => 
+              f.titulo.toLowerCase().includes('cardápio') || 
+              f.titulo.toLowerCase().includes('cardapio')
+            );
+            if (modoCardapio) {
+              setFuncaoFeedbackBeta(modoCardapio.titulo);
+            } else {
+              // Se não encontrar Modo Cardápio, usar a primeira
+              setFuncaoFeedbackBeta(funcoesBeta[0].titulo);
+            }
+          }
+        } catch (error) {
+          console.error('Erro ao buscar funções beta:', error);
+        }
+        
+        setShowModalFeedbackBeta(true);
+      }
+    } catch (error) {
+      console.error('Erro ao verificar feedback beta:', error);
+    }
+  };
+
   const verificarPagamento = async () => {
     try {
       const user = getUser();
@@ -343,6 +397,11 @@ function App() {
       }
       // Sempre carregar itens, mesmo sem acesso pago (modo trial)
       await carregarItens();
+      
+      // Verificar se deve mostrar modal de feedback beta (anual ou vitalício)
+      if (status.temAcesso && (status.tipo === 'anual' || status.tipo === 'vitalicio')) {
+        await verificarFeedbackBeta();
+      }
       // Carregar plataformas após autenticação
       if (user?.id) {
         carregarPlataformas(user.id).then(() => {
@@ -742,6 +801,17 @@ function App() {
                 temAcesso={temAcesso === true}
                 onAbrirModalPlanos={() => setShowModalPlanos(true)}
               />
+              
+              {/* Botão de Feedback Geral - Canto inferior direito */}
+              {authenticated && (
+                <button
+                  onClick={() => setShowModalFeedbackGeral(true)}
+                  className="btn-feedback-geral"
+                  title="Enviar feedback geral sobre o sistema"
+                >
+                  <FaComment /> Feedback
+                </button>
+              )}
         </div>
       </div>
 
@@ -927,6 +997,24 @@ function App() {
         isOpen={showModalUpgrade}
         onClose={() => setShowModalUpgrade(false)}
       />
+
+      <ModalFeedbackBeta
+        isOpen={showModalFeedbackBeta}
+        onClose={() => {
+          setShowModalFeedbackBeta(false);
+          setFuncaoFeedbackBeta('');
+        }}
+        funcaoTitulo={funcaoFeedbackBeta}
+      />
+      
+      <ModalFeedbackBeta
+        isOpen={showModalFeedbackGeral}
+        onClose={() => {
+          setShowModalFeedbackGeral(false);
+        }}
+        funcaoTitulo="Feedback Geral"
+      />
+
       <ValidarEmailModal
         isOpen={showValidarEmail}
         onClose={() => setShowValidarEmail(false)}

@@ -543,6 +543,58 @@ app.put('/api/auth/cardapio-publico', authenticateToken, async (req, res) => {
     }
 });
 
+// Verificar se deve mostrar modal de feedback
+app.get('/api/auth/feedback-beta/verificar', authenticateToken, async (req, res) => {
+    try {
+        const feedbackEnviado = await db.verificarFeedbackEnviado(req.userId);
+        const temFuncoesBeta = await db.verificarFuncoesBetaAtivas(req.userId);
+        
+        res.json({
+            deveMostrar: !feedbackEnviado && temFuncoesBeta,
+            feedbackEnviado,
+            temFuncoesBeta
+        });
+    } catch (error) {
+        console.error('Erro ao verificar feedback beta:', error);
+        res.status(500).json({ error: 'Erro ao verificar feedback beta' });
+    }
+});
+
+// Criar feedback beta
+app.post('/api/auth/feedback-beta', authenticateToken, async (req, res) => {
+    try {
+        const { funcao_id, funcao_titulo, avaliacao, comentario, sugestoes } = req.body;
+        
+        if (!avaliacao || avaliacao < 1 || avaliacao > 5) {
+            return res.status(400).json({ error: 'Avaliação deve ser entre 1 e 5' });
+        }
+        
+        await db.criarFeedbackBeta(req.userId, {
+            funcao_id: funcao_id || null,
+            funcao_titulo: funcao_titulo || null,
+            avaliacao,
+            comentario: comentario || null,
+            sugestoes: sugestoes || null
+        });
+        
+        res.json({ message: 'Feedback enviado com sucesso!' });
+    } catch (error) {
+        console.error('Erro ao criar feedback beta:', error);
+        res.status(500).json({ error: 'Erro ao enviar feedback' });
+    }
+});
+
+// Obter todos os feedbacks beta (apenas admin)
+app.get('/api/admin/feedbacks-beta', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const feedbacks = await db.obterTodosFeedbacksBeta();
+        res.json(feedbacks);
+    } catch (error) {
+        console.error('Erro ao obter feedbacks beta:', error);
+        res.status(500).json({ error: 'Erro ao obter feedbacks beta' });
+    }
+});
+
 // Atualizar modo compartilhar cardápio
 app.put('/api/auth/cardapio-compartilhar', authenticateToken, async (req, res) => {
     try {
@@ -807,7 +859,7 @@ app.get('/api/stripe/status', authenticateToken, async (req, res) => {
 
         res.json({
             temAcesso: acesso.temAcesso,
-            tipo: acesso.tipo === 'vitalicio' ? 'anual' : acesso.tipo, // Retornar 'anual' para compatibilidade com frontend
+            tipo: acesso.tipo === 'vitalicio' ? 'vitalicio' : acesso.tipo, // Manter 'vitalicio' para permitir feedback beta
             emailNaoValidado: acesso.emailNaoValidado || false,
             assinatura: acesso.tipo === 'vitalicio' ? {
                 status: 'active',

@@ -13,8 +13,9 @@ import GerenciamentoSessoes from './GerenciamentoSessoes';
 import OrganizarFuncoesModal from './OrganizarFuncoesModal';
 import EstatisticasUsuarios from './EstatisticasUsuarios';
 import EstatisticasGerais from './EstatisticasGerais';
+import GerenciamentoFeedbacksBeta from './GerenciamentoFeedbacksBeta';
 import { useDragAndDrop } from '../hooks/useDragAndDrop';
-import { FaUser, FaEdit, FaTrash, FaShieldAlt, FaChevronRight, FaChevronDown, FaFolder, FaEye, FaEyeSlash, FaPlus, FaTimes, FaCog, FaBars, FaCreditCard, FaQuestionCircle, FaLink, FaLayerGroup, FaGripVertical, FaSearch, FaSortAlphaDown, FaSortAlphaUp, FaSort, FaChartLine } from 'react-icons/fa';
+import { FaUser, FaEdit, FaTrash, FaShieldAlt, FaChevronRight, FaChevronDown, FaFolder, FaEye, FaEyeSlash, FaPlus, FaTimes, FaCog, FaBars, FaCreditCard, FaQuestionCircle, FaLink, FaLayerGroup, FaGripVertical, FaSearch, FaSortAlphaDown, FaSortAlphaUp, FaSort, FaChartLine, FaComments } from 'react-icons/fa';
 import * as FaIcons from 'react-icons/fa';
 import './AdminPanel.css';
 
@@ -76,6 +77,7 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
   const [usuarioEstatisticasId, setUsuarioEstatisticasId] = useState<number | null>(null);
   const [usuarioEstatisticasNome, setUsuarioEstatisticasNome] = useState<string>('');
   const [showEstatisticasGerais, setShowEstatisticasGerais] = useState(false);
+  const [showGerenciamentoFeedbacksBeta, setShowGerenciamentoFeedbacksBeta] = useState(false);
 
   const [botoesGerenciamento, setBotoesGerenciamento] = useState<GerenciamentoButton[]>([
     { id: 'funcoes', titulo: 'Gerenciar Funções da Landing Page', descricao: 'Gerencie as funções exibidas na landing page. Configure quais funções estão ativas e quais são de IA.', icone: <FaCog />, onClick: () => setShowGerenciamentoFuncoes(true), ordem: 1 },
@@ -84,6 +86,7 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
     { id: 'planos', titulo: 'Gerenciar Planos', descricao: 'Gerencie os planos de pagamento: valores, benefícios, descontos, tipo de pagamento e outras configurações.', icone: <FaCreditCard />, onClick: () => setShowGerenciamentoPlanos(true), ordem: 4 },
     { id: 'faq', titulo: 'Gerenciar FAQ', descricao: 'Gerencie as perguntas frequentes (FAQ) exibidas na landing page.', icone: <FaQuestionCircle />, onClick: () => setShowGerenciamentoFAQ(true), ordem: 5 },
     { id: 'rodape', titulo: 'Gerenciar Rodapé', descricao: 'Gerencie as colunas e links do rodapé da landing page.', icone: <FaLink />, onClick: () => setShowGerenciamentoRodape(true), ordem: 6 },
+    { id: 'feedbacks-beta', titulo: 'Feedbacks Beta', descricao: 'Visualize todos os feedbacks enviados pelos usuários sobre as funções em beta.', icone: <FaComments />, onClick: () => setShowGerenciamentoFeedbacksBeta(true), ordem: 7 },
   ]);
 
   // Mapa de IDs para títulos dos botões (para exibição no botão)
@@ -556,6 +559,10 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
         isOpen={showEstatisticasGerais}
         onClose={() => setShowEstatisticasGerais(false)}
       />
+      <GerenciamentoFeedbacksBeta
+        isOpen={showGerenciamentoFeedbacksBeta}
+        onClose={() => setShowGerenciamentoFeedbacksBeta(false)}
+      />
       <Modal
         isOpen={isOpen}
         onClose={onClose}
@@ -592,7 +599,11 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
                         {botao.descricao}
                       </p>
                       <button
-                        onClick={botao.onClick}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          botao.onClick();
+                        }}
                         className="btn-primary"
                         style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left' }}
                       >
