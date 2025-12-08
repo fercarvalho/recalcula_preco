@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import html2canvas from 'html2canvas';
 import type { ItensPorCategoria } from '../types';
 import { carregarConfiguracoes, aplicarConfiguracoes } from '../components/PainelAdmin';
 import './Cardapio.css';
@@ -20,6 +21,7 @@ const Cardapio = () => {
   const [cardapio, setCardapio] = useState<CardapioData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const cardapioRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const carregarCardapio = async () => {
@@ -63,6 +65,79 @@ const Cardapio = () => {
     carregarCardapio();
   }, [username]);
 
+  // Gerar imagem quando o parâmetro gerar_imagem estiver na URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const gerarImagem = urlParams.get('gerar_imagem');
+    
+    if (gerarImagem === 'true' && cardapio && !loading) {
+      // Aguardar um pouco mais para garantir que tudo está totalmente renderizado
+      const timeoutId = setTimeout(async () => {
+        try {
+          // Verificar novamente se o ref está disponível
+          if (!cardapioRef.current) {
+            console.error('cardapioRef.current não está disponível após timeout');
+            return;
+          }
+          
+          console.log('Iniciando geração de imagem...');
+          
+          const canvas = await html2canvas(cardapioRef.current, {
+            backgroundColor: null,
+            scale: 2,
+            logging: false,
+            useCORS: true,
+            allowTaint: false,
+            scrollX: 0,
+            scrollY: 0,
+            windowWidth: cardapioRef.current.scrollWidth,
+            windowHeight: cardapioRef.current.scrollHeight,
+          });
+          
+          console.log('Imagem gerada com sucesso, dimensões:', canvas.width, 'x', canvas.height);
+          
+          // Converter canvas para data URL
+          const imageUrl = canvas.toDataURL('image/png');
+          
+          // Substituir o conteúdo da janela atual pela imagem
+          document.body.innerHTML = '';
+          document.body.style.margin = '0';
+          document.body.style.padding = '20px';
+          document.body.style.background = '#f5f5f5';
+          document.body.style.display = 'flex';
+          document.body.style.justifyContent = 'center';
+          document.body.style.alignItems = 'center';
+          document.body.style.minHeight = '100vh';
+          
+          const img = document.createElement('img');
+          img.src = imageUrl;
+          img.alt = 'Cardápio';
+          img.style.maxWidth = '100%';
+          img.style.height = 'auto';
+          img.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+          img.style.borderRadius = '8px';
+          img.style.display = 'block';
+          
+          document.body.appendChild(img);
+          
+          // Atualizar o título da página
+          document.title = `Cardápio - ${cardapio.usuario.username}`;
+          
+          console.log('Imagem exibida com sucesso');
+        } catch (err) {
+          console.error('Erro ao gerar imagem do cardápio:', err);
+          if (err instanceof Error) {
+            console.error('Detalhes do erro:', err.message, err.stack);
+          }
+        }
+      }, 2000);
+      
+      return () => {
+        clearTimeout(timeoutId);
+      };
+    }
+  }, [cardapio, loading]);
+
   const formatarValor = (valor: number): string => {
     return valor.toFixed(2).replace('.', ',');
   };
@@ -97,7 +172,7 @@ const Cardapio = () => {
   });
 
   return (
-    <div className="cardapio-container">
+    <div className="cardapio-container" ref={cardapioRef}>
       <div className="cardapio-header">
         <h1 className="cardapio-titulo">
           <span className="cardapio-usuario">
