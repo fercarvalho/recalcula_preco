@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { apiService } from '../services/api';
 import { mostrarAlert } from '../utils/modals';
 import { FaUpload, FaSpinner, FaDownload, FaImage } from 'react-icons/fa';
@@ -27,7 +27,22 @@ const ModoEstudio = ({ statusPagamento, onOpenModalPlanos, onOpenModalUpgrade, o
   const [previewOriginal, setPreviewOriginal] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
   const [fotoProcessada, setFotoProcessada] = useState<FotoProcessada | null>(null);
+  const [temAcessoFuncao, setTemAcessoFuncao] = useState<boolean | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Verificar acesso à função especial ao montar o componente
+  useEffect(() => {
+    const verificarAcesso = async () => {
+      try {
+        const resultado = await apiService.verificarAcessoFuncaoEspecial('modo_estudio');
+        setTemAcessoFuncao(resultado.temAcesso);
+      } catch (error) {
+        console.error('Erro ao verificar acesso ao Modo Estúdio:', error);
+        setTemAcessoFuncao(false);
+      }
+    };
+    verificarAcesso();
+  }, []);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -61,25 +76,15 @@ const ModoEstudio = ({ statusPagamento, onOpenModalPlanos, onOpenModalUpgrade, o
       return;
     }
 
-    // Verificar se tem acesso
-    if (!statusPagamento?.temAcesso) {
-      if (onOpenModalPlanos) {
-        onOpenModalPlanos();
-      }
+    // Verificar acesso à função especial
+    if (temAcessoFuncao === null) {
+      // Ainda verificando acesso, aguardar
+      await mostrarAlert('Atenção', 'Verificando permissões...');
       return;
     }
 
-    if (statusPagamento.tipo === 'unico') {
-      if (onOpenModalUpgrade) {
-        onOpenModalUpgrade();
-      }
-      return;
-    }
-
-    if (statusPagamento.tipo !== 'anual' && statusPagamento.tipo !== 'vitalicio') {
-      if (onOpenModalPlanos) {
-        onOpenModalPlanos();
-      }
+    if (!temAcessoFuncao) {
+      await mostrarAlert('Acesso Negado', 'Você não tem permissão para usar o Modo Estúdio.');
       return;
     }
 
@@ -152,7 +157,7 @@ const ModoEstudio = ({ statusPagamento, onOpenModalPlanos, onOpenModalUpgrade, o
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             <h3 className="modo-estudio-title">Modo Estúdio</h3>
             <span className="roadmap-tag">Em Beta</span>
-            {(statusPagamento?.tipo === 'anual' || statusPagamento?.tipo === 'vitalicio') && statusPagamento?.temAcesso && onOpenFeedback && (
+            {temAcessoFuncao && onOpenFeedback && (
               <button
                 type="button"
                 onClick={() => onOpenFeedback('Modo Estúdio')}

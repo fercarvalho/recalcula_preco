@@ -462,6 +462,14 @@ async function inicializar() {
             ON assinaturas(stripe_subscription_id)
         `);
         
+        // Adicionar coluna plano_id se não existir (migração)
+        if (!(await colunaExiste('assinaturas', 'plano_id'))) {
+            await pool.query(`
+                ALTER TABLE assinaturas 
+                ADD COLUMN plano_id INTEGER REFERENCES planos(id) ON DELETE SET NULL
+            `);
+        }
+        
         // Criar tabela de pagamentos únicos
         await pool.query(`
             CREATE TABLE IF NOT EXISTS pagamentos_unicos (
@@ -3015,6 +3023,7 @@ async function criarOuAtualizarAssinatura(usuarioId, dadosAssinatura) {
             stripe_subscription_id,
             stripe_customer_id,
             plano_tipo,
+            plano_id,
             status,
             current_period_start,
             current_period_end,
@@ -3034,17 +3043,19 @@ async function criarOuAtualizarAssinatura(usuarioId, dadosAssinatura) {
                 SET stripe_subscription_id = $1,
                     stripe_customer_id = $2,
                     plano_tipo = $3,
-                    status = $4,
-                    current_period_start = $5,
-                    current_period_end = $6,
-                    cancel_at_period_end = $7,
+                    plano_id = $4,
+                    status = $5,
+                    current_period_start = $6,
+                    current_period_end = $7,
+                    cancel_at_period_end = $8,
                     updated_at = CURRENT_TIMESTAMP
-                WHERE usuario_id = $8
+                WHERE usuario_id = $9
                 RETURNING *
             `, [
                 stripe_subscription_id,
                 stripe_customer_id,
                 plano_tipo,
+                plano_id || null,
                 status,
                 current_period_start,
                 current_period_end,
@@ -3058,15 +3069,16 @@ async function criarOuAtualizarAssinatura(usuarioId, dadosAssinatura) {
             const result = await pool.query(`
                 INSERT INTO assinaturas (
                     usuario_id, stripe_subscription_id, stripe_customer_id,
-                    plano_tipo, status, current_period_start, current_period_end,
+                    plano_tipo, plano_id, status, current_period_start, current_period_end,
                     cancel_at_period_end
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                 RETURNING *
             `, [
                 usuarioId,
                 stripe_subscription_id,
                 stripe_customer_id,
                 plano_tipo,
+                plano_id || null,
                 status,
                 current_period_start,
                 current_period_end,
@@ -4938,6 +4950,20 @@ async function obterPlanos(apenasAtivos = false) {
     }
 }
 
+// Obter plano por Stripe Price ID
+async function obterPlanoPorStripePriceId(stripePriceId) {
+    try {
+        const result = await pool.query('SELECT id FROM planos WHERE stripe_price_id = $1', [stripePriceId]);
+        if (result.rows.length === 0) {
+            return null;
+        }
+        return result.rows[0].id;
+    } catch (error) {
+        console.error('Erro ao obter plano por Stripe Price ID:', error);
+        throw error;
+    }
+}
+
 // Obter plano por ID
 async function obterPlanoPorId(id) {
     try {
@@ -6279,18 +6305,21 @@ async function verificarAcessoFuncaoEspecial(usuarioId, funcaoEspecial) {
             return true;
         }
         
-        // Verificar se é admin
-        const usuario = await obterUsuarioPorId(usuarioId);
-        if (usuario && usuario.is_admin) {
-            const permissaoAdmin = await pool.query(`
-                SELECT habilitado FROM funcoes_especiais_acesso
-                WHERE funcao_especial = $1 AND tipo_acesso = 'admin'
-            `, [funcaoEspecial]);
-            
-            if (permissaoAdmin.rows.length > 0 && permissaoAdmin.rows[0].habilitado) {
-                return true;
-            }
+        // Verificar se "admin" está habilitado
+        const permissaoAdmin = await pool.query(`
+            SELECT habilitado FROM funcoes_especiais_acesso
+            WHERE funcao_especial = $1 AND tipo_acesso = 'admin'
+        `, [funcaoEspecial]);
+        
+        const adminHabilitado = permissaoAdmin.rows.length > 0 && permissaoAdmin.rows[0].habilitado;
+        
+        // Se "Somente Admin" está habilitado, apenas admins têm acesso
+        if (adminHabilitado) {
+            const usuario = await obterUsuarioPorId(usuarioId);
+            return usuario && usuario.is_admin;
         }
+        
+        // Se "admin" não está habilitado, verificar outras permissões
         
         // Verificar se é vitalício
         const usuarioViralatas = await pool.query(
@@ -6309,35 +6338,17 @@ async function verificarAcessoFuncaoEspecial(usuarioId, funcaoEspecial) {
             }
         }
         
-        // Verificar acesso por plano
+        // Verificar acesso por plano específico
         const acesso = await verificarAcessoAtivo(usuarioId);
-        if (acesso.temAcesso && acesso.assinatura) {
-            // Buscar planos que correspondem ao tipo de acesso
-            const planoTipo = acesso.assinatura.plano_tipo;
-            let planosQuery;
+        if (acesso.temAcesso && acesso.assinatura && acesso.assinatura.plano_id) {
+            // Verificar se o plano específico do usuário tem permissão
+            const permissaoPlano = await pool.query(`
+                SELECT habilitado FROM funcoes_especiais_acesso
+                WHERE funcao_especial = $1 AND tipo_acesso = $2
+            `, [funcaoEspecial, acesso.assinatura.plano_id.toString()]);
             
-            if (planoTipo === 'anual') {
-                planosQuery = await pool.query(`
-                    SELECT id FROM planos WHERE tipo = 'recorrente' AND ativo = TRUE
-                `);
-            } else if (planoTipo === 'unico') {
-                planosQuery = await pool.query(`
-                    SELECT id FROM planos WHERE tipo = 'unico' AND ativo = TRUE
-                `);
-            }
-            
-            if (planosQuery && planosQuery.rows.length > 0) {
-                // Verificar se algum dos planos tem permissão
-                for (const plano of planosQuery.rows) {
-                    const permissaoPlano = await pool.query(`
-                        SELECT habilitado FROM funcoes_especiais_acesso
-                        WHERE funcao_especial = $1 AND tipo_acesso = $2
-                    `, [funcaoEspecial, plano.id.toString()]);
-                    
-                    if (permissaoPlano.rows.length > 0 && permissaoPlano.rows[0].habilitado) {
-                        return true;
-                    }
-                }
+            if (permissaoPlano.rows.length > 0 && permissaoPlano.rows[0].habilitado) {
+                return true;
             }
         }
         
@@ -6428,6 +6439,7 @@ module.exports = {
     // Funções de planos
     obterPlanos,
     obterPlanoPorId,
+    obterPlanoPorStripePriceId,
     criarPlano,
     atualizarPlano,
     deletarPlano,

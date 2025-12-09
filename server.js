@@ -81,21 +81,23 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
         // Processar assinatura
         if (resultado.tipo === 'assinatura') {
             const userId = resultado.metadata?.user_id ? parseInt(resultado.metadata.user_id) : null;
+            const planoId = resultado.metadata?.plano_id ? parseInt(resultado.metadata.plano_id) : null;
 
-            console.log('📋 Processando assinatura - UserId:', userId, 'SubscriptionId:', resultado.subscriptionId);
+            console.log('📋 Processando assinatura - UserId:', userId, 'PlanoId:', planoId, 'SubscriptionId:', resultado.subscriptionId);
 
             if (userId) {
                 await db.criarOuAtualizarAssinatura(userId, {
                     stripe_subscription_id: resultado.subscriptionId,
                     stripe_customer_id: resultado.customerId,
                     plano_tipo: 'anual',
+                    plano_id: planoId,
                     status: resultado.status,
                     current_period_start: resultado.currentPeriodStart,
                     current_period_end: resultado.currentPeriodEnd,
                     cancel_at_period_end: resultado.cancelAtPeriodEnd || false,
                 });
 
-                console.log('✅ Assinatura salva no banco de dados para usuário:', userId, 'Status:', resultado.status);
+                console.log('✅ Assinatura salva no banco de dados para usuário:', userId, 'PlanoId:', planoId, 'Status:', resultado.status);
             } else {
                 console.error('❌ UserId não encontrado no metadata da assinatura');
             }
@@ -110,6 +112,7 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
                     stripe_subscription_id: resultado.subscriptionId,
                     stripe_customer_id: resultado.customerId,
                     plano_tipo: 'anual',
+                    plano_id: assinatura.plano_id,
                     status: 'canceled',
                     current_period_start: assinatura.current_period_start,
                     current_period_end: assinatura.current_period_end,
@@ -128,6 +131,7 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
                     stripe_subscription_id: resultado.subscriptionId,
                     stripe_customer_id: resultado.customerId,
                     plano_tipo: 'anual',
+                    plano_id: assinatura.plano_id,
                     status: 'past_due',
                     current_period_start: assinatura.current_period_start,
                     current_period_end: assinatura.current_period_end,
@@ -606,10 +610,10 @@ app.post('/api/auth/estudio/processar', authenticateToken, requirePayment, async
             return res.status(400).json({ error: 'Imagem muito grande. Máximo 10MB.' });
         }
         
-        // Verificar se tem plano anual ou vitalício
-        const statusPagamento = await db.verificarStatusPagamento(req.userId);
-        if (!statusPagamento.temAcesso || (statusPagamento.tipo !== 'anual' && statusPagamento.tipo !== 'vitalicio')) {
-            return res.status(403).json({ error: 'Acesso negado. Modo Estúdio disponível apenas para plano anual.' });
+        // Verificar acesso à função especial "Modo Estúdio"
+        const temAcesso = await db.verificarAcessoFuncaoEspecial(req.userId, 'modo_estudio');
+        if (!temAcesso) {
+            return res.status(403).json({ error: 'Acesso negado. Você não tem permissão para usar o Modo Estúdio.' });
         }
         
         // Processar foto
@@ -901,12 +905,16 @@ app.post('/api/stripe/checkout/anual', authenticateToken, async (req, res) => {
         const { priceId } = req.body; // Receber priceId do plano
         const baseUrl = process.env.FRONTEND_URL || `http://localhost:${PORT}`;
         
+        // Buscar plano_id a partir do stripe_price_id
+        const planoId = await db.obterPlanoPorStripePriceId(priceId);
+        
         const session = await stripeService.criarCheckoutAnual(
             usuario.email,
             usuario.id,
             `${baseUrl}/pagamento/sucesso?session_id={CHECKOUT_SESSION_ID}`,
             `${baseUrl}/pagamento/cancelado`,
-            priceId // Passar priceId dinâmico
+            priceId, // Passar priceId dinâmico
+            planoId // Passar plano_id
         );
 
         res.json({ sessionId: session.id, url: session.url });
@@ -923,12 +931,16 @@ app.post('/api/stripe/checkout/unico', authenticateToken, async (req, res) => {
         const { priceId } = req.body; // Receber priceId do plano
         const baseUrl = process.env.FRONTEND_URL || `http://localhost:${PORT}`;
         
+        // Buscar plano_id a partir do stripe_price_id
+        const planoId = await db.obterPlanoPorStripePriceId(priceId);
+        
         const session = await stripeService.criarCheckoutUnico(
             usuario.email,
             usuario.id,
             `${baseUrl}/pagamento/sucesso?session_id={CHECKOUT_SESSION_ID}`,
             `${baseUrl}/pagamento/cancelado`,
-            priceId // Passar priceId dinâmico
+            priceId, // Passar priceId dinâmico
+            planoId // Passar plano_id
         );
 
         res.json({ sessionId: session.id, url: session.url });

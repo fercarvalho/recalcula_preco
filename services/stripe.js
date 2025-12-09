@@ -16,7 +16,7 @@ const PLANO_ANUAL_PRICE_ID = process.env.STRIPE_PLANO_ANUAL_PRICE_ID || '';
 const PLANO_UNICO_PRICE_ID = process.env.STRIPE_PLANO_UNICO_PRICE_ID || '';
 
 // Criar sessão de checkout para plano anual (com price_id dinâmico)
-async function criarCheckoutAnual(customerEmail, userId, successUrl, cancelUrl, priceId = null) {
+async function criarCheckoutAnual(customerEmail, userId, successUrl, cancelUrl, priceId = null, planoId = null) {
     try {
         if (!stripe) {
             throw new Error('Stripe não está configurado. Verifique STRIPE_SECRET_KEY no arquivo .env');
@@ -55,11 +55,13 @@ async function criarCheckoutAnual(customerEmail, userId, successUrl, cancelUrl, 
             subscription_data: {
                 metadata: {
                     user_id: userId.toString(),
+                    plano_id: planoId ? planoId.toString() : '',
                 },
             },
             metadata: {
                 user_id: userId.toString(),
                 plano_tipo: 'anual',
+                plano_id: planoId ? planoId.toString() : '',
             },
             success_url: successUrl,
             cancel_url: cancelUrl,
@@ -73,7 +75,7 @@ async function criarCheckoutAnual(customerEmail, userId, successUrl, cancelUrl, 
 }
 
 // Criar sessão de checkout para pagamento único (com price_id dinâmico)
-async function criarCheckoutUnico(customerEmail, userId, successUrl, cancelUrl, priceId = null) {
+async function criarCheckoutUnico(customerEmail, userId, successUrl, cancelUrl, priceId = null, planoId = null) {
     try {
         if (!stripe) {
             throw new Error('Stripe não está configurado. Verifique STRIPE_SECRET_KEY no arquivo .env');
@@ -99,6 +101,7 @@ async function criarCheckoutUnico(customerEmail, userId, successUrl, cancelUrl, 
             metadata: {
                 user_id: userId.toString(),
                 plano_tipo: 'unico',
+                plano_id: planoId ? planoId.toString() : '',
             },
             success_url: successUrl,
             cancel_url: cancelUrl,
