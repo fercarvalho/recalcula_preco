@@ -6401,24 +6401,15 @@ async function verificarAcessoFuncaoEspecial(usuarioId, funcaoEspecial) {
         
         const adminHabilitado = permissaoAdmin.rows.length > 0 && permissaoAdmin.rows[0].habilitado;
         
-        // Se "Somente Admin" está habilitado, apenas admins têm acesso
-        // IMPORTANTE: Se "Somente Admin" está habilitado, nenhuma outra permissão deve ser verificada
-        if (adminHabilitado) {
-            const usuario = await obterUsuarioPorId(usuarioId);
-            // Retornar true apenas se for admin, false caso contrário (bloqueia acesso vitalício e planos)
-            const isAdmin = usuario && usuario.is_admin;
-            // Se não for admin, retornar false imediatamente (não verificar outras permissões)
-            if (!isAdmin) {
-                return false;
-            }
-            // Se for admin, retornar true
+        // Verificar se o usuário é admin e se "Disponível para Admin" está habilitado
+        const usuario = await obterUsuarioPorId(usuarioId);
+        if (adminHabilitado && usuario && usuario.is_admin) {
             return true;
         }
         
-        // Se "admin" não está habilitado, verificar outras permissões
+        // Verificar outras permissões (vitalício, planos, etc.)
         
         // Verificar se tem acesso vitalício (via acesso_especial)
-        const usuario = await obterUsuarioPorId(usuarioId);
         if (usuario && usuario.acesso_especial === 'vitalicio') {
             const permissaoVitalicio = await pool.query(`
                 SELECT habilitado FROM funcoes_especiais_acesso

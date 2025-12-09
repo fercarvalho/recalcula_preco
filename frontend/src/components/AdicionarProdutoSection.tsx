@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { apiService } from '../services/api';
 import { mostrarAlert } from '../utils/modals';
+import { getUser } from '../services/auth';
 import AdicionarCategoriaModal from './AdicionarCategoriaModal';
 import EditarItemModal from './EditarItemModal';
 import { FaPlusCircle, FaFolderPlus, FaStore, FaCog, FaToggleOn, FaToggleOff, FaImage, FaFilePdf, FaComment } from 'react-icons/fa';
@@ -33,8 +34,10 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
   } | null>(null);
   const [showModalFeedback, setShowModalFeedback] = useState(false);
   const [funcaoFeedback, setFuncaoFeedback] = useState<string>('');
+  const [temAcessoModoCardapio, setTemAcessoModoCardapio] = useState<boolean | null>(null);
+  const [temAcessoCompartilharCardapio, setTemAcessoCompartilharCardapio] = useState<boolean | null>(null);
 
-  // Carregar estado do cardápio público e status de pagamento
+  // Carregar estado do cardápio público, status de pagamento e permissões de funções especiais
   useEffect(() => {
     const carregarDados = async () => {
       try {
@@ -47,6 +50,23 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
         // Carregar status de pagamento
         const status = await apiService.verificarStatusPagamento();
         setStatusPagamento(status);
+
+        // Verificar acesso às funções especiais
+        try {
+          const acessoModoCardapio = await apiService.verificarAcessoFuncaoEspecial('modo_cardapio');
+          setTemAcessoModoCardapio(acessoModoCardapio.temAcesso);
+        } catch (error) {
+          console.error('Erro ao verificar acesso ao Modo Cardápio:', error);
+          setTemAcessoModoCardapio(false);
+        }
+
+        try {
+          const acessoCompartilhar = await apiService.verificarAcessoFuncaoEspecial('modo_compartilhar_cardapio');
+          setTemAcessoCompartilharCardapio(acessoCompartilhar.temAcesso);
+        } catch (error) {
+          console.error('Erro ao verificar acesso ao Modo Compartilhar Cardápio:', error);
+          setTemAcessoCompartilharCardapio(false);
+        }
       } catch (error) {
         console.error('Erro ao carregar dados:', error);
       }
@@ -416,7 +436,7 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
               <span className="cardapio-switch-text">Modo Cardápio</span>
               <span className="roadmap-tag">Em Beta</span>
-              {(statusPagamento?.tipo === 'anual' || statusPagamento?.tipo === 'vitalicio') && statusPagamento?.temAcesso && (
+              {temAcessoModoCardapio && (
                 <button
                   type="button"
                   onClick={(e) => {
@@ -437,7 +457,51 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
               onClick={async (e) => {
                 e.preventDefault();
                 
-                // Se está tentando ativar, verificar se tem plano anual
+                // Se for admin, pular todas as validações e permitir ativar/desativar diretamente
+                const user = getUser();
+                if (user?.is_admin) {
+                  const novoValor = !cardapioPublico;
+                  setCardapioPublico(novoValor);
+                  try {
+                    await apiService.atualizarCardapioPublico(novoValor);
+                    await mostrarAlert('Sucesso', `Cardápio ${novoValor ? 'tornado público' : 'tornado privado'} com sucesso!`);
+                  } catch (error: any) {
+                    console.error('Erro ao atualizar cardápio público:', error);
+                    setCardapioPublico(!novoValor); // Reverter em caso de erro
+                    await mostrarAlert('Erro', 'Erro ao atualizar visibilidade do cardápio.');
+                  }
+                  return;
+                }
+                
+                // Verificar acesso à função especial primeiro
+                if (temAcessoModoCardapio === false) {
+                  // Não tem acesso - verificar status de pagamento para mostrar modal apropriado
+                  const status = await apiService.verificarStatusPagamento();
+                  
+                  if (!status.temAcesso) {
+                    // Usuário não tem plano ativo - abrir modal de planos
+                    if (onOpenModalPlanos) {
+                      onOpenModalPlanos();
+                    }
+                    return;
+                  }
+                  
+                  if (status.tipo === 'unico') {
+                    // Usuário tem plano único - abrir modal de upgrade
+                    if (onOpenModalUpgrade) {
+                      onOpenModalUpgrade();
+                    }
+                    return;
+                  }
+                  
+                  // Se chegou aqui, não tem acesso mesmo com plano - abrir modal de planos
+                  if (onOpenModalPlanos) {
+                    onOpenModalPlanos();
+                  }
+                  return;
+                }
+
+                // Se está tentando ativar, verificar se tem plano anual (fallback para compatibilidade)
                 if (!cardapioPublico) {
                   // Verificar status de pagamento
                   const status = await apiService.verificarStatusPagamento();
@@ -458,8 +522,8 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
                     return;
                   }
                   
-                  if (status.tipo !== 'anual') {
-                    // Usuário não tem plano anual - abrir modal de planos
+                  if (status.tipo !== 'anual' && status.tipo !== 'vitalicio') {
+                    // Usuário não tem plano anual ou vitalício - abrir modal de planos
                     if (onOpenModalPlanos) {
                       onOpenModalPlanos();
                     }
@@ -485,21 +549,32 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
             </button>
           </label>
           <small className="cardapio-switch-description">
-            {cardapioPublico 
-              ? (
-                <>
-                  Seu cardápio está público. Acesse em:{' '}
-                  <a 
-                    href={`${window.location.origin}/${username}/cardapio`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ fontWeight: 'bold', color: 'var(--cor-primaria, #FF6B35)', textDecoration: 'none' }}
-                  >
-                    {window.location.origin}/{username}/cardapio
-                  </a>
-                </>
-              )
-              : 'Um modo especial para exibir seus produtos e preços como um cardápio digital, ideal para mostrar no estabelecimento ou compartilhar online com seus clientes.'}
+            {temAcessoModoCardapio === false ? (
+              <div style={{
+                marginTop: '1rem',
+                padding: '1rem',
+                backgroundColor: '#fff3cd',
+                border: '1px solid #ffc107',
+                borderRadius: '8px',
+                color: '#856404'
+              }}>
+                <strong>⚠️ Aviso:</strong> As funções em Beta (como Modo Cardápio) estão disponíveis apenas para usuários do Plano Anual.
+              </div>
+            ) : cardapioPublico ? (
+              <>
+                Seu cardápio está público. Acesse em:{' '}
+                <a 
+                  href={`${window.location.origin}/${username}/cardapio`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontWeight: 'bold', color: 'var(--cor-primaria, #FF6B35)', textDecoration: 'none' }}
+                >
+                  {window.location.origin}/{username}/cardapio
+                </a>
+              </>
+            ) : (
+              'Um modo especial para exibir seus produtos e preços como um cardápio digital, ideal para mostrar no estabelecimento ou compartilhar online com seus clientes.'
+            )}
           </small>
         </div>
       </div>
@@ -508,7 +583,7 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
             <span className="cardapio-switch-text">Modo Compartilhar Cardápio</span>
             <span className="roadmap-tag">Em Beta</span>
-            {(statusPagamento?.tipo === 'anual' || statusPagamento?.tipo === 'vitalicio') && statusPagamento?.temAcesso && (
+            {temAcessoCompartilharCardapio && (
               <button
                 type="button"
                 onClick={() => {
@@ -523,13 +598,52 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
             )}
           </div>
           <small className="cardapio-switch-description" style={{ marginBottom: '1rem', display: 'block' }}>
-            Compartilhe seu cardápio em diferentes formatos. Ative o modo cardápio para habilitar os botões.
+            {temAcessoCompartilharCardapio === false ? (
+              <div style={{
+                marginTop: '1rem',
+                padding: '1rem',
+                backgroundColor: '#fff3cd',
+                border: '1px solid #ffc107',
+                borderRadius: '8px',
+                color: '#856404'
+              }}>
+                <strong>⚠️ Aviso:</strong> As funções em Beta (como Modo Compartilhar Cardápio) estão disponíveis apenas para usuários do Plano Anual.
+              </div>
+            ) : (
+              'Compartilhe seu cardápio em diferentes formatos. Ative o modo cardápio para habilitar os botões.'
+            )}
           </small>
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
             <button
               className="btn-compartilhar-cardapio"
-              disabled={!cardapioPublico}
+              disabled={!cardapioPublico || temAcessoCompartilharCardapio === false}
               onClick={async () => {
+                if (temAcessoCompartilharCardapio === false) {
+                  // Verificar status de pagamento para mostrar modal apropriado
+                  const status = await apiService.verificarStatusPagamento();
+                  
+                  if (!status.temAcesso) {
+                    // Usuário não tem plano ativo - abrir modal de planos
+                    if (onOpenModalPlanos) {
+                      onOpenModalPlanos();
+                    }
+                    return;
+                  }
+                  
+                  if (status.tipo === 'unico') {
+                    // Usuário tem plano único - abrir modal de upgrade
+                    if (onOpenModalUpgrade) {
+                      onOpenModalUpgrade();
+                    }
+                    return;
+                  }
+                  
+                  // Se chegou aqui, não tem acesso mesmo com plano - abrir modal de planos
+                  if (onOpenModalPlanos) {
+                    onOpenModalPlanos();
+                  }
+                  return;
+                }
                 if (!cardapioPublico || !username) {
                   await mostrarAlert('Atenção', 'Ative o modo cardápio primeiro.');
                   return;
@@ -537,16 +651,42 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
                 await gerarImagemCardapio();
               }}
               style={{
-                opacity: cardapioPublico ? 1 : 0.5,
-                cursor: cardapioPublico ? 'pointer' : 'not-allowed'
+                opacity: (cardapioPublico && temAcessoCompartilharCardapio !== false) ? 1 : 0.5,
+                cursor: (cardapioPublico && temAcessoCompartilharCardapio !== false) ? 'pointer' : 'not-allowed'
               }}
             >
               <FaImage /> Compartilhar Cardápio em Imagem
             </button>
             <button
               className="btn-compartilhar-cardapio"
-              disabled={!cardapioPublico}
+              disabled={!cardapioPublico || temAcessoCompartilharCardapio === false}
               onClick={async () => {
+                if (temAcessoCompartilharCardapio === false) {
+                  // Verificar status de pagamento para mostrar modal apropriado
+                  const status = await apiService.verificarStatusPagamento();
+                  
+                  if (!status.temAcesso) {
+                    // Usuário não tem plano ativo - abrir modal de planos
+                    if (onOpenModalPlanos) {
+                      onOpenModalPlanos();
+                    }
+                    return;
+                  }
+                  
+                  if (status.tipo === 'unico') {
+                    // Usuário tem plano único - abrir modal de upgrade
+                    if (onOpenModalUpgrade) {
+                      onOpenModalUpgrade();
+                    }
+                    return;
+                  }
+                  
+                  // Se chegou aqui, não tem acesso mesmo com plano - abrir modal de planos
+                  if (onOpenModalPlanos) {
+                    onOpenModalPlanos();
+                  }
+                  return;
+                }
                 if (!cardapioPublico || !username) {
                   await mostrarAlert('Atenção', 'Ative o modo cardápio primeiro.');
                   return;
@@ -554,8 +694,8 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
                 await gerarPdfCardapio();
               }}
               style={{
-                opacity: cardapioPublico ? 1 : 0.5,
-                cursor: cardapioPublico ? 'pointer' : 'not-allowed'
+                opacity: (cardapioPublico && temAcessoCompartilharCardapio !== false) ? 1 : 0.5,
+                cursor: (cardapioPublico && temAcessoCompartilharCardapio !== false) ? 'pointer' : 'not-allowed'
               }}
             >
               <FaFilePdf /> Compartilhar Cardápio em PDF

@@ -32,7 +32,7 @@ const FUNCOES_ESPECIAIS = [
 
 const TIPOS_ACESSO_BASE = [
   { id: 'todos', nome: 'Todos' },
-  { id: 'admin', nome: 'Somente Admin' },
+  { id: 'admin', nome: 'Disponível para Admin' },
   { id: 'vitalicio', nome: 'Vitalícios' }
 ];
 
@@ -96,23 +96,8 @@ const GerenciamentoFuncoesEspeciais = ({ isOpen, onClose }: GerenciamentoFuncoes
       const novoEstado = !prev[funcaoId]?.[tipoAcesso];
       const novasPermissoes = { ...prev[funcaoId] };
       
-      // Se estiver ativando "admin", desativar todos os outros
-      if (tipoAcesso === 'admin' && novoEstado) {
-        // Desativar todos exceto admin
-        Object.keys(novasPermissoes).forEach(key => {
-          if (key !== 'admin') {
-            novasPermissoes[key] = false;
-          }
-        });
-        novasPermissoes.admin = true;
-      } else if (tipoAcesso !== 'admin' && novoEstado) {
-        // Se estiver ativando qualquer outro switch, desativar "admin"
-        novasPermissoes.admin = false;
-        novasPermissoes[tipoAcesso] = true;
-      } else {
-        // Se estiver desativando, comportamento normal
-        novasPermissoes[tipoAcesso] = novoEstado;
-      }
+      // Comportamento simples: apenas alterna o estado do switch clicado
+      novasPermissoes[tipoAcesso] = novoEstado;
       
       return {
         ...prev,
@@ -127,11 +112,6 @@ const GerenciamentoFuncoesEspeciais = ({ isOpen, onClose }: GerenciamentoFuncoes
 
     setPermissoes(prev => {
       const novasPermissoes = { ...prev[funcaoId] };
-      
-      // Se estiver ativando "todos", desativar "admin" primeiro
-      if (novoEstado && novasPermissoes.admin) {
-        novasPermissoes.admin = false;
-      }
       
       // Ativar/desativar todos os tipos de acesso
       Object.keys(novasPermissoes).forEach(key => {
@@ -228,11 +208,11 @@ const GerenciamentoFuncoesEspeciais = ({ isOpen, onClose }: GerenciamentoFuncoes
                 </label>
               </div>
 
-              {/* Somente Admin */}
+              {/* Disponível para Admin */}
               <div className="permissao-item">
                 <label className="permissao-label">
-                  <span className="permissao-nome">Somente Admin</span>
-                  <span className="permissao-descricao">Apenas administradores</span>
+                  <span className="permissao-nome">Disponível para Admin</span>
+                  <span className="permissao-descricao">Administradores podem acessar</span>
                 </label>
                 <label className="switch-container">
                   <input
