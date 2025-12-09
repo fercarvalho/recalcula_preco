@@ -5,12 +5,6 @@ import { FaUpload, FaSpinner, FaDownload, FaImage } from 'react-icons/fa';
 import './ModoEstudio.css';
 
 interface ModoEstudioProps {
-  statusPagamento: {
-    temAcesso: boolean;
-    tipo: 'anual' | 'unico' | 'vitalicio' | null;
-  } | null;
-  onOpenModalPlanos?: () => void;
-  onOpenModalUpgrade?: () => void;
   onOpenFeedback?: (funcao: string) => void;
 }
 
@@ -22,7 +16,7 @@ interface FotoProcessada {
   created_at: string;
 }
 
-const ModoEstudio = ({ statusPagamento, onOpenModalPlanos, onOpenModalUpgrade, onOpenFeedback }: ModoEstudioProps) => {
+const ModoEstudio = ({ onOpenFeedback }: ModoEstudioProps) => {
   const [fotoSelecionada, setFotoSelecionada] = useState<File | null>(null);
   const [previewOriginal, setPreviewOriginal] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);

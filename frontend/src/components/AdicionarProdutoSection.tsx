@@ -564,9 +564,6 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
         </div>
       </div>
       <ModoEstudio
-        statusPagamento={statusPagamento}
-        onOpenModalPlanos={onOpenModalPlanos}
-        onOpenModalUpgrade={onOpenModalUpgrade}
         onOpenFeedback={(funcao) => {
           setFuncaoFeedback(funcao);
           setShowModalFeedback(true);
