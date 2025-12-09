@@ -1140,9 +1140,15 @@ app.get('/api/admin/usuarios/:id', authenticateToken, requireAdmin, async (req, 
 app.put('/api/admin/usuarios/:id', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
-        const { username, email, senha, is_admin } = req.body;
+        const { username, email, senha, is_admin, acesso_especial, acesso_temporario_duracao } = req.body;
         
         const usuario = await db.atualizarUsuario(parseInt(id), username, email, senha, is_admin);
+        
+        // Atualizar acesso especial se fornecido
+        if (acesso_especial !== undefined) {
+            await db.atualizarAcessoEspecial(parseInt(id), acesso_especial, acesso_temporario_duracao);
+        }
+        
         res.json(usuario);
     } catch (error) {
         console.error('Erro ao atualizar usuário:', error);

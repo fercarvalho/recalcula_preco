@@ -100,10 +100,17 @@ const requirePayment = async (req, res, next) => {
             return next();
         }
         
-        // Verificar se é o usuário viralatas (acesso vitalício)
+        // Verificar se tem acesso especial (vitalício ou temporário válido)
         const usuario = await db.obterUsuarioPorId(req.userId);
-        if (usuario && usuario.username === 'viralatas') {
-            return next();
+        if (usuario) {
+            if (usuario.acesso_especial === 'vitalicio') {
+                return next();
+            } else if (usuario.acesso_especial === 'temporario' && usuario.acesso_temporario_expira_em) {
+                const expiraEm = new Date(usuario.acesso_temporario_expira_em);
+                if (expiraEm > new Date()) {
+                    return next();
+                }
+            }
         }
 
         // Rotas de trial permitem uso completo do sistema (modo trial)

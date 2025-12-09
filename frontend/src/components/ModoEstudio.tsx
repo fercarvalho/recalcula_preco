@@ -144,6 +144,17 @@ const ModoEstudio = ({ onOpenFeedback }: ModoEstudioProps) => {
     }
   };
 
+  // Não renderizar se não tiver acesso (aguardar verificação ou negar acesso)
+  if (temAcessoFuncao === null) {
+    // Ainda verificando acesso, não renderizar nada
+    return null;
+  }
+
+  if (temAcessoFuncao === false) {
+    // Acesso negado, não renderizar o componente
+    return null;
+  }
+
   return (
     <div className="modo-estudio-section">
       <div className="modo-estudio-container">

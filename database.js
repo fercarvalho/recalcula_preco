@@ -146,6 +146,17 @@ async function inicializar() {
             await pool.query('ALTER TABLE usuarios ADD COLUMN email_validado BOOLEAN DEFAULT FALSE');
         }
         
+        // Adicionar colunas de acesso especial se não existirem
+        if (!(await colunaExiste('usuarios', 'acesso_especial'))) {
+            await pool.query("ALTER TABLE usuarios ADD COLUMN acesso_especial VARCHAR(20) CHECK (acesso_especial IN ('vitalicio', 'temporario') OR acesso_especial IS NULL)");
+        }
+        if (!(await colunaExiste('usuarios', 'acesso_temporario_duracao'))) {
+            await pool.query('ALTER TABLE usuarios ADD COLUMN acesso_temporario_duracao INTEGER');
+        }
+        if (!(await colunaExiste('usuarios', 'acesso_temporario_expira_em'))) {
+            await pool.query('ALTER TABLE usuarios ADD COLUMN acesso_temporario_expira_em TIMESTAMP');
+        }
+        
         // Adicionar colunas de dados pessoais se não existirem
         const colunasDadosPessoais = [
             { nome: 'nome', tipo: 'VARCHAR(255)' },
@@ -853,16 +864,21 @@ async function inicializar() {
         if (usuarioPadrao.rows.length === 0) {
             const senhaHash = await bcrypt.hash('edulili123', 10);
             const result = await pool.query(
-                'INSERT INTO usuarios (username, email, senha_hash, is_admin) VALUES ($1, $2, $3, $4) RETURNING id',
-                ['viralatas', 'viralatas@exemplo.com', senhaHash, false]
+                'INSERT INTO usuarios (username, email, senha_hash, is_admin, acesso_especial) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+                ['viralatas', 'viralatas@exemplo.com', senhaHash, false, 'vitalicio']
             );
             usuarioPadrao = result;
-            console.log('Usuário padrão "viralatas" criado (email: viralatas@exemplo.com)');
+            console.log('Usuário padrão "viralatas" criado (email: viralatas@exemplo.com) com acesso vitalício');
         } else {
             // Atualizar email do viralatas se não tiver
-            const viralatasAtual = await pool.query('SELECT email FROM usuarios WHERE username = $1', ['viralatas']);
+            const viralatasAtual = await pool.query('SELECT email, acesso_especial FROM usuarios WHERE username = $1', ['viralatas']);
             if (!viralatasAtual.rows[0]?.email) {
                 await pool.query('UPDATE usuarios SET email = $1 WHERE username = $2', ['viralatas@exemplo.com', 'viralatas']);
+            }
+            // Garantir que viralatas tem acesso vitalício
+            if (viralatasAtual.rows[0]?.acesso_especial !== 'vitalicio') {
+                await pool.query('UPDATE usuarios SET acesso_especial = $1 WHERE username = $2', ['vitalicio', 'viralatas']);
+                console.log('Acesso vitalício atribuído ao usuário "viralatas"');
             }
         }
         const usuarioId = usuarioPadrao.rows[0].id;
@@ -1144,7 +1160,7 @@ async function verificarCredenciais(identificador, senha) {
 async function obterUsuarioPorId(id) {
     try {
         const result = await pool.query(
-            'SELECT id, username, email, is_admin, tutorial_completed, email_validado, nome, sobrenome, telefone, cpf, nome_estabelecimento, cep_residencial, endereco_residencial, numero_residencial, complemento_residencial, cidade_residencial, estado_residencial, pais_residencial, cep_comercial, endereco_comercial, numero_comercial, complemento_comercial, cidade_comercial, estado_comercial, pais_comercial, foto_perfil, data_nascimento, genero, cardapio_publico, cardapio_compartilhar, feedback_beta_enviado FROM usuarios WHERE id = $1',
+            'SELECT id, username, email, is_admin, tutorial_completed, email_validado, nome, sobrenome, telefone, cpf, nome_estabelecimento, cep_residencial, endereco_residencial, numero_residencial, complemento_residencial, cidade_residencial, estado_residencial, pais_residencial, cep_comercial, endereco_comercial, numero_comercial, complemento_comercial, cidade_comercial, estado_comercial, pais_comercial, foto_perfil, data_nascimento, genero, cardapio_publico, cardapio_compartilhar, feedback_beta_enviado, acesso_especial, acesso_temporario_duracao, acesso_temporario_expira_em FROM usuarios WHERE id = $1',
             [id]
         );
         
@@ -1184,7 +1200,10 @@ async function obterUsuarioPorId(id) {
             genero: row.genero || null,
             cardapio_publico: row.cardapio_publico || false,
             cardapio_compartilhar: row.cardapio_compartilhar || false,
-            feedback_beta_enviado: row.feedback_beta_enviado || false
+            feedback_beta_enviado: row.feedback_beta_enviado || false,
+            acesso_especial: row.acesso_especial || null,
+            acesso_temporario_duracao: row.acesso_temporario_duracao || null,
+            acesso_temporario_expira_em: row.acesso_temporario_expira_em || null
         };
     } catch (error) {
         console.error('Erro ao obter usuário:', error);
@@ -1243,7 +1262,7 @@ async function limparTutorialCompleto(usuarioId) {
 async function listarUsuarios() {
     try {
         const result = await pool.query(
-            'SELECT id, username, email, is_admin, created_at FROM usuarios ORDER BY created_at DESC'
+            'SELECT id, username, email, is_admin, created_at, acesso_especial, acesso_temporario_duracao, acesso_temporario_expira_em FROM usuarios ORDER BY created_at DESC'
         );
         
         return result.rows.map(row => ({
@@ -1251,7 +1270,10 @@ async function listarUsuarios() {
             username: row.username,
             email: row.email,
             is_admin: row.is_admin || false,
-            created_at: row.created_at
+            created_at: row.created_at,
+            acesso_especial: row.acesso_especial || null,
+            acesso_temporario_duracao: row.acesso_temporario_duracao || null,
+            acesso_temporario_expira_em: row.acesso_temporario_expira_em || null
         }));
     } catch (error) {
         console.error('Erro ao listar usuários:', error);
@@ -1260,6 +1282,41 @@ async function listarUsuarios() {
 }
 
 // Atualizar usuário (apenas para admin)
+// Atualizar acesso especial do usuário
+async function atualizarAcessoEspecial(usuarioId, acessoEspecial, duracaoDias) {
+    try {
+        let expiraEm = null;
+        
+        if (acessoEspecial === 'temporario' && duracaoDias) {
+            // Calcular data de expiração
+            const agora = new Date();
+            agora.setDate(agora.getDate() + duracaoDias);
+            expiraEm = agora.toISOString();
+        } else if (acessoEspecial === 'vitalicio') {
+            // Vitalício não expira
+            expiraEm = null;
+        } else {
+            // Remover acesso especial
+            acessoEspecial = null;
+            duracaoDias = null;
+        }
+        
+        await pool.query(`
+            UPDATE usuarios 
+            SET acesso_especial = $1, 
+                acesso_temporario_duracao = $2, 
+                acesso_temporario_expira_em = $3,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $4
+        `, [acessoEspecial, duracaoDias, expiraEm, usuarioId]);
+        
+        return true;
+    } catch (error) {
+        console.error('Erro ao atualizar acesso especial:', error);
+        throw error;
+    }
+}
+
 async function atualizarUsuario(usuarioId, novoUsername, novoEmail, novaSenha, isAdmin) {
     try {
         const updates = [];
@@ -3123,19 +3180,40 @@ async function obterAssinatura(usuarioId) {
 // Verificar se usuário tem acesso ativo
 async function verificarAcessoAtivo(usuarioId) {
     try {
-        // Verificar se é o usuário viralatas (acesso vitalício)
-        const usuarioViralatas = await pool.query(
-            'SELECT id, username FROM usuarios WHERE id = $1 AND username = $2',
-            [usuarioId, 'viralatas']
+        // Verificar acesso especial primeiro (vitalício ou temporário)
+        const usuario = await pool.query(
+            'SELECT acesso_especial, acesso_temporario_expira_em FROM usuarios WHERE id = $1',
+            [usuarioId]
         );
         
-        if (usuarioViralatas.rows.length > 0) {
-            // Usuário viralatas tem acesso vitalício
-            return {
-                temAcesso: true,
-                tipo: 'vitalicio',
-                assinatura: null
-            };
+        if (usuario.rows.length > 0) {
+            const acessoEspecial = usuario.rows[0].acesso_especial;
+            const expiraEm = usuario.rows[0].acesso_temporario_expira_em;
+            
+            if (acessoEspecial === 'vitalicio') {
+                // Acesso vitalício (permanente)
+                return {
+                    temAcesso: true,
+                    tipo: 'vitalicio',
+                    assinatura: null
+                };
+            } else if (acessoEspecial === 'temporario') {
+                // Acesso temporário - verificar se não expirou
+                if (expiraEm && new Date(expiraEm) > new Date()) {
+                    return {
+                        temAcesso: true,
+                        tipo: 'temporario',
+                        assinatura: null,
+                        expiraEm: expiraEm
+                    };
+                } else {
+                    // Acesso temporário expirado - limpar acesso especial
+                    await pool.query(
+                        'UPDATE usuarios SET acesso_especial = NULL, acesso_temporario_duracao = NULL, acesso_temporario_expira_em = NULL WHERE id = $1',
+                        [usuarioId]
+                    );
+                }
+            }
         }
         
         // Verificar assinatura anual ativa
@@ -6324,20 +6402,24 @@ async function verificarAcessoFuncaoEspecial(usuarioId, funcaoEspecial) {
         const adminHabilitado = permissaoAdmin.rows.length > 0 && permissaoAdmin.rows[0].habilitado;
         
         // Se "Somente Admin" está habilitado, apenas admins têm acesso
+        // IMPORTANTE: Se "Somente Admin" está habilitado, nenhuma outra permissão deve ser verificada
         if (adminHabilitado) {
             const usuario = await obterUsuarioPorId(usuarioId);
-            return usuario && usuario.is_admin;
+            // Retornar true apenas se for admin, false caso contrário (bloqueia acesso vitalício e planos)
+            const isAdmin = usuario && usuario.is_admin;
+            // Se não for admin, retornar false imediatamente (não verificar outras permissões)
+            if (!isAdmin) {
+                return false;
+            }
+            // Se for admin, retornar true
+            return true;
         }
         
         // Se "admin" não está habilitado, verificar outras permissões
         
-        // Verificar se é vitalício
-        const usuarioViralatas = await pool.query(
-            'SELECT id FROM usuarios WHERE id = $1 AND username = $2',
-            [usuarioId, 'viralatas']
-        );
-        
-        if (usuarioViralatas.rows.length > 0) {
+        // Verificar se tem acesso vitalício (via acesso_especial)
+        const usuario = await obterUsuarioPorId(usuarioId);
+        if (usuario && usuario.acesso_especial === 'vitalicio') {
             const permissaoVitalicio = await pool.query(`
                 SELECT habilitado FROM funcoes_especiais_acesso
                 WHERE funcao_especial = $1 AND tipo_acesso = 'vitalicio'
@@ -6407,6 +6489,7 @@ module.exports = {
     reiniciarSistema,
     listarUsuarios,
     atualizarUsuario,
+    atualizarAcessoEspecial,
     deletarUsuario,
     obterTodosItens,
     obterItensPorCategoria,

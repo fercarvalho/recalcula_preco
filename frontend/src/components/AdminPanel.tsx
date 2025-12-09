@@ -26,6 +26,9 @@ interface Usuario {
   email?: string;
   is_admin: boolean;
   created_at: string;
+  acesso_especial?: 'vitalicio' | 'temporario' | null;
+  acesso_temporario_duracao?: number | null;
+  acesso_temporario_expira_em?: string | null;
 }
 
 interface UsuarioDetalhes {
@@ -999,6 +1002,8 @@ const EditarUsuarioModal = ({ isOpen, onClose, usuario, onUsuarioAtualizado }: E
   const [email, setEmail] = useState(usuario.email || '');
   const [senha, setSenha] = useState('');
   const [isAdmin, setIsAdmin] = useState(usuario.is_admin);
+  const [acessoEspecial, setAcessoEspecial] = useState<'vitalicio' | 'temporario' | null>(usuario.acesso_especial || null);
+  const [duracaoTemporario, setDuracaoTemporario] = useState<number>(usuario.acesso_temporario_duracao || 1);
   const [loading, setLoading] = useState(false);
   const [showSenha, setShowSenha] = useState(false);
 
@@ -1008,6 +1013,8 @@ const EditarUsuarioModal = ({ isOpen, onClose, usuario, onUsuarioAtualizado }: E
       setEmail(usuario.email || '');
       setSenha('');
       setIsAdmin(usuario.is_admin);
+      setAcessoEspecial(usuario.acesso_especial || null);
+      setDuracaoTemporario(usuario.acesso_temporario_duracao || 1);
     }
   }, [isOpen, usuario]);
 
@@ -1060,6 +1067,8 @@ const EditarUsuarioModal = ({ isOpen, onClose, usuario, onUsuarioAtualizado }: E
           email: email.trim().toLowerCase(),
           senha: senha || undefined,
           is_admin: isAdmin,
+          acesso_especial: acessoEspecial,
+          acesso_temporario_duracao: acessoEspecial === 'temporario' ? duracaoTemporario : undefined,
         }),
       });
 
@@ -1173,6 +1182,49 @@ const EditarUsuarioModal = ({ isOpen, onClose, usuario, onUsuarioAtualizado }: E
             <span>Administrador</span>
           </label>
         </div>
+
+        <div className="form-group">
+          <label htmlFor="acesso-especial">Acesso Especial:</label>
+          <select
+            id="acesso-especial"
+            className="form-input"
+            value={acessoEspecial || ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              setAcessoEspecial(value === '' ? null : value as 'vitalicio' | 'temporario');
+              if (value !== 'temporario') {
+                setDuracaoTemporario(1);
+              }
+            }}
+            disabled={loading}
+          >
+            <option value="">Nenhum (acesso normal)</option>
+            <option value="vitalicio">Vitalício (permanente)</option>
+            <option value="temporario">Temporário</option>
+          </select>
+        </div>
+
+        {acessoEspecial === 'temporario' && (
+          <div className="form-group">
+            <label htmlFor="duracao-temporario">Duração do Acesso Temporário (dias):</label>
+            <select
+              id="duracao-temporario"
+              className="form-input"
+              value={duracaoTemporario}
+              onChange={(e) => setDuracaoTemporario(parseInt(e.target.value))}
+              disabled={loading}
+            >
+              <option value={1}>1 dia</option>
+              <option value={7}>7 dias</option>
+              <option value={30}>30 dias</option>
+            </select>
+            {usuario.acesso_temporario_expira_em && new Date(usuario.acesso_temporario_expira_em) > new Date() && (
+              <p style={{ fontSize: '0.85em', color: '#666', marginTop: '0.5rem' }}>
+                Expira em: {new Date(usuario.acesso_temporario_expira_em).toLocaleString('pt-BR')}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </Modal>
   );
