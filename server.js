@@ -58,17 +58,20 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
                 // Buscar sessão para obter valor
                 const session = await stripeService.stripe.checkout.sessions.retrieve(resultado.sessionId || event.data.object.id);
                 const valor = session.amount_total ? session.amount_total / 100 : 199.00; // Converter de centavos
+                const planoId = resultado.metadata?.plano_id ? parseInt(resultado.metadata.plano_id) : null;
 
                 console.log('💰 Valor do pagamento:', valor);
+                console.log('📋 Plano ID:', planoId);
 
                 await db.criarPagamentoUnico(userId, {
                     stripe_payment_intent_id: paymentIntentId,
                     stripe_customer_id: session.customer || null,
                     valor: valor,
                     status: 'succeeded',
+                    plano_id: planoId,
                 });
 
-                console.log('✅ Pagamento único salvo no banco de dados para usuário:', userId);
+                console.log('✅ Pagamento único salvo no banco de dados para usuário:', userId, 'PlanoId:', planoId);
             } else if (resultado.tipo === 'pagamento_unico_sucesso' && !userId) {
                 // payment_intent.succeeded não tem userId, mas checkout.session.completed já processou
                 // Então apenas ignoramos silenciosamente

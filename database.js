@@ -485,6 +485,14 @@ async function inicializar() {
             )
         `);
         
+        // Adicionar coluna plano_id se não existir (migração)
+        if (!(await colunaExiste('pagamentos_unicos', 'plano_id'))) {
+            await pool.query(`
+                ALTER TABLE pagamentos_unicos 
+                ADD COLUMN plano_id INTEGER REFERENCES planos(id) ON DELETE SET NULL
+            `);
+        }
+        
         // Criar índice para busca rápida por usuario_id
         await pool.query(`
             CREATE INDEX IF NOT EXISTS idx_pagamentos_unicos_usuario_id 
@@ -3207,21 +3215,23 @@ async function criarPagamentoUnico(usuarioId, dadosPagamento) {
             stripe_payment_intent_id,
             stripe_customer_id,
             valor,
-            status
+            status,
+            plano_id
         } = dadosPagamento;
 
         const result = await pool.query(`
             INSERT INTO pagamentos_unicos (
                 usuario_id, stripe_payment_intent_id, stripe_customer_id,
-                valor, status
-            ) VALUES ($1, $2, $3, $4, $5)
+                valor, status, plano_id
+            ) VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING *
         `, [
             usuarioId,
             stripe_payment_intent_id,
             stripe_customer_id,
             valor,
-            status
+            status,
+            plano_id || null
         ]);
 
         return result.rows[0];
@@ -6340,12 +6350,27 @@ async function verificarAcessoFuncaoEspecial(usuarioId, funcaoEspecial) {
         
         // Verificar acesso por plano específico
         const acesso = await verificarAcessoAtivo(usuarioId);
+        
+        // Verificar se é assinatura com plano_id
         if (acesso.temAcesso && acesso.assinatura && acesso.assinatura.plano_id) {
             // Verificar se o plano específico do usuário tem permissão
             const permissaoPlano = await pool.query(`
                 SELECT habilitado FROM funcoes_especiais_acesso
                 WHERE funcao_especial = $1 AND tipo_acesso = $2
             `, [funcaoEspecial, acesso.assinatura.plano_id.toString()]);
+            
+            if (permissaoPlano.rows.length > 0 && permissaoPlano.rows[0].habilitado) {
+                return true;
+            }
+        }
+        
+        // Verificar se é pagamento único com plano_id
+        if (acesso.temAcesso && acesso.tipo === 'unico' && acesso.pagamento && acesso.pagamento.plano_id) {
+            // Verificar se o plano específico do usuário tem permissão
+            const permissaoPlano = await pool.query(`
+                SELECT habilitado FROM funcoes_especiais_acesso
+                WHERE funcao_especial = $1 AND tipo_acesso = $2
+            `, [funcaoEspecial, acesso.pagamento.plano_id.toString()]);
             
             if (permissaoPlano.rows.length > 0 && permissaoPlano.rows[0].habilitado) {
                 return true;

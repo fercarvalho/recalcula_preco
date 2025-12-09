@@ -132,6 +132,7 @@ async function processarWebhook(event) {
                         sessionId: session.id,
                         paymentIntentId: session.payment_intent,
                         status: session.payment_status,
+                        metadata: session.metadata,
                     };
                 }
                 break;
