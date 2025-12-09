@@ -790,6 +790,19 @@ async function inicializar() {
             ON fotos_estudio(usuario_id)
         `);
         
+        // Criar tabela para permissões de acesso às funções especiais
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS funcoes_especiais_acesso (
+                id SERIAL PRIMARY KEY,
+                funcao_especial VARCHAR(100) NOT NULL,
+                tipo_acesso VARCHAR(100) NOT NULL,
+                habilitado BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(funcao_especial, tipo_acesso)
+            )
+        `);
+        
         // Inicializar planos padrão se não existirem
         await inicializarPlanosPadrao();
         
@@ -6209,6 +6222,132 @@ async function atualizarDadosUsuario(usuarioId, dados) {
     }
 }
 
+// ========== FUNÇÕES ESPECIAIS - PERMISSÕES DE ACESSO ==========
+
+// Obter todas as permissões de funções especiais
+async function obterPermissoesFuncoesEspeciais() {
+    try {
+        const result = await pool.query(`
+            SELECT * FROM funcoes_especiais_acesso 
+            ORDER BY funcao_especial, tipo_acesso
+        `);
+        return result.rows;
+    } catch (error) {
+        console.error('Erro ao obter permissões de funções especiais:', error);
+        throw error;
+    }
+}
+
+// Atualizar permissões de funções especiais
+async function atualizarPermissoesFuncoesEspeciais(permissoes) {
+    try {
+        // Iniciar transação
+        await pool.query('BEGIN');
+        
+        try {
+            for (const permissao of permissoes) {
+                await pool.query(`
+                    INSERT INTO funcoes_especiais_acesso (funcao_especial, tipo_acesso, habilitado, updated_at)
+                    VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+                    ON CONFLICT (funcao_especial, tipo_acesso)
+                    DO UPDATE SET habilitado = $3, updated_at = CURRENT_TIMESTAMP
+                `, [permissao.funcao_especial, permissao.tipo_acesso, permissao.habilitado]);
+            }
+            
+            await pool.query('COMMIT');
+            return true;
+        } catch (error) {
+            await pool.query('ROLLBACK');
+            throw error;
+        }
+    } catch (error) {
+        console.error('Erro ao atualizar permissões de funções especiais:', error);
+        throw error;
+    }
+}
+
+// Verificar se usuário tem acesso a uma função especial
+async function verificarAcessoFuncaoEspecial(usuarioId, funcaoEspecial) {
+    try {
+        // Verificar se "todos" está habilitado (tem prioridade)
+        const permissaoTodos = await pool.query(`
+            SELECT habilitado FROM funcoes_especiais_acesso
+            WHERE funcao_especial = $1 AND tipo_acesso = 'todos'
+        `, [funcaoEspecial]);
+        
+        if (permissaoTodos.rows.length > 0 && permissaoTodos.rows[0].habilitado) {
+            return true;
+        }
+        
+        // Verificar se é admin
+        const usuario = await obterUsuarioPorId(usuarioId);
+        if (usuario && usuario.is_admin) {
+            const permissaoAdmin = await pool.query(`
+                SELECT habilitado FROM funcoes_especiais_acesso
+                WHERE funcao_especial = $1 AND tipo_acesso = 'admin'
+            `, [funcaoEspecial]);
+            
+            if (permissaoAdmin.rows.length > 0 && permissaoAdmin.rows[0].habilitado) {
+                return true;
+            }
+        }
+        
+        // Verificar se é vitalício
+        const usuarioViralatas = await pool.query(
+            'SELECT id FROM usuarios WHERE id = $1 AND username = $2',
+            [usuarioId, 'viralatas']
+        );
+        
+        if (usuarioViralatas.rows.length > 0) {
+            const permissaoVitalicio = await pool.query(`
+                SELECT habilitado FROM funcoes_especiais_acesso
+                WHERE funcao_especial = $1 AND tipo_acesso = 'vitalicio'
+            `, [funcaoEspecial]);
+            
+            if (permissaoVitalicio.rows.length > 0 && permissaoVitalicio.rows[0].habilitado) {
+                return true;
+            }
+        }
+        
+        // Verificar acesso por plano
+        const acesso = await verificarAcessoAtivo(usuarioId);
+        if (acesso.temAcesso && acesso.assinatura) {
+            // Buscar planos que correspondem ao tipo de acesso
+            const planoTipo = acesso.assinatura.plano_tipo;
+            let planosQuery;
+            
+            if (planoTipo === 'anual') {
+                planosQuery = await pool.query(`
+                    SELECT id FROM planos WHERE tipo = 'recorrente' AND ativo = TRUE
+                `);
+            } else if (planoTipo === 'unico') {
+                planosQuery = await pool.query(`
+                    SELECT id FROM planos WHERE tipo = 'unico' AND ativo = TRUE
+                `);
+            }
+            
+            if (planosQuery && planosQuery.rows.length > 0) {
+                // Verificar se algum dos planos tem permissão
+                for (const plano of planosQuery.rows) {
+                    const permissaoPlano = await pool.query(`
+                        SELECT habilitado FROM funcoes_especiais_acesso
+                        WHERE funcao_especial = $1 AND tipo_acesso = $2
+                    `, [funcaoEspecial, plano.id.toString()]);
+                    
+                    if (permissaoPlano.rows.length > 0 && permissaoPlano.rows[0].habilitado) {
+                        return true;
+                    }
+                }
+            }
+        }
+        
+        return false;
+    } catch (error) {
+        console.error('Erro ao verificar acesso a função especial:', error);
+        throw error;
+    }
+}
+
 // Fechar conexão
 async function fechar() {
     try {
@@ -6341,6 +6480,9 @@ module.exports = {
     // Funções de Modo Estúdio
     processarFotoEstudio,
     obterHistoricoEstudio,
+    obterPermissoesFuncoesEspeciais,
+    atualizarPermissoesFuncoesEspeciais,
+    verificarAcessoFuncaoEspecial,
     fechar
 };
 

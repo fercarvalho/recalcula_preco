@@ -644,6 +644,44 @@ app.get('/api/admin/feedbacks-beta', authenticateToken, requireAdmin, async (req
     }
 });
 
+// Obter permissões de funções especiais
+app.get('/api/admin/funcoes-especiais/permissoes', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const permissoes = await db.obterPermissoesFuncoesEspeciais();
+        res.json(permissoes);
+    } catch (error) {
+        console.error('Erro ao obter permissões de funções especiais:', error);
+        res.status(500).json({ error: 'Erro ao obter permissões de funções especiais' });
+    }
+});
+
+// Atualizar permissões de funções especiais
+app.put('/api/admin/funcoes-especiais/permissoes', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { permissoes } = req.body;
+        if (!Array.isArray(permissoes)) {
+            return res.status(400).json({ error: 'Permissões devem ser um array' });
+        }
+        await db.atualizarPermissoesFuncoesEspeciais(permissoes);
+        res.json({ success: true, message: 'Permissões atualizadas com sucesso' });
+    } catch (error) {
+        console.error('Erro ao atualizar permissões de funções especiais:', error);
+        res.status(500).json({ error: 'Erro ao atualizar permissões de funções especiais' });
+    }
+});
+
+// Verificar acesso a função especial
+app.get('/api/auth/funcao-especial/:funcao/acesso', authenticateToken, async (req, res) => {
+    try {
+        const { funcao } = req.params;
+        const temAcesso = await db.verificarAcessoFuncaoEspecial(req.userId, funcao);
+        res.json({ temAcesso });
+    } catch (error) {
+        console.error('Erro ao verificar acesso a função especial:', error);
+        res.status(500).json({ error: 'Erro ao verificar acesso a função especial' });
+    }
+});
+
 // Atualizar modo compartilhar cardápio
 app.put('/api/auth/cardapio-compartilhar', authenticateToken, async (req, res) => {
     try {

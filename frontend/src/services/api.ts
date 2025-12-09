@@ -637,5 +637,21 @@ export const apiService = {
     const response = await api.get('/api/auth/estudio/historico');
     return response.data;
   },
+
+  // Admin - Funções Especiais
+  async obterPermissoesFuncoesEspeciais(): Promise<any[]> {
+    const response = await api.get('/api/admin/funcoes-especiais/permissoes');
+    return response.data;
+  },
+
+  async atualizarPermissoesFuncoesEspeciais(permissoes: any[]): Promise<void> {
+    await api.put('/api/admin/funcoes-especiais/permissoes', { permissoes });
+  },
+
+  // Verificar acesso a função especial
+  async verificarAcessoFuncaoEspecial(funcao: string): Promise<{ temAcesso: boolean }> {
+    const response = await api.get(`/api/auth/funcao-especial/${funcao}/acesso`);
+    return response.data;
+  },
 };
 
