@@ -129,9 +129,19 @@
 }
 
 @media (max-width: 600px) {
+  .modal-body {
+    padding: 20px;
+  }
+  
   .modal-footer {
     padding: 20px 15px;
     min-height: 70px;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-body {
+    padding: 15px;
   }
 }
 
