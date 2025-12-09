@@ -52,6 +52,7 @@ async function criarCheckoutAnual(customerEmail, userId, successUrl, cancelUrl, 
                 },
             ],
             mode: 'subscription',
+            allow_promotion_codes: true,
             subscription_data: {
                 metadata: {
                     user_id: userId.toString(),
@@ -98,6 +99,7 @@ async function criarCheckoutUnico(customerEmail, userId, successUrl, cancelUrl, 
                 },
             ],
             mode: 'payment',
+            allow_promotion_codes: true,
             metadata: {
                 user_id: userId.toString(),
                 plano_tipo: 'unico',
