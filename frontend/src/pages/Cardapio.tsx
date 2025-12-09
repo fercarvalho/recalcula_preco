@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import type { ItensPorCategoria } from '../types';
-import { carregarConfiguracoes, aplicarConfiguracoes } from '../components/PainelAdmin';
+import { carregarConfiguracoes, aplicarConfiguracoes } from '../utils/configuracoes';
 import './Cardapio.css';
 
 interface CardapioData {

@@ -8,7 +8,7 @@ import ModalFeedbackBeta from './ModalFeedbackBeta';
 import ModoEstudio from './ModoEstudio';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import { carregarConfiguracoes, aplicarConfiguracoes } from './PainelAdmin';
+import { carregarConfiguracoes, aplicarConfiguracoes } from '../utils/configuracoes';
 import '../pages/Cardapio.css';
 import './AdicionarProdutoSection.css';
 

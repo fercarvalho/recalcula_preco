@@ -6,7 +6,7 @@ import ReajusteForm from './components/ReajusteForm';
 import ItensSection from './components/ItensSection';
 import AdicionarProdutoSection from './components/AdicionarProdutoSection';
 import ConfirmacaoReajusteModal from './components/ConfirmacaoReajusteModal';
-import { aplicarConfiguracoes, carregarConfiguracoes } from './components/PainelAdmin';
+import { aplicarConfiguracoes, carregarConfiguracoes } from './utils/configuracoes';
 import AdicionarCategoriaModal from './components/AdicionarCategoriaModal';
 import EditarItemModal from './components/EditarItemModal';
 import ResetarSenhaModal from './components/ResetarSenhaModal';
@@ -25,7 +25,7 @@ import { carregarPlataformasSync, carregarPlataformas } from './utils/plataforma
 import { isTutorialCompleted, isTutorialCompletedSync, limparCacheTutorial } from './components/TutorialOnboarding';
 
 // Lazy load de componentes grandes
-const PainelAdmin = lazy(() => import('./components/PainelAdmin').then(module => ({ default: module.default })));
+const PainelAdmin = lazy(() => import('./components/PainelAdmin'));
 const AdminPanel = lazy(() => import('./components/AdminPanel'));
 const GerenciamentoPlataformas = lazy(() => import('./components/GerenciamentoPlataformas'));
 const TutorialOnboarding = lazy(() => import('./components/TutorialOnboarding'));

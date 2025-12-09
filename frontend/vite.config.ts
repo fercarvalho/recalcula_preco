@@ -20,9 +20,24 @@ export default defineConfig({
         manualChunks: (id) => {
           // Separar node_modules em chunks específicos
           if (id.includes('node_modules')) {
-            // React e React DOM juntos
-            if (id.includes('react') || id.includes('react-dom') || id.includes('scheduler')) {
+            // React core (menor) - jsx runtime
+            if (id.includes('react/jsx-runtime') || id.includes('react/jsx-dev-runtime')) {
+              return 'react-core';
+            }
+            
+            // React DOM separado do React
+            if (id.includes('react-dom')) {
+              return 'react-dom-vendor';
+            }
+            
+            // React principal
+            if (id.includes('/react/') && !id.includes('react-dom') && !id.includes('jsx-runtime')) {
               return 'react-vendor';
+            }
+            
+            // Scheduler (usado pelo React)
+            if (id.includes('scheduler')) {
+              return 'react-scheduler';
             }
             
             // React Icons (pode ser grande)
@@ -30,7 +45,7 @@ export default defineConfig({
               return 'react-icons-vendor';
             }
             
-            // Bibliotecas de PDF e canvas
+            // Bibliotecas de PDF e canvas (carregar apenas quando necessário)
             if (id.includes('html2canvas') || id.includes('jspdf')) {
               return 'pdf-vendor';
             }
@@ -46,9 +61,7 @@ export default defineConfig({
             }
             
             // Outras dependências grandes
-            if (id.includes('node_modules')) {
-              return 'vendor';
-            }
+            return 'vendor';
           }
           
           // Separar componentes grandes da aplicação
@@ -62,6 +75,10 @@ export default defineConfig({
           
           if (id.includes('components/TutorialOnboarding')) {
             return 'tutorial';
+          }
+          
+          if (id.includes('components/PainelAdmin')) {
+            return 'painel-admin';
           }
         },
       },
