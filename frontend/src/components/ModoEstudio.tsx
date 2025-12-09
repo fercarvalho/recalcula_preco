@@ -27,7 +27,6 @@ const ModoEstudio = ({ statusPagamento, onOpenModalPlanos, onOpenModalUpgrade, o
   const [previewOriginal, setPreviewOriginal] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
   const [fotoProcessada, setFotoProcessada] = useState<FotoProcessada | null>(null);
-  const [historico, setHistorico] = useState<FotoProcessada[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -104,9 +103,6 @@ const ModoEstudio = ({ statusPagamento, onOpenModalPlanos, onOpenModalUpgrade, o
               created_at: new Date().toISOString()
             });
             
-            // Atualizar histórico
-            await carregarHistorico();
-            
             await mostrarAlert('Sucesso', 'Foto processada com sucesso!');
           } else {
             await mostrarAlert('Erro', 'Erro ao processar a foto. Tente novamente.');
@@ -128,15 +124,6 @@ const ModoEstudio = ({ statusPagamento, onOpenModalPlanos, onOpenModalUpgrade, o
     } catch (error) {
       console.error('Erro:', error);
       setProcessando(false);
-    }
-  };
-
-  const carregarHistorico = async () => {
-    try {
-      const historicoData = await apiService.obterHistoricoEstudio();
-      setHistorico(historicoData);
-    } catch (error) {
-      console.error('Erro ao carregar histórico:', error);
     }
   };
 
