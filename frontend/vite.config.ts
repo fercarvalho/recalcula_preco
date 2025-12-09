@@ -83,6 +83,6 @@ export default defineConfig({
         },
       },
     },
-    chunkSizeWarningLimit: 1200, // Aumentar para 1.2MB - React é naturalmente grande (~1.4MB)
+    chunkSizeWarningLimit: 2000, // 2MB - React e outras bibliotecas grandes são naturalmente grandes
   },
 })
