@@ -623,5 +623,19 @@ export const apiService = {
     const response = await api.get('/api/admin/feedbacks-beta');
     return response.data;
   },
+
+  // Modo Estúdio
+  async processarFotoEstudio(fotoBase64: string): Promise<{
+    id: number;
+    foto_processada: string;
+  }> {
+    const response = await api.post('/api/auth/estudio/processar', { foto: fotoBase64 });
+    return response.data;
+  },
+
+  async obterHistoricoEstudio(): Promise<any[]> {
+    const response = await api.get('/api/auth/estudio/historico');
+    return response.data;
+  },
 };
 

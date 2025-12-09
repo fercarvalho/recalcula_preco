@@ -1,0 +1,199 @@
+.modo-estudio-section {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: var(--cor-secundaria, #2a2a2a);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 107, 53, 0.2);
+}
+
+.modo-estudio-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.modo-estudio-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.modo-estudio-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: white;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.modo-estudio-description {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.modo-estudio-upload-area {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.modo-estudio-file-input {
+  display: none;
+}
+
+.modo-estudio-upload-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 2rem;
+  background: var(--cor-primaria, #FF6B35);
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s;
+  text-align: center;
+  justify-content: center;
+  border: none;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.modo-estudio-upload-label:hover {
+  background: rgba(255, 107, 53, 0.9);
+  transform: translateY(-2px);
+}
+
+.modo-estudio-preview-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin-top: 1rem;
+}
+
+.modo-estudio-preview-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: var(--cor-fundo, #1a1a1a);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modo-estudio-preview-item h4 {
+  color: white;
+  font-size: 1.1rem;
+  margin: 0;
+  text-align: center;
+}
+
+.modo-estudio-preview-img {
+  max-width: 100%;
+  max-height: 400px;
+  border-radius: 8px;
+  object-fit: contain;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.btn-processar-foto {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 2rem;
+  background: var(--cor-primaria, #FF6B35);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin: 0 auto;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.btn-processar-foto:hover:not(:disabled) {
+  background: rgba(255, 107, 53, 0.9);
+  transform: translateY(-2px);
+}
+
+.btn-processar-foto:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-processar-foto .spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.modo-estudio-processando {
+  text-align: center;
+  padding: 1rem;
+  background: rgba(255, 107, 53, 0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 107, 53, 0.3);
+}
+
+.modo-estudio-processando p {
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .modo-estudio-section {
+    padding: 1rem;
+  }
+  
+  .modo-estudio-preview-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .modo-estudio-upload-label,
+  .btn-processar-foto {
+    width: 100%;
+    padding: 0.875rem 1.5rem;
+    font-size: 0.9rem;
+  }
+  
+  .modo-estudio-title {
+    font-size: 1.2rem;
+  }
+  
+  .modo-estudio-description {
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .modo-estudio-section {
+    padding: 0.75rem;
+    margin: 1rem 0;
+  }
+  
+  .modo-estudio-upload-label,
+  .btn-processar-foto {
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+  }
+  
+  .modo-estudio-title {
+    font-size: 1.1rem;
+  }
+}
+

@@ -76,6 +76,8 @@
   color: white;
   font-size: 1rem;
   transition: all 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .login-form .form-input:focus {
@@ -97,6 +99,7 @@
   position: relative;
   display: flex;
   align-items: center;
+  width: 100%;
 }
 
 .password-input-wrapper .form-input {

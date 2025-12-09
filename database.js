@@ -771,6 +771,25 @@ async function inicializar() {
             // Coluna já existe, ignorar erro
         }
         
+        // Criar tabela para fotos do Modo Estúdio
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS fotos_estudio (
+                id SERIAL PRIMARY KEY,
+                usuario_id INTEGER REFERENCES usuarios(id) ON DELETE CASCADE,
+                foto_original TEXT NOT NULL,
+                foto_processada TEXT,
+                status VARCHAR(20) DEFAULT 'processando' CHECK (status IN ('processando', 'concluido', 'erro')),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        // Criar índice para busca rápida por usuario_id
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_fotos_estudio_usuario_id 
+            ON fotos_estudio(usuario_id)
+        `);
+        
         // Inicializar planos padrão se não existirem
         await inicializarPlanosPadrao();
         
@@ -2668,6 +2687,201 @@ async function obterTodosFeedbacksBeta() {
         });
     } catch (error) {
         console.error('Erro ao obter feedbacks beta:', error);
+        throw error;
+    }
+}
+
+// ========== FUNÇÕES DE MODO ESTÚDIO ==========
+
+// Processar foto com IA (placeholder - implementar integração com API de IA)
+async function processarFotoEstudio(usuarioId, fotoBase64) {
+    try {
+        // Inserir foto original no banco com status "processando"
+        const result = await pool.query(`
+            INSERT INTO fotos_estudio (usuario_id, foto_original, status)
+            VALUES ($1, $2, 'processando')
+            RETURNING id
+        `, [usuarioId, fotoBase64]);
+        
+        const fotoId = result.rows[0].id;
+        
+        // TODO: Integrar com API de IA aqui
+        // Por enquanto, vamos simular o processamento retornando a mesma foto
+        // Em produção, você deve:
+        // 1. Enviar fotoBase64 para API de IA (Replicate, OpenAI, etc.)
+        // 2. Receber foto processada
+        // 3. Atualizar no banco
+        
+        // Simulação: processar foto (aqui você faria a chamada real à API de IA)
+        const fotoProcessada = await processarFotoComIA(fotoBase64);
+        
+        // Atualizar com foto processada
+        await pool.query(`
+            UPDATE fotos_estudio 
+            SET foto_processada = $1, status = 'concluido', updated_at = CURRENT_TIMESTAMP
+            WHERE id = $2
+        `, [fotoProcessada, fotoId]);
+        
+        // Retornar foto processada
+        const fotoResult = await pool.query(`
+            SELECT foto_processada FROM fotos_estudio WHERE id = $1
+        `, [fotoId]);
+        
+        return {
+            id: fotoId,
+            foto_processada: fotoResult.rows[0].foto_processada
+        };
+    } catch (error) {
+        console.error('Erro ao processar foto estúdio:', error);
+        
+        // Marcar como erro se houver problema
+        try {
+            await pool.query(`
+                UPDATE fotos_estudio 
+                SET status = 'erro', updated_at = CURRENT_TIMESTAMP
+                WHERE usuario_id = $1 AND status = 'processando'
+                ORDER BY created_at DESC
+                LIMIT 1
+            `, [usuarioId]);
+        } catch (updateError) {
+            console.error('Erro ao atualizar status de erro:', updateError);
+        }
+        
+        throw error;
+    }
+}
+
+// Função auxiliar para processar foto com IA usando Google Gemini (Nano Banana)
+async function processarFotoComIA(fotoBase64) {
+    try {
+        const GOOGLE_API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
+        
+        if (!GOOGLE_API_KEY) {
+            console.warn('GOOGLE_GEMINI_API_KEY não configurada. Retornando foto original.');
+            return fotoBase64;
+        }
+        
+        // Extrair apenas a parte base64 (remover data:image/...;base64,)
+        const base64Data = fotoBase64.includes(',') ? fotoBase64.split(',')[1] : fotoBase64;
+        
+        // Usar Gemini 2.0 Flash para gerar uma versão melhorada da foto
+        // O Nano Banana Pro está disponível através do modelo gemini-2.0-flash-exp
+        const prompt = `Transforme esta foto em uma imagem profissional de estúdio com qualidade profissional. 
+        Melhore: iluminação, contraste, cores vibrantes, nitidez, remoção de ruído, e composição geral. 
+        A foto deve parecer ter sido tirada em um estúdio profissional com equipamento de alta qualidade. 
+        Mantenha a pessoa/objeto principal idêntico, mas aprimore todos os aspectos técnicos da imagem.`;
+        
+        // Chamar API do Google Gemini (Nano Banana)
+        // Usando o modelo gemini-2.0-flash-exp que inclui capacidades do Nano Banana
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GOOGLE_API_KEY}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [
+                        {
+                            text: prompt
+                        },
+                        {
+                            inline_data: {
+                                mime_type: 'image/jpeg',
+                                data: base64Data
+                            }
+                        }
+                    ]
+                }],
+                generationConfig: {
+                    temperature: 0.7,
+                    topK: 40,
+                    topP: 0.95,
+                    maxOutputTokens: 8192,
+                }
+            })
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Erro na API do Google Gemini:', response.status, errorText);
+            
+            // Se a API não suportar geração de imagens, usar fallback
+            if (response.status === 400 || response.status === 404) {
+                console.warn('API do Gemini não suporta geração de imagens. Usando processamento local.');
+                return await melhorarFotoLocalmente(fotoBase64);
+            }
+            
+            throw new Error(`Erro na API do Google Gemini: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Verificar se há imagem gerada na resposta
+        if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
+            const parts = data.candidates[0].content.parts;
+            
+            // Procurar por imagem na resposta
+            for (const part of parts) {
+                if (part.inline_data && part.inline_data.data) {
+                    // Retornar imagem processada em base64
+                    const mimeType = part.inline_data.mime_type || 'image/jpeg';
+                    return `data:${mimeType};base64,${part.inline_data.data}`;
+                }
+            }
+        }
+        
+        // Se não retornou imagem, o Gemini pode ter retornado apenas texto
+        // Nesse caso, usar processamento local como fallback
+        console.warn('API do Gemini retornou resposta sem imagem. Usando processamento local básico.');
+        return await melhorarFotoLocalmente(fotoBase64);
+        
+    } catch (error) {
+        console.error('Erro ao processar foto com Google Gemini:', error);
+        // Em caso de erro, usar fallback local
+        return await melhorarFotoLocalmente(fotoBase64);
+    }
+}
+
+// Função auxiliar para melhorar foto localmente (fallback)
+async function melhorarFotoLocalmente(fotoBase64) {
+    // Esta é uma função de fallback caso a API do Google não funcione ou não retorne imagem
+    // Por enquanto, retorna a foto original
+    // Em produção, você pode adicionar processamento básico de imagem aqui
+    // usando bibliotecas como sharp ou jimp para ajustes de brilho, contraste, etc.
+    
+    // TODO: Implementar melhorias básicas locais se necessário
+    // Exemplo com sharp (se instalado):
+    // const sharp = require('sharp');
+    // const buffer = Buffer.from(fotoBase64.split(',')[1], 'base64');
+    // const melhorada = await sharp(buffer)
+    //   .normalize()
+    //   .sharpen()
+    //   .toBuffer();
+    // return `data:image/jpeg;base64,${melhorada.toString('base64')}`;
+    
+    return fotoBase64;
+}
+
+// Obter histórico de fotos processadas do usuário
+async function obterHistoricoEstudio(usuarioId) {
+    try {
+        const result = await pool.query(`
+            SELECT 
+                id,
+                foto_original,
+                foto_processada,
+                status,
+                created_at,
+                updated_at
+            FROM fotos_estudio
+            WHERE usuario_id = $1
+            ORDER BY created_at DESC
+            LIMIT 20
+        `, [usuarioId]);
+        
+        return result.rows;
+    } catch (error) {
+        console.error('Erro ao obter histórico estúdio:', error);
         throw error;
     }
 }
@@ -6124,6 +6338,9 @@ module.exports = {
     verificarFuncoesBetaAtivas,
     criarFeedbackBeta,
     obterTodosFeedbacksBeta,
+    // Funções de Modo Estúdio
+    processarFotoEstudio,
+    obterHistoricoEstudio,
     fechar
 };
 

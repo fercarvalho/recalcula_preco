@@ -32,6 +32,9 @@ DB_PORT=5432
 DB_NAME=calculadora_reajuste
 DB_USER=postgres
 DB_PASSWORD=sua_senha_aqui
+
+# Google Gemini API (para Modo Estúdio)
+GOOGLE_GEMINI_API_KEY=sua_chave_api_aqui
 ```
 
 ### 2. Criar o banco de dados

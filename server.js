@@ -584,6 +584,55 @@ app.post('/api/auth/feedback-beta', authenticateToken, async (req, res) => {
     }
 });
 
+// ========== MODO ESTÚDIO ==========
+
+// Processar foto com IA
+app.post('/api/auth/estudio/processar', authenticateToken, requirePayment, async (req, res) => {
+    try {
+        const { foto } = req.body;
+        
+        if (!foto) {
+            return res.status(400).json({ error: 'Foto não fornecida' });
+        }
+        
+        // Verificar se é base64 válido
+        if (!foto.startsWith('data:image/')) {
+            return res.status(400).json({ error: 'Formato de imagem inválido' });
+        }
+        
+        // Verificar tamanho (máximo 10MB em base64)
+        const base64Size = (foto.length * 3) / 4;
+        if (base64Size > 10 * 1024 * 1024) {
+            return res.status(400).json({ error: 'Imagem muito grande. Máximo 10MB.' });
+        }
+        
+        // Verificar se tem plano anual ou vitalício
+        const statusPagamento = await db.verificarStatusPagamento(req.userId);
+        if (!statusPagamento.temAcesso || (statusPagamento.tipo !== 'anual' && statusPagamento.tipo !== 'vitalicio')) {
+            return res.status(403).json({ error: 'Acesso negado. Modo Estúdio disponível apenas para plano anual.' });
+        }
+        
+        // Processar foto
+        const resultado = await db.processarFotoEstudio(req.userId, foto);
+        
+        res.json(resultado);
+    } catch (error) {
+        console.error('Erro ao processar foto estúdio:', error);
+        res.status(500).json({ error: 'Erro ao processar foto' });
+    }
+});
+
+// Obter histórico de fotos processadas
+app.get('/api/auth/estudio/historico', authenticateToken, async (req, res) => {
+    try {
+        const historico = await db.obterHistoricoEstudio(req.userId);
+        res.json(historico);
+    } catch (error) {
+        console.error('Erro ao obter histórico estúdio:', error);
+        res.status(500).json({ error: 'Erro ao obter histórico' });
+    }
+});
+
 // Obter todos os feedbacks beta (apenas admin)
 app.get('/api/admin/feedbacks-beta', authenticateToken, requireAdmin, async (req, res) => {
     try {

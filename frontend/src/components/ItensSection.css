@@ -20,11 +20,30 @@
 .categoria-group {
   border: 2px solid #e9ecef;
   border-radius: 12px;
-  overflow: hidden;
+  overflow: visible;
   background: white;
   cursor: move;
   transition: transform 0.2s, box-shadow 0.2s;
   position: relative;
+}
+
+.categoria-group .categoria-header {
+  overflow: visible;
+  position: relative;
+  z-index: 1;
+  border-radius: 12px 12px 0 0;
+}
+
+.categoria-group .itens-grid {
+  overflow: hidden;
+  border-radius: 0 0 12px 12px;
+  margin: 0;
+}
+
+.categoria-group .categoria-header {
+  overflow: visible;
+  position: relative;
+  z-index: 1;
 }
 
 .categoria-group.dragging {
@@ -44,10 +63,16 @@
   font-size: 1.2em;
   cursor: pointer;
   display: flex;
-  justify-content: space-between;
   align-items: center;
   user-select: none;
   gap: 10px;
+  overflow: visible;
+  min-width: 0;
+  position: relative;
+  margin: 0;
+  border-radius: 12px 12px 0 0;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .categoria-header-left {
@@ -106,7 +131,12 @@
   font-size: 1.2em;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .categoria-header h3 svg {
@@ -163,15 +193,19 @@
 
 .categoria-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
+  flex-shrink: 0;
+  margin-left: auto;
+  margin-right: 0;
+  padding-right: 0;
 }
 
 .btn-deletar-categoria {
   background: rgba(255, 0, 0, 0.3);
   border: none;
   color: white;
-  padding: 5px 10px;
+  padding: 5px 8px;
   border-radius: 5px;
   cursor: pointer;
   font-size: 0.9em;
@@ -179,6 +213,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .btn-deletar-categoria svg {
@@ -194,7 +229,7 @@
   background: rgba(255, 255, 255, 0.2);
   border: none;
   color: white;
-  padding: 5px 10px;
+  padding: 5px 8px;
   border-radius: 5px;
   cursor: pointer;
   font-size: 0.9em;
@@ -202,6 +237,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .btn-adicionar-item svg {
@@ -281,26 +317,28 @@
   .categoria-header {
     padding: 10px 12px;
     font-size: 1em;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-
-  .categoria-header-left {
-    width: 100%;
-    display: flex;
+    flex-direction: row;
     align-items: center;
     gap: 8px;
     flex-wrap: nowrap;
   }
 
+  .categoria-header-left {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+
   .categoria-header h3 {
-    font-size: 0.95em;
+    font-size: 0.85em;
     flex: 1;
     min-width: 0;
-    overflow: visible;
-    white-space: normal;
-    word-break: break-word;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     margin: 0;
     order: 1;
   }
@@ -309,10 +347,9 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    width: 100%;
-    margin-left: 0;
-    padding-left: 35px;
-    order: 2;
+    flex-shrink: 0;
+    margin-left: 8px;
+    order: 0;
   }
 
   .categoria-actions {

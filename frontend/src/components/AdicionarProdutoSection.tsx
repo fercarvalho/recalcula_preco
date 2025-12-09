@@ -5,6 +5,7 @@ import AdicionarCategoriaModal from './AdicionarCategoriaModal';
 import EditarItemModal from './EditarItemModal';
 import { FaPlusCircle, FaFolderPlus, FaStore, FaCog, FaToggleOn, FaToggleOff, FaImage, FaFilePdf, FaComment } from 'react-icons/fa';
 import ModalFeedbackBeta from './ModalFeedbackBeta';
+import ModoEstudio from './ModoEstudio';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { carregarConfiguracoes, aplicarConfiguracoes } from './PainelAdmin';
@@ -552,6 +553,15 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
           </div>
         </div>
       </div>
+      <ModoEstudio
+        statusPagamento={statusPagamento}
+        onOpenModalPlanos={onOpenModalPlanos}
+        onOpenModalUpgrade={onOpenModalUpgrade}
+        onOpenFeedback={(funcao) => {
+          setFuncaoFeedback(funcao);
+          setShowModalFeedback(true);
+        }}
+      />
       <AdicionarCategoriaModal
         isOpen={showAdicionarCategoriaModal}
         onClose={() => setShowAdicionarCategoriaModal(false)}
