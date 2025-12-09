@@ -27,13 +27,11 @@ header {
   position: absolute;
   top: 0;
   right: 0;
-}
-
-.header-user {
   display: flex;
   align-items: center;
   gap: 15px;
   flex-direction: column;
+  z-index: 1;
 }
 
 .admin-viewing-banner {
@@ -74,12 +72,16 @@ header {
   
   .header-content > div:first-child {
     text-align: center;
+    order: 2;
   }
   
   .header-user {
     justify-content: center;
+    order: 1;
+    position: relative;
+    width: 100%;
+    margin-bottom: 15px;
   }
-  
 }
 
 .logo-container {
