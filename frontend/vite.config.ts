@@ -21,7 +21,7 @@ export default defineConfig({
           // Separar node_modules em chunks específicos
           if (id.includes('node_modules')) {
             // React e React DOM juntos
-            if (id.includes('react') || id.includes('react-dom')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('scheduler')) {
               return 'react-vendor';
             }
             
@@ -45,12 +45,27 @@ export default defineConfig({
               return 'axios-vendor';
             }
             
-            // Outras dependências
-            return 'vendor';
+            // Outras dependências grandes
+            if (id.includes('node_modules')) {
+              return 'vendor';
+            }
+          }
+          
+          // Separar componentes grandes da aplicação
+          if (id.includes('components/AdminPanel') || id.includes('components/Gerenciamento')) {
+            return 'admin-components';
+          }
+          
+          if (id.includes('components/LandingPage')) {
+            return 'landing-page';
+          }
+          
+          if (id.includes('components/TutorialOnboarding')) {
+            return 'tutorial';
           }
         },
       },
     },
-    chunkSizeWarningLimit: 1000, // Aumentar o limite de aviso para 1MB
+    chunkSizeWarningLimit: 600, // Reduzir para 600KB para manter avisos úteis
   },
 })

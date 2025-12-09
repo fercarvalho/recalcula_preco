@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { apiService } from './services/api';
 import type { ItensPorCategoria, Item, TipoReajuste } from './types';
 import Header from './components/Header';
@@ -6,12 +6,7 @@ import ReajusteForm from './components/ReajusteForm';
 import ItensSection from './components/ItensSection';
 import AdicionarProdutoSection from './components/AdicionarProdutoSection';
 import ConfirmacaoReajusteModal from './components/ConfirmacaoReajusteModal';
-import PainelAdmin, { aplicarConfiguracoes, carregarConfiguracoes } from './components/PainelAdmin';
-import AdminPanel from './components/AdminPanel';
-import GerenciamentoPlataformas from './components/GerenciamentoPlataformas';
-import TutorialOnboarding, { isTutorialCompleted, isTutorialCompletedSync, limparCacheTutorial } from './components/TutorialOnboarding';
-import Login from './components/Login';
-import LandingPage from './components/LandingPage';
+import { aplicarConfiguracoes, carregarConfiguracoes } from './components/PainelAdmin';
 import AdicionarCategoriaModal from './components/AdicionarCategoriaModal';
 import EditarItemModal from './components/EditarItemModal';
 import ResetarSenhaModal from './components/ResetarSenhaModal';
@@ -25,6 +20,17 @@ import Cardapio from './pages/Cardapio';
 import AlterarDadosModal from './components/AlterarDadosModal';
 import { isAuthenticated, getToken, getUser, saveAuth } from './services/auth';
 import { carregarPlataformasSync, carregarPlataformas } from './utils/plataformas';
+
+// Importar funções do TutorialOnboarding diretamente (não precisam ser lazy)
+import { isTutorialCompleted, isTutorialCompletedSync, limparCacheTutorial } from './components/TutorialOnboarding';
+
+// Lazy load de componentes grandes
+const PainelAdmin = lazy(() => import('./components/PainelAdmin').then(module => ({ default: module.default })));
+const AdminPanel = lazy(() => import('./components/AdminPanel'));
+const GerenciamentoPlataformas = lazy(() => import('./components/GerenciamentoPlataformas'));
+const TutorialOnboarding = lazy(() => import('./components/TutorialOnboarding'));
+const Login = lazy(() => import('./components/Login'));
+const LandingPage = lazy(() => import('./components/LandingPage'));
 
 // Função para aplicar configurações do usuário (cores e logo)
 const aplicarConfiguracoesUsuario = () => {
@@ -698,7 +704,9 @@ function App() {
 
   if (!authenticated) {
     if (showLogin) {
-      return <Login onLoginSuccess={async () => {
+      return (
+        <Suspense fallback={<div className="loading-container"><div className="loading-spinner"></div><p>Carregando...</p></div>}>
+          <Login onLoginSuccess={async () => {
         console.log('App - onLoginSuccess chamado');
         setAuthenticated(true);
         // Aplicar configurações do usuário (cores e logo) após login
@@ -717,9 +725,15 @@ function App() {
             setShowAlterarDados(true);
           }
         }, 1000);
-      }} />;
+      }} />
+        </Suspense>
+      );
     }
-    return <LandingPage onLoginClick={() => setShowLogin(true)} />;
+    return (
+      <Suspense fallback={<div className="loading-container"><div className="loading-spinner"></div><p>Carregando...</p></div>}>
+        <LandingPage onLoginClick={() => setShowLogin(true)} />
+      </Suspense>
+    );
   }
 
   // Não bloquear acesso - permitir modo trial
@@ -823,15 +837,21 @@ function App() {
         onCancel={() => setShowConfirmacaoModal(false)}
       />
 
-      <PainelAdmin
-        isOpen={showPainelAdmin}
-        onClose={() => setShowPainelAdmin(false)}
-        scrollToColors={showTutorial && showPainelAdmin}
-      />
+      {showPainelAdmin && (
+        <Suspense fallback={<div className="loading-container"><div className="loading-spinner"></div><p>Carregando...</p></div>}>
+          <PainelAdmin
+            isOpen={showPainelAdmin}
+            onClose={() => setShowPainelAdmin(false)}
+            scrollToColors={showTutorial && showPainelAdmin}
+          />
+        </Suspense>
+      )}
 
-      <AdminPanel
-        isOpen={showAdminPanel}
-        onClose={() => setShowAdminPanel(false)}
+      {showAdminPanel && (
+        <Suspense fallback={<div className="loading-container"><div className="loading-spinner"></div><p>Carregando...</p></div>}>
+          <AdminPanel
+            isOpen={showAdminPanel}
+            onClose={() => setShowAdminPanel(false)}
         onCarregarUsuarioNoSistema={async (usuarioId: number) => {
           try {
             setLoading(true);
@@ -886,12 +906,18 @@ function App() {
             setLoading(false);
           }
         }}
-      />
+          />
+        </Suspense>
+      )}
 
-      <GerenciamentoPlataformas
-        isOpen={showPlataformas}
-        onClose={() => setShowPlataformas(false)}
-      />
+      {showPlataformas && (
+        <Suspense fallback={<div className="loading-container"><div className="loading-spinner"></div><p>Carregando...</p></div>}>
+          <GerenciamentoPlataformas
+            isOpen={showPlataformas}
+            onClose={() => setShowPlataformas(false)}
+          />
+        </Suspense>
+      )}
 
       <AdicionarCategoriaModal
         isOpen={showAdicionarCategoriaModal}
@@ -927,15 +953,17 @@ function App() {
         onAbrirModalPlanos={() => setShowModalPlanos(true)}
       />
 
-      <TutorialOnboarding
-        isOpen={showTutorial}
-        onComplete={() => {
-          setShowTutorial(false);
-          carregarItens();
-        }}
-        onSkip={() => setShowTutorial(false)}
-        categorias={Object.keys(itensPorCategoria)}
-        totalItens={Object.values(itensPorCategoria).reduce((acc, itens) => acc + itens.length, 0)}
+      {showTutorial && (
+        <Suspense fallback={<div className="loading-container"><div className="loading-spinner"></div><p>Carregando...</p></div>}>
+          <TutorialOnboarding
+            isOpen={showTutorial}
+            onComplete={() => {
+              setShowTutorial(false);
+              carregarItens();
+            }}
+            onSkip={() => setShowTutorial(false)}
+            categorias={Object.keys(itensPorCategoria)}
+            totalItens={Object.values(itensPorCategoria).reduce((acc, itens) => acc + itens.length, 0)}
         totalPlataformas={totalPlataformas}
         onOpenAdicionarCategoria={() => setShowAdicionarCategoriaModal(true)}
         onOpenAdicionarItem={() => {
@@ -953,7 +981,9 @@ function App() {
           showPlataformas ? 'plataformas' :
           showPainelAdmin ? 'personalizacao' : null
         }
-      />
+          />
+        </Suspense>
+      )}
 
       {resetToken && (
         <ResetarSenhaModal
