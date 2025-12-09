@@ -28,10 +28,6 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
   const [showEditarItemModal, setShowEditarItemModal] = useState(false);
   const [cardapioPublico, setCardapioPublico] = useState(false);
   const [username, setUsername] = useState<string>('');
-  const [statusPagamento, setStatusPagamento] = useState<{
-    temAcesso: boolean;
-    tipo: 'anual' | 'unico' | 'vitalicio' | null;
-  } | null>(null);
   const [showModalFeedback, setShowModalFeedback] = useState(false);
   const [funcaoFeedback, setFuncaoFeedback] = useState<string>('');
   const [temAcessoModoCardapio, setTemAcessoModoCardapio] = useState<boolean | null>(null);
@@ -47,10 +43,6 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
           setUsername(response.user.username || '');
         }
         
-        // Carregar status de pagamento
-        const status = await apiService.verificarStatusPagamento();
-        setStatusPagamento(status);
-
         // Verificar acesso às funções especiais
         try {
           const acessoModoCardapio = await apiService.verificarAcessoFuncaoEspecial('modo_cardapio');
