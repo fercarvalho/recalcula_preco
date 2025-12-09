@@ -6,8 +6,7 @@ import EditarItemModal from './EditarItemModal';
 import { FaPlusCircle, FaFolderPlus, FaStore, FaCog, FaToggleOn, FaToggleOff, FaImage, FaFilePdf, FaComment } from 'react-icons/fa';
 import ModalFeedbackBeta from './ModalFeedbackBeta';
 import ModoEstudio from './ModoEstudio';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+// Dynamic imports para reduzir tamanho do bundle inicial
 import { carregarConfiguracoes, aplicarConfiguracoes } from '../utils/configuracoes';
 import '../pages/Cardapio.css';
 import './AdicionarProdutoSection.css';
@@ -187,6 +186,9 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
       // Aguardar um pouco para garantir renderização
       await new Promise(resolve => setTimeout(resolve, 500));
 
+      // Carregar html2canvas dinamicamente apenas quando necessário
+      const html2canvas = (await import('html2canvas')).default;
+
       // Gerar canvas
       const canvas = await html2canvas(container, {
         backgroundColor: null,
@@ -333,6 +335,14 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
 
       // Aguardar um pouco para garantir renderização
       await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Carregar bibliotecas dinamicamente apenas quando necessário
+      const [html2canvasModule, jsPDFModule] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf')
+      ]);
+      const html2canvas = html2canvasModule.default;
+      const jsPDF = jsPDFModule.default;
 
       // Gerar canvas
       const canvas = await html2canvas(container, {
