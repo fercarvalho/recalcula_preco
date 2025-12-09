@@ -14,4 +14,43 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          // Separar node_modules em chunks específicos
+          if (id.includes('node_modules')) {
+            // React e React DOM juntos
+            if (id.includes('react') || id.includes('react-dom')) {
+              return 'react-vendor';
+            }
+            
+            // React Icons (pode ser grande)
+            if (id.includes('react-icons')) {
+              return 'react-icons-vendor';
+            }
+            
+            // Bibliotecas de PDF e canvas
+            if (id.includes('html2canvas') || id.includes('jspdf')) {
+              return 'pdf-vendor';
+            }
+            
+            // Recharts (gráficos)
+            if (id.includes('recharts')) {
+              return 'charts-vendor';
+            }
+            
+            // Axios
+            if (id.includes('axios')) {
+              return 'axios-vendor';
+            }
+            
+            // Outras dependências
+            return 'vendor';
+          }
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1000, // Aumentar o limite de aviso para 1MB
+  },
 })
