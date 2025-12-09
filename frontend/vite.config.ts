@@ -83,6 +83,6 @@ export default defineConfig({
         },
       },
     },
-    chunkSizeWarningLimit: 600, // Reduzir para 600KB para manter avisos úteis
+    chunkSizeWarningLimit: 800, // Aumentar para 800KB - React e PDF são naturalmente grandes
   },
 })
