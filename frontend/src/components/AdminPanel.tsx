@@ -29,6 +29,7 @@ interface Usuario {
   acesso_especial?: 'vitalicio' | 'temporario' | null;
   acesso_temporario_duracao?: number | null;
   acesso_temporario_expira_em?: string | null;
+  acesso_temporario_nivel?: 'sistema' | 'beta' | 'especiais' | null;
 }
 
 interface UsuarioDetalhes {
@@ -1004,6 +1005,9 @@ const EditarUsuarioModal = ({ isOpen, onClose, usuario, onUsuarioAtualizado }: E
   const [isAdmin, setIsAdmin] = useState(usuario.is_admin);
   const [acessoEspecial, setAcessoEspecial] = useState<'vitalicio' | 'temporario' | null>(usuario.acesso_especial || null);
   const [duracaoTemporario, setDuracaoTemporario] = useState<number>(usuario.acesso_temporario_duracao || 1);
+  const [nivelTemporario, setNivelTemporario] = useState<'sistema' | 'beta' | 'especiais'>(
+    (usuario.acesso_temporario_nivel as 'sistema' | 'beta' | 'especiais') || 'sistema'
+  );
   const [loading, setLoading] = useState(false);
   const [showSenha, setShowSenha] = useState(false);
 
@@ -1015,6 +1019,9 @@ const EditarUsuarioModal = ({ isOpen, onClose, usuario, onUsuarioAtualizado }: E
       setIsAdmin(usuario.is_admin);
       setAcessoEspecial(usuario.acesso_especial || null);
       setDuracaoTemporario(usuario.acesso_temporario_duracao || 1);
+      setNivelTemporario(
+        (usuario.acesso_temporario_nivel as 'sistema' | 'beta' | 'especiais') || 'sistema'
+      );
     }
   }, [isOpen, usuario]);
 
@@ -1069,6 +1076,7 @@ const EditarUsuarioModal = ({ isOpen, onClose, usuario, onUsuarioAtualizado }: E
           is_admin: isAdmin,
           acesso_especial: acessoEspecial,
           acesso_temporario_duracao: acessoEspecial === 'temporario' ? duracaoTemporario : undefined,
+          acesso_temporario_nivel: acessoEspecial === 'temporario' ? nivelTemporario : undefined,
         }),
       });
 
@@ -1194,6 +1202,7 @@ const EditarUsuarioModal = ({ isOpen, onClose, usuario, onUsuarioAtualizado }: E
               setAcessoEspecial(value === '' ? null : value as 'vitalicio' | 'temporario');
               if (value !== 'temporario') {
                 setDuracaoTemporario(1);
+                setNivelTemporario('sistema');
               }
             }}
             disabled={loading}
@@ -1205,25 +1214,45 @@ const EditarUsuarioModal = ({ isOpen, onClose, usuario, onUsuarioAtualizado }: E
         </div>
 
         {acessoEspecial === 'temporario' && (
-          <div className="form-group">
-            <label htmlFor="duracao-temporario">Duração do Acesso Temporário (dias):</label>
-            <select
-              id="duracao-temporario"
-              className="form-input"
-              value={duracaoTemporario}
-              onChange={(e) => setDuracaoTemporario(parseInt(e.target.value))}
-              disabled={loading}
-            >
-              <option value={1}>1 dia</option>
-              <option value={7}>7 dias</option>
-              <option value={30}>30 dias</option>
-            </select>
-            {usuario.acesso_temporario_expira_em && new Date(usuario.acesso_temporario_expira_em) > new Date() && (
+          <>
+            <div className="form-group">
+              <label htmlFor="duracao-temporario">Duração do Acesso Temporário (dias):</label>
+              <select
+                id="duracao-temporario"
+                className="form-input"
+                value={duracaoTemporario}
+                onChange={(e) => setDuracaoTemporario(parseInt(e.target.value))}
+                disabled={loading}
+              >
+                <option value={1}>1 dia</option>
+                <option value={7}>7 dias</option>
+                <option value={30}>30 dias</option>
+              </select>
+              {usuario.acesso_temporario_expira_em && new Date(usuario.acesso_temporario_expira_em) > new Date() && (
+                <p style={{ fontSize: '0.85em', color: '#666', marginTop: '0.5rem' }}>
+                  Expira em: {new Date(usuario.acesso_temporario_expira_em).toLocaleString('pt-BR')}
+                </p>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="nivel-temporario">Nível de Acesso Temporário:</label>
+              <select
+                id="nivel-temporario"
+                className="form-input"
+                value={nivelTemporario}
+                onChange={(e) => setNivelTemporario(e.target.value as 'sistema' | 'beta' | 'especiais')}
+                disabled={loading}
+              >
+                <option value="sistema">Acesso ao sistema principal</option>
+                <option value="beta">Funções Beta (Modo Cardápio, Modo Compartilhar Cardápio)</option>
+                <option value="especiais">Funções Especiais (Modo Estúdio)</option>
+              </select>
               <p style={{ fontSize: '0.85em', color: '#666', marginTop: '0.5rem' }}>
-                Expira em: {new Date(usuario.acesso_temporario_expira_em).toLocaleString('pt-BR')}
+                Esse nível é individual por usuário temporário. Por padrão é <strong>Acesso ao sistema principal</strong>.
               </p>
-            )}
-          </div>
+            </div>
+          </>
         )}
       </div>
     </Modal>

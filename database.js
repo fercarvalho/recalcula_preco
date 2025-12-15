@@ -156,6 +156,11 @@ async function inicializar() {
         if (!(await colunaExiste('usuarios', 'acesso_temporario_expira_em'))) {
             await pool.query('ALTER TABLE usuarios ADD COLUMN acesso_temporario_expira_em TIMESTAMP');
         }
+        // Nível de acesso do temporário: controla até onde o usuário temporário pode ir
+        // Valores previstos: 'sistema' (apenas sistema principal), 'beta' (funções beta), 'especiais' (funções especiais)
+        if (!(await colunaExiste('usuarios', 'acesso_temporario_nivel'))) {
+            await pool.query("ALTER TABLE usuarios ADD COLUMN acesso_temporario_nivel VARCHAR(20)");
+        }
         
         // Adicionar colunas de dados pessoais se não existirem
         const colunasDadosPessoais = [
@@ -1160,7 +1165,7 @@ async function verificarCredenciais(identificador, senha) {
 async function obterUsuarioPorId(id) {
     try {
         const result = await pool.query(
-            'SELECT id, username, email, is_admin, tutorial_completed, email_validado, nome, sobrenome, telefone, cpf, nome_estabelecimento, cep_residencial, endereco_residencial, numero_residencial, complemento_residencial, cidade_residencial, estado_residencial, pais_residencial, cep_comercial, endereco_comercial, numero_comercial, complemento_comercial, cidade_comercial, estado_comercial, pais_comercial, foto_perfil, data_nascimento, genero, cardapio_publico, cardapio_compartilhar, feedback_beta_enviado, acesso_especial, acesso_temporario_duracao, acesso_temporario_expira_em FROM usuarios WHERE id = $1',
+            'SELECT id, username, email, is_admin, tutorial_completed, email_validado, nome, sobrenome, telefone, cpf, nome_estabelecimento, cep_residencial, endereco_residencial, numero_residencial, complemento_residencial, cidade_residencial, estado_residencial, pais_residencial, cep_comercial, endereco_comercial, numero_comercial, complemento_comercial, cidade_comercial, estado_comercial, pais_comercial, foto_perfil, data_nascimento, genero, cardapio_publico, cardapio_compartilhar, feedback_beta_enviado, acesso_especial, acesso_temporario_duracao, acesso_temporario_expira_em, acesso_temporario_nivel FROM usuarios WHERE id = $1',
             [id]
         );
         
@@ -1203,7 +1208,8 @@ async function obterUsuarioPorId(id) {
             feedback_beta_enviado: row.feedback_beta_enviado || false,
             acesso_especial: row.acesso_especial || null,
             acesso_temporario_duracao: row.acesso_temporario_duracao || null,
-            acesso_temporario_expira_em: row.acesso_temporario_expira_em || null
+            acesso_temporario_expira_em: row.acesso_temporario_expira_em || null,
+            acesso_temporario_nivel: row.acesso_temporario_nivel || null
         };
     } catch (error) {
         console.error('Erro ao obter usuário:', error);
@@ -1262,7 +1268,7 @@ async function limparTutorialCompleto(usuarioId) {
 async function listarUsuarios() {
     try {
         const result = await pool.query(
-            'SELECT id, username, email, is_admin, created_at, acesso_especial, acesso_temporario_duracao, acesso_temporario_expira_em FROM usuarios ORDER BY created_at DESC'
+            'SELECT id, username, email, is_admin, created_at, acesso_especial, acesso_temporario_duracao, acesso_temporario_expira_em, acesso_temporario_nivel FROM usuarios ORDER BY created_at DESC'
         );
         
         return result.rows.map(row => ({
@@ -1273,7 +1279,8 @@ async function listarUsuarios() {
             created_at: row.created_at,
             acesso_especial: row.acesso_especial || null,
             acesso_temporario_duracao: row.acesso_temporario_duracao || null,
-            acesso_temporario_expira_em: row.acesso_temporario_expira_em || null
+            acesso_temporario_expira_em: row.acesso_temporario_expira_em || null,
+            acesso_temporario_nivel: row.acesso_temporario_nivel || null
         }));
     } catch (error) {
         console.error('Erro ao listar usuários:', error);
@@ -1283,22 +1290,30 @@ async function listarUsuarios() {
 
 // Atualizar usuário (apenas para admin)
 // Atualizar acesso especial do usuário
-async function atualizarAcessoEspecial(usuarioId, acessoEspecial, duracaoDias) {
+async function atualizarAcessoEspecial(usuarioId, acessoEspecial, duracaoDias, nivelTemporario) {
     try {
         let expiraEm = null;
+        let nivel = nivelTemporario || null;
         
         if (acessoEspecial === 'temporario' && duracaoDias) {
             // Calcular data de expiração
             const agora = new Date();
             agora.setDate(agora.getDate() + duracaoDias);
             expiraEm = agora.toISOString();
+            
+            // Se não vier nível, padrão é acesso ao sistema principal
+            if (!nivel) {
+                nivel = 'sistema';
+            }
         } else if (acessoEspecial === 'vitalicio') {
             // Vitalício não expira
             expiraEm = null;
+            nivel = null; // nível só faz sentido para temporário
         } else {
             // Remover acesso especial
             acessoEspecial = null;
             duracaoDias = null;
+            nivel = null;
         }
         
         await pool.query(`
@@ -1306,9 +1321,10 @@ async function atualizarAcessoEspecial(usuarioId, acessoEspecial, duracaoDias) {
             SET acesso_especial = $1, 
                 acesso_temporario_duracao = $2, 
                 acesso_temporario_expira_em = $3,
+                acesso_temporario_nivel = $4,
                 updated_at = CURRENT_TIMESTAMP
-            WHERE id = $4
-        `, [acessoEspecial, duracaoDias, expiraEm, usuarioId]);
+            WHERE id = $5
+        `, [acessoEspecial, duracaoDias, expiraEm, nivel, usuarioId]);
         
         return true;
     } catch (error) {
@@ -3182,13 +3198,14 @@ async function verificarAcessoAtivo(usuarioId) {
     try {
         // Verificar acesso especial primeiro (vitalício ou temporário)
         const usuario = await pool.query(
-            'SELECT acesso_especial, acesso_temporario_expira_em FROM usuarios WHERE id = $1',
+            'SELECT acesso_especial, acesso_temporario_expira_em, acesso_temporario_nivel FROM usuarios WHERE id = $1',
             [usuarioId]
         );
         
         if (usuario.rows.length > 0) {
             const acessoEspecial = usuario.rows[0].acesso_especial;
             const expiraEm = usuario.rows[0].acesso_temporario_expira_em;
+            const nivelTemporario = usuario.rows[0].acesso_temporario_nivel || null;
             
             if (acessoEspecial === 'vitalicio') {
                 // Acesso vitalício (permanente)
@@ -3204,12 +3221,13 @@ async function verificarAcessoAtivo(usuarioId) {
                         temAcesso: true,
                         tipo: 'temporario',
                         assinatura: null,
-                        expiraEm: expiraEm
+                        expiraEm: expiraEm,
+                        nivelTemporario
                     };
                 } else {
                     // Acesso temporário expirado - limpar acesso especial
                     await pool.query(
-                        'UPDATE usuarios SET acesso_especial = NULL, acesso_temporario_duracao = NULL, acesso_temporario_expira_em = NULL WHERE id = $1',
+                        'UPDATE usuarios SET acesso_especial = NULL, acesso_temporario_duracao = NULL, acesso_temporario_expira_em = NULL, acesso_temporario_nivel = NULL WHERE id = $1',
                         [usuarioId]
                     );
                 }
@@ -6418,6 +6436,31 @@ async function verificarAcessoFuncaoEspecial(usuarioId, funcaoEspecial) {
             
             if (permissaoVitalicio.rows.length > 0 && permissaoVitalicio.rows[0].habilitado) {
                 return true;
+            }
+        }
+
+        // Verificar se usuário é temporário e qual nível de acesso ele tem
+        // Níveis em cascata:
+        // - 'sistema'    -> só sistema principal (nenhuma função especial direta aqui)
+        // - 'beta'       -> sistema principal + funções Beta
+        // - 'especiais'  -> sistema principal + funções Beta + funções Especiais
+        if (usuario && usuario.acesso_especial === 'temporario' && usuario.acesso_temporario_expira_em) {
+            const expiraEm = new Date(usuario.acesso_temporario_expira_em);
+            if (expiraEm > new Date()) {
+                const nivel = usuario.acesso_temporario_nivel || 'sistema'; // padrão: apenas sistema principal
+
+                const isFuncaoBeta = funcaoEspecial === 'modo_cardapio' || funcaoEspecial === 'modo_compartilhar_cardapio';
+                const isFuncaoEspecial = funcaoEspecial === 'modo_estudio';
+
+                // Nível BETA: libera apenas funções beta (além do sistema principal, que já está liberado via requirePayment)
+                if (nivel === 'beta' && isFuncaoBeta) {
+                    return true;
+                }
+
+                // Nível ESPECIAIS: libera funções especiais + funções beta (cascata)
+                if (nivel === 'especiais' && (isFuncaoBeta || isFuncaoEspecial)) {
+                    return true;
+                }
             }
         }
         
