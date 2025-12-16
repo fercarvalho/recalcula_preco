@@ -4,6 +4,7 @@ import Modal from './Modal';
 import { mostrarAlert } from '../utils/modals';
 import { apiService } from '../services/api';
 import DatePicker from './DatePicker';
+import { validarCPF, formatarCPF as formatarCPFUtil } from '../utils/validacao';
 import './AlterarDadosModal.css';
 
 // Lista de países
@@ -302,6 +303,7 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
   const [naoPossuiCpf, setNaoPossuiCpf] = useState(false);
   const [codigoPaisTelefone, setCodigoPaisTelefone] = useState('+55');
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
+  const [erroCpf, setErroCpf] = useState<string | null>(null);
 
   // Carregar dados do usuário ao abrir o modal
   useEffect(() => {
@@ -509,13 +511,7 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
     }
   };
 
-  const formatarCpf = (value: string) => {
-    const cpfLimpo = value.replace(/\D/g, '');
-    if (cpfLimpo.length <= 11) {
-      return cpfLimpo.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-    }
-    return value;
-  };
+  const formatarCpf = formatarCPFUtil;
 
   const handleFotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -649,6 +645,12 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
       }
       if (!naoPossuiCpf && !dados.cpf.trim()) {
         await mostrarAlert('Erro', 'O CPF é obrigatório quando o email está validado (ou marque "Não possuo CPF").');
+        return;
+      }
+      
+      // Validar CPF se foi preenchido
+      if (!naoPossuiCpf && dados.cpf.trim() && !validarCPF(dados.cpf)) {
+        await mostrarAlert('Erro', 'CPF inválido. Verifique os dígitos e tente novamente.');
         return;
       }
       if (!dados.data_nascimento) {
@@ -875,13 +877,38 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                 <input
                   id="cpf"
                   type="text"
-                  className="form-input"
+                  className={`form-input ${erroCpf ? 'input-error' : ''}`}
                   value={dados.cpf || ''}
-                  onChange={(e) => setDados(prev => ({ ...prev, cpf: formatarCpf(e.target.value) }))}
+                  onChange={(e) => {
+                    const formatted = formatarCpf(e.target.value);
+                    setDados(prev => ({ ...prev, cpf: formatted }));
+                    
+                    // Validação em tempo real
+                    if (naoPossuiCpf) {
+                      setErroCpf(null);
+                      return;
+                    }
+                    
+                    const cpfLimpo = formatted.replace(/\D/g, '');
+                    if (cpfLimpo.length === 11) {
+                      if (!validarCPF(formatted)) {
+                        setErroCpf('CPF inválido. Verifique os dígitos.');
+                      } else {
+                        setErroCpf(null);
+                      }
+                    } else if (cpfLimpo.length > 0) {
+                      // Ainda digitando, não mostrar erro ainda
+                      setErroCpf(null);
+                    } else {
+                      // Campo vazio, remover erro
+                      setErroCpf(null);
+                    }
+                  }}
                   placeholder="000.000.000-00"
                   disabled={loading || naoPossuiCpf}
                   required={emailValidado && !naoPossuiCpf}
                 />
+                {erroCpf && <span className="error-text" style={{ display: 'block', marginTop: '0.25rem', fontSize: '0.85rem', color: '#d32f2f' }}>{erroCpf}</span>}
                 <div className="form-group checkbox-group" style={{ marginTop: '10px' }}>
                   <label className="checkbox-label">
                     <input
@@ -891,6 +918,7 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                         setNaoPossuiCpf(e.target.checked);
                         if (e.target.checked) {
                           setDados(prev => ({ ...prev, cpf: '' }));
+                          setErroCpf(null);
                         }
                       }}
                       disabled={loading}

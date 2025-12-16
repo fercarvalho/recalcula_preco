@@ -185,9 +185,11 @@ async function processarWebhook(event) {
             case 'payment_intent.succeeded':
                 // Pagamento único bem-sucedido
                 const paymentIntent = event.data.object;
+                const paymentIntentUserId = paymentIntent.metadata?.user_id ? parseInt(paymentIntent.metadata.user_id) : null;
                 return {
                     tipo: 'pagamento_unico_sucesso',
                     paymentIntentId: paymentIntent.id,
+                    userId: paymentIntentUserId, // Incluir userId diretamente
                     customerId: paymentIntent.customer,
                     amount: paymentIntent.amount / 100, // Converter de centavos para reais
                     metadata: paymentIntent.metadata,

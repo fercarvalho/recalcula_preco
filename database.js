@@ -146,6 +146,36 @@ async function inicializar() {
             await pool.query('ALTER TABLE usuarios ADD COLUMN email_validado BOOLEAN DEFAULT FALSE');
         }
         
+        // Criar função de log para rastrear quando email_validado é alterado
+        try {
+            await pool.query(`
+                CREATE OR REPLACE FUNCTION log_email_validado_change()
+                RETURNS TRIGGER AS $$
+                BEGIN
+                    IF NEW.email_validado = TRUE AND (OLD.email_validado IS NULL OR OLD.email_validado = FALSE) THEN
+                        RAISE NOTICE '🔔 EMAIL VALIDADO: Usuário ID % - Timestamp: % - Stack: %', 
+                            NEW.id, 
+                            NOW(),
+                            current_setting('app.current_stack', true);
+                    END IF;
+                    RETURN NEW;
+                END;
+                $$ LANGUAGE plpgsql;
+            `);
+            
+            // Criar trigger se não existir
+            await pool.query(`
+                DROP TRIGGER IF EXISTS trigger_log_email_validado ON usuarios;
+                CREATE TRIGGER trigger_log_email_validado
+                BEFORE UPDATE OF email_validado ON usuarios
+                FOR EACH ROW
+                EXECUTE FUNCTION log_email_validado_change();
+            `);
+            console.log('✅ Trigger de log para email_validado criado');
+        } catch (error) {
+            console.error('⚠️  Erro ao criar trigger de log (pode já existir):', error.message);
+        }
+        
         // Adicionar colunas de acesso especial se não existirem
         if (!(await colunaExiste('usuarios', 'acesso_especial'))) {
             await pool.query("ALTER TABLE usuarios ADD COLUMN acesso_especial VARCHAR(20) CHECK (acesso_especial IN ('vitalicio', 'temporario') OR acesso_especial IS NULL)");
@@ -1613,17 +1643,12 @@ async function validarTokenEmail(token) {
         console.log('Validando token:', token ? `${token.substring(0, 10)}...` : 'null');
         console.log('Tamanho do token recebido:', token ? token.length : 0);
         
-        // Verificar todos os tokens no banco para debug
-        const allTokensDebug = await pool.query('SELECT token, usuario_id, expires_at FROM email_validation_tokens');
-        console.log('Total de tokens no banco:', allTokensDebug.rows.length);
-        if (allTokensDebug.rows.length > 0) {
-            console.log('Primeiro token no banco:', allTokensDebug.rows[0].token ? `${allTokensDebug.rows[0].token.substring(0, 10)}...` : 'null');
-            console.log('Tamanho do primeiro token no banco:', allTokensDebug.rows[0].token ? allTokensDebug.rows[0].token.length : 0);
-            console.log('Tokens são iguais?', allTokensDebug.rows[0].token === token);
-        }
-        
         // Limpar espaços e caracteres especiais do token
         const tokenLimpo = token ? token.trim() : null;
+        
+        if (!tokenLimpo) {
+            return { valido: false, erro: 'Token não fornecido' };
+        }
         
         const result = await pool.query(
             'SELECT usuario_id, expires_at FROM email_validation_tokens WHERE token = $1',
@@ -1633,35 +1658,6 @@ async function validarTokenEmail(token) {
         console.log('Tokens encontrados após busca:', result.rows.length);
         
         if (result.rows.length === 0) {
-            // Se não encontrou, verificar se há algum token que corresponda (pode ter espaços ou encoding diferente)
-            for (const row of allTokensDebug.rows) {
-                const tokenBanco = row.token;
-                if (tokenBanco && tokenLimpo && tokenBanco.trim() === tokenLimpo.trim()) {
-                    console.log('Token encontrado por comparação manual!');
-                    const tokenData = { usuario_id: row.usuario_id, expires_at: row.expires_at };
-                    const expiresAt = new Date(tokenData.expires_at);
-                    const agora = new Date();
-                    
-                    console.log('Token expira em:', expiresAt);
-                    console.log('Data atual:', agora);
-                    
-                    if (agora > expiresAt) {
-                        await pool.query('DELETE FROM email_validation_tokens WHERE token = $1', [tokenBanco]);
-                        return { valido: false, erro: 'Token expirado' };
-                    }
-                    
-                    await pool.query(
-                        'UPDATE usuarios SET email_validado = TRUE WHERE id = $1',
-                        [tokenData.usuario_id]
-                    );
-                    
-                    await pool.query('DELETE FROM email_validation_tokens WHERE token = $1', [tokenBanco]);
-                    
-                    console.log('Token validado com sucesso para usuário:', tokenData.usuario_id);
-                    return { valido: true, usuarioId: tokenData.usuario_id };
-                }
-            }
-            
             // Token não encontrado no banco
             console.log('Token não encontrado no banco de dados.');
             console.log('Isso pode acontecer se:');
@@ -1670,7 +1666,15 @@ async function validarTokenEmail(token) {
             console.log('3. O token nunca foi criado no banco (usuário criado antes da implementação)');
             console.log('4. O token no email é diferente do token no banco');
             
-            return { valido: false, erro: 'Token inválido. O token não foi encontrado no banco de dados. Se você criou sua conta antes da implementação da validação de email, faça login e use a opção "Reenviar Email" para gerar um novo token.' };
+            // Verificar se há algum usuário que poderia ter este token (buscar por tokens similares)
+            // Mas NÃO validar o email - apenas informar
+            // IMPORTANTE: NÃO validar o email se o token não foi encontrado
+            // Retornar erro explicitamente sem validar
+            return { 
+                valido: false, 
+                erro: 'Token inválido ou não encontrado. O token não foi encontrado no banco de dados. Isso pode acontecer se:\n\n• O token já foi usado anteriormente\n• O token expirou (válido por 7 dias)\n• Você criou sua conta antes da implementação da validação de email\n• O token no email é diferente do token no banco\n\nPor favor, faça login e use a opção "Reenviar Email" no menu do usuário para gerar um novo token de validação.\n\nNota: Se seu email já foi validado anteriormente, você pode fazer login normalmente.',
+                tokenNaoEncontrado: true
+            };
         }
         
         const tokenData = result.rows[0];
@@ -1686,11 +1690,29 @@ async function validarTokenEmail(token) {
             return { valido: false, erro: 'Token expirado' };
         }
         
-        // Marcar email como validado
-        await pool.query(
-            'UPDATE usuarios SET email_validado = TRUE WHERE id = $1',
+        // Verificar se o email já está validado antes de validar novamente
+        const usuarioAtual = await pool.query(
+            'SELECT email_validado FROM usuarios WHERE id = $1',
             [tokenData.usuario_id]
         );
+        
+        if (usuarioAtual.rows.length > 0 && usuarioAtual.rows[0].email_validado === true) {
+            console.log('⚠️  Email já estava validado para usuário:', tokenData.usuario_id);
+            // Deletar token usado mesmo se o email já estava validado
+            await pool.query('DELETE FROM email_validation_tokens WHERE token = $1', [token]);
+            return { valido: true, usuarioId: tokenData.usuario_id, jaEstavaValidado: true };
+        }
+        
+        // Marcar email como validado
+        console.log('✅ Validando email para usuário:', tokenData.usuario_id);
+        console.log('📝 Stack trace da validação:');
+        console.log(new Error().stack);
+        const updateResult = await pool.query(
+            'UPDATE usuarios SET email_validado = TRUE WHERE id = $1 RETURNING id, username, email_validado',
+            [tokenData.usuario_id]
+        );
+        console.log('✅ Email validado com sucesso no banco de dados para usuário:', tokenData.usuario_id);
+        console.log('📋 Resultado do UPDATE:', updateResult.rows[0]);
         
         // Deletar token usado
         await pool.query('DELETE FROM email_validation_tokens WHERE token = $1', [token]);
@@ -3333,6 +3355,23 @@ async function criarPagamentoUnico(usuarioId, dadosPagamento) {
         return result.rows[0];
     } catch (error) {
         console.error('Erro ao criar pagamento único:', error);
+        throw error;
+    }
+}
+
+// Obter pagamento único por Stripe Payment Intent ID
+async function obterPagamentoUnicoPorStripeId(stripePaymentIntentId) {
+    try {
+        const result = await pool.query(`
+            SELECT * FROM pagamentos_unicos 
+            WHERE stripe_payment_intent_id = $1
+            ORDER BY created_at DESC
+            LIMIT 1
+        `, [stripePaymentIntentId]);
+
+        return result.rows.length > 0 ? result.rows[0] : null;
+    } catch (error) {
+        console.error('Erro ao obter pagamento único por Stripe ID:', error);
         throw error;
     }
 }
@@ -5112,6 +5151,8 @@ async function obterPlanoPorId(id) {
             mostrar_valor_parcelado: row.mostrar_valor_parcelado,
             ativo: row.ativo,
             ordem: row.ordem,
+            stripe_price_id: row.stripe_price_id,
+            frase_reforco: row.frase_reforco,
             beneficios: beneficios
         };
     } catch (error) {
@@ -6304,6 +6345,41 @@ async function atualizarDadosUsuario(usuarioId, dados) {
         const values = [];
         let paramIndex = 1;
 
+        // Função para validar CPF
+        const validarCPF = (cpf) => {
+            if (!cpf) return true; // CPF opcional se não fornecido
+            const cpfLimpo = cpf.replace(/\D/g, '');
+            if (cpfLimpo.length !== 11) return false;
+            if (/^(\d)\1{10}$/.test(cpfLimpo)) return false; // Todos os dígitos iguais
+            
+            // Validar primeiro dígito verificador
+            let soma = 0;
+            for (let i = 0; i < 9; i++) {
+                soma += parseInt(cpfLimpo.charAt(i)) * (10 - i);
+            }
+            let resto = (soma * 10) % 11;
+            if (resto === 10 || resto === 11) resto = 0;
+            if (resto !== parseInt(cpfLimpo.charAt(9))) return false;
+            
+            // Validar segundo dígito verificador
+            soma = 0;
+            for (let i = 0; i < 10; i++) {
+                soma += parseInt(cpfLimpo.charAt(i)) * (11 - i);
+            }
+            resto = (soma * 10) % 11;
+            if (resto === 10 || resto === 11) resto = 0;
+            if (resto !== parseInt(cpfLimpo.charAt(10))) return false;
+            
+            return true;
+        };
+        
+        // Validar CPF se fornecido
+        if (dados.cpf !== undefined && dados.cpf !== null && dados.cpf.trim() !== '') {
+            if (!validarCPF(dados.cpf)) {
+                throw new Error('CPF inválido. Verifique os dígitos e tente novamente.');
+            }
+        }
+
         const campos = [
             'nome', 'sobrenome', 'telefone', 'cpf', 'nome_estabelecimento',
             'cep_residencial', 'endereco_residencial', 'numero_residencial', 
@@ -6551,6 +6627,7 @@ module.exports = {
     obterAssinatura,
     verificarAcessoAtivo,
     criarPagamentoUnico,
+    obterPagamentoUnicoPorStripeId,
     atualizarPagamentoUnico,
     marcarPagamentoUnicoComoUsado,
     obterAssinaturaPorStripeId,

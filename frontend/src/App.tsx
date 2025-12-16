@@ -17,6 +17,7 @@ import ModalFeedbackBeta from './components/ModalFeedbackBeta';
 import ValidarEmailModal from './components/ValidarEmailModal';
 import ValidarEmail from './pages/ValidarEmail';
 import Cardapio from './pages/Cardapio';
+import Checkout from './pages/Checkout';
 import AlterarDadosModal from './components/AlterarDadosModal';
 import { isAuthenticated, getToken, getUser, saveAuth } from './services/auth';
 import { carregarPlataformasSync, carregarPlataformas } from './utils/plataformas';
@@ -61,6 +62,11 @@ function App() {
   const cardapioMatch = pathname.match(/^\/([^\/]+)\/cardapio$/);
   if (cardapioMatch) {
     return <Cardapio />;
+  }
+
+  // Verificar se está na rota de checkout
+  if (pathname === '/checkout') {
+    return <Checkout />;
   }
 
   const [itensPorCategoria, setItensPorCategoria] = useState<ItensPorCategoria>({});
@@ -161,9 +167,38 @@ function App() {
     const handleEmailValidado = async () => {
       // Aguardar um pouco para garantir que o backend atualizou
       setTimeout(async () => {
-        const dadosVazios = await verificarDadosVazios();
-        if (dadosVazios) {
-          setShowAlterarDados(true);
+        try {
+          // Atualizar dados do usuário no localStorage
+          const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
+          const token = getToken();
+          if (token) {
+            const response = await fetch(`${API_BASE}/api/auth/me`, {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+              },
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              if (data.user) {
+                saveAuth(token, data.user);
+                aplicarConfiguracoesUsuario();
+              }
+            }
+          }
+          
+          // Verificar pagamento novamente para atualizar o acesso
+          await verificarPagamento();
+          
+          // Verificar se precisa abrir modal de dados após validação
+          const dadosVazios = await verificarDadosVazios();
+          if (dadosVazios) {
+            setShowAlterarDados(true);
+          }
+        } catch (error) {
+          console.error('Erro ao atualizar dados após validação de email:', error);
+          // Mesmo com erro, tentar verificar pagamento
+          await verificarPagamento();
         }
       }, 1000);
     };

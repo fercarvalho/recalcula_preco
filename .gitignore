@@ -21,3 +21,22 @@ backup_*.dump
 
 # Ignorar scripts shell
 *.sh
+
+# Scripts de teste e verificação (não devem ser commitados)
+verificar_*.js
+monitorar_*.js
+testar_*.js
+atualizar_*.js
+reprocessar_*.js
+limpar_*.js
+
+# Scripts específicos que não foram capturados pelos padrões acima
+verificar_assinatura_sem_plano_id.js
+verificar_stripe_price_ids.js
+verificar_todos_planos.js
+verificar_assinaturas_atualizadas.js
+verificar_planos_stripe.js
+atualizar_plano_id_assinaturas.js
+atualizar_plano_id_pagamentos_unicos.js
+atualizar_viralatas_vitalicio.js
+testar_acesso_estudio.js

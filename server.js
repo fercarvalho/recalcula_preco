@@ -55,27 +55,48 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
             console.log('💳 Processando pagamento único - UserId:', userId, 'PaymentIntentId:', paymentIntentId);
 
             if (userId && paymentIntentId && stripeService.stripe) {
-                // Buscar sessão para obter valor
-                const session = await stripeService.stripe.checkout.sessions.retrieve(resultado.sessionId || event.data.object.id);
-                const valor = session.amount_total ? session.amount_total / 100 : 199.00; // Converter de centavos
+                let valor = 199.00; // Valor padrão
+                let customerId = null;
+
+                // Se for checkout.session.completed, buscar dados da sessão
+                if (resultado.tipo === 'pagamento_unico' && resultado.sessionId) {
+                    try {
+                        const session = await stripeService.stripe.checkout.sessions.retrieve(resultado.sessionId);
+                        valor = session.amount_total ? session.amount_total / 100 : valor;
+                        customerId = session.customer || null;
+                    } catch (err) {
+                        console.error('Erro ao buscar sessão:', err);
+                    }
+                } else if (resultado.tipo === 'pagamento_unico_sucesso') {
+                    // Se for payment_intent.succeeded (checkout transparente), usar dados do payment intent
+                    valor = resultado.amount || valor;
+                    customerId = resultado.customerId || null;
+                }
+
                 const planoId = resultado.metadata?.plano_id ? parseInt(resultado.metadata.plano_id) : null;
 
                 console.log('💰 Valor do pagamento:', valor);
                 console.log('📋 Plano ID:', planoId);
 
-                await db.criarPagamentoUnico(userId, {
-                    stripe_payment_intent_id: paymentIntentId,
-                    stripe_customer_id: session.customer || null,
-                    valor: valor,
-                    status: 'succeeded',
-                    plano_id: planoId,
-                });
+                // Verificar se o pagamento já foi salvo (idempotência)
+                const pagamentoExistente = await db.obterPagamentoUnicoPorStripeId(paymentIntentId);
+                if (pagamentoExistente) {
+                    console.log('ℹ️  Pagamento já foi processado anteriormente (via confirmação direta ou webhook anterior)');
+                } else {
+                    await db.criarPagamentoUnico(userId, {
+                        stripe_payment_intent_id: paymentIntentId,
+                        stripe_customer_id: customerId,
+                        valor: valor,
+                        status: 'succeeded',
+                        plano_id: planoId,
+                    });
 
-                console.log('✅ Pagamento único salvo no banco de dados para usuário:', userId, 'PlanoId:', planoId);
+                    console.log('✅ Pagamento único salvo no banco de dados via webhook para usuário:', userId, 'PlanoId:', planoId);
+                }
             } else if (resultado.tipo === 'pagamento_unico_sucesso' && !userId) {
-                // payment_intent.succeeded não tem userId, mas checkout.session.completed já processou
-                // Então apenas ignoramos silenciosamente
-                console.log('ℹ️  payment_intent.succeeded recebido (já processado por checkout.session.completed)');
+                // payment_intent.succeeded sem userId no metadata (pode ser de checkout session já processado)
+                // Verificar se já foi processado por checkout.session.completed
+                console.log('ℹ️  payment_intent.succeeded recebido sem userId - verificando se já foi processado');
             } else {
                 console.error('❌ Dados insuficientes para processar pagamento único:', { userId, paymentIntentId });
             }
@@ -345,9 +366,22 @@ app.get('/api/auth/validar-email/:token', async (req, res) => {
         
         if (!resultado.valido) {
             console.log('Token inválido:', resultado.erro);
-            return res.status(400).json({ error: resultado.erro || 'Token inválido ou expirado' });
+            
+            // IMPORTANTE: Garantir que o email NÃO seja validado se o token não for válido
+            // Retornar erro explicitamente sem validar o email
+            // NUNCA validar o email aqui se o token não for válido
+            // Nota: Se o token não foi encontrado, pode ser que já foi usado e o email já está validado
+            // Mas não vamos verificar aqui para evitar problemas de segurança
+            return res.status(400).json({ 
+                error: resultado.erro || 'Token inválido ou expirado',
+                tokenNaoEncontrado: resultado.tokenNaoEncontrado || false,
+                mensagemEspecial: resultado.tokenNaoEncontrado ? 
+                    'Este token já foi usado. Se seu email já foi validado, você pode fazer login normalmente.' : 
+                    null
+            });
         }
         
+        // Só chegará aqui se o token for válido e o email foi validado com sucesso
         console.log('Email validado com sucesso para usuário:', resultado.usuarioId);
         res.json({ 
             message: 'Email validado com sucesso!',
@@ -355,6 +389,7 @@ app.get('/api/auth/validar-email/:token', async (req, res) => {
         });
     } catch (error) {
         console.error('Erro ao validar email:', error);
+        // IMPORTANTE: Em caso de erro, NÃO validar o email
         res.status(500).json({ error: 'Erro ao validar email' });
     }
 });
@@ -950,6 +985,208 @@ app.post('/api/stripe/checkout/unico', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error('Erro ao criar checkout único:', error);
         res.status(500).json({ error: error.message || 'Erro ao criar sessão de checkout' });
+    }
+});
+
+// Criar Payment Intent para checkout transparente
+app.post('/api/stripe/create-payment-intent', authenticateToken, async (req, res) => {
+    try {
+        const { amount, userId, planoId } = req.body;
+        
+        if (!amount || !userId) {
+            return res.status(400).json({ error: 'Amount e userId são obrigatórios' });
+        }
+
+        // Buscar plano para obter price_id
+        const plano = await db.obterPlanoPorId(planoId);
+        if (!plano || !plano.stripe_price_id) {
+            return res.status(400).json({ error: 'Plano não encontrado ou sem price_id configurado' });
+        }
+
+        // Verificar se o Stripe está configurado
+        if (!stripeService.stripe) {
+            return res.status(500).json({ error: 'Stripe não está configurado' });
+        }
+
+        // Criar Payment Intent no Stripe
+        const paymentIntent = await stripeService.stripe.paymentIntents.create({
+            amount: amount, // Valor em centavos
+            currency: 'brl',
+            metadata: {
+                user_id: userId.toString(),
+                plano_id: planoId ? planoId.toString() : '',
+                plano_tipo: 'unico', // ou 'anual' dependendo do plano
+            },
+            // Para assinaturas, usar setup_future_usage
+            // setup_future_usage: 'off_session',
+        });
+
+        res.json({
+            clientSecret: paymentIntent.client_secret,
+        });
+    } catch (error) {
+        console.error('Erro ao criar payment intent:', error);
+        res.status(500).json({ error: error.message || 'Erro ao criar intenção de pagamento' });
+    }
+});
+
+// Confirmar e salvar pagamento único (para checkout transparente)
+app.post('/api/stripe/confirmar-pagamento', authenticateToken, async (req, res) => {
+    try {
+        const { paymentIntentId, dadosCheckout } = req.body;
+        const userId = req.userId;
+        
+        if (!paymentIntentId) {
+            return res.status(400).json({ error: 'Payment Intent ID é obrigatório' });
+        }
+
+        if (!stripeService.stripe) {
+            return res.status(500).json({ error: 'Stripe não está configurado' });
+        }
+
+        // Buscar Payment Intent no Stripe para verificar status e obter dados
+        const paymentIntent = await stripeService.stripe.paymentIntents.retrieve(paymentIntentId);
+        
+        // Verificar se o pagamento foi bem-sucedido
+        if (paymentIntent.status !== 'succeeded') {
+            return res.status(400).json({ error: `Pagamento não foi bem-sucedido. Status: ${paymentIntent.status}` });
+        }
+
+        // Verificar se o userId do metadata corresponde ao usuário autenticado
+        const metadataUserId = paymentIntent.metadata?.user_id ? parseInt(paymentIntent.metadata.user_id) : null;
+        if (metadataUserId !== userId) {
+            return res.status(403).json({ error: 'Este pagamento não pertence ao usuário autenticado' });
+        }
+
+        // Verificar se o pagamento já foi salvo
+        const pagamentoExistente = await db.obterPagamentoUnicoPorStripeId(paymentIntentId);
+        if (pagamentoExistente) {
+            return res.json({ 
+                message: 'Pagamento já foi processado',
+                pagamento: pagamentoExistente
+            });
+        }
+
+        // Obter dados do pagamento
+        const valor = paymentIntent.amount / 100; // Converter de centavos para reais
+        const planoId = paymentIntent.metadata?.plano_id ? parseInt(paymentIntent.metadata.plano_id) : null;
+        const customerId = paymentIntent.customer || null;
+
+        // Salvar pagamento no banco de dados
+        const pagamento = await db.criarPagamentoUnico(userId, {
+            stripe_payment_intent_id: paymentIntentId,
+            stripe_customer_id: customerId,
+            valor: valor,
+            status: 'succeeded',
+            plano_id: planoId,
+        });
+
+        console.log('✅ Pagamento único salvo diretamente no banco de dados para usuário:', userId, 'PlanoId:', planoId);
+
+        // Se houver dados do checkout, atualizar cadastro do usuário
+        if (dadosCheckout) {
+            try {
+                const dadosParaAtualizar = {};
+                
+                // Função para validar CPF
+                const validarCPF = (cpf) => {
+                    if (!cpf) return false;
+                    const cpfLimpo = cpf.replace(/\D/g, '');
+                    if (cpfLimpo.length !== 11) return false;
+                    if (/^(\d)\1{10}$/.test(cpfLimpo)) return false;
+                    
+                    let soma = 0;
+                    for (let i = 0; i < 9; i++) {
+                        soma += parseInt(cpfLimpo.charAt(i)) * (10 - i);
+                    }
+                    let resto = (soma * 10) % 11;
+                    if (resto === 10 || resto === 11) resto = 0;
+                    if (resto !== parseInt(cpfLimpo.charAt(9))) return false;
+                    
+                    soma = 0;
+                    for (let i = 0; i < 10; i++) {
+                        soma += parseInt(cpfLimpo.charAt(i)) * (11 - i);
+                    }
+                    resto = (soma * 10) % 11;
+                    if (resto === 10 || resto === 11) resto = 0;
+                    if (resto !== parseInt(cpfLimpo.charAt(10))) return false;
+                    
+                    return true;
+                };
+                
+                // CPF - validar antes de salvar (apenas se fornecido)
+                if (dadosCheckout.cpf) {
+                    if (!validarCPF(dadosCheckout.cpf)) {
+                        throw new Error('CPF inválido. Verifique os dígitos.');
+                    }
+                    dadosParaAtualizar.cpf = dadosCheckout.cpf.replace(/\D/g, ''); // Remover formatação
+                }
+                // Se não há CPF, não atualizar (usuário estrangeiro)
+                
+                // Nome completo - separar em nome e sobrenome
+                if (dadosCheckout.nomeCompleto) {
+                    const nomeCompleto = dadosCheckout.nomeCompleto.trim();
+                    const partesNome = nomeCompleto.split(' ');
+                    if (partesNome.length > 0) {
+                        dadosParaAtualizar.nome = partesNome[0];
+                        if (partesNome.length > 1) {
+                            dadosParaAtualizar.sobrenome = partesNome.slice(1).join(' ');
+                        }
+                    }
+                }
+                
+                // Endereço residencial
+                if (dadosCheckout.pais && dadosCheckout.pais !== 'Brasil') {
+                    // Estrangeiro - apenas país
+                    dadosParaAtualizar.pais_residencial = dadosCheckout.pais;
+                    // Limpar campos de endereço brasileiro
+                    dadosParaAtualizar.cep_residencial = null;
+                    dadosParaAtualizar.endereco_residencial = null;
+                    dadosParaAtualizar.numero_residencial = null;
+                    dadosParaAtualizar.complemento_residencial = null;
+                    dadosParaAtualizar.cidade_residencial = null;
+                    dadosParaAtualizar.estado_residencial = null;
+                } else {
+                    // Brasileiro - endereço completo
+                    if (dadosCheckout.cep) {
+                        dadosParaAtualizar.cep_residencial = dadosCheckout.cep.replace(/\D/g, '');
+                    }
+                    if (dadosCheckout.logradouro) {
+                        dadosParaAtualizar.endereco_residencial = dadosCheckout.logradouro;
+                    }
+                    if (dadosCheckout.numero) {
+                        dadosParaAtualizar.numero_residencial = dadosCheckout.numero;
+                    }
+                    if (dadosCheckout.complemento) {
+                        dadosParaAtualizar.complemento_residencial = dadosCheckout.complemento;
+                    }
+                    if (dadosCheckout.cidade) {
+                        dadosParaAtualizar.cidade_residencial = dadosCheckout.cidade;
+                    }
+                    if (dadosCheckout.uf) {
+                        dadosParaAtualizar.estado_residencial = dadosCheckout.uf.toUpperCase();
+                    }
+                    dadosParaAtualizar.pais_residencial = dadosCheckout.pais || 'Brasil';
+                }
+                
+                // Atualizar dados do usuário apenas se houver algo para atualizar
+                if (Object.keys(dadosParaAtualizar).length > 0) {
+                    await db.atualizarDadosUsuario(userId, dadosParaAtualizar);
+                    console.log('✅ Dados do checkout salvos no cadastro do usuário:', userId);
+                }
+            } catch (dadosError) {
+                // Não falhar o pagamento se houver erro ao salvar dados
+                console.error('⚠️  Erro ao salvar dados do checkout (pagamento já foi processado):', dadosError);
+            }
+        }
+
+        res.json({
+            message: 'Pagamento confirmado e salvo com sucesso',
+            pagamento: pagamento
+        });
+    } catch (error) {
+        console.error('Erro ao confirmar pagamento:', error);
+        res.status(500).json({ error: error.message || 'Erro ao confirmar pagamento' });
     }
 });
 

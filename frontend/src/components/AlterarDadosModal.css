@@ -63,6 +63,23 @@
   box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
 }
 
+.form-input.input-error {
+  border-color: #d32f2f;
+  border-width: 2px;
+}
+
+.form-input.input-error:focus {
+  border-color: #d32f2f;
+  box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.1);
+}
+
+.error-text {
+  display: block;
+  color: #d32f2f;
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
 .aviso-obrigatorio {
   background-color: #fff3cd;
   border: 2px solid #ffc107;

@@ -1,9 +1,48 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense, Component, ErrorInfo, ReactNode } from 'react';
 import { FaCheck } from 'react-icons/fa';
 import { apiService } from '../services/api';
 import { mostrarAlert } from '../utils/modals';
+import { getUser } from '../services/auth';
+import Modal from './Modal';
 import type { Plano } from './GerenciamentoPlanos';
 import './SelecaoPlanos.css';
+
+// Lazy load do CheckoutTransparente
+const CheckoutTransparente = lazy(() => import('./CheckoutTransparente'));
+
+// Error Boundary para capturar erros do componente
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('Erro no CheckoutTransparente:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '1rem', backgroundColor: '#ffebee', border: '1px solid #d32f2f', borderRadius: '8px', color: '#d32f2f' }}>
+          <p><strong>Erro ao carregar formulário de pagamento:</strong></p>
+          <p style={{ fontSize: '0.9rem', marginTop: '0.5rem' }}>
+            {this.state.error?.message || 'Erro desconhecido'}
+          </p>
+          <p style={{ fontSize: '0.8rem', marginTop: '0.5rem', color: '#666' }}>
+            Verifique se VITE_STRIPE_PUBLIC_KEY está configurado no arquivo .env
+          </p>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 interface SelecaoPlanosProps {
   onPagamentoSucesso?: () => void;
@@ -16,6 +55,9 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
     temAcesso: boolean;
     tipo: 'anual' | 'unico' | 'vitalicio' | null;
   } | null>(null);
+  const [planoSelecionado, setPlanoSelecionado] = useState<Plano | null>(null);
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [pagamentoProcessado, setPagamentoProcessado] = useState(false);
 
   useEffect(() => {
     // Limpar estado de carregamento ao montar o componente
@@ -104,13 +146,14 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
       const isUnico = tipoLower === 'unico' || nomeLower.includes('único') || nomeLower.includes('unico');
       
       if (isRecorrente) {
+        // Para assinaturas anuais, ainda usar checkout tradicional (redirecionamento)
+        // TODO: Implementar checkout transparente para assinaturas no futuro
         setCarregando('anual');
         const { url } = await apiService.criarCheckoutAnual(plano.stripe_price_id || undefined);
         window.location.href = url;
       } else if (isUnico) {
-        setCarregando('unico');
-        const { url } = await apiService.criarCheckoutUnico(plano.stripe_price_id || undefined);
-        window.location.href = url;
+        // Para pagamentos únicos, redirecionar para página de checkout
+        window.location.href = `/checkout?planoId=${plano.id}`;
       } else {
         await mostrarAlert('Erro', 'Tipo de plano não suportado para pagamento.');
         setCarregando(null);
@@ -122,6 +165,39 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
         error.response?.data?.error || 'Erro ao criar sessão de pagamento. Tente novamente.'
       );
     }
+  };
+
+  const handleCheckoutSuccess = async () => {
+    setPagamentoProcessado(true);
+    await mostrarAlert('Sucesso', 'Pagamento processado com sucesso!');
+    setShowCheckoutModal(false);
+    // Recarregar status e planos
+    await verificarStatus();
+    await carregarPlanos();
+    if (_onPagamentoSucesso) {
+      _onPagamentoSucesso();
+    }
+    // Recarregar página após um tempo
+    setTimeout(() => {
+      window.location.reload();
+    }, 1500);
+  };
+
+  const handleCheckoutError = async (error: string) => {
+    await mostrarAlert('Erro', error);
+  };
+
+  const calcularValorComDesconto = (plano: Plano): number => {
+    const temDescontoPercentual = !!(plano.desconto_percentual && plano.desconto_percentual > 0);
+    const temDescontoValor = !!(plano.desconto_valor && plano.desconto_valor > 0);
+    
+    if (temDescontoPercentual) {
+      return plano.valor * (1 - (plano.desconto_percentual || 0) / 100);
+    }
+    if (temDescontoValor) {
+      return plano.valor - (plano.desconto_valor || 0);
+    }
+    return plano.valor;
   };
 
   if (statusPagamento?.temAcesso) {
@@ -308,6 +384,60 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
           })
         )}
       </div>
+
+      {/* Modal de Checkout Transparente */}
+      {planoSelecionado && (
+        <Modal
+          isOpen={showCheckoutModal}
+          onClose={() => {
+            setShowCheckoutModal(false);
+            setPlanoSelecionado(null);
+            setPagamentoProcessado(false);
+          }}
+          title={pagamentoProcessado ? "Pagamento Realizado" : `Finalizar Pagamento - ${planoSelecionado.nome}`}
+          size="medium"
+        >
+          {pagamentoProcessado ? (
+            <div style={{ textAlign: 'center', padding: '2rem' }}>
+              <h3 style={{ color: '#4CAF50', marginBottom: '1rem' }}>✅ Pagamento realizado com sucesso!</h3>
+              <p>Você já tem acesso ao plano {planoSelecionado.nome}.</p>
+              <p style={{ marginTop: '1rem', fontSize: '0.9rem', color: '#666' }}>
+                A página será recarregada em instantes...
+              </p>
+            </div>
+          ) : (
+            <div style={{ padding: '1rem' }}>
+              <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#f5f5f5', borderRadius: '8px' }}>
+                <p><strong>Plano:</strong> {planoSelecionado.nome}</p>
+                <p><strong>Valor:</strong> R$ {formatarValor(calcularValorComDesconto(planoSelecionado))}</p>
+                <p style={{ fontSize: '0.9rem', color: '#666', marginTop: '0.5rem' }}>
+                  💡 <strong>Modo de teste:</strong> Use o cartão de teste <code>4242 4242 4242 4242</code> com qualquer data futura e CVC qualquer.
+                </p>
+              </div>
+              
+              {getUser() ? (
+                <Suspense 
+                  fallback={<div style={{ textAlign: 'center', padding: '2rem' }}>Carregando formulário de pagamento...</div>}
+                >
+                  <ErrorBoundary>
+                    <CheckoutTransparente
+                      amount={Math.round(calcularValorComDesconto(planoSelecionado) * 100)} // Converter para centavos
+                      userId={getUser()!.id}
+                      planoId={planoSelecionado.id}
+                      onSuccess={handleCheckoutSuccess}
+                      onError={handleCheckoutError}
+                    />
+                  </ErrorBoundary>
+                </Suspense>
+              ) : (
+                <div style={{ padding: '1rem', backgroundColor: '#ffebee', border: '1px solid #d32f2f', borderRadius: '8px', color: '#d32f2f' }}>
+                  <p>Erro: Usuário não autenticado. Por favor, faça login novamente.</p>
+                </div>
+              )}
+            </div>
+          )}
+        </Modal>
+      )}
     </div>
   );
 };
