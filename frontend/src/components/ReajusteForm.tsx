@@ -1,5 +1,5 @@
 import type { TipoReajuste } from '../types';
-import { FaUndo } from 'react-icons/fa';
+import { FaUndo, FaLock } from 'react-icons/fa';
 import './ReajusteForm.css';
 
 interface ReajusteFormProps {
@@ -55,8 +55,8 @@ const ReajusteForm = ({
           marginBottom: '20px',
           textAlign: 'center',
         }}>
-          <p style={{ margin: '0 0 10px 0', color: '#856404', fontWeight: '600' }}>
-            🔒 Reajuste de preços bloqueado
+          <p style={{ margin: '0 0 10px 0', color: '#856404', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
+            <FaLock /> Reajuste de preços bloqueado
           </p>
           <button
             onClick={() => onAbrirModalPlanos?.()}

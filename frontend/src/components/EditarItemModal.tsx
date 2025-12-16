@@ -3,7 +3,7 @@ import Modal from './Modal';
 import { apiService } from '../services/api';
 import { mostrarAlert } from '../utils/modals';
 import type { Item } from '../types';
-import { FaTimes, FaPlus, FaCheck } from 'react-icons/fa';
+import { FaTimes, FaPlus, FaCheck, FaLock } from 'react-icons/fa';
 import './EditarItemModal.css';
 
 interface EditarItemModalProps {
@@ -228,8 +228,12 @@ const EditarItemModal = ({
                     textAlign: 'center',
                     fontSize: '0.85em',
                     color: '#856404',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem'
                   }}>
-                    🔒 Bloqueado
+                    <FaLock /> Bloqueado
                   </div>
                 ) : (
                   <input
@@ -295,8 +299,8 @@ const EditarItemModal = ({
                 borderRadius: '6px',
                 textAlign: 'center',
               }}>
-                <p style={{ margin: '0 0 10px 0', color: '#856404', fontSize: '0.9em' }}>
-                  🔒 Edição de preço bloqueada
+                <p style={{ margin: '0 0 10px 0', color: '#856404', fontSize: '0.9em', display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
+                  <FaLock /> Edição de preço bloqueada
                 </p>
                 <button
                   onClick={() => {

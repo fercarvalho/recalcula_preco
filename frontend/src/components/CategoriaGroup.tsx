@@ -113,8 +113,8 @@ const CategoriaGroup = ({
   const handleDeletarCategoria = async () => {
     const quantidadeItens = itens.length;
     const mensagem = quantidadeItens > 0
-      ? `Tem certeza que deseja deletar a categoria "${categoria}"?\n\nEsta ação irá deletar a categoria e todos os ${quantidadeItens} item(ns) contidos nela.\n\n⚠️ Esta ação NÃO pode ser desfeita!`
-      : `Tem certeza que deseja deletar a categoria "${categoria}"?\n\n⚠️ Esta ação NÃO pode ser desfeita!`;
+      ? `Tem certeza que deseja deletar a categoria "${categoria}"?\n\nEsta ação irá deletar a categoria e todos os ${quantidadeItens} item(ns) contidos nela.\n\nEsta ação NÃO pode ser desfeita!`
+      : `Tem certeza que deseja deletar a categoria "${categoria}"?\n\nEsta ação NÃO pode ser desfeita!`;
     
     const confirmado = await mostrarConfirm('Confirmar Exclusão de Categoria', mensagem);
     if (!confirmado) {

@@ -1,5 +1,6 @@
-import React, { useState, useEffect, lazy, Suspense, Component, ErrorInfo, ReactNode } from 'react';
-import { FaCheck } from 'react-icons/fa';
+import React, { useState, useEffect, lazy, Suspense, Component } from 'react';
+import type { ErrorInfo, ReactNode } from 'react';
+import { FaCheck, FaCheckCircle, FaExclamationTriangle, FaShieldAlt } from 'react-icons/fa';
 import { apiService } from '../services/api';
 import { mostrarAlert } from '../utils/modals';
 import { getUser } from '../services/auth';
@@ -204,7 +205,9 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
     return (
       <div className="selecao-planos-container">
         <div className="plano-ativo">
-          <h2>✅ Você já tem acesso ativo!</h2>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <FaCheckCircle /> Você já tem acesso ativo!
+          </h2>
           <p>
             {statusPagamento.tipo === 'anual'
               ? 'Sua assinatura anual está ativa.'
@@ -228,7 +231,9 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
           borderRadius: '8px',
           color: '#856404'
         }}>
-          <strong>⚠️ Aviso:</strong> As funções em Beta (como Modo Cardápio) estão disponíveis apenas para usuários do Plano Anual.
+          <strong>
+            <FaExclamationTriangle style={{ marginRight: '0.5rem', display: 'inline' }} /> Aviso:
+          </strong> As funções em Beta (como Modo Cardápio) estão disponíveis apenas para usuários do Plano Anual.
         </div>
       </div>
 
@@ -332,7 +337,7 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
                         className={ehAviso ? 'texto-aviso' : (emBeta ? 'texto-beta' : '')}
                       >
                         {ehAviso ? (
-                          <>⚠️ {textoLimpo}</>
+                          <><FaExclamationTriangle style={{ marginRight: '0.5rem', display: 'inline' }} /> {textoLimpo}</>
                         ) : emBeta ? (
                           <>
                             <FaCheck /> <span className="texto-beneficio">{textoLimpo}</span> <span className="badge-beta">Em Beta</span>
@@ -355,7 +360,9 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
                   fontSize: '0.85rem',
                   color: '#333'
                 }}>
-                  <strong style={{ color: 'var(--cor-primaria, #FF6B35)', display: 'block' }}>🛡️ Garantia de 7 dias</strong>
+                  <strong style={{ color: 'var(--cor-primaria, #FF6B35)', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center', width: '100%' }}>
+                    <FaShieldAlt /> Garantia de 7 dias
+                  </strong>
                   <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: '#333', fontWeight: 500 }}>
                     Não gostou? Reembolso total em até 7 dias
                   </p>
@@ -415,7 +422,9 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
         >
           {pagamentoProcessado ? (
             <div style={{ textAlign: 'center', padding: '2rem' }}>
-              <h3 style={{ color: '#4CAF50', marginBottom: '1rem' }}>✅ Pagamento realizado com sucesso!</h3>
+              <h3 style={{ color: '#4CAF50', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
+                <FaCheckCircle /> Pagamento realizado com sucesso!
+              </h3>
               <p>Você já tem acesso ao plano {planoSelecionado.nome}.</p>
               <p style={{ marginTop: '1rem', fontSize: '0.9rem', color: '#666' }}>
                 A página será recarregada em instantes...
@@ -442,10 +451,14 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
                 <strong style={{ 
                   color: 'var(--cor-primaria, #FF6B35)', 
                   fontSize: '0.95rem',
-                  display: 'block',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  justifyContent: 'center',
+                  width: '100%',
                   marginBottom: '0.5rem'
                 }}>
-                  🛡️ Garantia de 7 dias
+                  <FaShieldAlt /> Garantia de 7 dias
                 </strong>
                 <p style={{ 
                   margin: 0, 
@@ -465,7 +478,7 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
                     <CheckoutTransparente
                       amount={Math.round(calcularValorComDesconto(planoSelecionado) * 100)} // Converter para centavos
                       userId={getUser()!.id}
-                      planoId={planoSelecionado.id}
+                      planoId={planoSelecionado.id || 0}
                       onSuccess={handleCheckoutSuccess}
                       onError={handleCheckoutError}
                     />

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FaCheck, FaChevronDown, FaChevronUp, FaCalculator, FaRocket, FaWhatsapp } from 'react-icons/fa';
+import { FaCheck, FaChevronDown, FaChevronUp, FaCalculator, FaRocket, FaWhatsapp, FaDollarSign, FaExclamationTriangle, FaShieldAlt, FaHeart } from 'react-icons/fa';
 import * as FaIcons from 'react-icons/fa';
 import RegistroModal from './RegistroModal';
 import { apiService } from '../services/api';
@@ -368,9 +368,13 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
                   <p className="sobre-conclusao-final">
                     E a você, espero que este sistema, assim como foi para eles, torne sua vida mais fácil. 
                     <br />
-                    <strong>Um abraço! ❤️</strong>
+                    <strong style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      Um abraço! <FaHeart />
+                    </strong>
                     <br />
-                    <span className="sobre-assinatura">Te vejo do outro lado! 🚀</span>
+                    <span className="sobre-assinatura" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      Te vejo do outro lado! <FaRocket />
+                    </span>
                   </p>
                 </div>
               </div>
@@ -617,7 +621,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
                         </div>
                         {plano.valor_total && plano.valor_total > 0 && plano.mostrar_valor_total && (
                           <p className="economia-texto">
-                            💰 Total: R$ {formatarValor(plano.valor_total)}
+                            <FaDollarSign /> Total: R$ {formatarValor(plano.valor_total)}
                             {plano.tipo === 'recorrente' && plano.periodo === 'mensal' && ' por ano'}
                           </p>
                         )}
@@ -649,7 +653,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
                               className={ehAviso ? 'texto-aviso' : (emBeta ? 'texto-beta' : '')}
                             >
                               {ehAviso ? (
-                                <>⚠️ {textoLimpo}</>
+                                <><FaExclamationTriangle style={{ marginRight: '0.5rem', display: 'inline' }} /> {textoLimpo}</>
                               ) : emBeta ? (
                                 <>
                                   <FaCheck /> <span className="texto-beneficio">{textoLimpo}</span> <span className="badge-beta">Em Beta</span>
@@ -696,9 +700,10 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
                   color: 'var(--cor-primaria, #FF6B35)', 
                   fontSize: '1rem',
                   display: 'block',
-                  marginBottom: '0.5rem'
+                  marginBottom: '0.5rem',
+                  textAlign: 'center'
                 }}>
-                  🛡️ Garantia de 7 dias
+                  <FaShieldAlt style={{ marginRight: '0.5rem', display: 'inline' }} /> Garantia de 7 dias
                 </strong>
                 <p style={{ 
                   margin: 0, 

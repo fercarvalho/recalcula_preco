@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { FaPlus, FaEdit, FaTrash, FaToggleOn, FaToggleOff, FaArrowsAlt } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaToggleOn, FaToggleOff, FaArrowsAlt, FaRobot, FaBox } from 'react-icons/fa';
 import * as FaIcons from 'react-icons/fa';
 import Modal from './Modal';
 import { mostrarAlert, mostrarConfirm } from '../utils/modals';
@@ -267,20 +267,22 @@ const GerenciamentoFuncoes = ({ isOpen, onClose, onOpenOrganizar }: Gerenciament
                         (() => {
                           try {
                             const IconComponent = (FaIcons as any)[funcao.icone];
-                            return IconComponent ? <IconComponent /> : <span>📦</span>;
+                            return IconComponent ? <IconComponent /> : <FaBox />;
                           } catch {
-                            return <span>📦</span>;
+                            return <FaBox />;
                           }
                         })()
                       ) : (
-                        <span>📦</span>
+                        <FaBox />
                       )}
                     </div>
                     <div className="funcao-info">
                       <h3>
                         {funcao.titulo}
                         {funcao.eh_ia && (
-                          <span className="funcao-ia-badge" title="Função de IA">🤖 IA</span>
+                          <span className="funcao-ia-badge" title="Função de IA" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                            <FaRobot /> IA
+                          </span>
                         )}
                       </h3>
                       <p>{funcao.descricao}</p>

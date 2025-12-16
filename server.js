@@ -988,10 +988,83 @@ app.post('/api/stripe/checkout/unico', authenticateToken, async (req, res) => {
     }
 });
 
+// Validar cupom de desconto
+app.post('/api/stripe/validar-cupom', authenticateToken, async (req, res) => {
+    try {
+        const { codigo, priceId } = req.body;
+        
+        if (!codigo || !priceId) {
+            return res.status(400).json({ error: 'Código e priceId são obrigatórios' });
+        }
+
+        // Verificar se o Stripe está configurado
+        if (!stripeService.stripe) {
+            return res.status(500).json({ error: 'Stripe não está configurado' });
+        }
+
+        // Buscar promotion code no Stripe
+        const promotionCodes = await stripeService.stripe.promotionCodes.list({
+            code: codigo.toUpperCase().trim(),
+            active: true,
+            limit: 1,
+        });
+
+        if (promotionCodes.data.length === 0) {
+            return res.status(404).json({ 
+                error: 'Código promocional inválido',
+                valido: false 
+            });
+        }
+
+        const promotionCode = promotionCodes.data[0];
+        const coupon = promotionCode.coupon;
+
+        // Verificar se o cupom ainda é válido
+        if (!coupon.valid) {
+            return res.status(400).json({ 
+                error: 'Código promocional expirado ou inválido',
+                valido: false 
+            });
+        }
+
+        // Buscar preço para calcular desconto
+        const price = await stripeService.stripe.prices.retrieve(priceId);
+        const valorOriginal = price.unit_amount; // em centavos
+        
+        let valorComDesconto = valorOriginal;
+        let descontoAplicado = 0;
+
+        if (coupon.percent_off) {
+            // Desconto percentual
+            descontoAplicado = Math.round(valorOriginal * (coupon.percent_off / 100));
+            valorComDesconto = valorOriginal - descontoAplicado;
+        } else if (coupon.amount_off) {
+            // Desconto em valor fixo
+            descontoAplicado = coupon.amount_off;
+            valorComDesconto = Math.max(0, valorOriginal - descontoAplicado);
+        }
+
+        res.json({
+            valido: true,
+            codigo: promotionCode.code,
+            couponId: coupon.id,
+            promotionCodeId: promotionCode.id,
+            tipo: coupon.percent_off ? 'percentual' : 'fixo',
+            desconto: coupon.percent_off || coupon.amount_off,
+            valorOriginal: valorOriginal,
+            valorComDesconto: valorComDesconto,
+            descontoAplicado: descontoAplicado,
+        });
+    } catch (error) {
+        console.error('Erro ao validar cupom:', error);
+        res.status(500).json({ error: 'Erro ao validar código promocional' });
+    }
+});
+
 // Criar Payment Intent para checkout transparente
 app.post('/api/stripe/create-payment-intent', authenticateToken, async (req, res) => {
     try {
-        const { amount, userId, planoId } = req.body;
+        const { amount, userId, planoId, couponId } = req.body;
         
         if (!amount || !userId) {
             return res.status(400).json({ error: 'Amount e userId são obrigatórios' });
@@ -1009,17 +1082,22 @@ app.post('/api/stripe/create-payment-intent', authenticateToken, async (req, res
         }
 
         // Criar Payment Intent no Stripe
-        const paymentIntent = await stripeService.stripe.paymentIntents.create({
-            amount: amount, // Valor em centavos
+        const paymentIntentData = {
+            amount: amount, // Já vem com desconto aplicado do frontend
             currency: 'brl',
             metadata: {
                 user_id: userId.toString(),
                 plano_id: planoId ? planoId.toString() : '',
                 plano_tipo: 'unico', // ou 'anual' dependendo do plano
             },
-            // Para assinaturas, usar setup_future_usage
-            // setup_future_usage: 'off_session',
-        });
+        };
+
+        // Se houver couponId, adicionar aos metadados para rastreamento
+        if (couponId) {
+            paymentIntentData.metadata.coupon_id = couponId;
+        }
+
+        const paymentIntent = await stripeService.stripe.paymentIntents.create(paymentIntentData);
 
         res.json({
             clientSecret: paymentIntent.client_secret,
@@ -2228,7 +2306,32 @@ app.get('/api/admin/planos', authenticateToken, requireAdmin, async (req, res) =
     }
 });
 
-// Obter plano por ID (apenas admin)
+// Obter plano por ID (público - para validação de cupom)
+app.get('/api/planos/:id', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const plano = await db.obterPlanoPorId(parseInt(id));
+        
+        if (!plano) {
+            return res.status(404).json({ error: 'Plano não encontrado' });
+        }
+        
+        // Retornar apenas informações necessárias (sem dados sensíveis)
+        res.json({
+            id: plano.id,
+            nome: plano.nome,
+            valor: plano.valor,
+            stripe_price_id: plano.stripe_price_id,
+            tipo: plano.tipo,
+            periodo: plano.periodo
+        });
+    } catch (error) {
+        console.error('Erro ao obter plano:', error);
+        res.status(500).json({ error: 'Erro ao obter plano' });
+    }
+});
+
+// Obter plano por ID (apenas admin - rota completa)
 app.get('/api/admin/planos/:id', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;

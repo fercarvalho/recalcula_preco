@@ -1,4 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
+import { FaCheckCircle } from 'react-icons/fa';
 import Modal from './Modal';
 import { apiService } from '../services/api';
 import { getUser } from '../services/auth';
@@ -22,7 +23,6 @@ const ModalUpgrade = ({ isOpen, onClose }: ModalUpgradeProps) => {
   }>>([]);
   const [planoSelecionado, setPlanoSelecionado] = useState<number | null>(null);
   const [pagamentoProcessado, setPagamentoProcessado] = useState(false);
-  const [carregando, setCarregando] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -76,7 +76,9 @@ const ModalUpgrade = ({ isOpen, onClose }: ModalUpgradeProps) => {
     return (
       <Modal isOpen={isOpen} onClose={onClose} title="Pagamento Realizado" size="medium">
         <div style={{ textAlign: 'center', padding: '2rem' }}>
-          <h3 style={{ color: '#4CAF50', marginBottom: '1rem' }}>✅ Pagamento realizado com sucesso!</h3>
+          <h3 style={{ color: '#4CAF50', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
+            <FaCheckCircle /> Pagamento realizado com sucesso!
+          </h3>
           <p>Você já tem acesso ao plano {planoAtual?.nome}.</p>
           <p style={{ marginTop: '1rem', fontSize: '0.9rem', color: '#666' }}>
             A página será recarregada em instantes...

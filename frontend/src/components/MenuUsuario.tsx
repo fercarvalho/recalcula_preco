@@ -176,8 +176,8 @@ const MenuUsuario = ({ onLogout, onReiniciarSistema, onReexibirTutorial, onOpenA
     // Verificar se é o usuário viralatas (assinatura vitalícia)
     if (user?.username === 'viralatas' || statusPagamento?.assinatura?.plano_tipo === 'vitalicio') {
       await mostrarAlert(
-        '🎉 Assinatura Vitalícia',
-        'Parabéns! Você possui uma assinatura vitalícia e tem acesso completo e permanente ao sistema. Não é necessário gerenciar pagamentos ou renovações - seu acesso é garantido para sempre! 🚀'
+        'Assinatura Vitalícia',
+        'Parabéns! Você possui uma assinatura vitalícia e tem acesso completo e permanente ao sistema. Não é necessário gerenciar pagamentos ou renovações - seu acesso é garantido para sempre!'
       );
       setShowMenu(false);
       return;

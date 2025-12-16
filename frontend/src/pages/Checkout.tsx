@@ -8,6 +8,7 @@ import {
   useStripe,
   useElements
 } from '@stripe/react-stripe-js';
+import { FaTicketAlt, FaCheckCircle, FaShieldAlt } from 'react-icons/fa';
 import { getUser, isAuthenticated } from '../services/auth';
 import { apiService } from '../services/api';
 import { mostrarAlert } from '../utils/modals';
@@ -62,15 +63,11 @@ interface FaturamentoData {
 const CheckoutForm = ({ 
   amount, 
   userId, 
-  planoId, 
-  planoNome,
-  valorFormatado 
+  planoId
 }: { 
   amount: number; 
   userId: number; 
   planoId: number;
-  planoNome: string;
-  valorFormatado: string;
 }) => {
   const stripe = useStripe();
   const elements = useElements();
@@ -94,12 +91,24 @@ const CheckoutForm = ({
   });
   const [nomeCartao, setNomeCartao] = useState('');
   const [cupom, setCupom] = useState('');
+  const [cupomAplicado, setCupomAplicado] = useState<any>(null);
+  const [validandoCupom, setValidandoCupom] = useState(false);
+  const [valorOriginal, setValorOriginal] = useState(amount);
+  const [valorFinal, setValorFinal] = useState(amount);
   const [naoPossuiCpf, setNaoPossuiCpf] = useState(false);
   const [naoResidoBrasil, setNaoResidoBrasil] = useState(false);
   const [pais, setPais] = useState('Brasil');
 
   // Validações
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Inicializar valores quando amount mudar
+  useEffect(() => {
+    setValorOriginal(amount);
+    setValorFinal(amount);
+    setCupomAplicado(null);
+    setCupom('');
+  }, [amount]);
 
   // Buscar dados do usuário ao carregar
   useEffect(() => {
@@ -196,6 +205,68 @@ const CheckoutForm = ({
     return Object.keys(newErrors).length === 0;
   };
 
+  // Validar e aplicar cupom
+  const handleValidarCupom = async () => {
+    if (!cupom.trim()) {
+      return;
+    }
+
+    setValidandoCupom(true);
+    try {
+      const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
+      const token = localStorage.getItem('calculadora_auth_token');
+      
+      // Buscar priceId do plano
+      const planoResponse = await fetch(`${API_BASE}/api/planos/${planoId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (!planoResponse.ok) {
+        throw new Error('Erro ao buscar informações do plano');
+      }
+      
+      const plano = await planoResponse.json();
+      
+      if (!plano.stripe_price_id) {
+        throw new Error('Plano não possui price_id configurado');
+      }
+      
+      // Validar cupom
+      const response = await fetch(`${API_BASE}/api/stripe/validar-cupom`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          codigo: cupom.trim().toUpperCase(),
+          priceId: plano.stripe_price_id,
+        }),
+      });
+
+      const resultado = await response.json();
+
+      if (resultado.valido) {
+        setCupomAplicado(resultado);
+        setValorFinal(resultado.valorComDesconto);
+        await mostrarAlert('Sucesso', `Cupom aplicado! Desconto de ${resultado.tipo === 'percentual' ? `${resultado.desconto}%` : `R$ ${(resultado.desconto / 100).toFixed(2).replace('.', ',')}`}`);
+      } else {
+        setCupomAplicado(null);
+        setValorFinal(amount);
+        await mostrarAlert('Erro', resultado.error || 'Código promocional inválido');
+      }
+    } catch (error: any) {
+      console.error('Erro ao validar cupom:', error);
+      await mostrarAlert('Erro', error.message || 'Erro ao validar código promocional');
+      setCupomAplicado(null);
+      setValorFinal(amount);
+    } finally {
+      setValidandoCupom(false);
+    }
+  };
+
   // Formatar CPF usando a função utilitária
   const formatarCPF = formatarCPFUtil;
 
@@ -235,9 +306,10 @@ const CheckoutForm = ({
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          amount,
+          amount: valorFinal, // Usar valor com desconto
           userId,
           planoId,
+          couponId: cupomAplicado?.couponId || null, // Incluir couponId se houver
         }),
       });
 
@@ -354,8 +426,144 @@ const CheckoutForm = ({
     }
   };
 
+  const valorFormatadoOriginal = `R$ ${(valorOriginal / 100).toFixed(2).replace('.', ',')}`;
+  const valorFormatadoFinal = `R$ ${(valorFinal / 100).toFixed(2).replace('.', ',')}`;
+  const descontoFormatado = cupomAplicado 
+    ? cupomAplicado.tipo === 'percentual'
+      ? `${cupomAplicado.desconto}%`
+      : `R$ ${(cupomAplicado.desconto / 100).toFixed(2).replace('.', ',')}`
+    : null;
+
   return (
     <form onSubmit={handleSubmit} className="checkout-form">
+      {/* Seção: Código Promocional */}
+      <div className="checkout-section" style={{
+        backgroundColor: 'var(--cor-primaria, #FF6B35)',
+        border: '2px solid var(--cor-primaria, #FF6B35)',
+      }}>
+        <h2 className="checkout-section-title" style={{ 
+          color: 'white',
+          borderBottomColor: 'rgba(255, 255, 255, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem'
+        }}>
+          <FaTicketAlt /> Código Promocional
+        </h2>
+        
+        <div className="form-group">
+          <label htmlFor="cupom" style={{ color: 'white' }}>
+            Código de desconto
+          </label>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <input
+              type="text"
+              id="cupom"
+              value={cupom}
+              onChange={(e) => setCupom(e.target.value.toUpperCase())}
+              placeholder="Digite o código promocional"
+              disabled={validandoCupom || !!cupomAplicado}
+              style={{
+                flex: 1,
+                padding: '0.75rem',
+                background: 'rgba(0, 0, 0, 0.4)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: '6px',
+                color: 'white',
+                fontSize: '1rem',
+              }}
+            />
+            {!cupomAplicado ? (
+              <button
+                type="button"
+                onClick={handleValidarCupom}
+                disabled={validandoCupom || !cupom.trim()}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: validandoCupom || !cupom.trim() ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.5)',
+                  color: 'white',
+                  border: '1px solid rgba(255, 255, 255, 0.4)',
+                  borderRadius: '6px',
+                  cursor: validandoCupom || !cupom.trim() ? 'not-allowed' : 'pointer',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  transition: 'all 0.3s',
+                }}
+              >
+                {validandoCupom ? 'Validando...' : 'Aplicar'}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setCupomAplicado(null);
+                  setCupom('');
+                  setValorFinal(amount);
+                }}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: 'rgba(0, 0, 0, 0.5)',
+                  color: 'white',
+                  border: '1px solid rgba(255, 255, 255, 0.4)',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  transition: 'all 0.3s',
+                }}
+              >
+                Remover
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Resumo do valor e cupom aplicado */}
+        {cupomAplicado && (
+          <div style={{
+            marginTop: '1rem',
+            padding: '1rem',
+            background: 'rgba(0, 0, 0, 0.3)',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
+            borderRadius: '8px'
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center',
+              gap: '0.5rem',
+              marginBottom: '0.75rem',
+              color: '#4CAF50',
+              fontSize: '0.9rem'
+            }}>
+              <FaCheckCircle />
+              <span style={{ fontWeight: 'bold' }}>Cupom aplicado! Desconto de {descontoFormatado}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: 'rgba(255, 255, 255, 0.7)' }}>
+              <span>Valor original:</span>
+              <span>{valorFormatadoOriginal}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: '#4CAF50' }}>
+              <span>Desconto:</span>
+              <span>
+                - R$ {(cupomAplicado.descontoAplicado / 100).toFixed(2).replace('.', ',')}
+              </span>
+            </div>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              fontWeight: 'bold', 
+              fontSize: '1.1rem', 
+              paddingTop: '0.5rem', 
+              borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+              color: 'white'
+            }}>
+              <span>Total:</span>
+              <span style={{ color: 'var(--cor-primaria, #FF6B35)' }}>{valorFormatadoFinal}</span>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Seção 1: Dados para faturamento */}
       <div className="checkout-section">
         <h2 className="checkout-section-title">1. Dados para faturamento</h2>
@@ -831,7 +1039,7 @@ const CheckoutForm = ({
             display: 'block',
             marginBottom: '0.5rem'
           }}>
-            🛡️ Garantia de 7 dias
+            <FaShieldAlt style={{ marginRight: '0.5rem', display: 'inline' }} /> Garantia de 7 dias
           </strong>
           <p style={{ 
             margin: 0, 
@@ -848,7 +1056,7 @@ const CheckoutForm = ({
           disabled={!stripe || loading}
           className="btn-pagar"
         >
-          {loading ? 'Processando...' : `Pagar ${valorFormatado}`}
+          {loading ? 'Processando...' : `Pagar ${valorFormatadoFinal}`}
         </button>
 
         <div className="stripe-powered-by" style={{
@@ -1023,8 +1231,6 @@ const Checkout = () => {
             amount={amount}
             userId={usuario.id}
             planoId={plano.id}
-            planoNome={plano.nome}
-            valorFormatado={valorFormatado}
           />
         </Elements>
       </div>

@@ -4,7 +4,7 @@ import { mostrarAlert } from '../utils/modals';
 import { getUser } from '../services/auth';
 import AdicionarCategoriaModal from './AdicionarCategoriaModal';
 import EditarItemModal from './EditarItemModal';
-import { FaPlusCircle, FaFolderPlus, FaStore, FaCog, FaToggleOn, FaToggleOff, FaImage, FaFilePdf, FaComment } from 'react-icons/fa';
+import { FaPlusCircle, FaFolderPlus, FaStore, FaCog, FaToggleOn, FaToggleOff, FaImage, FaFilePdf, FaComment, FaExclamationTriangle } from 'react-icons/fa';
 import ModalFeedbackBeta from './ModalFeedbackBeta';
 import ModoEstudio from './ModoEstudio';
 // Dynamic imports para reduzir tamanho do bundle inicial
@@ -550,7 +550,9 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
                 borderRadius: '8px',
                 color: '#856404'
               }}>
-                <strong>⚠️ Aviso:</strong> As funções em Beta (como Modo Cardápio) estão disponíveis apenas para usuários do Plano Anual.
+                <strong>
+                  <FaExclamationTriangle style={{ marginRight: '0.5rem', display: 'inline' }} /> Aviso:
+                </strong> As funções em Beta (como Modo Cardápio) estão disponíveis apenas para usuários do Plano Anual.
               </div>
             ) : cardapioPublico ? (
               <>
@@ -599,7 +601,9 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
                 borderRadius: '8px',
                 color: '#856404'
               }}>
-                <strong>⚠️ Aviso:</strong> As funções em Beta (como Modo Compartilhar Cardápio) estão disponíveis apenas para usuários do Plano Anual.
+                <strong>
+                  <FaExclamationTriangle style={{ marginRight: '0.5rem', display: 'inline' }} /> Aviso:
+                </strong> As funções em Beta (como Modo Compartilhar Cardápio) estão disponíveis apenas para usuários do Plano Anual.
               </div>
             ) : (
               'Compartilhe seu cardápio em diferentes formatos. Ative o modo cardápio para habilitar os botões.'

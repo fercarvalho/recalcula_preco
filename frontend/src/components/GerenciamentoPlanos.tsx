@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FaPlus, FaEdit, FaTrash, FaToggleOn, FaToggleOff, FaSave, FaStar, FaGripVertical } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaToggleOn, FaToggleOff, FaSave, FaStar, FaGripVertical, FaExclamationTriangle, FaRocket } from 'react-icons/fa';
 import Modal from './Modal';
 import { mostrarAlert, mostrarConfirm, mostrarChoice } from '../utils/modals';
 import { apiService } from '../services/api';
@@ -1191,7 +1191,7 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
                 ) : (
                   <>
                     <span style={{ color: beneficio.eh_aviso ? '#ffc107' : 'inherit' }}>
-                      {beneficio.eh_aviso ? '⚠️ ' : ''}{beneficio.em_beta ? '🚀 ' : ''}{beneficio.texto}
+                      {beneficio.eh_aviso ? <><FaExclamationTriangle /> </> : ''}{beneficio.em_beta ? <><FaRocket /> </> : ''}{beneficio.texto}
                     </span>
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                       <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', cursor: 'pointer' }}>
@@ -1334,7 +1334,7 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
                       e.currentTarget.style.backgroundColor = 'white';
                     }}
                   >
-                    {beneficio.eh_aviso ? '⚠️ ' : ''}{beneficio.texto}
+                    {beneficio.eh_aviso ? <><FaExclamationTriangle /> </> : ''}{beneficio.texto}
                   </div>
                 ))}
               </div>

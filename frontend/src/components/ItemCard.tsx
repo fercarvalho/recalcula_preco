@@ -3,7 +3,7 @@ import type { Item } from '../types';
 import { apiService } from '../services/api';
 import { carregarPlataformasSync, calcularPrecoComPlataforma, carregarPlataformas } from '../utils/plataformas';
 import { mostrarAlert } from '../utils/modals';
-import { FaChevronUp, FaChevronDown, FaGripVertical, FaEdit, FaTrash } from 'react-icons/fa';
+import { FaChevronUp, FaChevronDown, FaGripVertical, FaEdit, FaTrash, FaLock } from 'react-icons/fa';
 import './ItemCard.css';
 
 interface ItemCardProps {
@@ -191,7 +191,7 @@ const ItemCard = ({ item, isSelected, onToggleSelect, onEdit, onDelete, onItemUp
                   cursor: 'pointer',
                   textDecoration: 'underline'
                 }} onClick={() => onAbrirModalPlanos?.()} title="Clique para liberar acesso">
-                  🔒
+                  <FaLock />
                 </span>
               )}
             </span>
@@ -241,8 +241,8 @@ const ItemCard = ({ item, isSelected, onToggleSelect, onEdit, onDelete, onItemUp
                       borderRadius: '8px',
                       textAlign: 'center',
                     }}>
-                      <p style={{ margin: '0 0 10px 0', color: '#856404', fontWeight: '600' }}>
-                        🔒 Acesso aos preços bloqueado
+                      <p style={{ margin: '0 0 10px 0', color: '#856404', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
+                        <FaLock /> Acesso aos preços bloqueado
                       </p>
                       <button
                         onClick={() => onAbrirModalPlanos?.()}
