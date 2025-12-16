@@ -1,35 +1,42 @@
 .login-container {
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, var(--cor-fundo, #1a1a1a) 0%, var(--cor-secundaria, #2a2a2a) 100%);
   padding: 20px;
+  box-sizing: border-box;
 }
 
 .login-box {
   background: var(--cor-secundaria, #2a2a2a);
   border-radius: 12px;
-  padding: 40px;
+  padding: 30px;
   width: 100%;
-  max-width: 400px;
+  max-width: 360px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.1);
+  box-sizing: border-box;
 }
 
 .login-header {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .login-logo {
-  width: 80px;
-  height: 80px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
   object-fit: cover;
   object-position: center;
   display: block;
@@ -39,21 +46,22 @@
 
 .login-header h1 {
   color: white;
-  margin: 0 0 10px 0;
-  font-size: 1.8rem;
+  margin: 0 0 6px 0;
+  font-size: 1.5rem;
   font-weight: 600;
 }
 
 .login-header p {
   color: rgba(255, 255, 255, 0.7);
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 14px;
+  flex-shrink: 0;
 }
 
 .login-form .form-group {
@@ -131,16 +139,16 @@
 }
 
 .btn-login {
-  padding: 14px 24px;
+  padding: 12px 24px;
   background: var(--cor-primaria, #FF6B35);
   color: white;
   border: none;
   border-radius: 6px;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .btn-login:hover:not(:disabled) {
@@ -155,7 +163,7 @@
 }
 
 .login-links {
-  margin-top: 15px;
+  margin-top: 12px;
   text-align: center;
 }
 
@@ -180,25 +188,29 @@
 }
 
 .login-footer {
-  margin-top: 20px;
+  margin-top: 12px;
   text-align: center;
-  padding-top: 20px;
+  padding-top: 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
 }
 
 .btn-criar-conta {
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.3);
   color: rgba(255, 255, 255, 0.9);
-  padding: 10px 20px;
+  padding: 12px 24px;
   border-radius: 6px;
   font-size: 0.95rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .btn-criar-conta:hover:not(:disabled) {
@@ -215,11 +227,12 @@
 
 @media (max-width: 480px) {
   .login-box {
-    padding: 30px 20px;
+    padding: 25px 20px;
+    max-width: 100%;
   }
 
   .login-header h1 {
-    font-size: 1.5rem;
+    font-size: 1.4rem;
   }
 }
 

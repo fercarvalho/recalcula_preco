@@ -164,22 +164,50 @@ async function processarWebhook(event) {
                 };
 
             case 'invoice.payment_succeeded':
-                // Pagamento de assinatura bem-sucedido
+                // Pagamento de assinatura bem-sucedido (renovação ou primeira cobrança)
                 const invoice = event.data.object;
+                const subscriptionId = invoice.subscription;
+                
+                // Buscar subscription para obter metadata
+                let subscriptionMetadata = {};
+                if (subscriptionId) {
+                    try {
+                        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+                        subscriptionMetadata = subscription.metadata || {};
+                    } catch (err) {
+                        console.error('Erro ao buscar subscription:', err);
+                    }
+                }
+                
                 return {
                     tipo: 'pagamento_assinatura',
-                    subscriptionId: invoice.subscription,
+                    subscriptionId: subscriptionId,
                     customerId: invoice.customer,
                     amountPaid: invoice.amount_paid,
+                    metadata: subscriptionMetadata,
                 };
 
             case 'invoice.payment_failed':
                 // Falha no pagamento de assinatura
                 const failedInvoice = event.data.object;
+                const failedSubscriptionId = failedInvoice.subscription;
+                
+                // Buscar subscription para obter metadata
+                let failedSubscriptionMetadata = {};
+                if (failedSubscriptionId) {
+                    try {
+                        const failedSubscription = await stripe.subscriptions.retrieve(failedSubscriptionId);
+                        failedSubscriptionMetadata = failedSubscription.metadata || {};
+                    } catch (err) {
+                        console.error('Erro ao buscar subscription:', err);
+                    }
+                }
+                
                 return {
                     tipo: 'pagamento_falhou',
-                    subscriptionId: failedInvoice.subscription,
+                    subscriptionId: failedSubscriptionId,
                     customerId: failedInvoice.customer,
+                    metadata: failedSubscriptionMetadata,
                 };
 
             case 'payment_intent.succeeded':

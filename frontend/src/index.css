@@ -16,3 +16,72 @@ body {
   min-height: 100vh;
   background: var(--cor-fundo, #1a1a1a);
 }
+
+/* Garantir que inputs e selects tenham fundo branco por padrão e contorno cinza uniforme */
+/* EXCETO para campos em áreas escuras que usam a classe .form-input-dark */
+input[type="text"]:not(.form-input-dark),
+input[type="number"]:not(.form-input-dark),
+input[type="email"]:not(.form-input-dark),
+input[type="password"]:not(.form-input-dark),
+input[type="date"]:not(.form-input-dark),
+input[type="tel"]:not(.form-input-dark),
+textarea:not(.form-input-dark),
+select:not(.form-input-dark) {
+  background: white !important;
+  color: #333 !important;
+  border: 1px solid #ced4da !important;
+  border-radius: 4px;
+}
+
+/* Placeholders em cinza para campos brancos */
+input[type="text"]:not(.form-input-dark)::placeholder,
+input[type="number"]:not(.form-input-dark)::placeholder,
+input[type="email"]:not(.form-input-dark)::placeholder,
+input[type="password"]:not(.form-input-dark)::placeholder,
+input[type="date"]:not(.form-input-dark)::placeholder,
+input[type="tel"]:not(.form-input-dark)::placeholder,
+textarea:not(.form-input-dark)::placeholder {
+  color: #6c757d !important;
+  opacity: 1;
+}
+
+input[type="text"]:not(.form-input-dark):disabled,
+input[type="number"]:not(.form-input-dark):disabled,
+input[type="email"]:not(.form-input-dark):disabled,
+input[type="password"]:not(.form-input-dark):disabled,
+input[type="date"]:not(.form-input-dark):disabled,
+input[type="tel"]:not(.form-input-dark):disabled,
+textarea:not(.form-input-dark):disabled,
+select:not(.form-input-dark):disabled {
+  background: #f5f5f5 !important;
+  color: #666 !important;
+}
+
+/* Classe para campos em áreas escuras (login, modais escuros, checkout) */
+.form-input-dark,
+.form-input-dark[type="text"],
+.form-input-dark[type="number"],
+.form-input-dark[type="email"],
+.form-input-dark[type="password"],
+.form-input-dark[type="date"],
+.form-input-dark[type="tel"],
+.form-input-dark[type="tel"],
+textarea.form-input-dark,
+select.form-input-dark {
+  background: rgba(0, 0, 0, 0.3) !important;
+  color: white !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 6px;
+}
+
+.form-input-dark::placeholder {
+  color: rgba(255, 255, 255, 0.4) !important;
+  opacity: 1;
+}
+
+.form-input-dark:disabled {
+  background: rgba(0, 0, 0, 0.5) !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+  opacity: 0.6;
+  cursor: not-allowed;
+}

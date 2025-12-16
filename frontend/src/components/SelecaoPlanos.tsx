@@ -147,11 +147,8 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
       const isUnico = tipoLower === 'unico' || nomeLower.includes('único') || nomeLower.includes('unico');
       
       if (isRecorrente) {
-        // Para assinaturas anuais, ainda usar checkout tradicional (redirecionamento)
-        // TODO: Implementar checkout transparente para assinaturas no futuro
-        setCarregando('anual');
-        const { url } = await apiService.criarCheckoutAnual(plano.stripe_price_id || undefined);
-        window.location.href = url;
+        // Para assinaturas anuais, usar checkout transparente
+        window.location.href = `/checkout-assinatura?planoId=${plano.id}`;
       } else if (isUnico) {
         // Para pagamentos únicos, redirecionar para página de checkout
         window.location.href = `/checkout?planoId=${plano.id}`;

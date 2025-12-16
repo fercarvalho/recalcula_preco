@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FaCheck, FaChevronDown, FaChevronUp, FaCalculator, FaRocket, FaWhatsapp, FaDollarSign, FaExclamationTriangle, FaShieldAlt, FaHeart } from 'react-icons/fa';
+import { FaCheck, FaChevronDown, FaChevronUp, FaCalculator, FaRocket, FaWhatsapp, FaExclamationTriangle, FaShieldAlt, FaHeart } from 'react-icons/fa';
 import * as FaIcons from 'react-icons/fa';
 import RegistroModal from './RegistroModal';
 import { apiService } from '../services/api';
@@ -595,11 +595,11 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
                       <div className="plano-header-landing">
                         <h3>{plano.nome}</h3>
                         <div className="plano-preco-landing">
-                          {temDesconto && (
-                            <div className="preco-original-landing">
+                          <div className="preco-original-landing" style={{ minHeight: temDesconto ? 'auto' : '1.5rem' }}>
+                            {temDesconto && (
                               <span className="preco-original-texto">De: R$ {formatarValor(plano.valor)}</span>
-                            </div>
-                          )}
+                            )}
+                          </div>
                           <span className="preco-valor-landing">
                             R$ {formatarValor(valorComDesconto)}
                           </span>
@@ -620,9 +620,31 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
                           )}
                         </div>
                         {plano.valor_total && plano.valor_total > 0 && plano.mostrar_valor_total && (
-                          <p className="economia-texto">
-                            <FaDollarSign /> Total: R$ {formatarValor(plano.valor_total)}
-                            {plano.tipo === 'recorrente' && plano.periodo === 'mensal' && ' por ano'}
+                          <p className="economia-texto" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                            {temDesconto ? (
+                              <>
+                                <span style={{ textDecoration: 'line-through', color: 'rgba(255, 255, 255, 0.5)' }}>
+                                  Total: R$ {formatarValor(plano.valor_total)}
+                                </span>
+                                <span style={{ color: 'var(--cor-primaria, #FF6B35)', fontWeight: 'bold' }}>
+                                  Total: R$ {formatarValor(
+                                    plano.tipo === 'parcelado' 
+                                      ? (valorComDesconto * 12) 
+                                      : plano.tipo === 'recorrente' && plano.periodo === 'mensal'
+                                      ? (valorComDesconto * 12)
+                                      : valorComDesconto
+                                  )}
+                                  {plano.tipo === 'recorrente' && plano.periodo === 'mensal' && ' por ano'}
+                                  {plano.tipo === 'parcelado' && ' por ano'}
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                Total: R$ {formatarValor(plano.valor_total)}
+                                {plano.tipo === 'recorrente' && plano.periodo === 'mensal' && ' por ano'}
+                                {plano.tipo === 'parcelado' && ' por ano'}
+                              </>
+                            )}
                           </p>
                         )}
                         {plano.frase_reforco && (
@@ -679,8 +701,9 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
               <div style={{ 
                 width: '100%', 
                 clear: 'both', 
-                marginTop: '2rem',
-                marginBottom: '2rem'
+                marginTop: '4rem',
+                marginBottom: '2rem',
+                paddingTop: '2rem'
               }}>
                 <div className="garantia-texto" style={{
                   marginTop: '0',

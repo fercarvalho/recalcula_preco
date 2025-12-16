@@ -255,13 +255,21 @@
   color: #dc3545;
 }
 
-.form-input {
+.form-input,
+.form-input select {
   width: 100%;
   padding: 10px;
-  border: 2px solid #e9ecef;
+  border: 1px solid #ced4da;
   border-radius: 4px;
   font-size: 14px;
   transition: border-color 0.2s ease;
+  background: white !important;
+  color: #333 !important;
+}
+
+.form-input::placeholder {
+  color: #6c757d !important;
+  opacity: 1;
 }
 
 .form-input:focus {

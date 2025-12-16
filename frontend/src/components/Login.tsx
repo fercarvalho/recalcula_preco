@@ -75,7 +75,7 @@ const Login = ({ onLoginSuccess }: LoginProps) => {
             <input
               id="username"
               type="text"
-              className="form-input"
+              className="form-input form-input-dark"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Digite seu usuário ou email"
@@ -89,7 +89,7 @@ const Login = ({ onLoginSuccess }: LoginProps) => {
               <input
                 id="senha"
                 type={showSenha ? 'text' : 'password'}
-                className="form-input"
+                className="form-input form-input-dark"
                 value={senha}
                 onChange={(e) => setSenha(e.target.value)}
                 placeholder="Digite sua senha"

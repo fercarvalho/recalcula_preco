@@ -15,7 +15,7 @@ import { mostrarAlert } from '../utils/modals';
 import { validarCPF, formatarCPF as formatarCPFUtil } from '../utils/validacao';
 import './Checkout.css';
 
-// Lista de países (mesma do AlterarDadosModal)
+// Lista de países (mesma do Checkout.tsx)
 const PAISES = [
   'Brasil', 'Afeganistão', 'África do Sul', 'Albânia', 'Alemanha', 'Andorra', 'Angola', 'Antígua e Barbuda',
   'Arábia Saudita', 'Argélia', 'Argentina', 'Armênia', 'Austrália', 'Áustria', 'Azerbaijão', 'Bahamas',
@@ -60,22 +60,31 @@ interface FaturamentoData {
   nomeCompleto: string;
 }
 
-const CheckoutForm = ({ 
+const CheckoutAssinaturaForm = ({ 
   amount, 
-  userId, 
-  planoId
+  planoId,
+  customerId,
+  onCustomerCreated,
+  onCupomAplicado,
+  valorAnualComDesconto,
+  valorMensalComDesconto
 }: { 
   amount: number; 
-  userId: number; 
   planoId: number;
+  customerId: string | null;
+  onCustomerCreated: (id: string) => void;
+  onCupomAplicado?: (cupom: any) => void;
+  valorAnualComDesconto?: number;
+  valorMensalComDesconto?: number;
 }) => {
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [buscandoCep, setBuscandoCep] = useState(false);
+  const [criandoCustomer, setCriandoCustomer] = useState(false);
 
-  // Dados do formulário
+  // Dados do formulário (mesmos do Checkout.tsx)
   const [faturamento, setFaturamento] = useState<FaturamentoData>({
     cpf: '',
     nomeCompleto: '',
@@ -93,47 +102,56 @@ const CheckoutForm = ({
   const [cupom, setCupom] = useState('');
   const [cupomAplicado, setCupomAplicado] = useState<any>(null);
   const [validandoCupom, setValidandoCupom] = useState(false);
-  const [valorOriginal, setValorOriginal] = useState(amount);
-  const [valorFinal, setValorFinal] = useState(amount);
+  // Usar valorAnualComDesconto se fornecido, senão usar amount
+  const valorBase = valorAnualComDesconto ? Math.round(valorAnualComDesconto * 100) : amount;
+  const [valorFinal, setValorFinal] = useState(valorBase);
   const [naoPossuiCpf, setNaoPossuiCpf] = useState(false);
   const [naoResidoBrasil, setNaoResidoBrasil] = useState(false);
   const [pais, setPais] = useState('Brasil');
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
-  // Validações
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  // Inicializar valores quando amount mudar
+  // Criar/obter Customer quando componente montar
   useEffect(() => {
-    setValorOriginal(amount);
-    setValorFinal(amount);
-    setCupomAplicado(null);
-    setCupom('');
-  }, [amount]);
-
-  // Buscar dados do usuário ao carregar
-  useEffect(() => {
-    const carregarDadosUsuario = async () => {
-      try {
-        const usuario = await apiService.obterDadosUsuario();
-        if (usuario) {
-          setFaturamento(prev => ({
-            ...prev,
-            nomeCompleto: usuario.nome || '',
-          }));
-          if (usuario.cep) setEndereco(prev => ({ ...prev, cep: usuario.cep }));
-          if (usuario.endereco) setEndereco(prev => ({ ...prev, logradouro: usuario.endereco }));
-          if (usuario.numero) setEndereco(prev => ({ ...prev, numero: usuario.numero }));
-          if (usuario.complemento) setEndereco(prev => ({ ...prev, complemento: usuario.complemento }));
-          if (usuario.bairro) setEndereco(prev => ({ ...prev, bairro: usuario.bairro }));
-          if (usuario.cidade) setEndereco(prev => ({ ...prev, cidade: usuario.cidade }));
-          if (usuario.estado) setEndereco(prev => ({ ...prev, uf: usuario.estado }));
-        }
-      } catch (error) {
-        console.error('Erro ao carregar dados do usuário:', error);
-      }
-    };
-    carregarDadosUsuario();
+    if (!customerId && !criandoCustomer) {
+      criarCustomer();
+    }
   }, []);
+
+  const criarCustomer = async () => {
+    setCriandoCustomer(true);
+    try {
+      const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
+      const token = localStorage.getItem('calculadora_auth_token');
+      const usuario = getUser();
+
+      const response = await fetch(`${API_BASE}/api/stripe/create-customer`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userId: usuario?.id,
+          email: usuario?.email,
+          nome: faturamento.nomeCompleto || usuario?.username || '',
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao criar customer');
+      }
+
+      const data = await response.json();
+      if (data.customerId) {
+        onCustomerCreated(data.customerId);
+      }
+    } catch (error) {
+      console.error('Erro ao criar customer:', error);
+      await mostrarAlert('Erro', 'Erro ao processar. Tente novamente.');
+    } finally {
+      setCriandoCustomer(false);
+    }
+  };
 
   // Buscar CEP
   const buscarCep = async (cep: string) => {
@@ -157,6 +175,7 @@ const CheckoutForm = ({
         cidade: data.localidade || '',
         uf: data.uf || '',
       }));
+
       setErrors(prev => {
         const newErrors = { ...prev };
         delete newErrors.cep;
@@ -170,33 +189,39 @@ const CheckoutForm = ({
     }
   };
 
-  // Validar formulário
-  const validarFormulario = (): boolean => {
-    const newErrors: Record<string, string> = {};
+  // Validação do formulário (mesma do Checkout.tsx)
+  const validarFormulario = () => {
+    const newErrors: { [key: string]: string } = {};
 
-    // Validação de faturamento
-    if (!faturamento.cpf || faturamento.cpf.replace(/\D/g, '').length !== 11) {
+    if (!naoPossuiCpf && !faturamento.cpf) {
+      newErrors.cpf = 'CPF é obrigatório';
+    } else if (!naoPossuiCpf && faturamento.cpf && !validarCPF(faturamento.cpf)) {
       newErrors.cpf = 'CPF inválido';
     }
+
     if (!faturamento.nomeCompleto || faturamento.nomeCompleto.trim().length < 3) {
       newErrors.nomeCompleto = 'Nome completo é obrigatório';
     }
 
-    // Validação de endereço
-    if (!endereco.cep || endereco.cep.replace(/\D/g, '').length !== 8) {
-      newErrors.cep = 'CEP inválido';
-    }
-    if (!endereco.numero || endereco.numero.trim().length === 0) {
-      newErrors.numero = 'Número é obrigatório';
-    }
-    if (!endereco.cidade || endereco.cidade.trim().length === 0) {
-      newErrors.cidade = 'Cidade é obrigatória';
-    }
-    if (!endereco.uf || endereco.uf.trim().length !== 2) {
-      newErrors.uf = 'UF é obrigatória';
+    if (!naoResidoBrasil) {
+      if (!endereco.cep || endereco.cep.replace(/\D/g, '').length !== 8) {
+        newErrors.cep = 'CEP inválido';
+      }
+      if (!endereco.numero || endereco.numero.trim().length === 0) {
+        newErrors.numero = 'Número é obrigatório';
+      }
+      if (!endereco.cidade || endereco.cidade.trim().length === 0) {
+        newErrors.cidade = 'Cidade é obrigatória';
+      }
+      if (!endereco.uf || endereco.uf.length !== 2) {
+        newErrors.uf = 'UF é obrigatória';
+      }
+    } else {
+      if (!pais || pais.trim().length === 0) {
+        newErrors.pais = 'País é obrigatório';
+      }
     }
 
-    // Validação de cartão
     if (!nomeCartao || nomeCartao.trim().length < 3) {
       newErrors.nomeCartao = 'Nome no cartão é obrigatório';
     }
@@ -205,7 +230,7 @@ const CheckoutForm = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  // Validar e aplicar cupom
+  // Validar e aplicar cupom (mesma do Checkout.tsx)
   const handleValidarCupom = async () => {
     if (!cupom.trim()) {
       return;
@@ -251,26 +276,25 @@ const CheckoutForm = ({
       if (resultado.valido) {
         setCupomAplicado(resultado);
         setValorFinal(resultado.valorComDesconto);
+        if (onCupomAplicado) {
+          onCupomAplicado(resultado);
+        }
         await mostrarAlert('Sucesso', `Cupom aplicado! Desconto de ${resultado.tipo === 'percentual' ? `${resultado.desconto}%` : `R$ ${(resultado.desconto / 100).toFixed(2).replace('.', ',')}`}`);
       } else {
         setCupomAplicado(null);
-        setValorFinal(amount);
         await mostrarAlert('Erro', resultado.error || 'Código promocional inválido');
       }
     } catch (error: any) {
       console.error('Erro ao validar cupom:', error);
       await mostrarAlert('Erro', error.message || 'Erro ao validar código promocional');
       setCupomAplicado(null);
-      setValorFinal(amount);
     } finally {
       setValidandoCupom(false);
     }
   };
 
-  // Formatar CPF usando a função utilitária
   const formatarCPF = formatarCPFUtil;
 
-  // Formatar CEP
   const formatarCEP = (value: string) => {
     const cep = value.replace(/\D/g, '');
     if (cep.length <= 8) {
@@ -286,6 +310,11 @@ const CheckoutForm = ({
       return;
     }
 
+    if (!customerId) {
+      await mostrarAlert('Erro', 'Erro ao processar. Tente novamente.');
+      return;
+    }
+
     if (!validarFormulario()) {
       await mostrarAlert('Erro', 'Por favor, preencha todos os campos obrigatórios corretamente.');
       return;
@@ -295,40 +324,19 @@ const CheckoutForm = ({
     setError(null);
 
     try {
-      // 1. Criar Payment Intent no backend
       const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
       const token = localStorage.getItem('calculadora_auth_token');
-      
-      const response = await fetch(`${API_BASE}/api/stripe/create-payment-intent`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          amount: valorFinal, // Usar valor com desconto
-          userId,
-          planoId,
-          couponId: cupomAplicado?.couponId || null, // Incluir couponId se houver
-        }),
-      });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Erro ao criar intenção de pagamento' }));
-        throw new Error(errorData.error || 'Erro ao criar intenção de pagamento');
-      }
-
-      const { clientSecret } = await response.json();
-
-      // 2. Confirmar pagamento com Stripe
+      // 1. Criar PaymentMethod
       const cardNumberElement = elements.getElement(CardNumberElement);
       if (!cardNumberElement) {
         throw new Error('Elemento de número do cartão não encontrado');
       }
 
-      // Preparar billing_details baseado em se reside no Brasil
+      // Preparar billing_details
       const billingDetails: any = {
         name: nomeCartao,
+        email: getUser()?.email,
       };
       
       if (!naoResidoBrasil) {
@@ -341,84 +349,134 @@ const CheckoutForm = ({
           country: 'BR',
         };
       } else {
-        // Para estrangeiros, usar código do país baseado no nome
         const codigoPais = pais === 'Estados Unidos' ? 'US' : 
                           pais === 'Reino Unido' ? 'GB' : 
-                          pais === 'Países Baixos' ? 'NL' : 'BR'; // Fallback
+                          pais === 'Países Baixos' ? 'NL' : 'BR';
         billingDetails.address = {
           country: codigoPais,
         };
       }
 
-      const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(
-        clientSecret,
-        {
-          payment_method: {
-            card: cardNumberElement,
-            billing_details: billingDetails,
-          },
+      const { paymentMethod, error: pmError } = await stripe.createPaymentMethod({
+        type: 'card',
+        card: cardNumberElement,
+        billing_details: billingDetails,
+      });
+
+      if (pmError || !paymentMethod) {
+        throw new Error(pmError?.message || 'Erro ao processar cartão');
+      }
+
+      // 2. Buscar plano para obter priceId
+      const planoResponse = await fetch(`${API_BASE}/api/planos/${planoId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!planoResponse.ok) {
+        throw new Error('Erro ao buscar informações do plano');
+      }
+
+      const plano = await planoResponse.json();
+
+      if (!plano.stripe_price_id) {
+        throw new Error('Plano não possui price_id configurado');
+      }
+
+      // 3. Criar Subscription
+      const subscriptionResponse = await fetch(`${API_BASE}/api/stripe/create-subscription`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          customerId,
+          paymentMethodId: paymentMethod.id,
+          priceId: plano.stripe_price_id,
+          planoId: plano.id,
+          couponId: cupomAplicado?.couponId || null,
+        }),
+      });
+
+      if (!subscriptionResponse.ok) {
+        const errorData = await subscriptionResponse.json().catch(() => ({ error: 'Erro ao criar assinatura' }));
+        throw new Error(errorData.error || 'Erro ao criar assinatura');
+      }
+
+      const subscriptionData = await subscriptionResponse.json();
+
+      // 4. Se houver clientSecret, confirmar pagamento
+      if (subscriptionData.clientSecret) {
+        const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(
+          subscriptionData.clientSecret,
+          {
+            payment_method: paymentMethod.id,
+          }
+        );
+
+        if (confirmError) {
+          throw new Error(confirmError.message || 'Erro ao confirmar pagamento');
         }
-      );
 
-      if (confirmError) {
-        setError(confirmError.message || 'Erro ao processar pagamento');
-        await mostrarAlert('Erro', confirmError.message || 'Erro ao processar pagamento');
-        } else if (paymentIntent && paymentIntent.status === 'succeeded') {
-        // Pagamento bem-sucedido - confirmar e salvar no backend
-        try {
-          // Preparar dados do checkout para salvar no cadastro
-          const dadosCheckout: any = {
-            nomeCompleto: faturamento.nomeCompleto,
-          };
-          
-          // CPF (apenas se não for estrangeiro)
-          if (!naoPossuiCpf && faturamento.cpf) {
-            dadosCheckout.cpf = faturamento.cpf;
-          }
-          
-          // Endereço (depende se reside no Brasil)
-          if (!naoResidoBrasil) {
-            dadosCheckout.cep = endereco.cep;
-            dadosCheckout.logradouro = endereco.logradouro;
-            dadosCheckout.numero = endereco.numero;
-            dadosCheckout.complemento = endereco.complemento;
-            dadosCheckout.bairro = endereco.bairro;
-            dadosCheckout.cidade = endereco.cidade;
-            dadosCheckout.uf = endereco.uf;
-            dadosCheckout.pais = 'Brasil';
-          } else {
-            // Apenas país para estrangeiros
-            dadosCheckout.pais = pais;
-          }
-
-          const confirmResponse = await fetch(`${API_BASE}/api/stripe/confirmar-pagamento`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              paymentIntentId: paymentIntent.id,
-              dadosCheckout: dadosCheckout,
-            }),
-          });
-
-          if (!confirmResponse.ok) {
-            const errorData = await confirmResponse.json().catch(() => ({ error: 'Erro ao confirmar pagamento' }));
-            throw new Error(errorData.error || 'Erro ao confirmar pagamento');
-          }
-
-          // Pagamento confirmado e salvo com sucesso
-          await mostrarAlert('Sucesso', 'Pagamento processado com sucesso!');
-          window.location.href = '/';
-        } catch (confirmErr: any) {
-          const errorMessage = confirmErr.message || 'Erro ao confirmar pagamento';
-          setError(errorMessage);
-          await mostrarAlert('Erro', errorMessage);
+        if (paymentIntent && paymentIntent.status !== 'succeeded') {
+          throw new Error('Pagamento não foi confirmado');
         }
       }
+
+      // 5. Confirmar assinatura no backend
+      const confirmResponse = await fetch(`${API_BASE}/api/stripe/confirmar-assinatura`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          subscriptionId: subscriptionData.subscriptionId,
+          paymentIntentId: subscriptionData.clientSecret ? undefined : undefined,
+        }),
+      });
+
+      if (!confirmResponse.ok) {
+        const errorData = await confirmResponse.json().catch(() => ({ error: 'Erro ao confirmar assinatura' }));
+        throw new Error(errorData.error || 'Erro ao confirmar assinatura');
+      }
+
+      // 6. Salvar dados do checkout no perfil (se necessário)
+      try {
+        const dadosCheckout: any = {
+          nomeCompleto: faturamento.nomeCompleto,
+        };
+        
+        if (!naoPossuiCpf && faturamento.cpf) {
+          dadosCheckout.cpf = faturamento.cpf;
+        }
+        
+        if (!naoResidoBrasil) {
+          dadosCheckout.cep = endereco.cep;
+          dadosCheckout.logradouro = endereco.logradouro;
+          dadosCheckout.numero = endereco.numero;
+          dadosCheckout.complemento = endereco.complemento;
+          dadosCheckout.bairro = endereco.bairro;
+          dadosCheckout.cidade = endereco.cidade;
+          dadosCheckout.uf = endereco.uf;
+          dadosCheckout.pais = 'Brasil';
+        } else {
+          dadosCheckout.pais = pais;
+        }
+
+        await apiService.atualizarDadosUsuario(dadosCheckout);
+      } catch (err) {
+        console.error('Erro ao salvar dados do checkout:', err);
+        // Não bloquear o fluxo se falhar ao salvar dados
+      }
+
+      // 7. Sucesso!
+      await mostrarAlert('Sucesso', 'Assinatura criada com sucesso!');
+      window.location.href = '/';
     } catch (err: any) {
-      const errorMessage = err.message || 'Erro ao processar pagamento';
+      const errorMessage = err.message || 'Erro ao processar assinatura';
       setError(errorMessage);
       await mostrarAlert('Erro', errorMessage);
     } finally {
@@ -426,17 +484,30 @@ const CheckoutForm = ({
     }
   };
 
-  const valorFormatadoOriginal = `R$ ${(valorOriginal / 100).toFixed(2).replace('.', ',')}`;
+  // Calcular valor mensal formatado para o botão
+  // Se há cupom aplicado, calcular valor mensal com cupom, senão usar valorMensalComDesconto
+  let valorMensalParaBotao = valorMensalComDesconto || (valorBase / 12 / 100);
+  if (cupomAplicado) {
+    // Se há cupom, o valorFinal já está com o desconto do cupom aplicado (em centavos)
+    // Converter para mensal: valorFinal / 12 / 100
+    valorMensalParaBotao = valorFinal / 12 / 100;
+  }
+  const valorFormatadoMensal = `R$ ${valorMensalParaBotao.toFixed(2).replace('.', ',')}`;
+  
   const valorFormatadoFinal = `R$ ${(valorFinal / 100).toFixed(2).replace('.', ',')}`;
+  const valorFormatadoOriginal = `R$ ${(valorBase / 100).toFixed(2).replace('.', ',')}`;
   const descontoFormatado = cupomAplicado 
     ? cupomAplicado.tipo === 'percentual'
       ? `${cupomAplicado.desconto}%`
       : `R$ ${(cupomAplicado.desconto / 100).toFixed(2).replace('.', ',')}`
     : null;
 
+  // Reutilizar o mesmo JSX do Checkout.tsx (copiar seções de código promocional, faturamento, endereço, cartão)
+  // Por questão de espaço, vou criar uma versão simplificada que reutiliza a mesma estrutura
+  
   return (
     <form onSubmit={handleSubmit} className="checkout-form">
-      {/* Seção: Código Promocional */}
+      {/* Seção: Código Promocional - Mesma do Checkout.tsx */}
       <div className="checkout-section" style={{
         backgroundColor: 'var(--cor-primaria, #FF6B35)',
         border: '2px solid var(--cor-primaria, #FF6B35)',
@@ -466,12 +537,6 @@ const CheckoutForm = ({
               disabled={validandoCupom || !!cupomAplicado}
               style={{
                 flex: 1,
-                padding: '0.75rem',
-                background: 'rgba(0, 0, 0, 0.4)',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                borderRadius: '6px',
-                color: 'white',
-                fontSize: '1rem',
               }}
             />
             {!cupomAplicado ? (
@@ -499,7 +564,10 @@ const CheckoutForm = ({
                 onClick={() => {
                   setCupomAplicado(null);
                   setCupom('');
-                  setValorFinal(amount);
+                  setValorFinal(valorBase);
+                  if (onCupomAplicado) {
+                    onCupomAplicado(null);
+                  }
                 }}
                 style={{
                   padding: '0.75rem 1.5rem',
@@ -519,7 +587,6 @@ const CheckoutForm = ({
           </div>
         </div>
 
-        {/* Resumo do valor e cupom aplicado */}
         {cupomAplicado && (
           <div style={{
             marginTop: '1rem',
@@ -582,7 +649,6 @@ const CheckoutForm = ({
               const formatted = formatarCPF(e.target.value);
               setFaturamento(prev => ({ ...prev, cpf: formatted }));
               
-              // Validação em tempo real
               if (naoPossuiCpf) {
                 setErrors(prev => {
                   const newErrors = { ...prev };
@@ -604,14 +670,12 @@ const CheckoutForm = ({
                   });
                 }
               } else if (cpfLimpo.length > 0) {
-                // Ainda digitando, não mostrar erro ainda
                 setErrors(prev => {
                   const newErrors = { ...prev };
                   delete newErrors.cpf;
                   return newErrors;
                 });
               } else {
-                // Campo vazio, remover erro
                 setErrors(prev => {
                   const newErrors = { ...prev };
                   delete newErrors.cpf;
@@ -683,155 +747,155 @@ const CheckoutForm = ({
               <label htmlFor="cep">
                 CEP <span className="required">*</span>
               </label>
-          <div className="input-with-action">
-            <input
-              type="text"
-              id="cep"
-              className={`form-input-dark ${errors.cep ? 'input-error' : ''}`}
-              value={endereco.cep}
-              onChange={(e) => {
-                const formatted = formatarCEP(e.target.value);
-                setEndereco(prev => ({ ...prev, cep: formatted }));
-                if (errors.cep) {
-                  setErrors(prev => {
-                    const newErrors = { ...prev };
-                    delete newErrors.cep;
-                    return newErrors;
-                  });
-                }
-              }}
-              onBlur={(e) => {
-                const cepLimpo = e.target.value.replace(/\D/g, '');
-                if (cepLimpo.length === 8) {
-                  buscarCep(cepLimpo);
-                }
-              }}
-              placeholder="00000-000"
-              maxLength={9}
-              disabled={buscandoCep || naoResidoBrasil}
-            />
-            {buscandoCep && <span className="loading-indicator">Buscando...</span>}
-          </div>
-          {errors.cep && <span className="error-text">{errors.cep}</span>}
-          <small className="form-hint">Digite o CEP para preenchimento automático do endereço</small>
-        </div>
+              <div className="input-with-action">
+                <input
+                  type="text"
+                  id="cep"
+                  className={`form-input-dark ${errors.cep ? 'input-error' : ''}`}
+                  value={endereco.cep}
+                  onChange={(e) => {
+                    const formatted = formatarCEP(e.target.value);
+                    setEndereco(prev => ({ ...prev, cep: formatted }));
+                    if (errors.cep) {
+                      setErrors(prev => {
+                        const newErrors = { ...prev };
+                        delete newErrors.cep;
+                        return newErrors;
+                      });
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const cepLimpo = e.target.value.replace(/\D/g, '');
+                    if (cepLimpo.length === 8) {
+                      buscarCep(cepLimpo);
+                    }
+                  }}
+                  placeholder="00000-000"
+                  maxLength={9}
+                  disabled={buscandoCep || naoResidoBrasil}
+                />
+                {buscandoCep && <span className="loading-indicator">Buscando...</span>}
+              </div>
+              {errors.cep && <span className="error-text">{errors.cep}</span>}
+              <small className="form-hint">Digite o CEP para preenchimento automático do endereço</small>
+            </div>
 
-        <div className="form-row">
-          <div className="form-group form-group-large">
-            <label htmlFor="logradouro">Logradouro</label>
-            <input
-              type="text"
-              id="logradouro"
-              className="form-input-dark"
-              value={endereco.logradouro}
-              onChange={(e) => setEndereco(prev => ({ ...prev, logradouro: e.target.value }))}
-              placeholder="Rua, Avenida, etc."
-              disabled={naoResidoBrasil}
-            />
-          </div>
-          <div className="form-group form-group-small">
-            <label htmlFor="numero">
-              Número <span className="required">*</span>
-            </label>
-            <input
-              type="text"
-              id="numero"
-              className={`form-input-dark ${errors.numero ? 'input-error' : ''}`}
-              value={endereco.numero}
-              onChange={(e) => {
-                setEndereco(prev => ({ ...prev, numero: e.target.value }));
-                if (errors.numero) {
-                  setErrors(prev => {
-                    const newErrors = { ...prev };
-                    delete newErrors.numero;
-                    return newErrors;
-                  });
-                }
-              }}
-              placeholder="123"
-              disabled={naoResidoBrasil}
-            />
-            {errors.numero && <span className="error-text">{errors.numero}</span>}
-          </div>
-        </div>
+            <div className="form-row">
+              <div className="form-group form-group-large">
+                <label htmlFor="logradouro">Logradouro</label>
+                <input
+                  type="text"
+                  id="logradouro"
+                  className="form-input-dark"
+                  value={endereco.logradouro}
+                  onChange={(e) => setEndereco(prev => ({ ...prev, logradouro: e.target.value }))}
+                  placeholder="Rua, Avenida, etc."
+                  disabled={naoResidoBrasil}
+                />
+              </div>
+              <div className="form-group form-group-small">
+                <label htmlFor="numero">
+                  Número <span className="required">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="numero"
+                  className={`form-input-dark ${errors.numero ? 'input-error' : ''}`}
+                  value={endereco.numero}
+                  onChange={(e) => {
+                    setEndereco(prev => ({ ...prev, numero: e.target.value }));
+                    if (errors.numero) {
+                      setErrors(prev => {
+                        const newErrors = { ...prev };
+                        delete newErrors.numero;
+                        return newErrors;
+                      });
+                    }
+                  }}
+                  placeholder="123"
+                  disabled={naoResidoBrasil}
+                />
+                {errors.numero && <span className="error-text">{errors.numero}</span>}
+              </div>
+            </div>
 
-        <div className="form-group">
-          <label htmlFor="complemento">Complemento</label>
-            <input
-              type="text"
-              id="complemento"
-              className="form-input-dark"
-              value={endereco.complemento}
-              onChange={(e) => setEndereco(prev => ({ ...prev, complemento: e.target.value }))}
-              placeholder="Apto, Bloco, etc."
-              disabled={naoResidoBrasil}
-            />
-        </div>
+            <div className="form-group">
+              <label htmlFor="complemento">Complemento</label>
+              <input
+                type="text"
+                id="complemento"
+                className="form-input-dark"
+                value={endereco.complemento}
+                onChange={(e) => setEndereco(prev => ({ ...prev, complemento: e.target.value }))}
+                placeholder="Apto, Bloco, etc."
+                disabled={naoResidoBrasil}
+              />
+            </div>
 
-        <div className="form-row">
-          <div className="form-group">
-            <label htmlFor="bairro">Bairro</label>
-            <input
-              type="text"
-              id="bairro"
-              className="form-input-dark"
-              value={endereco.bairro}
-              onChange={(e) => setEndereco(prev => ({ ...prev, bairro: e.target.value }))}
-              placeholder="Seu bairro"
-              disabled={naoResidoBrasil}
-            />
-          </div>
-          <div className="form-group">
-            <label htmlFor="cidade">
-              Cidade <span className="required">*</span>
-            </label>
-            <input
-              type="text"
-              id="cidade"
-              className={`form-input-dark ${errors.cidade ? 'input-error' : ''}`}
-              value={endereco.cidade}
-              onChange={(e) => {
-                setEndereco(prev => ({ ...prev, cidade: e.target.value }));
-                if (errors.cidade) {
-                  setErrors(prev => {
-                    const newErrors = { ...prev };
-                    delete newErrors.cidade;
-                    return newErrors;
-                  });
-                }
-              }}
-              placeholder="Sua cidade"
-              disabled={naoResidoBrasil}
-            />
-            {errors.cidade && <span className="error-text">{errors.cidade}</span>}
-          </div>
-          <div className="form-group form-group-small">
-            <label htmlFor="uf">
-              UF <span className="required">*</span>
-            </label>
-            <input
-              type="text"
-              id="uf"
-              className={`form-input-dark ${errors.uf ? 'input-error' : ''}`}
-              value={endereco.uf}
-              onChange={(e) => {
-                const uf = e.target.value.toUpperCase().substring(0, 2);
-                setEndereco(prev => ({ ...prev, uf }));
-                if (errors.uf) {
-                  setErrors(prev => {
-                    const newErrors = { ...prev };
-                    delete newErrors.uf;
-                    return newErrors;
-                  });
-                }
-              }}
-              placeholder="SP"
-              maxLength={2}
-              disabled={naoResidoBrasil}
-            />
-            {errors.uf && <span className="error-text">{errors.uf}</span>}
-          </div>
-        </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="bairro">Bairro</label>
+                <input
+                  type="text"
+                  id="bairro"
+                  className="form-input-dark"
+                  value={endereco.bairro}
+                  onChange={(e) => setEndereco(prev => ({ ...prev, bairro: e.target.value }))}
+                  placeholder="Seu bairro"
+                  disabled={naoResidoBrasil}
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="cidade">
+                  Cidade <span className="required">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="cidade"
+                  className={`form-input-dark ${errors.cidade ? 'input-error' : ''}`}
+                  value={endereco.cidade}
+                  onChange={(e) => {
+                    setEndereco(prev => ({ ...prev, cidade: e.target.value }));
+                    if (errors.cidade) {
+                      setErrors(prev => {
+                        const newErrors = { ...prev };
+                        delete newErrors.cidade;
+                        return newErrors;
+                      });
+                    }
+                  }}
+                  placeholder="Sua cidade"
+                  disabled={naoResidoBrasil}
+                />
+                {errors.cidade && <span className="error-text">{errors.cidade}</span>}
+              </div>
+              <div className="form-group form-group-small">
+                <label htmlFor="uf">
+                  UF <span className="required">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="uf"
+                  className={`form-input-dark ${errors.uf ? 'input-error' : ''}`}
+                  value={endereco.uf}
+                  onChange={(e) => {
+                    const uf = e.target.value.toUpperCase().substring(0, 2);
+                    setEndereco(prev => ({ ...prev, uf }));
+                    if (errors.uf) {
+                      setErrors(prev => {
+                        const newErrors = { ...prev };
+                        delete newErrors.uf;
+                        return newErrors;
+                      });
+                    }
+                  }}
+                  placeholder="SP"
+                  maxLength={2}
+                  disabled={naoResidoBrasil}
+                />
+                {errors.uf && <span className="error-text">{errors.uf}</span>}
+              </div>
+            </div>
           </>
         ) : (
           <div className="form-group">
@@ -876,7 +940,6 @@ const CheckoutForm = ({
                 const checked = e.target.checked;
                 setNaoResidoBrasil(checked);
                 if (checked) {
-                  // Limpar campos de endereço brasileiro
                   setEndereco({
                     cep: '',
                     logradouro: '',
@@ -887,7 +950,6 @@ const CheckoutForm = ({
                     uf: '',
                   });
                   setPais('Brasil');
-                  // Limpar erros de endereço
                   setErrors(prev => {
                     const newErrors = { ...prev };
                     delete newErrors.cep;
@@ -1016,103 +1078,112 @@ const CheckoutForm = ({
             </div>
           </div>
         </div>
+      </div>
 
-        {error && (
-          <div className="error-message" style={{ marginTop: '1rem' }}>
-            {error}
-          </div>
-        )}
-
-        <div className="garantia-aviso" style={{
-          marginTop: '1.5rem',
-          marginBottom: '1rem',
-          padding: '1rem',
-          backgroundColor: 'rgba(255, 107, 53, 0.1)',
-          border: '1px solid rgba(255, 107, 53, 0.3)',
-          borderRadius: '8px',
-          textAlign: 'center'
-        }}>
-          <strong style={{ 
-            color: 'var(--cor-primaria, #FF6B35)', 
-            fontSize: '1rem',
-            display: 'block',
-            marginBottom: '0.5rem'
-          }}>
-            <FaShieldAlt style={{ marginRight: '0.5rem', display: 'inline' }} /> Garantia de 7 dias
-          </strong>
-          <p style={{ 
-            margin: 0, 
-            fontSize: '0.9rem', 
-            color: 'rgba(255, 255, 255, 0.8)',
-            lineHeight: '1.4'
-          }}>
-            Não gostou? Reembolso total em até 7 dias após a compra
-          </p>
+      {error && (
+        <div className="error-message" style={{ marginTop: '1rem' }}>
+          {error}
         </div>
+      )}
 
-        <button
-          type="submit"
-          disabled={!stripe || loading}
-          className="btn-pagar"
-        >
-          {loading ? 'Processando...' : `Pagar ${valorFormatadoFinal}`}
-        </button>
-
-        <div className="stripe-powered-by" style={{
-          marginTop: '1.5rem',
-          textAlign: 'center',
-          paddingTop: '1rem',
-          borderTop: '1px solid rgba(255, 255, 255, 0.1)'
+      <div className="garantia-aviso" style={{
+        marginTop: '1.5rem',
+        marginBottom: '1rem',
+        padding: '1rem',
+        backgroundColor: 'rgba(255, 107, 53, 0.1)',
+        border: '1px solid rgba(255, 107, 53, 0.3)',
+        borderRadius: '8px',
+        textAlign: 'center'
+      }}>
+        <strong style={{ 
+          color: 'var(--cor-primaria, #FF6B35)', 
+          fontSize: '1rem',
+          display: 'block',
+          marginBottom: '0.5rem'
         }}>
-          <p style={{
-            margin: 0,
-            fontSize: '0.85rem',
-            color: 'rgba(255, 255, 255, 0.6)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.5rem'
-          }}>
-            <span>Pagamento seguro processado por</span>
-            <a 
-              href="https://stripe.com" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              style={{
-                color: 'rgba(255, 255, 255, 0.8)',
-                textDecoration: 'none',
-                fontWeight: 600,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.25rem'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = 'var(--cor-primaria, #FF6B35)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)';
-              }}
-            >
-              Stripe
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', verticalAlign: 'middle' }}>
-                <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.537-.915-6.59-2.121l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.591-7.305h.02z" fill="currentColor"/>
-              </svg>
-            </a>
-          </p>
-        </div>
+          <FaShieldAlt style={{ marginRight: '0.5rem', display: 'inline' }} /> Garantia de 7 dias
+        </strong>
+        <p style={{ 
+          margin: 0, 
+          fontSize: '0.9rem', 
+          color: 'rgba(255, 255, 255, 0.8)',
+          lineHeight: '1.4'
+        }}>
+          Não gostou? Reembolso total em até 7 dias após a compra
+        </p>
+      </div>
+
+      <button
+        type="submit"
+        disabled={!stripe || loading || !customerId || criandoCustomer}
+        className="btn-pagar"
+      >
+        {criandoCustomer ? 'Criando conta...' : loading ? 'Processando...' : `Assinar ${valorFormatadoMensal}/mês`}
+      </button>
+
+      <div className="stripe-powered-by" style={{
+        marginTop: '1.5rem',
+        textAlign: 'center',
+        paddingTop: '1rem',
+        borderTop: '1px solid rgba(255, 255, 255, 0.1)'
+      }}>
+        <p style={{
+          margin: 0,
+          fontSize: '0.85rem',
+          color: 'rgba(255, 255, 255, 0.6)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '0.5rem'
+        }}>
+          <span>Pagamento seguro processado por</span>
+          <a 
+            href="https://stripe.com" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{
+              color: 'rgba(255, 255, 255, 0.8)',
+              textDecoration: 'none',
+              fontWeight: 600,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.25rem'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--cor-primaria, #FF6B35)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)';
+            }}
+          >
+            Stripe
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', verticalAlign: 'middle' }}>
+              <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.537-.915-6.59-2.121l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.591-7.305h.02z" fill="currentColor"/>
+            </svg>
+          </a>
+        </p>
       </div>
     </form>
   );
 };
 
-const Checkout = () => {
+const CheckoutAssinatura = () => {
   const [loading, setLoading] = useState(true);
   const [plano, setPlano] = useState<{
     id: number;
     nome: string;
-    valor: number;
+    valor: number; // Valor anual com desconto (ex: 239,40)
+    valor_total: number | null; // Valor anual original (ex: 478,80)
+    valor_parcelado: number | null; // Valor mensal com desconto (ex: 19,95)
+    stripe_price_id: string | null;
+    desconto_percentual?: number;
+    desconto_valor?: number;
+    frase_reforco?: string | null;
+    periodo?: string | null;
   } | null>(null);
   const [stripeError, setStripeError] = useState<string | null>(null);
+  const [customerId, setCustomerId] = useState<string | null>(null);
+  const [cupomAplicado, setCupomAplicado] = useState<any>(null);
 
   useEffect(() => {
     // Verificar autenticação
@@ -1133,20 +1204,30 @@ const Checkout = () => {
 
     const carregarPlano = async () => {
       try {
-        const planos = await apiService.obterPlanos();
-        const planoEncontrado = planos.find(p => p.id === parseInt(planoId));
+        const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
+        const token = localStorage.getItem('calculadora_auth_token');
         
-        if (!planoEncontrado) {
-          await mostrarAlert('Erro', 'Plano não encontrado.');
-          window.location.href = '/';
-          return;
-        }
-
-        setPlano({
-          id: planoEncontrado.id,
-          nome: planoEncontrado.nome,
-          valor: planoEncontrado.valor,
+        const response = await fetch(`${API_BASE}/api/planos/${planoId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
         });
+        
+        if (!response.ok) {
+          throw new Error('Erro ao buscar plano');
+        }
+        
+        const planoCarregado = await response.json();
+        console.log('Plano carregado do backend:', {
+          id: planoCarregado.id,
+          nome: planoCarregado.nome,
+          valor: planoCarregado.valor,
+          valor_total: planoCarregado.valor_total,
+          valor_parcelado: planoCarregado.valor_parcelado,
+          desconto_percentual: planoCarregado.desconto_percentual,
+          periodo: planoCarregado.periodo
+        });
+        setPlano(planoCarregado);
       } catch (error) {
         console.error('Erro ao carregar plano:', error);
         await mostrarAlert('Erro', 'Erro ao carregar informações do plano.');
@@ -1202,8 +1283,66 @@ const Checkout = () => {
     return null;
   }
 
-  const valorFormatado = `R$ ${plano.valor.toFixed(2).replace('.', ',')}`;
-  const amount = Math.round(plano.valor * 100); // Converter para centavos
+  // Estrutura do plano no banco de dados:
+  // - `valor`: Valor anual COM desconto (ex: R$ 239,40)
+  // - `valor_total`: Valor anual ORIGINAL (ex: R$ 478,80)
+  // - `valor_parcelado`: Valor mensal COM desconto (ex: R$ 19,95)
+  // - `desconto_percentual`: Percentual de desconto (ex: 50%)
+  
+  console.log('=== VALORES DO PLANO RECEBIDOS ===');
+  console.log('valor:', plano.valor);
+  console.log('valor_total:', plano.valor_total);
+  console.log('valor_parcelado:', plano.valor_parcelado);
+  console.log('desconto_percentual:', plano.desconto_percentual);
+  console.log('periodo:', plano.periodo);
+  
+  // Calcular valores corretos baseado em valor_total e desconto_percentual
+  const valorAnualOriginal = plano.valor_total || plano.valor; // R$ 478,80 (valor anual original)
+  
+  // Se tem desconto_percentual e valor_total, calcular valor anual com desconto
+  let valorAnualComDesconto = plano.valor;
+  if (plano.valor_total && plano.desconto_percentual && plano.desconto_percentual > 0) {
+    // Calcular valor anual com desconto: valor_total * (1 - desconto_percentual / 100)
+    valorAnualComDesconto = valorAnualOriginal * (1 - (plano.desconto_percentual / 100));
+    console.log('Valor anual com desconto calculado:', valorAnualComDesconto, '(baseado em valor_total e desconto_percentual)');
+  }
+  
+  // Calcular valores mensais
+  const valorMensalOriginal = valorAnualOriginal / 12; // R$ 39,90 (valor mensal original)
+  
+  // Se tem desconto_percentual, calcular valor mensal com desconto
+  let valorMensalComDesconto = plano.valor_parcelado || (valorAnualComDesconto / 12);
+  if (plano.valor_total && plano.desconto_percentual && plano.desconto_percentual > 0) {
+    // Calcular valor mensal com desconto: valor anual com desconto / 12
+    valorMensalComDesconto = valorAnualComDesconto / 12;
+    console.log('Valor mensal com desconto calculado:', valorMensalComDesconto);
+  }
+  
+  console.log('=== VALORES CALCULADOS ===');
+  console.log('valorAnualComDesconto:', valorAnualComDesconto, '→ Deveria ser 239,40');
+  console.log('valorAnualOriginal:', valorAnualOriginal, '→ Deveria ser 478,80');
+  console.log('valorMensalComDesconto:', valorMensalComDesconto, '→ Deveria ser 19,95');
+  console.log('valorMensalOriginal:', valorMensalOriginal, '→ Deveria ser 39,90');
+  
+  const temDescontoPlano = plano.valor_total && plano.valor_total > plano.valor;
+  
+  // Usar desconto_percentual do banco ou calcular
+  const percentualDesconto = plano.desconto_percentual || (temDescontoPlano && valorAnualOriginal > 0
+    ? Math.round(((valorAnualOriginal - valorAnualComDesconto) / valorAnualOriginal) * 100)
+    : 0);
+  
+  // Se houver cupom aplicado, calcular sobre o valor anual com desconto do plano
+  const valorFinalComCupom = cupomAplicado && cupomAplicado.valorComDesconto 
+    ? cupomAplicado.valorComDesconto / 100 
+    : valorAnualComDesconto;
+  
+  const valorFormatadoAnualOriginal = `R$ ${valorAnualOriginal.toFixed(2).replace('.', ',')}`;
+  const valorFormatadoAnualComDesconto = `R$ ${valorAnualComDesconto.toFixed(2).replace('.', ',')}`;
+  const valorFormatadoMensalOriginal = `R$ ${valorMensalOriginal.toFixed(2).replace('.', ',')}`;
+  const valorFormatadoMensalComDesconto = `R$ ${valorMensalComDesconto.toFixed(2).replace('.', ',')}`;
+  const valorFormatadoFinal = `R$ ${valorFinalComCupom.toFixed(2).replace('.', ',')}`;
+  // Usar valorAnualComDesconto calculado (já com desconto aplicado) para o amount
+  const amount = Math.round(valorAnualComDesconto * 100); // Converter para centavos (usar valor anual com desconto)
 
   const options = {
     mode: 'payment' as const,
@@ -1218,18 +1357,57 @@ const Checkout = () => {
           <button onClick={() => window.location.href = '/'} className="btn-voltar-link">
             ← Voltar ao plano
           </button>
-          <h1>Finalizar Pagamento</h1>
+          <h1>Finalizar Assinatura</h1>
           <div className="checkout-resumo">
             <p><strong>Plano:</strong> {plano.nome}</p>
-            <p><strong>Valor:</strong> {valorFormatado}</p>
+            {cupomAplicado && cupomAplicado.valorComDesconto ? (
+              <>
+                {/* Com cupom: mostrar valor original do plano, valor com desconto do plano, e desconto do cupom */}
+                {temDescontoPlano && (
+                  <>
+                    <p style={{ textDecoration: 'line-through', opacity: 0.7, marginBottom: '0.25rem', fontSize: '0.9rem' }}>
+                      <strong>Valor original:</strong> {valorFormatadoAnualOriginal} / ano ({valorFormatadoMensalOriginal}/mês)
+                    </p>
+                    <p style={{ textDecoration: 'line-through', opacity: 0.7, marginBottom: '0.25rem', fontSize: '0.9rem' }}>
+                      <strong>Valor com desconto do plano:</strong> {valorFormatadoAnualComDesconto} / ano ({valorFormatadoMensalComDesconto}/mês)
+                    </p>
+                  </>
+                )}
+                <p style={{ color: '#4CAF50', fontSize: '1.1rem', fontWeight: 'bold' }}>
+                  <strong>Valor final (com cupom):</strong> {valorFormatadoFinal} / ano
+                </p>
+                <p style={{ color: 'var(--cor-primaria, #FF6B35)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
+                  <strong>Desconto do cupom:</strong> {cupomAplicado.tipo === 'percentual' ? `${cupomAplicado.desconto}%` : `R$ ${(cupomAplicado.desconto / 100).toFixed(2).replace('.', ',')}`}
+                </p>
+              </>
+            ) : temDescontoPlano ? (
+              <>
+                {/* Sem cupom, mas com desconto do plano */}
+                <p style={{ textDecoration: 'line-through', opacity: 0.7, marginBottom: '0.25rem' }}>
+                  <strong>Valor original:</strong> {valorFormatadoAnualOriginal} / ano ({valorFormatadoMensalOriginal}/mês)
+                </p>
+                <p style={{ color: '#4CAF50', fontSize: '1.1rem', fontWeight: 'bold' }}>
+                  <strong>Valor com desconto:</strong> {valorFormatadoAnualComDesconto} / ano ({valorFormatadoMensalComDesconto}/mês)
+                </p>
+                <p style={{ color: 'var(--cor-primaria, #FF6B35)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
+                  <strong>Desconto:</strong> {percentualDesconto > 0 ? `${percentualDesconto}% OFF${plano.frase_reforco ? ` (${plano.frase_reforco})` : ''}` : `R$ ${(valorAnualOriginal - valorAnualComDesconto).toFixed(2).replace('.', ',')} OFF${plano.frase_reforco ? ` (${plano.frase_reforco})` : ''}`}
+                </p>
+              </>
+            ) : (
+              <p><strong>Valor:</strong> {valorFormatadoAnualComDesconto} / ano ({valorFormatadoMensalComDesconto}/mês)</p>
+            )}
           </div>
         </div>
 
         <Elements stripe={stripePromise} options={options}>
-          <CheckoutForm
+          <CheckoutAssinaturaForm
             amount={amount}
-            userId={usuario.id}
             planoId={plano.id}
+            customerId={customerId}
+            onCustomerCreated={setCustomerId}
+            onCupomAplicado={setCupomAplicado}
+            valorAnualComDesconto={valorAnualComDesconto}
+            valorMensalComDesconto={valorMensalComDesconto}
           />
         </Elements>
       </div>
@@ -1237,5 +1415,5 @@ const Checkout = () => {
   );
 };
 
-export default Checkout;
+export default CheckoutAssinatura;
 

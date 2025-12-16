@@ -637,6 +637,24 @@ async function inicializar() {
             )
         `);
         
+        // Adicionar coluna desconto_motivo se não existir
+        await pool.query(`
+            DO $$ 
+            BEGIN 
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'planos' AND column_name = 'desconto_motivo'
+                ) THEN
+                    ALTER TABLE planos ADD COLUMN desconto_motivo VARCHAR(255);
+                END IF;
+            END $$;
+        `);
+        
+        // Adicionar coluna desconto_motivo se não existir
+        if (!(await colunaExiste('planos', 'desconto_motivo'))) {
+            await pool.query('ALTER TABLE planos ADD COLUMN desconto_motivo VARCHAR(255)');
+        }
+        
         // Adicionar coluna stripe_price_id se não existir (para tabelas já criadas)
         if (!(await colunaExiste('planos', 'stripe_price_id'))) {
             await pool.query('ALTER TABLE planos ADD COLUMN stripe_price_id VARCHAR(255)');
@@ -5077,6 +5095,7 @@ async function obterPlanos(apenasAtivos = false) {
                 periodo: row.periodo,
                 desconto_percentual: row.desconto_percentual ? parseFloat(row.desconto_percentual) : 0,
                 desconto_valor: row.desconto_valor ? parseFloat(row.desconto_valor) : 0,
+                desconto_motivo: row.desconto_motivo || null,
                 mais_popular: row.mais_popular,
                 mostrar_valor_total: row.mostrar_valor_total,
                 mostrar_valor_parcelado: row.mostrar_valor_parcelado,
@@ -5146,6 +5165,7 @@ async function obterPlanoPorId(id) {
             periodo: row.periodo,
             desconto_percentual: row.desconto_percentual ? parseFloat(row.desconto_percentual) : 0,
             desconto_valor: row.desconto_valor ? parseFloat(row.desconto_valor) : 0,
+            desconto_motivo: row.desconto_motivo || null,
             mais_popular: row.mais_popular,
             mostrar_valor_total: row.mostrar_valor_total,
             mostrar_valor_parcelado: row.mostrar_valor_parcelado,
@@ -5167,10 +5187,10 @@ async function criarPlano(plano) {
         const result = await pool.query(
             `INSERT INTO planos (
                 nome, tipo, valor, valor_parcelado, valor_total, periodo,
-                desconto_percentual, desconto_valor, mais_popular,
+                desconto_percentual, desconto_valor, desconto_motivo, mais_popular,
                 mostrar_valor_total, mostrar_valor_parcelado, ativo, ordem, stripe_price_id, frase_reforco,
                 created_at, updated_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             RETURNING *`,
             [
                 plano.nome,
@@ -5181,6 +5201,7 @@ async function criarPlano(plano) {
                 plano.periodo || null,
                 plano.desconto_percentual || 0,
                 plano.desconto_valor || 0,
+                plano.desconto_motivo || null,
                 plano.mais_popular || false,
                 plano.mostrar_valor_total !== undefined ? plano.mostrar_valor_total : true,
                 plano.mostrar_valor_parcelado !== undefined ? plano.mostrar_valor_parcelado : true,
@@ -5279,15 +5300,16 @@ async function atualizarPlano(id, plano) {
                 periodo = $6,
                 desconto_percentual = $7,
                 desconto_valor = $8,
-                mais_popular = $9,
-                mostrar_valor_total = $10,
-                mostrar_valor_parcelado = $11,
-                ativo = $12,
-                ordem = $13,
-                stripe_price_id = $14,
-                frase_reforco = $15,
+                desconto_motivo = $9,
+                mais_popular = $10,
+                mostrar_valor_total = $11,
+                mostrar_valor_parcelado = $12,
+                ativo = $13,
+                ordem = $14,
+                stripe_price_id = $15,
+                frase_reforco = $16,
                 updated_at = CURRENT_TIMESTAMP
-            WHERE id = $16
+            WHERE id = $17
             RETURNING *`,
             [
                 plano.nome,
@@ -5298,6 +5320,7 @@ async function atualizarPlano(id, plano) {
                 plano.periodo || null,
                 plano.desconto_percentual || 0,
                 plano.desconto_valor || 0,
+                plano.desconto_motivo || null,
                 plano.mais_popular || false,
                 plano.mostrar_valor_total !== undefined ? plano.mostrar_valor_total : true,
                 plano.mostrar_valor_parcelado !== undefined ? plano.mostrar_valor_parcelado : true,
@@ -5376,6 +5399,7 @@ async function atualizarPlano(id, plano) {
             periodo: row.periodo,
             desconto_percentual: row.desconto_percentual ? parseFloat(row.desconto_percentual) : 0,
             desconto_valor: row.desconto_valor ? parseFloat(row.desconto_valor) : 0,
+            desconto_motivo: row.desconto_motivo || null,
             mais_popular: row.mais_popular,
             mostrar_valor_total: row.mostrar_valor_total,
             mostrar_valor_parcelado: row.mostrar_valor_parcelado,

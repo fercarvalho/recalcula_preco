@@ -731,7 +731,7 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 2rem;
-  padding-bottom: 3rem;
+  padding-bottom: 5rem;
   box-sizing: border-box;
   justify-content: center;
   position: relative;
@@ -782,7 +782,7 @@
   transition: all 0.3s;
   display: flex;
   flex-direction: column;
-  height: auto;
+  height: 100%;
   min-height: auto;
 }
 
@@ -847,6 +847,12 @@
   margin-bottom: 2rem;
   padding-bottom: 2rem;
   border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  position: relative;
 }
 
 .plano-header-landing h3 {
@@ -856,25 +862,38 @@
 }
 
 .plano-preco-landing {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
   align-items: center;
+  justify-items: center;
   gap: 0.5rem;
+  min-height: 180px;
+  position: relative;
 }
 
 .preco-valor-landing {
   font-size: 3rem;
   font-weight: bold;
   color: var(--cor-primaria, #FF6B35);
+  grid-row: 2;
+  align-self: start;
+  margin-top: 0;
 }
 
 .preco-periodo-landing {
   font-size: 1rem;
   color: rgba(255, 255, 255, 0.7);
+  min-height: 1.5rem;
+  grid-row: 3;
 }
 
 .preco-original-landing {
   margin-bottom: 0.5rem;
+  grid-row: 1;
+  min-height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .preco-original-texto {
@@ -889,6 +908,8 @@
   color: #4CAF50;
   font-weight: 600;
   font-size: 0.9rem;
+  min-height: 1.5rem;
+  grid-row: 4;
 }
 
 .economia-texto {
@@ -896,6 +917,11 @@
   color: var(--cor-primaria, #FF6B35);
   font-weight: 600;
   font-size: 0.9rem;
+  min-height: 4rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
 }
 
 .plano-descricao-landing {
@@ -908,13 +934,18 @@
   font-size: 0.9rem;
   color: rgba(255, 255, 255, 0.6);
   margin-top: 0.25rem;
+  min-height: 1.5rem;
+  margin-bottom: auto;
 }
 
 .plano-beneficios-landing {
   list-style: none;
   padding: 0;
-  margin: 2rem 0;
+  margin: 0;
   flex-grow: 1;
+  align-self: flex-start;
+  width: 100%;
+  margin-top: auto;
 }
 
 .plano-beneficios-landing li {
@@ -1021,6 +1052,16 @@
   width: 100%;
   margin-left: auto;
   margin-right: auto;
+  z-index: 1;
+}
+
+/* Garantir que o wrapper da garantia sempre fique abaixo dos cards */
+.planos-section .container > div:has(.garantia-texto) {
+  margin-top: 3rem !important;
+  padding-top: 2rem !important;
+  position: relative;
+  z-index: 1;
+  clear: both;
 }
 
 /* FAQ */

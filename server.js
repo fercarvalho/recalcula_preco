@@ -143,25 +143,65 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
                     cancel_at_period_end: false,
                 });
                 console.log('✅ Assinatura cancelada no banco de dados para usuário:', assinatura.usuario_id);
+            } else {
+                // Tentar buscar por customerId se não encontrar por subscriptionId
+                const userId = resultado.metadata?.user_id ? parseInt(resultado.metadata.user_id) : null;
+                if (userId) {
+                    await db.criarOuAtualizarAssinatura(userId, {
+                        status: 'canceled',
+                    });
+                    console.log('✅ Status da assinatura atualizado para canceled - UserId:', userId);
+                }
             }
         }
 
-        // Processar falha no pagamento
+        // Processar pagamento de assinatura (renovação ou primeira cobrança)
+        if (resultado.tipo === 'pagamento_assinatura') {
+            const userId = resultado.metadata?.user_id ? parseInt(resultado.metadata.user_id) : null;
+            const planoId = resultado.metadata?.plano_id ? parseInt(resultado.metadata.plano_id) : null;
+
+            if (userId && resultado.subscriptionId) {
+                // Buscar subscription atualizada no Stripe
+                const subscription = await stripeService.stripe.subscriptions.retrieve(resultado.subscriptionId);
+                
+                await db.criarOuAtualizarAssinatura(userId, {
+                    stripe_subscription_id: subscription.id,
+                    stripe_customer_id: subscription.customer,
+                    plano_tipo: 'anual',
+                    plano_id: planoId,
+                    status: subscription.status,
+                    current_period_start: new Date(subscription.current_period_start * 1000),
+                    current_period_end: new Date(subscription.current_period_end * 1000),
+                    cancel_at_period_end: subscription.cancel_at_period_end || false,
+                });
+
+                console.log('✅ Assinatura atualizada após pagamento - UserId:', userId, 'Status:', subscription.status);
+            }
+        }
+
+        // Processar falha no pagamento de assinatura
         if (resultado.tipo === 'pagamento_falhou') {
             console.log('❌ Processando falha no pagamento:', resultado.subscriptionId);
-            const assinatura = await db.obterAssinaturaPorStripeId(resultado.subscriptionId);
-            if (assinatura) {
-                await db.criarOuAtualizarAssinatura(assinatura.usuario_id, {
-                    stripe_subscription_id: resultado.subscriptionId,
-                    stripe_customer_id: resultado.customerId,
-                    plano_tipo: 'anual',
-                    plano_id: assinatura.plano_id,
-                    status: 'past_due',
-                    current_period_start: assinatura.current_period_start,
-                    current_period_end: assinatura.current_period_end,
-                    cancel_at_period_end: assinatura.cancel_at_period_end,
+            const userId = resultado.metadata?.user_id ? parseInt(resultado.metadata.user_id) : null;
+
+            if (userId && resultado.subscriptionId) {
+                // Buscar subscription atualizada no Stripe
+                const subscription = await stripeService.stripe.subscriptions.retrieve(resultado.subscriptionId);
+                
+                await db.criarOuAtualizarAssinatura(userId, {
+                    status: subscription.status, // Pode ser 'past_due' ou 'unpaid'
                 });
-                console.log('⚠️  Status da assinatura atualizado para past_due para usuário:', assinatura.usuario_id);
+
+                console.log('⚠️  Status da assinatura atualizado para', subscription.status, '- UserId:', userId);
+            } else {
+                // Fallback: buscar por subscriptionId
+                const assinatura = await db.obterAssinaturaPorStripeId(resultado.subscriptionId);
+                if (assinatura) {
+                    await db.criarOuAtualizarAssinatura(assinatura.usuario_id, {
+                        status: 'past_due',
+                    });
+                    console.log('⚠️  Status da assinatura atualizado para past_due para usuário:', assinatura.usuario_id);
+                }
             }
         }
 
@@ -1105,6 +1145,193 @@ app.post('/api/stripe/create-payment-intent', authenticateToken, async (req, res
     } catch (error) {
         console.error('Erro ao criar payment intent:', error);
         res.status(500).json({ error: error.message || 'Erro ao criar intenção de pagamento' });
+    }
+});
+
+// Criar ou obter Customer no Stripe
+app.post('/api/stripe/create-customer', authenticateToken, async (req, res) => {
+    try {
+        const { userId, email, nome } = req.body;
+        const usuario = req.user;
+
+        if (!stripeService.stripe) {
+            return res.status(500).json({ error: 'Stripe não está configurado' });
+        }
+
+        const userIdFinal = userId || usuario.id;
+
+        // Verificar se já existe customer no banco
+        const assinaturaExistente = await db.obterAssinatura(userIdFinal);
+        
+        if (assinaturaExistente?.stripe_customer_id) {
+            // Customer já existe, retornar ID
+            return res.json({
+                customerId: assinaturaExistente.stripe_customer_id
+            });
+        }
+
+        // Criar novo Customer no Stripe
+        const customer = await stripeService.stripe.customers.create({
+            email: email || usuario.email,
+            name: nome || `${usuario.nome || ''} ${usuario.sobrenome || ''}`.trim() || usuario.username,
+            metadata: {
+                user_id: userIdFinal.toString(),
+            },
+        });
+
+        // Salvar customer_id no banco
+        await db.criarOuAtualizarAssinatura(userIdFinal, {
+            stripe_customer_id: customer.id,
+            plano_tipo: 'anual',
+            status: 'incomplete', // Será atualizado quando subscription for criada
+        });
+
+        res.json({
+            customerId: customer.id
+        });
+    } catch (error) {
+        console.error('Erro ao criar/obter customer:', error);
+        res.status(500).json({ error: error.message || 'Erro ao criar customer' });
+    }
+});
+
+// Criar Subscription no Stripe
+app.post('/api/stripe/create-subscription', authenticateToken, async (req, res) => {
+    try {
+        const { customerId, paymentMethodId, priceId, planoId, couponId } = req.body;
+        const userId = req.user.id;
+
+        if (!customerId || !paymentMethodId || !priceId) {
+            return res.status(400).json({ 
+                error: 'customerId, paymentMethodId e priceId são obrigatórios' 
+            });
+        }
+
+        if (!stripeService.stripe) {
+            return res.status(500).json({ error: 'Stripe não está configurado' });
+        }
+
+        // Verificar se o price é recorrente
+        const price = await stripeService.stripe.prices.retrieve(priceId);
+        if (!price.recurring) {
+            return res.status(400).json({ 
+                error: 'O price_id fornecido não é um preço recorrente' 
+            });
+        }
+
+        // Anexar PaymentMethod ao Customer
+        await stripeService.stripe.paymentMethods.attach(paymentMethodId, {
+            customer: customerId,
+        });
+
+        // Definir como método de pagamento padrão
+        await stripeService.stripe.customers.update(customerId, {
+            invoice_settings: {
+                default_payment_method: paymentMethodId,
+            },
+        });
+
+        // Criar Subscription
+        const subscriptionData = {
+            customer: customerId,
+            items: [{ price: priceId }],
+            payment_behavior: 'default_incomplete',
+            payment_settings: { save_default_payment_method: 'on_subscription' },
+            expand: ['latest_invoice.payment_intent'],
+            metadata: {
+                user_id: userId.toString(),
+                plano_id: planoId ? planoId.toString() : '',
+            },
+        };
+
+        // Adicionar cupom se fornecido
+        if (couponId) {
+            subscriptionData.coupon = couponId;
+            subscriptionData.metadata.coupon_id = couponId;
+        }
+
+        const subscription = await stripeService.stripe.subscriptions.create(subscriptionData);
+
+        // Obter client_secret do PaymentIntent (se houver)
+        const latestInvoice = subscription.latest_invoice;
+        const paymentIntent = latestInvoice?.payment_intent;
+        const clientSecret = paymentIntent?.client_secret;
+
+        // Salvar assinatura no banco (status incomplete até confirmação)
+        await db.criarOuAtualizarAssinatura(userId, {
+            stripe_subscription_id: subscription.id,
+            stripe_customer_id: customerId,
+            plano_tipo: 'anual',
+            plano_id: planoId,
+            status: subscription.status, // incomplete, active, etc.
+            current_period_start: new Date(subscription.current_period_start * 1000),
+            current_period_end: new Date(subscription.current_period_end * 1000),
+        });
+
+        res.json({
+            subscriptionId: subscription.id,
+            clientSecret: clientSecret, // Para confirmar pagamento no frontend
+            status: subscription.status,
+        });
+    } catch (error) {
+        console.error('Erro ao criar subscription:', error);
+        res.status(500).json({ error: error.message || 'Erro ao criar assinatura' });
+    }
+});
+
+// Confirmar assinatura após pagamento bem-sucedido
+app.post('/api/stripe/confirmar-assinatura', authenticateToken, async (req, res) => {
+    try {
+        const { subscriptionId, paymentIntentId } = req.body;
+        const userId = req.user.id;
+
+        if (!subscriptionId) {
+            return res.status(400).json({ error: 'subscriptionId é obrigatório' });
+        }
+
+        if (!stripeService.stripe) {
+            return res.status(500).json({ error: 'Stripe não está configurado' });
+        }
+
+        // Buscar subscription no Stripe
+        const subscription = await stripeService.stripe.subscriptions.retrieve(subscriptionId);
+
+        // Verificar se o subscription pertence ao usuário
+        if (subscription.metadata.user_id !== userId.toString()) {
+            return res.status(403).json({ error: 'Assinatura não pertence ao usuário' });
+        }
+
+        // Verificar status do PaymentIntent (se fornecido)
+        if (paymentIntentId) {
+            const paymentIntent = await stripeService.stripe.paymentIntents.retrieve(paymentIntentId);
+            if (paymentIntent.status !== 'succeeded') {
+                return res.status(400).json({ 
+                    error: 'Pagamento não foi confirmado',
+                    status: paymentIntent.status 
+                });
+            }
+        }
+
+        // Atualizar assinatura no banco
+        await db.criarOuAtualizarAssinatura(userId, {
+            stripe_subscription_id: subscription.id,
+            stripe_customer_id: subscription.customer,
+            plano_tipo: 'anual',
+            plano_id: subscription.metadata.plano_id ? parseInt(subscription.metadata.plano_id) : null,
+            status: subscription.status,
+            current_period_start: new Date(subscription.current_period_start * 1000),
+            current_period_end: new Date(subscription.current_period_end * 1000),
+            cancel_at_period_end: subscription.cancel_at_period_end || false,
+        });
+
+        res.json({
+            success: true,
+            subscriptionId: subscription.id,
+            status: subscription.status,
+        });
+    } catch (error) {
+        console.error('Erro ao confirmar assinatura:', error);
+        res.status(500).json({ error: error.message || 'Erro ao confirmar assinatura' });
     }
 });
 
@@ -2320,10 +2547,15 @@ app.get('/api/planos/:id', authenticateToken, async (req, res) => {
         res.json({
             id: plano.id,
             nome: plano.nome,
-            valor: plano.valor,
+            valor: plano.valor, // Valor anual com desconto aplicado (ex: 239,40)
+            valor_total: plano.valor_total, // Valor anual original antes do desconto (ex: 478,80)
+            valor_parcelado: plano.valor_parcelado, // Valor mensal com desconto (ex: 19,95)
             stripe_price_id: plano.stripe_price_id,
             tipo: plano.tipo,
-            periodo: plano.periodo
+            periodo: plano.periodo,
+            desconto_percentual: plano.desconto_percentual || 0,
+            desconto_valor: plano.desconto_valor || 0,
+            frase_reforco: plano.frase_reforco || null
         });
     } catch (error) {
         console.error('Erro ao obter plano:', error);

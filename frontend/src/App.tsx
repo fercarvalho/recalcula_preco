@@ -18,6 +18,7 @@ import ValidarEmailModal from './components/ValidarEmailModal';
 import ValidarEmail from './pages/ValidarEmail';
 import Cardapio from './pages/Cardapio';
 import Checkout from './pages/Checkout';
+import CheckoutAssinatura from './pages/CheckoutAssinatura';
 import AlterarDadosModal from './components/AlterarDadosModal';
 import { isAuthenticated, getToken, getUser, saveAuth } from './services/auth';
 import { carregarPlataformasSync, carregarPlataformas } from './utils/plataformas';
@@ -67,6 +68,11 @@ function App() {
   // Verificar se está na rota de checkout
   if (pathname === '/checkout') {
     return <Checkout />;
+  }
+
+  // Verificar se está na rota de checkout de assinatura
+  if (pathname === '/checkout-assinatura') {
+    return <CheckoutAssinatura />;
   }
 
   const [itensPorCategoria, setItensPorCategoria] = useState<ItensPorCategoria>({});

@@ -119,7 +119,7 @@ const AlterarLoginModal = ({ isOpen, onClose }: AlterarLoginModalProps) => {
           <input
             id="login-atual"
             type="text"
-            className="form-input"
+            className="form-input form-input-dark"
             value={user?.username || ''}
             disabled
           />
@@ -130,7 +130,7 @@ const AlterarLoginModal = ({ isOpen, onClose }: AlterarLoginModalProps) => {
           <input
             id="novo-login"
             type="text"
-            className="form-input"
+            className="form-input form-input-dark"
             value={novoLogin}
             onChange={(e) => {
               // Remover espaços e caracteres acentuados em tempo real
@@ -153,7 +153,7 @@ const AlterarLoginModal = ({ isOpen, onClose }: AlterarLoginModalProps) => {
             <input
               id="senha-confirmacao"
               type={showSenha ? 'text' : 'password'}
-              className="form-input"
+              className="form-input form-input-dark"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
               placeholder="Digite sua senha atual"

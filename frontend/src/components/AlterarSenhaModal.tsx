@@ -114,7 +114,7 @@ const AlterarSenhaModal = ({ isOpen, onClose }: AlterarSenhaModalProps) => {
             <input
               id="senha-atual"
               type={showSenhaAtual ? 'text' : 'password'}
-              className="form-input"
+              className="form-input form-input-dark"
               value={senhaAtual}
               onChange={(e) => setSenhaAtual(e.target.value)}
               placeholder="Digite sua senha atual"
@@ -140,7 +140,7 @@ const AlterarSenhaModal = ({ isOpen, onClose }: AlterarSenhaModalProps) => {
             <input
               id="nova-senha"
               type={showNovaSenha ? 'text' : 'password'}
-              className="form-input"
+              className="form-input form-input-dark"
               value={novaSenha}
               onChange={(e) => setNovaSenha(e.target.value)}
               placeholder="Digite a nova senha (mínimo 6 caracteres)"
@@ -166,7 +166,7 @@ const AlterarSenhaModal = ({ isOpen, onClose }: AlterarSenhaModalProps) => {
             <input
               id="confirmar-senha"
               type={showConfirmarSenha ? 'text' : 'password'}
-              className="form-input"
+              className="form-input form-input-dark"
               value={confirmarSenha}
               onChange={(e) => setConfirmarSenha(e.target.value)}
               placeholder="Digite a nova senha novamente"
