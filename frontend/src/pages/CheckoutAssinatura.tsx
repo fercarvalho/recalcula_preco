@@ -258,7 +258,7 @@ const CheckoutAssinaturaForm = ({
         throw new Error('Plano não possui price_id configurado');
       }
       
-      // Validar cupom
+      // Validar cupom - passar valorAnual para calcular desconto sobre o valor anual total
       const response = await fetch(`${API_BASE}/api/stripe/validar-cupom`, {
         method: 'POST',
         headers: {
@@ -268,6 +268,8 @@ const CheckoutAssinaturaForm = ({
         body: JSON.stringify({
           codigo: cupom.trim().toUpperCase(),
           priceId: plano.stripe_price_id,
+          planoId: planoId,
+          valorAnual: valorAnualComDesconto, // Passar valor anual com desconto do plano
         }),
       });
 

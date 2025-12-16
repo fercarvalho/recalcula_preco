@@ -1031,7 +1031,7 @@ app.post('/api/stripe/checkout/unico', authenticateToken, async (req, res) => {
 // Validar cupom de desconto
 app.post('/api/stripe/validar-cupom', authenticateToken, async (req, res) => {
     try {
-        const { codigo, priceId } = req.body;
+        const { codigo, priceId, planoId, valorAnual } = req.body;
         
         if (!codigo || !priceId) {
             return res.status(400).json({ error: 'Código e priceId são obrigatórios' });
@@ -1067,9 +1067,27 @@ app.post('/api/stripe/validar-cupom', authenticateToken, async (req, res) => {
             });
         }
 
-        // Buscar preço para calcular desconto
-        const price = await stripeService.stripe.prices.retrieve(priceId);
-        const valorOriginal = price.unit_amount; // em centavos
+        // Determinar valor original para cálculo do desconto
+        let valorOriginal = null;
+        
+        // Se valorAnual foi fornecido (em reais), converter para centavos
+        if (valorAnual !== undefined && valorAnual !== null) {
+            valorOriginal = Math.round(valorAnual * 100);
+        } 
+        // Se planoId foi fornecido, buscar do banco
+        else if (planoId) {
+            const plano = await db.obterPlanoPorId(parseInt(planoId));
+            if (plano && plano.valor) {
+                // Usar valor anual com desconto do plano (plano.valor) como base
+                valorOriginal = Math.round(plano.valor * 100);
+            }
+        }
+        
+        // Se ainda não temos valorOriginal, buscar do Stripe (valor mensal)
+        if (valorOriginal === null) {
+            const price = await stripeService.stripe.prices.retrieve(priceId);
+            valorOriginal = price.unit_amount; // em centavos
+        }
         
         let valorComDesconto = valorOriginal;
         let descontoAplicado = 0;
