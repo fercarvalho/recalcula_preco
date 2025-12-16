@@ -4,12 +4,43 @@
   border-radius: 15px;
   margin-bottom: 30px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  color: #000;
 }
 
 .reajuste-form h2 {
   margin-bottom: 20px;
   color: var(--cor-primaria);
   font-size: 1.8em;
+}
+
+/* Garantir que textos de labels, inputs e ajuda sejam pretos e em negrito */
+.reajuste-form label,
+.reajuste-form .form-group label,
+.reajuste-form .radio-label,
+.reajuste-form .radio-label span {
+  color: #000 !important;
+  font-weight: bold !important;
+}
+
+.reajuste-form .form-help,
+.reajuste-form small {
+  color: #000 !important;
+}
+
+/* Manter texto branco nos botões */
+.reajuste-form .btn-primary,
+.reajuste-form .btn-secondary,
+.reajuste-form button {
+  color: white !important;
+}
+
+/* Manter texto do aviso de bloqueio com cor original */
+.reajuste-form > div[style*="background: #fff3cd"] p {
+  color: #856404 !important;
+}
+
+.reajuste-form > div[style*="background: #fff3cd"] button {
+  color: white !important;
 }
 
 .form-group {
@@ -20,7 +51,7 @@
   display: block;
   margin-bottom: 8px;
   font-weight: 600;
-  color: #555;
+  color: #000;
 }
 
 .radio-group {
@@ -41,6 +72,7 @@
   gap: 8px;
   cursor: pointer;
   font-weight: normal;
+  color: #000;
 }
 
 .radio-label input[type="radio"] {
@@ -79,7 +111,7 @@
   display: block;
   margin-top: 5px;
   font-size: 0.85em;
-  color: #777;
+  color: #000;
   font-style: italic;
 }
 

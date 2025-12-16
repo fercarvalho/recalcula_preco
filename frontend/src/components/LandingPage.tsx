@@ -672,7 +672,44 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
                 })}
               </div>
 
-              <p className="garantia-texto">7 dias de garantia ou seu dinheiro de volta</p>
+              <div style={{ 
+                width: '100%', 
+                clear: 'both', 
+                marginTop: '2rem',
+                marginBottom: '2rem'
+              }}>
+                <div className="garantia-texto" style={{
+                  marginTop: '0',
+                  marginBottom: '0',
+                  padding: '1rem',
+                  backgroundColor: 'rgba(255, 107, 53, 0.1)',
+                  border: '1px solid rgba(255, 107, 53, 0.3)',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  maxWidth: '600px',
+                  marginLeft: 'auto',
+                  marginRight: 'auto',
+                  position: 'relative',
+                  display: 'block'
+                }}>
+                <strong style={{ 
+                  color: 'var(--cor-primaria, #FF6B35)', 
+                  fontSize: '1rem',
+                  display: 'block',
+                  marginBottom: '0.5rem'
+                }}>
+                  🛡️ Garantia de 7 dias
+                </strong>
+                <p style={{ 
+                  margin: 0, 
+                  fontSize: '0.9rem', 
+                  color: 'rgba(255, 255, 255, 0.8)',
+                  lineHeight: '1.4'
+                }}>
+                  Não gostou? Reembolso total em até 7 dias após a compra
+                </p>
+                </div>
+              </div>
             </div>
           </section>
         ) : null;

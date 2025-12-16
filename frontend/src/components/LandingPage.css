@@ -721,6 +721,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
+  overflow: visible;
 }
 
 .planos-grid-landing {
@@ -730,10 +731,10 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 2rem;
+  padding-bottom: 3rem;
   box-sizing: border-box;
   justify-content: center;
   position: relative;
-  z-index: 1;
 }
 
 /* Telas maiores que 11 polegadas (>= 1400px) - 3 planos por linha */
@@ -781,8 +782,8 @@
   transition: all 0.3s;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  z-index: 1;
+  height: auto;
+  min-height: auto;
 }
 
 .plano-card-landing:hover {
@@ -1010,15 +1011,16 @@
   text-align: center;
   color: rgba(255, 255, 255, 0.7);
   font-size: 0.9rem;
-  margin-top: 10rem;
+  margin-top: 0 !important;
   margin-bottom: 2rem;
   padding: 0 2rem;
   box-sizing: border-box;
   position: relative;
-  z-index: 2;
   clear: both;
   display: block;
   width: 100%;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* FAQ */

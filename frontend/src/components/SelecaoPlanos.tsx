@@ -344,6 +344,22 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
                     );
                   })}
                 </ul>
+                <div className="garantia-aviso-plano" style={{
+                  marginTop: '1rem',
+                  marginBottom: '1rem',
+                  padding: '0.75rem',
+                  backgroundColor: 'rgba(255, 107, 53, 0.1)',
+                  border: '1px solid rgba(255, 107, 53, 0.3)',
+                  borderRadius: '6px',
+                  textAlign: 'center',
+                  fontSize: '0.85rem',
+                  color: '#333'
+                }}>
+                  <strong style={{ color: 'var(--cor-primaria, #FF6B35)', display: 'block' }}>🛡️ Garantia de 7 dias</strong>
+                  <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: '#333', fontWeight: 500 }}>
+                    Não gostou? Reembolso total em até 7 dias
+                  </p>
+                </div>
                 <button
                   className={`btn-plano ${plano.mais_popular ? 'btn-plano-anual' : 'btn-plano-unico'}`}
                   onClick={() => handlePlanoClick(plano)}
@@ -412,6 +428,32 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
                 <p><strong>Valor:</strong> R$ {formatarValor(calcularValorComDesconto(planoSelecionado))}</p>
                 <p style={{ fontSize: '0.9rem', color: '#666', marginTop: '0.5rem' }}>
                   💡 <strong>Modo de teste:</strong> Use o cartão de teste <code>4242 4242 4242 4242</code> com qualquer data futura e CVC qualquer.
+                </p>
+              </div>
+              
+              <div className="garantia-aviso" style={{
+                marginBottom: '1.5rem',
+                padding: '1rem',
+                backgroundColor: 'rgba(255, 107, 53, 0.1)',
+                border: '1px solid rgba(255, 107, 53, 0.3)',
+                borderRadius: '8px',
+                textAlign: 'center'
+              }}>
+                <strong style={{ 
+                  color: 'var(--cor-primaria, #FF6B35)', 
+                  fontSize: '0.95rem',
+                  display: 'block',
+                  marginBottom: '0.5rem'
+                }}>
+                  🛡️ Garantia de 7 dias
+                </strong>
+                <p style={{ 
+                  margin: 0, 
+                  fontSize: '0.85rem', 
+                  color: '#666',
+                  lineHeight: '1.4'
+                }}>
+                  Não gostou? Reembolso total em até 7 dias após a compra
                 </p>
               </div>
               

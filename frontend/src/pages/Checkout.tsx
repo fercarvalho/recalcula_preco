@@ -816,6 +816,33 @@ const CheckoutForm = ({
           </div>
         )}
 
+        <div className="garantia-aviso" style={{
+          marginTop: '1.5rem',
+          marginBottom: '1rem',
+          padding: '1rem',
+          backgroundColor: 'rgba(255, 107, 53, 0.1)',
+          border: '1px solid rgba(255, 107, 53, 0.3)',
+          borderRadius: '8px',
+          textAlign: 'center'
+        }}>
+          <strong style={{ 
+            color: 'var(--cor-primaria, #FF6B35)', 
+            fontSize: '1rem',
+            display: 'block',
+            marginBottom: '0.5rem'
+          }}>
+            🛡️ Garantia de 7 dias
+          </strong>
+          <p style={{ 
+            margin: 0, 
+            fontSize: '0.9rem', 
+            color: 'rgba(255, 255, 255, 0.8)',
+            lineHeight: '1.4'
+          }}>
+            Não gostou? Reembolso total em até 7 dias após a compra
+          </p>
+        </div>
+
         <button
           type="submit"
           disabled={!stripe || loading}
@@ -823,6 +850,49 @@ const CheckoutForm = ({
         >
           {loading ? 'Processando...' : `Pagar ${valorFormatado}`}
         </button>
+
+        <div className="stripe-powered-by" style={{
+          marginTop: '1.5rem',
+          textAlign: 'center',
+          paddingTop: '1rem',
+          borderTop: '1px solid rgba(255, 255, 255, 0.1)'
+        }}>
+          <p style={{
+            margin: 0,
+            fontSize: '0.85rem',
+            color: 'rgba(255, 255, 255, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.5rem'
+          }}>
+            <span>Pagamento seguro processado por</span>
+            <a 
+              href="https://stripe.com" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{
+                color: 'rgba(255, 255, 255, 0.8)',
+                textDecoration: 'none',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.25rem'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'var(--cor-primaria, #FF6B35)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)';
+              }}
+            >
+              Stripe
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', verticalAlign: 'middle' }}>
+                <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.537-.915-6.59-2.121l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.591-7.305h.02z" fill="currentColor"/>
+              </svg>
+            </a>
+          </p>
+        </div>
       </div>
     </form>
   );
