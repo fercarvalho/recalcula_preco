@@ -10,7 +10,6 @@ import {
 } from '@stripe/react-stripe-js';
 import { FaTicketAlt, FaCheckCircle, FaShieldAlt } from 'react-icons/fa';
 import { getUser, isAuthenticated } from '../services/auth';
-import { apiService } from '../services/api';
 import { mostrarAlert } from '../utils/modals';
 import { validarCPF, formatarCPF as formatarCPFUtil } from '../utils/validacao';
 import './Checkout.css';
@@ -110,7 +109,7 @@ const CheckoutAssinaturaForm = ({
   const [pais, setPais] = useState('Brasil');
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
-  // Criar/obter Customer quando componente montar
+  // Criar/obter Customer quando componente montar (sempre, mesmo com cupom de 100%)
   useEffect(() => {
     if (!customerId && !criandoCustomer) {
       criarCustomer();
@@ -312,16 +311,6 @@ const CheckoutAssinaturaForm = ({
       return;
     }
 
-    if (!customerId) {
-      await mostrarAlert('Erro', 'Erro ao processar. Tente novamente.');
-      return;
-    }
-
-    if (!validarFormulario()) {
-      await mostrarAlert('Erro', 'Por favor, preencha todos os campos obrigatórios corretamente.');
-      return;
-    }
-
     setLoading(true);
     setError(null);
 
@@ -329,7 +318,42 @@ const CheckoutAssinaturaForm = ({
       const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
       const token = localStorage.getItem('calculadora_auth_token');
 
-      // 1. Criar PaymentMethod
+      // 1. Buscar plano para obter priceId
+      const planoResponse = await fetch(`${API_BASE}/api/planos/${planoId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!planoResponse.ok) {
+        throw new Error('Erro ao buscar informações do plano');
+      }
+
+      const plano = await planoResponse.json();
+
+      if (!plano.stripe_price_id) {
+        throw new Error('Plano não possui price_id configurado');
+      }
+
+      // Validação do formulário
+      if (!validarFormulario()) {
+        await mostrarAlert('Erro', 'Por favor, preencha todos os campos obrigatórios corretamente.');
+        setLoading(false);
+        return;
+      }
+
+      // Se não tem customerId ainda, criar agora
+      if (!customerId) {
+        await criarCustomer();
+        // Verificar novamente após criar
+        if (!customerId) {
+          await mostrarAlert('Erro', 'Erro ao criar customer. Tente novamente.');
+          setLoading(false);
+          return;
+        }
+      }
+
+      // 2. Criar PaymentMethod (apenas para pagamentos)
       const cardNumberElement = elements.getElement(CardNumberElement);
       if (!cardNumberElement) {
         throw new Error('Elemento de número do cartão não encontrado');
@@ -369,24 +393,7 @@ const CheckoutAssinaturaForm = ({
         throw new Error(pmError?.message || 'Erro ao processar cartão');
       }
 
-      // 2. Buscar plano para obter priceId
-      const planoResponse = await fetch(`${API_BASE}/api/planos/${planoId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!planoResponse.ok) {
-        throw new Error('Erro ao buscar informações do plano');
-      }
-
-      const plano = await planoResponse.json();
-
-      if (!plano.stripe_price_id) {
-        throw new Error('Plano não possui price_id configurado');
-      }
-
-      // 3. Criar Subscription
+      // 3. Criar Subscription (valor > 0)
       const subscriptionResponse = await fetch(`${API_BASE}/api/stripe/create-subscription`, {
         method: 'POST',
         headers: {
@@ -427,7 +434,29 @@ const CheckoutAssinaturaForm = ({
         }
       }
 
-      // 5. Confirmar assinatura no backend
+      // 5. Preparar dados do checkout para salvar no cadastro
+      const dadosCheckout: any = {
+        nomeCompleto: faturamento.nomeCompleto,
+      };
+      
+      if (!naoPossuiCpf && faturamento.cpf) {
+        dadosCheckout.cpf = faturamento.cpf;
+      }
+      
+      if (!naoResidoBrasil) {
+        dadosCheckout.cep = endereco.cep;
+        dadosCheckout.logradouro = endereco.logradouro;
+        dadosCheckout.numero = endereco.numero;
+        dadosCheckout.complemento = endereco.complemento;
+        dadosCheckout.bairro = endereco.bairro;
+        dadosCheckout.cidade = endereco.cidade;
+        dadosCheckout.uf = endereco.uf;
+        dadosCheckout.pais = 'Brasil';
+      } else {
+        dadosCheckout.pais = pais;
+      }
+
+      // 6. Confirmar assinatura no backend (enviando dados do checkout)
       const confirmResponse = await fetch(`${API_BASE}/api/stripe/confirmar-assinatura`, {
         method: 'POST',
         headers: {
@@ -437,41 +466,13 @@ const CheckoutAssinaturaForm = ({
         body: JSON.stringify({
           subscriptionId: subscriptionData.subscriptionId,
           paymentIntentId: subscriptionData.clientSecret ? undefined : undefined,
+          dadosCheckout: dadosCheckout, // Enviar dados do checkout para salvar no perfil
         }),
       });
 
       if (!confirmResponse.ok) {
         const errorData = await confirmResponse.json().catch(() => ({ error: 'Erro ao confirmar assinatura' }));
         throw new Error(errorData.error || 'Erro ao confirmar assinatura');
-      }
-
-      // 6. Salvar dados do checkout no perfil (se necessário)
-      try {
-        const dadosCheckout: any = {
-          nomeCompleto: faturamento.nomeCompleto,
-        };
-        
-        if (!naoPossuiCpf && faturamento.cpf) {
-          dadosCheckout.cpf = faturamento.cpf;
-        }
-        
-        if (!naoResidoBrasil) {
-          dadosCheckout.cep = endereco.cep;
-          dadosCheckout.logradouro = endereco.logradouro;
-          dadosCheckout.numero = endereco.numero;
-          dadosCheckout.complemento = endereco.complemento;
-          dadosCheckout.bairro = endereco.bairro;
-          dadosCheckout.cidade = endereco.cidade;
-          dadosCheckout.uf = endereco.uf;
-          dadosCheckout.pais = 'Brasil';
-        } else {
-          dadosCheckout.pais = pais;
-        }
-
-        await apiService.atualizarDadosUsuario(dadosCheckout);
-      } catch (err) {
-        console.error('Erro ao salvar dados do checkout:', err);
-        // Não bloquear o fluxo se falhar ao salvar dados
       }
 
       // 7. Sucesso!

@@ -307,10 +307,21 @@ const enviarEmailRecuperacao = async (email, token, username) => {
 // Enviar email de validação
 const enviarEmailValidacao = async (email, token, username) => {
   try {
+    // Validar se o token foi fornecido
+    if (!token || token.trim().length === 0) {
+      throw new Error('Token de validação não fornecido ou inválido');
+    }
+    
     const transporter = await createTransporter();
     
     const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
     const validationUrl = `${baseUrl}/validar-email?token=${token}`;
+    
+    console.log(`\n📧 Preparando envio de email de validação:`);
+    console.log(`   Para: ${email}`);
+    console.log(`   Username: ${username}`);
+    console.log(`   Token: ${token.substring(0, 20)}...`);
+    console.log(`   URL de validação: ${validationUrl}`);
     
     const mailOptions = {
       from: process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@calculadora.com',
@@ -425,7 +436,19 @@ const enviarEmailValidacao = async (email, token, username) => {
       console.log(previewUrl);
       console.log('═══════════════════════════════════════════════════════\n');
     } else {
-      console.log(`✅ Email de validação enviado para: ${email}`);
+      // Log detalhado para produção
+      console.log(`\n📧 Email de validação enviado:`);
+      console.log(`   Para: ${email}`);
+      console.log(`   De: ${mailOptions.from}`);
+      console.log(`   Assunto: ${mailOptions.subject}`);
+      console.log(`   MessageId: ${info.messageId || 'N/A'}`);
+      console.log(`   Response: ${info.response || 'N/A'}`);
+      console.log(`   ⚠️  NOTA: Este log indica que o email foi aceito pelo servidor SMTP.`);
+      console.log(`   ⚠️  Se o email não chegou, verifique:`);
+      console.log(`      1. Pasta de spam/lixo eletrônico`);
+      console.log(`      2. Filtros de email do provedor`);
+      console.log(`      3. Logs do SendGrid (se estiver usando)`);
+      console.log(`      4. BASE_URL está correto? (atual: ${baseUrl})`);
     }
     
     return info;

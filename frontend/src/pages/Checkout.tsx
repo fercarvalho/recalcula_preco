@@ -94,7 +94,7 @@ const CheckoutForm = ({
   const [cupomAplicado, setCupomAplicado] = useState<any>(null);
   const [validandoCupom, setValidandoCupom] = useState(false);
   const [valorOriginal, setValorOriginal] = useState(amount);
-  const [valorFinal, setValorFinal] = useState(amount);
+  const [valorFinal, setValorFinal] = useState(amount); // Mantido para exibição, mas não será usado no envio
   const [naoPossuiCpf, setNaoPossuiCpf] = useState(false);
   const [naoResidoBrasil, setNaoResidoBrasil] = useState(false);
   const [pais, setPais] = useState('Brasil');
@@ -295,9 +295,34 @@ const CheckoutForm = ({
     setError(null);
 
     try {
-      // 1. Criar Payment Intent no backend
+      // Validar dados antes de enviar
+      if (!userId) {
+        const errorMsg = 'ID do usuário não encontrado. Por favor, faça login novamente.';
+        setError(errorMsg);
+        await mostrarAlert('Erro', errorMsg);
+        setLoading(false);
+        return;
+      }
+      
+      if (valorFinal === undefined || valorFinal === null) {
+        const errorMsg = 'Valor inválido. Por favor, verifique o valor do plano.';
+        setError(errorMsg);
+        await mostrarAlert('Erro', errorMsg);
+        setLoading(false);
+        return;
+      }
+      
+      // 1. Criar Payment Intent no backend (ou conceder acesso gratuito se valor for zero)
       const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
       const token = localStorage.getItem('calculadora_auth_token');
+      
+      if (!token) {
+        const errorMsg = 'Token de autenticação não encontrado. Por favor, faça login novamente.';
+        setError(errorMsg);
+        await mostrarAlert('Erro', errorMsg);
+        setLoading(false);
+        return;
+      }
       
       const response = await fetch(`${API_BASE}/api/stripe/create-payment-intent`, {
         method: 'POST',
@@ -306,10 +331,11 @@ const CheckoutForm = ({
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          amount: valorFinal, // Usar valor com desconto
+          amount: valorOriginal, // Enviar valor original (sem desconto) para a Stripe aplicar o cupom
           userId,
           planoId,
-          couponId: cupomAplicado?.couponId || null, // Incluir couponId se houver
+          couponId: cupomAplicado?.couponId || null, // ID do cupom na Stripe
+          promotionCodeId: cupomAplicado?.promotionCodeId || null, // ID do Promotion Code na Stripe
         }),
       });
 
@@ -318,7 +344,81 @@ const CheckoutForm = ({
         throw new Error(errorData.error || 'Erro ao criar intenção de pagamento');
       }
 
-      const { clientSecret } = await response.json();
+      const responseData = await response.json();
+      
+      // Se for acesso gratuito (valor zero), finalizar diretamente
+      if (responseData.isFree) {
+        // Preparar dados do checkout para salvar no cadastro
+        const dadosCheckout: any = {
+          nomeCompleto: faturamento.nomeCompleto,
+        };
+        
+        // CPF (apenas se não for estrangeiro)
+        if (!naoPossuiCpf && faturamento.cpf) {
+          dadosCheckout.cpf = faturamento.cpf;
+        }
+        
+        // Endereço (depende se reside no Brasil)
+        if (!naoResidoBrasil) {
+          dadosCheckout.cep = endereco.cep;
+          dadosCheckout.logradouro = endereco.logradouro;
+          dadosCheckout.numero = endereco.numero;
+          dadosCheckout.complemento = endereco.complemento;
+          dadosCheckout.bairro = endereco.bairro;
+          dadosCheckout.cidade = endereco.cidade;
+          dadosCheckout.uf = endereco.uf;
+          dadosCheckout.pais = 'Brasil';
+        } else {
+          // Apenas país para estrangeiros
+          dadosCheckout.pais = pais;
+        }
+
+        // Salvar dados do checkout no perfil
+        // Usar paymentIntentId da resposta (para cupons de 100% será free_xxx)
+        console.log('📤 Enviando dados do checkout para o backend:');
+        console.log('   Payment Intent ID:', responseData.paymentIntentId);
+        console.log('   Plano ID:', planoId);
+        console.log('   Dados do checkout:', dadosCheckout);
+        
+        try {
+          const requestBody = {
+            paymentIntentId: responseData.paymentIntentId,
+            planoId: planoId, // Incluir planoId para acesso gratuito
+            dadosCheckout: dadosCheckout,
+          };
+          
+          console.log('📤 Request body completo:', JSON.stringify(requestBody, null, 2));
+          
+          const confirmResponse = await fetch(`${API_BASE}/api/stripe/confirmar-pagamento`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(requestBody),
+          });
+
+          console.log('📥 Response status:', confirmResponse.status);
+          
+          if (!confirmResponse.ok) {
+            const errorData = await confirmResponse.json().catch(() => ({ error: 'Erro ao salvar dados do checkout' }));
+            console.error('❌ Erro ao salvar dados do checkout:', errorData);
+          } else {
+            const responseData = await confirmResponse.json().catch(() => ({}));
+            console.log('✅ Dados do checkout salvos com sucesso:', responseData);
+          }
+        } catch (err) {
+          console.error('❌ Erro ao salvar dados do checkout:', err);
+          // Não bloquear o fluxo se falhar ao salvar dados
+        }
+
+        // Pagamento processado com sucesso (mesma mensagem padrão)
+        await mostrarAlert('Sucesso', 'Pagamento processado com sucesso!');
+        window.location.href = '/';
+        return;
+      }
+
+      const { clientSecret } = responseData;
 
       // 2. Confirmar pagamento com Stripe
       const cardNumberElement = elements.getElement(CardNumberElement);
@@ -521,14 +621,14 @@ const CheckoutForm = ({
 
         {/* Resumo do valor e cupom aplicado */}
         {cupomAplicado && (
-          <div style={{
+          <div className="cupom-resumo-box" style={{
             marginTop: '1rem',
             padding: '1rem',
             background: 'rgba(0, 0, 0, 0.3)',
             border: '1px solid rgba(255, 255, 255, 0.3)',
             borderRadius: '8px'
           }}>
-            <div style={{ 
+            <div className="cupom-aplicado-mensagem" style={{ 
               display: 'flex', 
               alignItems: 'center',
               gap: '0.5rem',
@@ -543,23 +643,23 @@ const CheckoutForm = ({
               <span>Valor original:</span>
               <span>{valorFormatadoOriginal}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: '#4CAF50' }}>
+            <div className="desconto-linha" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: '#4CAF50' }}>
               <span>Desconto:</span>
               <span>
                 - R$ {(cupomAplicado.descontoAplicado / 100).toFixed(2).replace('.', ',')}
               </span>
             </div>
-            <div style={{ 
+            <div className="total-linha" style={{ 
               display: 'flex', 
               justifyContent: 'space-between', 
               fontWeight: 'bold', 
               fontSize: '1.1rem', 
               paddingTop: '0.5rem', 
               borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-              color: 'white'
+              color: 'var(--cor-primaria, #FF6B35)'
             }}>
               <span>Total:</span>
-              <span style={{ color: 'var(--cor-primaria, #FF6B35)' }}>{valorFormatadoFinal}</span>
+              <span className="valor-total-laranja">{valorFormatadoFinal}</span>
             </div>
           </div>
         )}
@@ -1221,7 +1321,7 @@ const Checkout = () => {
           <h1>Finalizar Pagamento</h1>
           <div className="checkout-resumo">
             <p><strong>Plano:</strong> {plano.nome}</p>
-            <p><strong>Valor:</strong> {valorFormatado}</p>
+            <p><strong>Valor:</strong> <span className="valor-laranja">{valorFormatado}</span></p>
           </div>
         </div>
 

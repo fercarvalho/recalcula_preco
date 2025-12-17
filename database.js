@@ -6239,6 +6239,13 @@ async function finalizarSessao(usuarioId) {
 // Atualizar dados pessoais do usuário
 async function atualizarDadosUsuario(usuarioId, dados) {
     try {
+        // Verificar se é uma atualização parcial (apenas dados do checkout)
+        const atualizacaoParcial = dados._atualizacaoParcial === true;
+        // Remover flag interna antes de processar
+        if (dados._atualizacaoParcial !== undefined) {
+            delete dados._atualizacaoParcial;
+        }
+        
         // Verificar se o email está validado e obter dados atuais do usuário
         const usuarioAtual = await pool.query(
             'SELECT email_validado, cpf, pais_comercial, pais_residencial, cep_comercial, endereco_comercial, numero_comercial, cidade_comercial, estado_comercial, cep_residencial, endereco_residencial, numero_residencial, cidade_residencial, estado_residencial, nome, sobrenome, telefone, data_nascimento, genero, nome_estabelecimento FROM usuarios WHERE id = $1', 
@@ -6268,8 +6275,8 @@ async function atualizarDadosUsuario(usuarioId, dados) {
             return true;
         };
         
-        // Se o email estiver validado, validar campos obrigatórios
-        if (emailValidado) {
+        // Se o email estiver validado E não for atualização parcial, validar campos obrigatórios
+        if (emailValidado && !atualizacaoParcial) {
             // Validar campos básicos obrigatórios
             const camposObrigatorios = {
                 'nome': 'O nome é obrigatório quando o email está validado',

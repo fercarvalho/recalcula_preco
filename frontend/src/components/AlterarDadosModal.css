@@ -1,5 +1,25 @@
+/* Modal de dados do usuário - fundo branco, texto preto */
 .alterar-dados-form {
   padding: 20px 0;
+  color: #333 !important; /* Garantir que o texto seja escuro */
+}
+
+/* Garantir que todo o texto dentro do modal seja escuro (apenas no modal de dados) */
+/* IMPORTANTE: Não usar * genérico para evitar conflitos com checkout */
+.alterar-dados-form label,
+.alterar-dados-form h3,
+.alterar-dados-form p,
+.alterar-dados-form span:not(.required),
+.alterar-dados-form div {
+  color: #333 !important;
+}
+
+/* Garantir que asteriscos de campos obrigatórios sejam vermelhos */
+.alterar-dados-form .required,
+.alterar-dados-form label .required,
+.alterar-dados-form span.required {
+  color: #e74c3c !important;
+  font-weight: bold;
 }
 
 .form-section {
@@ -14,7 +34,7 @@
 
 .form-section h3 {
   margin: 0 0 20px 0;
-  color: #333;
+  color: #333 !important; /* Garantir que títulos sejam escuros */
   font-size: 1.1rem;
   font-weight: 600;
 }
@@ -33,7 +53,7 @@
 .form-group label {
   display: block;
   margin-bottom: 5px;
-  color: #555;
+  color: #333 !important; /* Garantir que labels sejam escuras */
   font-weight: 500;
   font-size: 0.9rem;
 }
@@ -209,7 +229,7 @@ input[type="date"].date-input:focus {
   gap: 0;
   cursor: pointer;
   font-weight: 500;
-  color: #555;
+  color: #333 !important; /* Garantir que checkbox labels sejam escuras */
   vertical-align: middle;
 }
 
@@ -233,7 +253,7 @@ input[type="date"].date-input:focus {
 }
 
 .required {
-  color: #e74c3c;
+  color: #e74c3c !important; /* Garantir que asteriscos sejam vermelhos */
   font-weight: bold;
 }
 

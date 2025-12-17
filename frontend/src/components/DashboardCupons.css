@@ -1,0 +1,348 @@
+/* Garantir que o modal apareça acima do painel admin */
+.modal.dashboard-cupons-modal {
+  z-index: 10002 !important;
+}
+
+.modal.dashboard-cupons-modal.show {
+  z-index: 10002 !important;
+}
+
+.dashboard-cupons {
+  padding: 20px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.dashboard-cupons-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  gap: 20px;
+}
+
+.dashboard-cupons-loading .spinner {
+  font-size: 2rem;
+  color: var(--cor-primaria, #FF6B35);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.dashboard-cupons-error {
+  padding: 20px;
+  background: rgba(231, 76, 60, 0.1);
+  border: 1px solid rgba(231, 76, 60, 0.3);
+  border-radius: 8px;
+  color: #e74c3c;
+  text-align: center;
+}
+
+.dashboard-cupons-vazio {
+  padding: 40px;
+  text-align: center;
+  color: #666;
+}
+
+/* Resumo geral */
+.dashboard-cupons-resumo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.resumo-card {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  transition: all 0.3s ease;
+}
+
+.resumo-card:hover {
+  background: #f0f0f0;
+  border-color: var(--cor-primaria, #FF6B35);
+}
+
+.resumo-icon {
+  font-size: 2rem;
+  color: var(--cor-primaria, #FF6B35);
+  flex-shrink: 0;
+}
+
+.resumo-content h3 {
+  margin: 0 0 8px 0;
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: normal;
+}
+
+.resumo-valor {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #333;
+}
+
+/* Lista de cupons */
+.dashboard-cupons-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.cupom-card {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.cupom-card:hover {
+  border-color: var(--cor-primaria, #FF6B35);
+}
+
+.cupom-header {
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.cupom-info {
+  flex: 1;
+}
+
+.cupom-info h3 {
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 1.2rem;
+}
+
+.cupom-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.badge-valid {
+  background: rgba(46, 204, 113, 0.2);
+  color: #2ecc71;
+  border: 1px solid rgba(46, 204, 113, 0.3);
+}
+
+.badge-invalid {
+  background: rgba(231, 76, 60, 0.2);
+  color: #e74c3c;
+  border: 1px solid rgba(231, 76, 60, 0.3);
+}
+
+.badge-tipo {
+  background: rgba(52, 152, 219, 0.2);
+  color: #3498db;
+  border: 1px solid rgba(52, 152, 219, 0.3);
+}
+
+.badge-desconto {
+  background: rgba(255, 107, 53, 0.2);
+  color: var(--cor-primaria, #FF6B35);
+  border: 1px solid rgba(255, 107, 53, 0.3);
+}
+
+.cupom-stats {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.stat-item svg {
+  color: var(--cor-primaria, #FF6B35);
+}
+
+.expand-icon {
+  color: #666;
+  transition: transform 0.3s ease;
+}
+
+/* Detalhes do cupom */
+.cupom-detalhes {
+  padding: 20px;
+  border-top: 1px solid #e0e0e0;
+  background: #f0f0f0;
+}
+
+.detalhes-section {
+  margin-bottom: 25px;
+}
+
+.detalhes-section:last-child {
+  margin-bottom: 0;
+}
+
+.detalhes-section h4 {
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 1rem;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 8px;
+}
+
+.detalhes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 15px;
+}
+
+.detalhe-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.detalhe-item strong {
+  color: #666;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.detalhe-item span {
+  color: #333;
+  font-size: 0.95rem;
+}
+
+/* Promotion codes */
+.promotion-codes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.promotion-code-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.promo-code {
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  color: var(--cor-primaria, #FF6B35);
+  font-size: 1rem;
+}
+
+.promo-usos {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+/* Tabela de usos */
+.usos-table {
+  overflow-x: auto;
+}
+
+.usos-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.usos-table thead {
+  background: #f8f9fa;
+}
+
+.usos-table th {
+  padding: 12px;
+  text-align: left;
+  color: #333;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.usos-table td {
+  padding: 12px;
+  color: #333;
+  font-size: 0.9rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.usos-table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.usuario-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.usuario-info strong {
+  color: #333;
+}
+
+.usuario-email {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.text-muted {
+  color: #999;
+  font-style: italic;
+}
+
+.status-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.status-succeeded {
+  background: rgba(46, 204, 113, 0.2);
+  color: #2ecc71;
+  border: 1px solid rgba(46, 204, 113, 0.3);
+}
+
+.status-pending,
+.status-processing {
+  background: rgba(241, 196, 15, 0.2);
+  color: #f1c40f;
+  border: 1px solid rgba(241, 196, 15, 0.3);
+}
+
+.status-failed,
+.status-canceled {
+  background: rgba(231, 76, 60, 0.2);
+  color: #e74c3c;
+  border: 1px solid rgba(231, 76, 60, 0.3);
+}
+

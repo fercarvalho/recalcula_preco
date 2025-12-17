@@ -62,13 +62,74 @@
 }
 
 .checkout-resumo strong {
-  color: var(--cor-primaria, #FF6B35);
+  color: var(--cor-primaria, #FF6B35) !important; /* Laranja para valores no resumo */
+}
+
+/* Garantir que o texto do valor no checkout-resumo seja laranja */
+.checkout-resumo p strong {
+  color: var(--cor-primaria, #FF6B35) !important;
+}
+
+/* Garantir que o valor formatado no checkout-resumo seja laranja */
+.checkout-resumo p {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.checkout-resumo p span,
+.checkout-resumo p strong,
+.checkout-resumo .valor-laranja {
+  color: var(--cor-primaria, #FF6B35) !important;
 }
 
 .checkout-form {
   display: flex;
   flex-direction: column;
   gap: 2rem;
+  color: white !important; /* Garantir que o texto seja branco no checkout */
+}
+
+/* Garantir que todo o texto dentro do checkout seja branco */
+.checkout-form * {
+  color: inherit;
+}
+
+.checkout-form label,
+.checkout-form h2,
+.checkout-form h3,
+.checkout-form p,
+.checkout-form span:not(.required),
+.checkout-form div {
+  color: white !important;
+}
+
+/* Preservar cores específicas do resumo de cupom - sobrescrever o color: white !important */
+.cupom-resumo-box .cupom-aplicado-mensagem,
+.cupom-resumo-box .cupom-aplicado-mensagem span,
+.cupom-resumo-box .cupom-aplicado-mensagem * {
+  color: #4CAF50 !important; /* Verde para cupom aplicado */
+}
+
+.cupom-resumo-box .desconto-linha,
+.cupom-resumo-box .desconto-linha span,
+.cupom-resumo-box .desconto-linha * {
+  color: #4CAF50 !important; /* Verde para desconto */
+}
+
+.cupom-resumo-box .valor-total-laranja,
+.cupom-resumo-box .valor-total-laranja span,
+.cupom-resumo-box .valor-total-laranja * {
+  color: var(--cor-primaria, #FF6B35) !important; /* Laranja para valor total */
+}
+
+.cupom-resumo-box .total-linha,
+.cupom-resumo-box .total-linha span,
+.cupom-resumo-box .total-linha * {
+  color: var(--cor-primaria, #FF6B35) !important; /* Laranja para total */
+}
+
+/* Preservar cor laranja para valores e textos destacados no checkout-resumo */
+.checkout-resumo strong {
+  color: var(--cor-primaria, #FF6B35) !important; /* Laranja para valores */
 }
 
 .checkout-section {
@@ -94,9 +155,9 @@
   margin-bottom: 0;
 }
 
-.form-group label {
+.checkout-form .form-group label {
   display: block;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.9) !important; /* Garantir texto branco no checkout */
   margin-bottom: 0.5rem;
   font-size: 0.95rem;
   font-weight: 500;

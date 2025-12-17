@@ -11,6 +11,25 @@ const stripeService = require('./services/stripe');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Funções de formatação
+function formatarCPF(cpf) {
+    if (!cpf) return '';
+    const cpfLimpo = cpf.replace(/\D/g, '');
+    if (cpfLimpo.length === 11) {
+        return cpfLimpo.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    }
+    return cpf;
+}
+
+function formatarCEP(cep) {
+    if (!cep) return '';
+    const cepLimpo = cep.replace(/\D/g, '');
+    if (cepLimpo.length === 8) {
+        return cepLimpo.replace(/(\d{5})(\d{3})/, '$1-$2');
+    }
+    return cep;
+}
+
 // Middleware
 app.use(cors());
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
@@ -92,6 +111,27 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
                     });
 
                     console.log('✅ Pagamento único salvo no banco de dados via webhook para usuário:', userId, 'PlanoId:', planoId);
+                    
+                    // Registrar uso do cupom na Stripe se houver
+                    const promotionCodeId = resultado.metadata?.promotion_code_id;
+                    if (promotionCodeId) {
+                        try {
+                            const promotionCode = await stripeService.stripe.promotionCodes.retrieve(promotionCodeId);
+                            const totalUses = parseInt(promotionCode.metadata?.total_uses || '0') + 1;
+                            await stripeService.stripe.promotionCodes.update(promotionCodeId, {
+                                metadata: {
+                                    ...promotionCode.metadata,
+                                    [`used_${Date.now()}`]: paymentIntentId,
+                                    last_used_at: new Date().toISOString(),
+                                    last_used_by_user: userId.toString(),
+                                    total_uses: totalUses.toString(),
+                                }
+                            });
+                            console.log(`✅ Uso do cupom registrado via webhook (total: ${totalUses})`);
+                        } catch (err) {
+                            console.log('⚠️  Erro ao registrar uso do cupom via webhook:', err.message);
+                        }
+                    }
                 }
             } else if (resultado.tipo === 'pagamento_unico_sucesso' && !userId) {
                 // payment_intent.succeeded sem userId no metadata (pode ser de checkout session já processado)
@@ -265,9 +305,16 @@ app.post('/api/auth/register', async (req, res) => {
         
         // Enviar email de validação
         try {
-            await enviarEmailValidacao(usuario.email, usuario.tokenValidacao, usuario.username);
+            if (!usuario.tokenValidacao) {
+                console.error('⚠️  ATENÇÃO: Usuário criado sem token de validação!');
+                console.error('   Isso pode acontecer se o token não foi criado corretamente.');
+            } else {
+                await enviarEmailValidacao(usuario.email, usuario.tokenValidacao, usuario.username);
+            }
         } catch (emailError) {
-            console.error('Erro ao enviar email de validação:', emailError);
+            console.error('❌ Erro ao enviar email de validação:', emailError);
+            console.error('   Detalhes:', emailError.message);
+            console.error('   Stack:', emailError.stack);
             // Não falhar o registro se o email não for enviado
         }
         
@@ -369,6 +416,186 @@ app.get('/api/admin/user-stats/:id', authenticateToken, requireAdmin, async (req
 });
 
 // Obter estatísticas gerais do sistema (apenas admin)
+// Dashboard de cupons da Stripe
+app.get('/api/admin/cupons-stripe', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        if (!stripeService.stripe) {
+            return res.status(500).json({ error: 'Stripe não está configurado' });
+        }
+
+        // 1. Listar todos os cupons da Stripe
+        const coupons = await stripeService.stripe.coupons.list({ limit: 100 });
+        
+        // 2. Listar todos os Promotion Codes
+        const promotionCodes = await stripeService.stripe.promotionCodes.list({ limit: 100 });
+        
+        // 3. Para cada Promotion Code, buscar Payment Intents que usaram o cupom
+        const cuponsComUso = await Promise.all(
+            promotionCodes.data.map(async (promoCode) => {
+                const coupon = promoCode.coupon;
+                
+                // Buscar Payment Intents que têm este promotion_code_id nos metadados
+                // A Stripe não permite buscar por metadados diretamente, então precisamos listar todos
+                let paymentIntentsComCupom = [];
+                let hasMore = true;
+                let startingAfter = null;
+                
+                while (hasMore) {
+                    const params = { limit: 100 };
+                    if (startingAfter) {
+                        params.starting_after = startingAfter;
+                    }
+                    
+                    const paymentIntents = await stripeService.stripe.paymentIntents.list(params);
+                    
+                    // Filtrar Payment Intents que usaram este cupom
+                    const filtrados = paymentIntents.data.filter(
+                        pi => pi.metadata?.promotion_code_id === promoCode.id
+                    );
+                    
+                    paymentIntentsComCupom.push(...filtrados);
+                    
+                    hasMore = paymentIntents.has_more;
+                    if (hasMore && paymentIntents.data.length > 0) {
+                        startingAfter = paymentIntents.data[paymentIntents.data.length - 1].id;
+                    }
+                }
+                
+                // Buscar informações dos usuários do nosso banco
+                const usos = await Promise.all(
+                    paymentIntentsComCupom.map(async (pi) => {
+                        const userId = pi.metadata?.user_id ? parseInt(pi.metadata.user_id) : null;
+                        const planoId = pi.metadata?.plano_id ? parseInt(pi.metadata.plano_id) : null;
+                        
+                        let usuario = null;
+                        let plano = null;
+                        
+                        if (userId) {
+                            try {
+                                usuario = await db.obterUsuarioPorId(userId);
+                            } catch (err) {
+                                console.log(`Erro ao buscar usuário ${userId}:`, err.message);
+                            }
+                        }
+                        
+                        if (planoId) {
+                            try {
+                                plano = await db.obterPlanoPorId(planoId);
+                            } catch (err) {
+                                console.log(`Erro ao buscar plano ${planoId}:`, err.message);
+                            }
+                        }
+                        
+                        // Calcular valor original e desconto aplicado
+                        const valorFinal = pi.amount / 100; // Valor com desconto já aplicado
+                        let valorOriginal = valorFinal;
+                        let descontoAplicado = 0;
+                        
+                        if (coupon.percent_off) {
+                            if (coupon.percent_off === 100) {
+                                // Para 100%, o valor é 0, então precisamos do valor original do plano
+                                if (plano && plano.valor) {
+                                    valorOriginal = plano.valor;
+                                    descontoAplicado = valorOriginal; // 100% de desconto = valor original
+                                } else {
+                                    // Se não temos o plano, não podemos calcular
+                                    valorOriginal = null;
+                                    descontoAplicado = null;
+                                }
+                            } else {
+                                // Calcular valor original: valor_atual / (1 - percentual/100)
+                                valorOriginal = valorFinal / (1 - coupon.percent_off / 100);
+                                descontoAplicado = valorOriginal - valorFinal;
+                            }
+                        } else {
+                            // Desconto fixo
+                            valorOriginal = valorFinal + (coupon.amount_off / 100);
+                            descontoAplicado = coupon.amount_off / 100;
+                        }
+                        
+                        return {
+                            paymentIntentId: pi.id,
+                            valor: valorFinal, // Valor final (com desconto)
+                            valorOriginal: valorOriginal !== null ? valorOriginal : undefined,
+                            descontoAplicado: descontoAplicado !== null ? descontoAplicado : undefined,
+                            status: pi.status,
+                            data: new Date(pi.created * 1000).toISOString(),
+                            usuario: usuario ? {
+                                id: usuario.id,
+                                username: usuario.username,
+                                email: usuario.email,
+                            } : null,
+                            plano: plano ? {
+                                id: plano.id,
+                                nome: plano.nome,
+                            } : null,
+                        };
+                    })
+                );
+                
+                return {
+                    promotionCodeId: promoCode.id,
+                    codigo: promoCode.code,
+                    couponId: coupon.id,
+                    nomeCupom: coupon.name || 'Sem nome',
+                    tipo: coupon.percent_off ? 'percentual' : 'fixo',
+                    desconto: coupon.percent_off || coupon.amount_off,
+                    duracao: coupon.duration,
+                    valido: coupon.valid,
+                    criadoEm: new Date(coupon.created * 1000).toISOString(),
+                    totalUsos: usos.length,
+                    totalDescontoAplicado: usos.reduce((sum, uso) => {
+                        // Usar o descontoAplicado calculado para cada uso
+                        return sum + (uso.descontoAplicado || 0);
+                    }, 0),
+                    usos: usos,
+                };
+            })
+        );
+        
+        // 4. Agrupar por cupom (pode haver múltiplos Promotion Codes para o mesmo cupom)
+        const cuponsAgrupados = cuponsComUso.reduce((acc, item) => {
+            const couponId = item.couponId;
+            if (!acc[couponId]) {
+                acc[couponId] = {
+                    couponId: couponId,
+                    nomeCupom: item.nomeCupom,
+                    tipo: item.tipo,
+                    desconto: item.desconto,
+                    duracao: item.duracao,
+                    valido: item.valido,
+                    criadoEm: item.criadoEm,
+                    promotionCodes: [],
+                    totalUsos: 0,
+                    totalDescontoAplicado: 0,
+                    todosUsos: [],
+                };
+            }
+            
+            acc[couponId].promotionCodes.push({
+                promotionCodeId: item.promotionCodeId,
+                codigo: item.codigo,
+                totalUsos: item.totalUsos,
+            });
+            
+            acc[couponId].totalUsos += item.totalUsos;
+            acc[couponId].totalDescontoAplicado += item.totalDescontoAplicado;
+            acc[couponId].todosUsos.push(...item.usos);
+            
+            return acc;
+        }, {});
+        
+        res.json({
+            cupons: Object.values(cuponsAgrupados),
+            totalCupons: Object.keys(cuponsAgrupados).length,
+            totalUsos: Object.values(cuponsAgrupados).reduce((sum, c) => sum + c.totalUsos, 0),
+        });
+    } catch (error) {
+        console.error('Erro ao buscar cupons da Stripe:', error);
+        res.status(500).json({ error: error.message || 'Erro ao buscar cupons da Stripe' });
+    }
+});
+
 app.get('/api/admin/stats-gerais', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const stats = await db.obterEstatisticasGerais();
@@ -452,6 +679,15 @@ app.post('/api/auth/reenviar-email-validacao', authenticateToken, async (req, re
         
         // Criar novo token
         const token = await db.criarTokenValidacaoEmail(userId);
+        
+        if (!token) {
+            console.error('❌ Erro: Token de validação não foi criado');
+            return res.status(500).json({ error: 'Erro ao criar token de validação' });
+        }
+        
+        console.log(`📧 Reenviando email de validação para usuário ${userId} (${usuario.username})`);
+        console.log(`   Email: ${usuario.email}`);
+        console.log(`   Token criado: ${token.substring(0, 20)}...`);
         
         // Enviar email
         await enviarEmailValidacao(usuario.email, token, usuario.username);
@@ -1122,10 +1358,28 @@ app.post('/api/stripe/validar-cupom', authenticateToken, async (req, res) => {
 // Criar Payment Intent para checkout transparente
 app.post('/api/stripe/create-payment-intent', authenticateToken, async (req, res) => {
     try {
-        const { amount, userId, planoId, couponId } = req.body;
+        const { amount, userId, planoId, couponId, promotionCodeId } = req.body;
         
-        if (!amount || !userId) {
-            return res.status(400).json({ error: 'Amount e userId são obrigatórios' });
+        // Log para debug
+        console.log('📝 create-payment-intent recebido:', { 
+            amount, 
+            userId, 
+            planoId, 
+            couponId,
+            userIdType: typeof userId,
+            amountType: typeof amount,
+            reqUserId: req.user?.id
+        });
+        
+        // Usar userId do token se não foi fornecido no body (mais seguro)
+        const userIdFinal = userId || req.user?.id;
+        
+        if (amount === undefined || amount === null) {
+            return res.status(400).json({ error: 'Amount é obrigatório' });
+        }
+        
+        if (!userIdFinal) {
+            return res.status(400).json({ error: 'UserId é obrigatório' });
         }
 
         // Buscar plano para obter price_id
@@ -1139,23 +1393,138 @@ app.post('/api/stripe/create-payment-intent', authenticateToken, async (req, res
             return res.status(500).json({ error: 'Stripe não está configurado' });
         }
 
-        // Criar Payment Intent no Stripe
+        // Criar ou obter Customer na Stripe (sempre, mesmo para pagamentos únicos)
+        let customerId = null;
+        const usuario = await db.obterUsuarioPorId(userIdFinal);
+        
+        if (usuario) {
+            // Verificar se já existe customer no banco (pode ter sido criado para assinatura)
+            const assinaturaExistente = await db.obterAssinatura(userIdFinal);
+            
+            if (assinaturaExistente?.stripe_customer_id) {
+                // Customer já existe, usar o existente
+                customerId = assinaturaExistente.stripe_customer_id;
+                console.log('✅ Usando customer existente:', customerId);
+            } else {
+                // Criar novo Customer na Stripe
+                const customer = await stripeService.stripe.customers.create({
+                    email: usuario.email,
+                    name: `${usuario.nome || ''} ${usuario.sobrenome || ''}`.trim() || usuario.username,
+                    metadata: {
+                        user_id: userIdFinal.toString(),
+                    },
+                });
+                
+                customerId = customer.id;
+                console.log('✅ Customer criado na Stripe para pagamento único:', customerId);
+                
+                // Salvar customer_id no banco (criar registro de assinatura vazio para armazenar customer_id)
+                await db.criarOuAtualizarAssinatura(userIdFinal, {
+                    stripe_customer_id: customerId,
+                    plano_tipo: 'unico', // Marcar como único para diferenciar de assinaturas
+                    status: 'incomplete',
+                });
+            }
+        }
+
+        // Se o valor for zero (cupom de 100%), não criar Payment Intent ou Checkout Session
+        // A Stripe não permite Payment Intents com valor zero, e Checkout Sessions não são completadas automaticamente
+        // Para cupons de 100%, apenas salvar no banco de dados e conceder acesso
+        if (amount === 0 || amount === '0') {
+            console.log('🎁 Cupom de 100% detectado - concedendo acesso gratuito sem criar transação na Stripe');
+            
+            // Gerar um ID único para rastreamento (não será usado na Stripe)
+            const paymentIntentId = `free_${Date.now()}_${userIdFinal}`;
+            
+            // Salvar pagamento com referência ao Customer (já criado acima)
+            const pagamento = await db.criarPagamentoUnico(userIdFinal, {
+                stripe_payment_intent_id: paymentIntentId,
+                stripe_customer_id: customerId, // Usar customerId criado acima
+                valor: 0,
+                status: 'succeeded',
+                plano_id: planoId,
+            });
+            
+            console.log('✅ Customer criado na Stripe:', customerId);
+            console.log('✅ Pagamento gratuito salvo no banco:', pagamento.id);
+            console.log('✅ Acesso concedido sem criar transação na Stripe (cupom de 100%)');
+            
+            return res.json({
+                clientSecret: null,
+                isFree: true,
+                paymentIntentId: paymentIntentId,
+                message: 'Acesso gratuito concedido com sucesso!'
+            });
+        }
+
+        // Criar Payment Intent no Stripe (checkout transparente)
+        // customerId já foi criado/obtido acima
+        
+        // Buscar Promotion Code se houver para registrar o uso na Stripe
+        let promotionCode = null;
+        if (promotionCodeId) {
+            try {
+                promotionCode = await stripeService.stripe.promotionCodes.retrieve(promotionCodeId);
+                console.log('✅ Promotion Code encontrado:', promotionCode.code);
+                console.log('🎟️  Cupom ID:', promotionCode.coupon.id);
+            } catch (err) {
+                console.log('⚠️  Erro ao buscar Promotion Code:', err.message);
+            }
+        }
+        
+        // Criar Payment Intent com valor já descontado (amount vem do frontend com desconto aplicado)
+        // Registrar o cupom usado nos metadados para rastreamento na Stripe
         const paymentIntentData = {
-            amount: amount, // Já vem com desconto aplicado do frontend
+            amount: amount, // Valor final (já com desconto aplicado pelo frontend)
             currency: 'brl',
+            customer: customerId, // Associar Customer ao Payment Intent
             metadata: {
-                user_id: userId.toString(),
+                user_id: userIdFinal.toString(),
                 plano_id: planoId ? planoId.toString() : '',
-                plano_tipo: 'unico', // ou 'anual' dependendo do plano
+                plano_tipo: 'unico',
             },
         };
 
-        // Se houver couponId, adicionar aos metadados para rastreamento
-        if (couponId) {
+        // Registrar cupom nos metadados para rastreamento na Stripe
+        if (promotionCodeId) {
+            paymentIntentData.metadata.promotion_code_id = promotionCodeId;
+            paymentIntentData.metadata.promotion_code = promotionCode?.code || '';
+            paymentIntentData.metadata.coupon_id = promotionCode?.coupon?.id || '';
+        }
+        if (couponId && !promotionCodeId) {
             paymentIntentData.metadata.coupon_id = couponId;
         }
 
         const paymentIntent = await stripeService.stripe.paymentIntents.create(paymentIntentData);
+        
+        // Registrar o uso do cupom na Stripe através de metadados
+        // A Stripe não rastreia automaticamente cupons em Payment Intents transparentes,
+        // mas podemos registrar nos metadados e usar webhooks para contabilizar
+        if (promotionCodeId && promotionCode) {
+            try {
+                // Atualizar metadados do Promotion Code para rastrear uso
+                await stripeService.stripe.promotionCodes.update(promotionCodeId, {
+                    metadata: {
+                        ...promotionCode.metadata,
+                        last_used_at: new Date().toISOString(),
+                        last_used_by_user: userIdFinal.toString(),
+                        last_payment_intent: paymentIntent.id,
+                    }
+                });
+                console.log('✅ Uso do cupom registrado nos metadados da Stripe');
+                console.log('📊 O cupom pode ser rastreado através dos metadados do Payment Intent e Promotion Code');
+            } catch (err) {
+                console.log('⚠️  Erro ao registrar uso do cupom:', err.message);
+                // Não falhar o pagamento se houver erro ao registrar o cupom
+            }
+        }
+        
+        console.log('✅ Payment Intent criado na Stripe:');
+        console.log('   ID:', paymentIntent.id);
+        console.log('   Status:', paymentIntent.status);
+        console.log('   Valor: R$', (paymentIntent.amount / 100).toFixed(2));
+        console.log('   Customer:', paymentIntent.customer || 'N/A');
+        console.log('   Metadata:', paymentIntent.metadata);
 
         res.json({
             clientSecret: paymentIntent.client_secret,
@@ -1219,6 +1588,7 @@ app.post('/api/stripe/create-subscription', authenticateToken, async (req, res) 
         const { customerId, paymentMethodId, priceId, planoId, couponId } = req.body;
         const userId = req.user.id;
 
+        // Validações
         if (!customerId || !paymentMethodId || !priceId) {
             return res.status(400).json({ 
                 error: 'customerId, paymentMethodId e priceId são obrigatórios' 
@@ -1268,7 +1638,11 @@ app.post('/api/stripe/create-subscription', authenticateToken, async (req, res) 
             subscriptionData.metadata.coupon_id = couponId;
         }
 
+        // Criar subscription na Stripe (mesmo com cupom de 100% - Stripe permite e ativa automaticamente)
         const subscription = await stripeService.stripe.subscriptions.create(subscriptionData);
+        
+        // Se o valor for zero (cupom de 100%), a subscription será criada como "active" automaticamente
+        // Não precisamos de lógica especial - a Stripe cuida disso
 
         // Obter client_secret do PaymentIntent (se houver)
         const latestInvoice = subscription.latest_invoice;
@@ -1300,7 +1674,7 @@ app.post('/api/stripe/create-subscription', authenticateToken, async (req, res) 
 // Confirmar assinatura após pagamento bem-sucedido
 app.post('/api/stripe/confirmar-assinatura', authenticateToken, async (req, res) => {
     try {
-        const { subscriptionId, paymentIntentId } = req.body;
+        const { subscriptionId, paymentIntentId, dadosCheckout } = req.body;
         const userId = req.user.id;
 
         if (!subscriptionId) {
@@ -1342,71 +1716,7 @@ app.post('/api/stripe/confirmar-assinatura', authenticateToken, async (req, res)
             cancel_at_period_end: subscription.cancel_at_period_end || false,
         });
 
-        res.json({
-            success: true,
-            subscriptionId: subscription.id,
-            status: subscription.status,
-        });
-    } catch (error) {
-        console.error('Erro ao confirmar assinatura:', error);
-        res.status(500).json({ error: error.message || 'Erro ao confirmar assinatura' });
-    }
-});
-
-// Confirmar e salvar pagamento único (para checkout transparente)
-app.post('/api/stripe/confirmar-pagamento', authenticateToken, async (req, res) => {
-    try {
-        const { paymentIntentId, dadosCheckout } = req.body;
-        const userId = req.userId;
-        
-        if (!paymentIntentId) {
-            return res.status(400).json({ error: 'Payment Intent ID é obrigatório' });
-        }
-
-        if (!stripeService.stripe) {
-            return res.status(500).json({ error: 'Stripe não está configurado' });
-        }
-
-        // Buscar Payment Intent no Stripe para verificar status e obter dados
-        const paymentIntent = await stripeService.stripe.paymentIntents.retrieve(paymentIntentId);
-        
-        // Verificar se o pagamento foi bem-sucedido
-        if (paymentIntent.status !== 'succeeded') {
-            return res.status(400).json({ error: `Pagamento não foi bem-sucedido. Status: ${paymentIntent.status}` });
-        }
-
-        // Verificar se o userId do metadata corresponde ao usuário autenticado
-        const metadataUserId = paymentIntent.metadata?.user_id ? parseInt(paymentIntent.metadata.user_id) : null;
-        if (metadataUserId !== userId) {
-            return res.status(403).json({ error: 'Este pagamento não pertence ao usuário autenticado' });
-        }
-
-        // Verificar se o pagamento já foi salvo
-        const pagamentoExistente = await db.obterPagamentoUnicoPorStripeId(paymentIntentId);
-        if (pagamentoExistente) {
-            return res.json({ 
-                message: 'Pagamento já foi processado',
-                pagamento: pagamentoExistente
-            });
-        }
-
-        // Obter dados do pagamento
-        const valor = paymentIntent.amount / 100; // Converter de centavos para reais
-        const planoId = paymentIntent.metadata?.plano_id ? parseInt(paymentIntent.metadata.plano_id) : null;
-        const customerId = paymentIntent.customer || null;
-
-        // Salvar pagamento no banco de dados
-        const pagamento = await db.criarPagamentoUnico(userId, {
-            stripe_payment_intent_id: paymentIntentId,
-            stripe_customer_id: customerId,
-            valor: valor,
-            status: 'succeeded',
-            plano_id: planoId,
-        });
-
-        console.log('✅ Pagamento único salvo diretamente no banco de dados para usuário:', userId, 'PlanoId:', planoId);
-
-        // Se houver dados do checkout, atualizar cadastro do usuário
+        // Salvar dados do checkout no perfil do usuário (mesma lógica do confirmar-pagamento)
         if (dadosCheckout) {
             try {
                 const dadosParaAtualizar = {};
@@ -1437,12 +1747,12 @@ app.post('/api/stripe/confirmar-pagamento', authenticateToken, async (req, res) 
                     return true;
                 };
                 
-                // CPF - validar antes de salvar (apenas se fornecido)
+                // CPF - validar antes de salvar (apenas se fornecido) - formatar antes de salvar
                 if (dadosCheckout.cpf) {
                     if (!validarCPF(dadosCheckout.cpf)) {
                         throw new Error('CPF inválido. Verifique os dígitos.');
                     }
-                    dadosParaAtualizar.cpf = dadosCheckout.cpf.replace(/\D/g, ''); // Remover formatação
+                    dadosParaAtualizar.cpf = formatarCPF(dadosCheckout.cpf); // Formatar antes de salvar
                 }
                 // Se não há CPF, não atualizar (usuário estrangeiro)
                 
@@ -1472,7 +1782,7 @@ app.post('/api/stripe/confirmar-pagamento', authenticateToken, async (req, res) 
                 } else {
                     // Brasileiro - endereço completo
                     if (dadosCheckout.cep) {
-                        dadosParaAtualizar.cep_residencial = dadosCheckout.cep.replace(/\D/g, '');
+                        dadosParaAtualizar.cep_residencial = formatarCEP(dadosCheckout.cep); // Formatar antes de salvar
                     }
                     if (dadosCheckout.logradouro) {
                         dadosParaAtualizar.endereco_residencial = dadosCheckout.logradouro;
@@ -1483,6 +1793,7 @@ app.post('/api/stripe/confirmar-pagamento', authenticateToken, async (req, res) 
                     if (dadosCheckout.complemento) {
                         dadosParaAtualizar.complemento_residencial = dadosCheckout.complemento;
                     }
+                    // Nota: bairro não está no schema do banco de dados, então não salvamos
                     if (dadosCheckout.cidade) {
                         dadosParaAtualizar.cidade_residencial = dadosCheckout.cidade;
                     }
@@ -1494,13 +1805,272 @@ app.post('/api/stripe/confirmar-pagamento', authenticateToken, async (req, res) 
                 
                 // Atualizar dados do usuário apenas se houver algo para atualizar
                 if (Object.keys(dadosParaAtualizar).length > 0) {
+                    // Marcar como atualização parcial para não validar campos obrigatórios
+                    dadosParaAtualizar._atualizacaoParcial = true;
                     await db.atualizarDadosUsuario(userId, dadosParaAtualizar);
                     console.log('✅ Dados do checkout salvos no cadastro do usuário:', userId);
                 }
             } catch (dadosError) {
-                // Não falhar o pagamento se houver erro ao salvar dados
-                console.error('⚠️  Erro ao salvar dados do checkout (pagamento já foi processado):', dadosError);
+                // Não falhar a assinatura se houver erro ao salvar dados
+                console.error('⚠️  Erro ao salvar dados do checkout (assinatura já foi processada):', dadosError);
+                console.error('⚠️  Stack trace:', dadosError.stack);
             }
+        }
+
+        res.json({
+            success: true,
+            subscriptionId: subscription.id,
+            status: subscription.status,
+        });
+    } catch (error) {
+        console.error('Erro ao confirmar assinatura:', error);
+        res.status(500).json({ error: error.message || 'Erro ao confirmar assinatura' });
+    }
+});
+
+// Confirmar e salvar pagamento único (para checkout transparente)
+app.post('/api/stripe/confirmar-pagamento', authenticateToken, async (req, res) => {
+    try {
+        const { paymentIntentId, dadosCheckout } = req.body;
+        const userId = req.user.id;
+        
+        console.log('📥 Endpoint confirmar-pagamento chamado:');
+        console.log('   User ID:', userId);
+        console.log('   Payment Intent ID:', paymentIntentId);
+        console.log('   Dados do checkout recebidos:', dadosCheckout ? 'SIM' : 'NÃO');
+        if (dadosCheckout) {
+            console.log('   Campos em dadosCheckout:', Object.keys(dadosCheckout));
+        }
+        
+        if (!paymentIntentId) {
+            return res.status(400).json({ error: 'Payment Intent ID é obrigatório' });
+        }
+
+        // Verificar se é um acesso gratuito (paymentIntentId começa com "free_")
+        const isFreeAccess = paymentIntentId && paymentIntentId.startsWith('free_');
+        
+        let paymentIntent = null;
+        let valor = 0;
+        let customerId = null;
+        let planoId = null;
+        
+        if (isFreeAccess) {
+            // Acesso gratuito - cupom de 100% (não há transação na Stripe)
+            console.log('🎁 Processando acesso gratuito (cupom de 100%)');
+            valor = 0;
+            // Obter planoId do body se fornecido
+            planoId = req.body.planoId ? parseInt(req.body.planoId) : null;
+            
+            // Para acesso gratuito, buscar customer_id do banco de dados
+            const assinatura = await db.obterAssinatura(userId);
+            if (assinatura?.stripe_customer_id) {
+                customerId = assinatura.stripe_customer_id;
+                console.log('✅ Customer ID obtido do banco:', customerId);
+            } else {
+                console.log('⚠️  Customer ID não encontrado no banco de dados');
+            }
+        } else {
+            // Verificar se o Stripe está configurado
+            if (!stripeService.stripe) {
+                return res.status(500).json({ error: 'Stripe não está configurado' });
+            }
+            
+            // Buscar Payment Intent no Stripe para verificar status e obter dados
+            paymentIntent = await stripeService.stripe.paymentIntents.retrieve(paymentIntentId);
+            
+            console.log('📋 Payment Intent recuperado da Stripe:');
+            console.log('   ID:', paymentIntent.id);
+            console.log('   Status:', paymentIntent.status);
+            console.log('   Valor: R$', (paymentIntent.amount / 100).toFixed(2));
+            console.log('   Customer:', paymentIntent.customer || 'N/A');
+            console.log('   Charges:', paymentIntent.charges?.data?.length || 0);
+            if (paymentIntent.charges?.data?.length > 0) {
+                paymentIntent.charges.data.forEach((charge, idx) => {
+                    console.log(`   Charge ${idx + 1}:`, charge.id, '- Status:', charge.status);
+                });
+            }
+            
+            // Verificar se o pagamento foi bem-sucedido
+            if (paymentIntent.status !== 'succeeded') {
+                return res.status(400).json({ error: `Pagamento não foi bem-sucedido. Status: ${paymentIntent.status}` });
+            }
+
+            // Verificar se o userId do metadata corresponde ao usuário autenticado
+            const metadataUserId = paymentIntent.metadata?.user_id ? parseInt(paymentIntent.metadata.user_id) : null;
+            if (metadataUserId !== userId) {
+                return res.status(403).json({ error: 'Este pagamento não pertence ao usuário autenticado' });
+            }
+
+            // Obter dados do pagamento
+            valor = paymentIntent.amount / 100; // Converter de centavos para reais
+            planoId = paymentIntent.metadata?.plano_id ? parseInt(paymentIntent.metadata.plano_id) : null;
+            customerId = paymentIntent.customer || null;
+        }
+
+        // Verificar se o pagamento já foi salvo
+        let pagamento = await db.obterPagamentoUnicoPorStripeId(paymentIntentId);
+        if (pagamento) {
+            console.log('ℹ️  Pagamento já existe no banco de dados:', pagamento.id);
+        } else {
+            // Salvar pagamento no banco de dados
+            pagamento = await db.criarPagamentoUnico(userId, {
+                stripe_payment_intent_id: paymentIntentId,
+                stripe_customer_id: customerId,
+                valor: valor,
+                status: 'succeeded',
+                plano_id: planoId,
+            });
+            
+            if (isFreeAccess) {
+                console.log('✅ Acesso gratuito concedido. Pagamento salvo:', pagamento.id);
+            }
+
+            console.log('✅ Pagamento único salvo diretamente no banco de dados para usuário:', userId, 'PlanoId:', planoId);
+            
+            // Registrar uso do cupom na Stripe se houver
+            if (!isFreeAccess && paymentIntent) {
+                const promotionCodeId = paymentIntent.metadata?.promotion_code_id;
+                if (promotionCodeId) {
+                    try {
+                        const promotionCode = await stripeService.stripe.promotionCodes.retrieve(promotionCodeId);
+                        const totalUses = parseInt(promotionCode.metadata?.total_uses || '0') + 1;
+                        await stripeService.stripe.promotionCodes.update(promotionCodeId, {
+                            metadata: {
+                                ...promotionCode.metadata,
+                                [`used_${Date.now()}`]: paymentIntent.id,
+                                last_used_at: new Date().toISOString(),
+                                last_used_by_user: userId.toString(),
+                                total_uses: totalUses.toString(),
+                            }
+                        });
+                        console.log(`✅ Uso do cupom registrado na Stripe (total nos metadados: ${totalUses})`);
+                        console.log('⚠️  IMPORTANTE: O contador de "Resgates" na interface da Stripe só aumenta quando o cupom é usado em Checkout Sessions');
+                        console.log('⚠️  Para Payment Intents transparentes, o uso é registrado apenas nos metadados do Promotion Code');
+                    } catch (err) {
+                        console.log('⚠️  Erro ao registrar uso do cupom:', err.message);
+                    }
+                }
+            }
+        }
+        console.log('📋 Dados do checkout recebidos:', dadosCheckout ? 'SIM' : 'NÃO');
+        if (dadosCheckout) {
+            console.log('📋 Conteúdo dos dados do checkout:', JSON.stringify(dadosCheckout, null, 2));
+        }
+
+        // Se houver dados do checkout, atualizar cadastro do usuário
+        if (dadosCheckout) {
+            console.log('📝 Processando dados do checkout para salvar no perfil do usuário:', userId);
+            try {
+                const dadosParaAtualizar = {};
+                
+                // Função para validar CPF
+                const validarCPF = (cpf) => {
+                    if (!cpf) return false;
+                    const cpfLimpo = cpf.replace(/\D/g, '');
+                    if (cpfLimpo.length !== 11) return false;
+                    if (/^(\d)\1{10}$/.test(cpfLimpo)) return false;
+                    
+                    let soma = 0;
+                    for (let i = 0; i < 9; i++) {
+                        soma += parseInt(cpfLimpo.charAt(i)) * (10 - i);
+                    }
+                    let resto = (soma * 10) % 11;
+                    if (resto === 10 || resto === 11) resto = 0;
+                    if (resto !== parseInt(cpfLimpo.charAt(9))) return false;
+                    
+                    soma = 0;
+                    for (let i = 0; i < 10; i++) {
+                        soma += parseInt(cpfLimpo.charAt(i)) * (11 - i);
+                    }
+                    resto = (soma * 10) % 11;
+                    if (resto === 10 || resto === 11) resto = 0;
+                    if (resto !== parseInt(cpfLimpo.charAt(10))) return false;
+                    
+                    return true;
+                };
+                
+                // CPF - validar antes de salvar (apenas se fornecido) - formatar antes de salvar
+                if (dadosCheckout.cpf) {
+                    if (!validarCPF(dadosCheckout.cpf)) {
+                        throw new Error('CPF inválido. Verifique os dígitos.');
+                    }
+                    dadosParaAtualizar.cpf = formatarCPF(dadosCheckout.cpf); // Formatar antes de salvar
+                }
+                // Se não há CPF, não atualizar (usuário estrangeiro)
+                
+                // Nome completo - separar em nome e sobrenome
+                if (dadosCheckout.nomeCompleto) {
+                    const nomeCompleto = dadosCheckout.nomeCompleto.trim();
+                    const partesNome = nomeCompleto.split(' ');
+                    if (partesNome.length > 0) {
+                        dadosParaAtualizar.nome = partesNome[0];
+                        if (partesNome.length > 1) {
+                            dadosParaAtualizar.sobrenome = partesNome.slice(1).join(' ');
+                        }
+                    }
+                }
+                
+                // Endereço residencial
+                if (dadosCheckout.pais && dadosCheckout.pais !== 'Brasil') {
+                    // Estrangeiro - apenas país
+                    dadosParaAtualizar.pais_residencial = dadosCheckout.pais;
+                    // Limpar campos de endereço brasileiro
+                    dadosParaAtualizar.cep_residencial = null;
+                    dadosParaAtualizar.endereco_residencial = null;
+                    dadosParaAtualizar.numero_residencial = null;
+                    dadosParaAtualizar.complemento_residencial = null;
+                    dadosParaAtualizar.cidade_residencial = null;
+                    dadosParaAtualizar.estado_residencial = null;
+                } else {
+                    // Brasileiro - endereço completo
+                    if (dadosCheckout.cep) {
+                        dadosParaAtualizar.cep_residencial = formatarCEP(dadosCheckout.cep); // Formatar antes de salvar
+                    }
+                    if (dadosCheckout.logradouro) {
+                        dadosParaAtualizar.endereco_residencial = dadosCheckout.logradouro;
+                    }
+                    if (dadosCheckout.numero) {
+                        dadosParaAtualizar.numero_residencial = dadosCheckout.numero;
+                    }
+                    if (dadosCheckout.complemento) {
+                        dadosParaAtualizar.complemento_residencial = dadosCheckout.complemento;
+                    }
+                    // Nota: bairro não está no schema do banco de dados, então não salvamos
+                    if (dadosCheckout.cidade) {
+                        dadosParaAtualizar.cidade_residencial = dadosCheckout.cidade;
+                    }
+                    if (dadosCheckout.uf) {
+                        dadosParaAtualizar.estado_residencial = dadosCheckout.uf.toUpperCase();
+                    }
+                    dadosParaAtualizar.pais_residencial = dadosCheckout.pais || 'Brasil';
+                }
+                
+                // Atualizar dados do usuário apenas se houver algo para atualizar
+                if (Object.keys(dadosParaAtualizar).length > 0) {
+                    console.log('💾 Dados para atualizar:', Object.keys(dadosParaAtualizar));
+                    console.log('💾 Valores:', JSON.stringify(dadosParaAtualizar, null, 2));
+                    // Marcar como atualização parcial para não validar campos obrigatórios
+                    dadosParaAtualizar._atualizacaoParcial = true;
+                    const resultadoAtualizacao = await db.atualizarDadosUsuario(userId, dadosParaAtualizar);
+                    console.log('✅ Dados do checkout salvos no cadastro do usuário:', userId);
+                    console.log('✅ Resultado da atualização:', resultadoAtualizacao ? 'Sucesso' : 'Falha');
+                } else {
+                    console.log('⚠️  Nenhum dado para atualizar (dadosParaAtualizar vazio)');
+                    console.log('📋 dadosCheckout recebido:', JSON.stringify(dadosCheckout, null, 2));
+                    console.log('📋 Verificando campos individuais:');
+                    console.log('   - nomeCompleto:', dadosCheckout.nomeCompleto || 'NÃO FORNECIDO');
+                    console.log('   - cpf:', dadosCheckout.cpf || 'NÃO FORNECIDO');
+                    console.log('   - cep:', dadosCheckout.cep || 'NÃO FORNECIDO');
+                    console.log('   - logradouro:', dadosCheckout.logradouro || 'NÃO FORNECIDO');
+                }
+            } catch (dadosError) {
+                // Não falhar o pagamento se houver erro ao salvar dados
+                console.error('❌ Erro ao salvar dados do checkout (pagamento já foi processado):', dadosError);
+                console.error('❌ Mensagem de erro:', dadosError.message);
+                console.error('❌ Stack trace:', dadosError.stack);
+            }
+        } else {
+            console.log('⚠️  Nenhum dadosCheckout foi fornecido no request');
         }
 
         res.json({
