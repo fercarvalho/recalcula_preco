@@ -16,8 +16,9 @@ import EstatisticasGerais from './EstatisticasGerais';
 import GerenciamentoFeedbacksBeta from './GerenciamentoFeedbacksBeta';
 import GerenciamentoFuncoesEspeciais from './GerenciamentoFuncoesEspeciais';
 import DashboardCupons from './DashboardCupons';
+import RoadmapKanban from './RoadmapKanban';
 import { useDragAndDrop } from '../hooks/useDragAndDrop';
-import { FaUser, FaEdit, FaTrash, FaShieldAlt, FaChevronRight, FaChevronDown, FaFolder, FaEye, FaEyeSlash, FaPlus, FaTimes, FaCog, FaBars, FaCreditCard, FaQuestionCircle, FaLink, FaLayerGroup, FaGripVertical, FaSearch, FaSortAlphaDown, FaSortAlphaUp, FaSort, FaChartLine, FaComments, FaStar, FaTicketAlt } from 'react-icons/fa';
+import { FaUser, FaEdit, FaTrash, FaShieldAlt, FaChevronRight, FaChevronDown, FaFolder, FaEye, FaEyeSlash, FaPlus, FaTimes, FaCog, FaBars, FaCreditCard, FaQuestionCircle, FaLink, FaLayerGroup, FaGripVertical, FaSearch, FaSortAlphaDown, FaSortAlphaUp, FaSort, FaChartLine, FaComments, FaStar, FaTicketAlt, FaRoute } from 'react-icons/fa';
 import * as FaIcons from 'react-icons/fa';
 import './AdminPanel.css';
 
@@ -86,6 +87,7 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
   const [showGerenciamentoFeedbacksBeta, setShowGerenciamentoFeedbacksBeta] = useState(false);
   const [showGerenciamentoFuncoesEspeciais, setShowGerenciamentoFuncoesEspeciais] = useState(false);
   const [showDashboardCupons, setShowDashboardCupons] = useState(false);
+  const [showRoadmapKanban, setShowRoadmapKanban] = useState(false);
 
   const [botoesGerenciamento, setBotoesGerenciamento] = useState<GerenciamentoButton[]>([
     { id: 'funcoes', titulo: 'Gerenciar Funções da Landing Page', descricao: 'Gerencie as funções exibidas na landing page. Configure quais funções estão ativas e quais são de IA.', icone: <FaCog />, onClick: () => setShowGerenciamentoFuncoes(true), ordem: 1 },
@@ -97,6 +99,7 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
     { id: 'feedbacks-beta', titulo: 'Feedbacks Beta', descricao: 'Visualize todos os feedbacks enviados pelos usuários sobre as funções em beta.', icone: <FaComments />, onClick: () => setShowGerenciamentoFeedbacksBeta(true), ordem: 7 },
     { id: 'funcoes-especiais', titulo: 'Gerenciar Funções Especiais', descricao: 'Configure para quais tipos de usuários as funções especiais (Modo Cardápio, Modo Compartilhar Cardápio, Modo Estúdio) ficam disponíveis.', icone: <FaStar />, onClick: () => setShowGerenciamentoFuncoesEspeciais(true), ordem: 8 },
     { id: 'dashboard-cupons', titulo: 'Dashboard de Cupons', descricao: 'Visualize o uso de cupons da Stripe: quantas vezes foram usados, por quais usuários e em quais planos.', icone: <FaTicketAlt />, onClick: () => setShowDashboardCupons(true), ordem: 9 },
+    { id: 'roadmap', titulo: 'Roadmap do Sistema', descricao: 'Gerencie o roadmap do sistema com um kanban: Backlog, Doing, Em Testes, Em Beta, Lançado e Done.', icone: <FaRoute />, onClick: () => setShowRoadmapKanban(true), ordem: 10 },
   ]);
 
   // Mapa de IDs para títulos dos botões (para exibição no botão)
@@ -580,6 +583,10 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
       <DashboardCupons
         isOpen={showDashboardCupons}
         onClose={() => setShowDashboardCupons(false)}
+      />
+      <RoadmapKanban
+        isOpen={showRoadmapKanban}
+        onClose={() => setShowRoadmapKanban(false)}
       />
       <Modal
         isOpen={isOpen}

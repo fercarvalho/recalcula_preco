@@ -2400,6 +2400,190 @@ app.put('/api/admin/ordem-gerenciamentos', authenticateToken, requireAdmin, asyn
     }
 });
 
+// ========== ROTAS DE ROADMAP ==========
+
+// Obter todos os itens do roadmap
+app.get('/api/admin/roadmap', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const itens = await db.obterRoadmap();
+        res.json(itens);
+    } catch (error) {
+        console.error('Erro ao obter roadmap:', error);
+        res.status(500).json({ error: 'Erro ao obter roadmap' });
+    }
+});
+
+// Obter item do roadmap por ID
+app.get('/api/admin/roadmap/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const item = await db.obterRoadmapPorId(parseInt(id));
+        
+        if (!item) {
+            return res.status(404).json({ error: 'Item não encontrado' });
+        }
+        
+        res.json(item);
+    } catch (error) {
+        console.error('Erro ao obter item do roadmap:', error);
+        res.status(500).json({ error: 'Erro ao obter item do roadmap' });
+    }
+});
+
+// Criar novo item no roadmap
+app.post('/api/admin/roadmap', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { titulo, descricao, status, prioridade, data_inicio, depende_de } = req.body;
+        
+        if (!titulo || !titulo.trim()) {
+            return res.status(400).json({ error: 'O título é obrigatório' });
+        }
+        
+        const novoItem = await db.criarRoadmapItem({
+            titulo: titulo.trim(),
+            descricao: descricao?.trim() || null,
+            status: status || 'backlog',
+            prioridade: prioridade || 'media',
+            data_inicio: data_inicio || null,
+            depende_de: depende_de || null,
+            created_by: req.userId
+        });
+        
+        res.json(novoItem);
+    } catch (error) {
+        console.error('Erro ao criar item do roadmap:', error);
+        res.status(500).json({ error: 'Erro ao criar item do roadmap' });
+    }
+});
+
+// Atualizar item do roadmap
+app.put('/api/admin/roadmap/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { titulo, descricao, status, prioridade, data_inicio, depende_de } = req.body;
+        
+        const itemAtualizado = await db.atualizarRoadmapItem(parseInt(id), {
+            titulo: titulo?.trim(),
+            descricao: descricao?.trim(),
+            status,
+            prioridade,
+            data_inicio: data_inicio || null,
+            depende_de: depende_de !== undefined ? depende_de : null
+        });
+        
+        if (!itemAtualizado) {
+            return res.status(404).json({ error: 'Item não encontrado' });
+        }
+        
+        res.json(itemAtualizado);
+    } catch (error) {
+        console.error('Erro ao atualizar item do roadmap:', error);
+        res.status(500).json({ error: 'Erro ao atualizar item do roadmap' });
+    }
+});
+
+// Atualizar status de um item do roadmap
+app.put('/api/admin/roadmap/:id/status', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+        
+        if (!status) {
+            return res.status(400).json({ error: 'O status é obrigatório' });
+        }
+        
+        const statusValidos = ['backlog', 'doing', 'em_testes', 'em_beta', 'lancado', 'done'];
+        if (!statusValidos.includes(status)) {
+            return res.status(400).json({ error: 'Status inválido' });
+        }
+        
+        const itemAtualizado = await db.atualizarStatusRoadmapItem(parseInt(id), status);
+        
+        if (!itemAtualizado) {
+            return res.status(404).json({ error: 'Item não encontrado' });
+        }
+        
+        res.json(itemAtualizado);
+    } catch (error) {
+        console.error('Erro ao atualizar status do item do roadmap:', error);
+        res.status(500).json({ error: 'Erro ao atualizar status do item do roadmap' });
+    }
+});
+
+// Atualizar ordem dos itens do roadmap
+app.put('/api/admin/roadmap/ordem', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { itens } = req.body;
+        
+        if (!Array.isArray(itens)) {
+            return res.status(400).json({ error: 'Itens deve ser um array' });
+        }
+        
+        await db.atualizarOrdemRoadmap(itens);
+        res.json({ message: 'Ordem atualizada com sucesso' });
+    } catch (error) {
+        console.error('Erro ao atualizar ordem do roadmap:', error);
+        res.status(500).json({ error: 'Erro ao atualizar ordem do roadmap' });
+    }
+});
+
+// Iniciar contador de tempo de um item do roadmap
+app.post('/api/admin/roadmap/:id/iniciar-tempo', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const itemAtualizado = await db.iniciarTempoRoadmapItem(parseInt(id));
+        
+        if (!itemAtualizado) {
+            return res.status(404).json({ error: 'Item não encontrado' });
+        }
+        
+        res.json(itemAtualizado);
+    } catch (error) {
+        console.error('Erro ao iniciar tempo do item do roadmap:', error);
+        res.status(500).json({ error: 'Erro ao iniciar tempo do item do roadmap' });
+    }
+});
+
+// Parar contador de tempo de um item do roadmap
+app.post('/api/admin/roadmap/:id/parar-tempo', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { tempoDecorrido } = req.body;
+        
+        if (tempoDecorrido === undefined || tempoDecorrido < 0) {
+            return res.status(400).json({ error: 'Tempo decorrido é obrigatório e deve ser maior ou igual a zero' });
+        }
+        
+        const itemAtualizado = await db.pararTempoRoadmapItem(parseInt(id), Math.floor(tempoDecorrido));
+        
+        if (!itemAtualizado) {
+            return res.status(404).json({ error: 'Item não encontrado' });
+        }
+        
+        res.json(itemAtualizado);
+    } catch (error) {
+        console.error('Erro ao parar tempo do item do roadmap:', error);
+        res.status(500).json({ error: 'Erro ao parar tempo do item do roadmap' });
+    }
+});
+
+// Deletar item do roadmap
+app.delete('/api/admin/roadmap/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const itemDeletado = await db.deletarRoadmapItem(parseInt(id));
+        
+        if (!itemDeletado) {
+            return res.status(404).json({ error: 'Item não encontrado' });
+        }
+        
+        res.json({ message: 'Item deletado com sucesso' });
+    } catch (error) {
+        console.error('Erro ao deletar item do roadmap:', error);
+        res.status(500).json({ error: 'Erro ao deletar item do roadmap' });
+    }
+});
+
 // Listar todos os usuários (apenas admin)
 // Obter ordem dos botões de gerenciamento
 app.get('/api/admin/ordem-gerenciamentos', authenticateToken, requireAdmin, async (req, res) => {

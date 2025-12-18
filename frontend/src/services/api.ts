@@ -653,5 +653,49 @@ export const apiService = {
     const response = await api.get(`/api/auth/funcao-especial/${funcao}/acesso`);
     return response.data;
   },
+
+  // ========== ROADMAP ==========
+  async obterRoadmap(): Promise<any[]> {
+    const response = await api.get('/api/admin/roadmap');
+    return response.data;
+  },
+
+  async obterRoadmapPorId(id: number): Promise<any> {
+    const response = await api.get(`/api/admin/roadmap/${id}`);
+    return response.data;
+  },
+
+  async criarRoadmapItem(dados: { titulo: string; descricao: string; status: string; prioridade: string; data_inicio?: string; depende_de?: number | null }): Promise<any> {
+    const response = await api.post('/api/admin/roadmap', dados);
+    return response.data;
+  },
+
+  async atualizarRoadmapItem(id: number, dados: { titulo?: string; descricao?: string; status?: string; prioridade?: string; data_inicio?: string; depende_de?: number | null }): Promise<any> {
+    const response = await api.put(`/api/admin/roadmap/${id}`, dados);
+    return response.data;
+  },
+
+  async atualizarStatusRoadmapItem(id: number, status: string): Promise<any> {
+    const response = await api.put(`/api/admin/roadmap/${id}/status`, { status });
+    return response.data;
+  },
+
+  async atualizarOrdemRoadmap(itens: Array<{ id: number; ordem: number }>): Promise<void> {
+    await api.put('/api/admin/roadmap/ordem', { itens });
+  },
+
+  async deletarRoadmapItem(id: number): Promise<void> {
+    await api.delete(`/api/admin/roadmap/${id}`);
+  },
+
+  async iniciarTempoRoadmapItem(id: number): Promise<any> {
+    const response = await api.post(`/api/admin/roadmap/${id}/iniciar-tempo`);
+    return response.data;
+  },
+
+  async pararTempoRoadmapItem(id: number, tempoDecorrido: number): Promise<any> {
+    const response = await api.post(`/api/admin/roadmap/${id}/parar-tempo`, { tempoDecorrido });
+    return response.data;
+  },
 };
 

@@ -559,6 +559,53 @@ async function inicializar() {
             )
         `);
 
+        // Criar tabela de roadmap
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS roadmap (
+                id SERIAL PRIMARY KEY,
+                titulo VARCHAR(255) NOT NULL,
+                descricao TEXT,
+                status VARCHAR(50) NOT NULL DEFAULT 'backlog',
+                prioridade VARCHAR(20) DEFAULT 'media',
+                ordem INTEGER DEFAULT 0,
+                data_inicio TIMESTAMP,
+                tempo_acumulado INTEGER DEFAULT 0,
+                em_andamento BOOLEAN DEFAULT FALSE,
+                ultimo_inicio TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_by INTEGER REFERENCES usuarios(id) ON DELETE SET NULL
+            )
+        `);
+        
+        // Adicionar colunas de tempo se não existirem
+        if (!(await colunaExiste('roadmap', 'data_inicio'))) {
+            await pool.query('ALTER TABLE roadmap ADD COLUMN data_inicio TIMESTAMP');
+        }
+        
+        // Adicionar coluna depende_de se não existir
+        if (!(await colunaExiste('roadmap', 'depende_de'))) {
+            await pool.query(`
+                ALTER TABLE roadmap 
+                ADD COLUMN depende_de INTEGER REFERENCES roadmap(id) ON DELETE SET NULL
+            `);
+        }
+        if (!(await colunaExiste('roadmap', 'tempo_acumulado'))) {
+            await pool.query('ALTER TABLE roadmap ADD COLUMN tempo_acumulado INTEGER DEFAULT 0');
+        }
+        if (!(await colunaExiste('roadmap', 'em_andamento'))) {
+            await pool.query('ALTER TABLE roadmap ADD COLUMN em_andamento BOOLEAN DEFAULT FALSE');
+        }
+        if (!(await colunaExiste('roadmap', 'ultimo_inicio'))) {
+            await pool.query('ALTER TABLE roadmap ADD COLUMN ultimo_inicio TIMESTAMP');
+        }
+        
+        // Criar índice para status
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_roadmap_status 
+            ON roadmap(status)
+        `);
+
         // Criar tabela de funções da landing page
         await pool.query(`
             CREATE TABLE IF NOT EXISTS funcoes (
@@ -6195,6 +6242,214 @@ async function obterEstatisticasGerais() {
     }
 }
 
+// ========== FUNÇÕES DE ROADMAP ==========
+
+// Obter todos os itens do roadmap
+async function obterRoadmap() {
+    try {
+        const result = await pool.query(`
+            SELECT r.*, u.username as created_by_username
+            FROM roadmap r
+            LEFT JOIN usuarios u ON r.created_by = u.id
+            ORDER BY 
+                CASE r.status
+                    WHEN 'backlog' THEN 1
+                    WHEN 'doing' THEN 2
+                    WHEN 'em_testes' THEN 3
+                    WHEN 'em_beta' THEN 4
+                    WHEN 'lancado' THEN 5
+                    WHEN 'done' THEN 6
+                    ELSE 7
+                END,
+                r.ordem ASC,
+                r.created_at DESC
+        `);
+        return result.rows;
+    } catch (error) {
+        console.error('Erro ao obter roadmap:', error);
+        throw error;
+    }
+}
+
+// Obter item do roadmap por ID
+async function obterRoadmapPorId(id) {
+    try {
+        const result = await pool.query(`
+            SELECT r.*, u.username as created_by_username
+            FROM roadmap r
+            LEFT JOIN usuarios u ON r.created_by = u.id
+            WHERE r.id = $1
+        `, [id]);
+        return result.rows[0] || null;
+    } catch (error) {
+        console.error('Erro ao obter item do roadmap:', error);
+        throw error;
+    }
+}
+
+// Criar novo item no roadmap
+async function criarRoadmapItem(dados) {
+    try {
+        const { titulo, descricao, status = 'backlog', prioridade = 'media', data_inicio, depende_de, created_by } = dados;
+        
+        // Obter a maior ordem do status atual
+        const ordemResult = await pool.query(`
+            SELECT COALESCE(MAX(ordem), 0) + 1 as nova_ordem
+            FROM roadmap
+            WHERE status = $1
+        `, [status]);
+        
+        const novaOrdem = ordemResult.rows[0].nova_ordem;
+        
+        const result = await pool.query(`
+            INSERT INTO roadmap (titulo, descricao, status, prioridade, ordem, data_inicio, depende_de, created_by)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING *
+        `, [titulo, descricao, status, prioridade, novaOrdem, data_inicio || null, depende_de || null, created_by]);
+        
+        return result.rows[0];
+    } catch (error) {
+        console.error('Erro ao criar item do roadmap:', error);
+        throw error;
+    }
+}
+
+// Atualizar item do roadmap
+async function atualizarRoadmapItem(id, dados) {
+    try {
+        const { titulo, descricao, status, prioridade, data_inicio, depende_de } = dados;
+        const result = await pool.query(`
+            UPDATE roadmap
+            SET titulo = COALESCE($1, titulo),
+                descricao = COALESCE($2, descricao),
+                status = COALESCE($3, status),
+                prioridade = COALESCE($4, prioridade),
+                data_inicio = CASE WHEN $5 IS NOT NULL THEN $5::timestamp ELSE data_inicio END,
+                depende_de = CASE WHEN $6 IS NOT NULL THEN $6 ELSE depende_de END,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $7
+            RETURNING *
+        `, [titulo, descricao, status, prioridade, data_inicio || null, depende_de !== undefined ? depende_de : null, id]);
+        
+        return result.rows[0] || null;
+    } catch (error) {
+        console.error('Erro ao atualizar item do roadmap:', error);
+        throw error;
+    }
+}
+
+// Deletar item do roadmap
+async function deletarRoadmapItem(id) {
+    try {
+        const result = await pool.query(`
+            DELETE FROM roadmap
+            WHERE id = $1
+            RETURNING *
+        `, [id]);
+        
+        return result.rows[0] || null;
+    } catch (error) {
+        console.error('Erro ao deletar item do roadmap:', error);
+        throw error;
+    }
+}
+
+// Atualizar status de um item do roadmap
+async function atualizarStatusRoadmapItem(id, novoStatus) {
+    try {
+        // Obter a maior ordem do novo status
+        const ordemResult = await pool.query(`
+            SELECT COALESCE(MAX(ordem), 0) + 1 as nova_ordem
+            FROM roadmap
+            WHERE status = $1
+        `, [novoStatus]);
+        
+        const novaOrdem = ordemResult.rows[0].nova_ordem;
+        
+        const result = await pool.query(`
+            UPDATE roadmap
+            SET status = $1,
+                ordem = $2,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $3
+            RETURNING *
+        `, [novoStatus, novaOrdem, id]);
+        
+        return result.rows[0] || null;
+    } catch (error) {
+        console.error('Erro ao atualizar status do item do roadmap:', error);
+        throw error;
+    }
+}
+
+// Atualizar ordem dos itens do roadmap
+async function atualizarOrdemRoadmap(itens) {
+    try {
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            
+            for (const item of itens) {
+                await client.query(`
+                    UPDATE roadmap
+                    SET ordem = $1, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = $2
+                `, [item.ordem, item.id]);
+            }
+            
+            await client.query('COMMIT');
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
+    } catch (error) {
+        console.error('Erro ao atualizar ordem do roadmap:', error);
+        throw error;
+    }
+}
+
+// Iniciar contador de tempo de um item do roadmap
+async function iniciarTempoRoadmapItem(id) {
+    try {
+        const result = await pool.query(`
+            UPDATE roadmap
+            SET em_andamento = TRUE,
+                ultimo_inicio = CURRENT_TIMESTAMP,
+                data_inicio = COALESCE(data_inicio, CURRENT_TIMESTAMP),
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+            RETURNING *
+        `, [id]);
+        
+        return result.rows[0] || null;
+    } catch (error) {
+        console.error('Erro ao iniciar tempo do item do roadmap:', error);
+        throw error;
+    }
+}
+
+// Parar contador de tempo de um item do roadmap
+async function pararTempoRoadmapItem(id, tempoDecorrido) {
+    try {
+        const result = await pool.query(`
+            UPDATE roadmap
+            SET em_andamento = FALSE,
+                tempo_acumulado = tempo_acumulado + $1,
+                ultimo_inicio = NULL,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $2
+            RETURNING *
+        `, [tempoDecorrido, id]);
+        
+        return result.rows[0] || null;
+    } catch (error) {
+        console.error('Erro ao parar tempo do item do roadmap:', error);
+        throw error;
+    }
+}
+
 // Finalizar sessão do usuário (chamado no logout)
 async function finalizarSessao(usuarioId) {
     try {
@@ -6719,6 +6974,16 @@ module.exports = {
     // Funções de ordem dos botões de gerenciamento
     obterOrdemGerenciamentos,
     atualizarOrdemGerenciamentos,
+    // Funções de roadmap
+    obterRoadmap,
+    obterRoadmapPorId,
+    criarRoadmapItem,
+    atualizarRoadmapItem,
+    deletarRoadmapItem,
+    atualizarStatusRoadmapItem,
+    atualizarOrdemRoadmap,
+    iniciarTempoRoadmapItem,
+    pararTempoRoadmapItem,
     // Funções de estatísticas
     registrarLogin,
     registrarAtividade,
