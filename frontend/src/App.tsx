@@ -95,6 +95,8 @@ function App() {
   const [showResetarSenha, setShowResetarSenha] = useState(false);
   const [resetToken, setResetToken] = useState<string | null>(null);
   const [temAcesso, setTemAcesso] = useState<boolean | null>(null);
+  const [modalEmailFechadoManualmente, setModalEmailFechadoManualmente] = useState(false);
+  const [temPlanoMasEmailNaoValidado, setTemPlanoMasEmailNaoValidado] = useState(false);
   const [verificandoPagamento, setVerificandoPagamento] = useState(true);
   const [showModalPlanos, setShowModalPlanos] = useState(false);
   const [showModalUpgrade, setShowModalUpgrade] = useState(false);
@@ -193,6 +195,8 @@ function App() {
             }
           }
           
+          // Resetar flag quando email for validado
+          setModalEmailFechadoManualmente(false);
           // Verificar pagamento novamente para atualizar o acesso
           await verificarPagamento();
           
@@ -203,6 +207,8 @@ function App() {
           }
         } catch (error) {
           console.error('Erro ao atualizar dados após validação de email:', error);
+          // Resetar flag quando email for validado
+          setModalEmailFechadoManualmente(false);
           // Mesmo com erro, tentar verificar pagamento
           await verificarPagamento();
         }
@@ -431,8 +437,15 @@ function App() {
       const status = await apiService.verificarStatusPagamento();
       setTemAcesso(status.temAcesso);
       
+      // Verificar se tem plano pago mas email não validado
+      // Se tem tipo de plano (anual, unico, vitalicio) mas email não validado, significa que pagou mas não validou email
+      const temPlanoPago = status.tipo !== null && (status.tipo === 'anual' || status.tipo === 'unico' || status.tipo === 'vitalicio');
+      const temPlanoMasNaoValidouEmail = temPlanoPago && status.emailNaoValidado;
+      setTemPlanoMasEmailNaoValidado(temPlanoMasNaoValidouEmail);
+      
       // Verificar se precisa validar email
-      if (status.emailNaoValidado) {
+      // Só abrir o modal se não foi fechado manualmente pelo usuário
+      if (status.emailNaoValidado && !modalEmailFechadoManualmente) {
         setShowValidarEmail(true);
       } else {
         // Se email está validado, verificar se dados estão vazios
@@ -824,7 +837,12 @@ function App() {
             onAplicarReajuste={aplicarReajuste}
             onResetarValores={resetarValores}
             temAcesso={temAcesso === true}
-            onAbrirModalPlanos={() => setShowModalPlanos(true)}
+            onAbrirModalPlanos={() => {
+              if (!temPlanoMasEmailNaoValidado) {
+                setShowModalPlanos(true);
+              }
+            }}
+            temPlanoMasEmailNaoValidado={temPlanoMasEmailNaoValidado}
           />
 
           <AdicionarProdutoSection
@@ -840,7 +858,11 @@ function App() {
               }
               setShowEditarItemModal(true);
             }}
-            onOpenModalPlanos={() => setShowModalPlanos(true)}
+            onOpenModalPlanos={() => {
+              if (!temPlanoMasEmailNaoValidado) {
+                setShowModalPlanos(true);
+              }
+            }}
             onOpenModalUpgrade={() => setShowModalUpgrade(true)}
           />
 
@@ -853,7 +875,12 @@ function App() {
                 onToggleCategoriaSelecionada={toggleCategoriaSelecionada}
                 onItemUpdated={carregarItens}
                 temAcesso={temAcesso === true}
-                onAbrirModalPlanos={() => setShowModalPlanos(true)}
+                onAbrirModalPlanos={() => {
+                  if (!temPlanoMasEmailNaoValidado) {
+                    setShowModalPlanos(true);
+                  }
+                }}
+                temPlanoMasEmailNaoValidado={temPlanoMasEmailNaoValidado}
               />
               
               {/* Botão de Feedback Geral - Canto inferior direito */}
@@ -991,7 +1018,12 @@ function App() {
           setShowEditarItemModal(false);
         }}
         temAcesso={temAcesso === true}
-        onAbrirModalPlanos={() => setShowModalPlanos(true)}
+        onAbrirModalPlanos={() => {
+          if (!temPlanoMasEmailNaoValidado) {
+            setShowModalPlanos(true);
+          }
+        }}
+        temPlanoMasEmailNaoValidado={temPlanoMasEmailNaoValidado}
       />
 
       {showTutorial && (
@@ -1047,7 +1079,7 @@ function App() {
       )}
 
       <Modal
-        isOpen={showModalPlanos}
+        isOpen={showModalPlanos && !temPlanoMasEmailNaoValidado}
         onClose={() => setShowModalPlanos(false)}
         title="Liberar Acesso Completo"
         size="large"
@@ -1087,9 +1119,25 @@ function App() {
 
       <ValidarEmailModal
         isOpen={showValidarEmail}
-        onClose={() => setShowValidarEmail(false)}
+        onClose={async () => {
+          setShowValidarEmail(false);
+          setModalEmailFechadoManualmente(true);
+          // Atualizar apenas o status de acesso sem verificar email novamente
+          // Isso garante que se o usuário já comprou/assinou, o acesso seja atualizado
+          try {
+            const status = await apiService.verificarStatusPagamento();
+            setTemAcesso(status.temAcesso);
+            // Atualizar flag de plano mas email não validado
+            const temPlanoPago = status.tipo !== null && (status.tipo === 'anual' || status.tipo === 'unico' || status.tipo === 'vitalicio');
+            const temPlanoMasNaoValidouEmail = temPlanoPago && status.emailNaoValidado;
+            setTemPlanoMasEmailNaoValidado(temPlanoMasNaoValidouEmail);
+          } catch (error) {
+            console.error('Erro ao verificar status de pagamento:', error);
+          }
+        }}
         onValidado={async () => {
           setShowValidarEmail(false);
+          setModalEmailFechadoManualmente(false); // Resetar flag quando validado
           await verificarPagamento();
           
           // Verificar se precisa abrir modal de dados após validação

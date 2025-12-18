@@ -2295,11 +2295,17 @@ app.get('/api/stripe/status', authenticateToken, async (req, res) => {
         const acesso = await db.verificarAcessoAtivo(req.userId);
         const assinatura = await db.obterAssinatura(req.userId);
 
+        // Se o email não está validado mas há um plano pago, usar o tipo do objeto acesso
+        let tipoPlano = acesso.tipo;
+        if (!tipoPlano && acesso.emailNaoValidado && acesso.acesso) {
+            tipoPlano = acesso.acesso.tipo;
+        }
+
         res.json({
             temAcesso: acesso.temAcesso,
-            tipo: acesso.tipo === 'vitalicio' ? 'vitalicio' : acesso.tipo, // Manter 'vitalicio' para permitir feedback beta
+            tipo: tipoPlano === 'vitalicio' ? 'vitalicio' : tipoPlano, // Manter 'vitalicio' para permitir feedback beta
             emailNaoValidado: acesso.emailNaoValidado || false,
-            assinatura: acesso.tipo === 'vitalicio' ? {
+            assinatura: tipoPlano === 'vitalicio' ? {
                 status: 'active',
                 plano_tipo: 'vitalicio',
                 current_period_end: null, // Vitalício não expira

@@ -34,6 +34,7 @@ const EditarItemModal = ({
   onSave,
   temAcesso = true,
   onAbrirModalPlanos,
+  temPlanoMasEmailNaoValidado = false,
 }: EditarItemModalProps) => {
   const [modoMultiplo, setModoMultiplo] = useState(false);
   const [nome, setNome] = useState('');
@@ -291,7 +292,7 @@ const EditarItemModal = ({
           </div>
           <div className="form-group">
             <label htmlFor="modal-editar-item-valor">Preço (R$):</label>
-            {!modoAdicionar && !temAcesso ? (
+            {!modoAdicionar && !temAcesso && !temPlanoMasEmailNaoValidado ? (
               <div style={{
                 padding: '10px',
                 background: '#fff3cd',

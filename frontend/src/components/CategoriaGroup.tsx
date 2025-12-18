@@ -27,6 +27,7 @@ interface CategoriaGroupProps {
   onDragLeave: (e: React.DragEvent) => void;
   temAcesso?: boolean;
   onAbrirModalPlanos?: () => void;
+  temPlanoMasEmailNaoValidado?: boolean;
 }
 
 const CategoriaGroup = ({
@@ -46,6 +47,7 @@ const CategoriaGroup = ({
   onDragLeave,
   temAcesso = true,
   onAbrirModalPlanos,
+  temPlanoMasEmailNaoValidado = false,
 }: CategoriaGroupProps) => {
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -280,6 +282,7 @@ const CategoriaGroup = ({
                   onItemUpdated={onItemUpdated}
                   temAcesso={temAcesso}
                   onAbrirModalPlanos={onAbrirModalPlanos}
+                  temPlanoMasEmailNaoValidado={temPlanoMasEmailNaoValidado}
                 />
               </div>
             ))}
@@ -294,6 +297,7 @@ const CategoriaGroup = ({
         modoAdicionar={!editingItem}
         temAcesso={temAcesso}
         onAbrirModalPlanos={onAbrirModalPlanos}
+        temPlanoMasEmailNaoValidado={temPlanoMasEmailNaoValidado}
         onClose={() => {
           setShowEditModal(false);
           setEditingItem(null);

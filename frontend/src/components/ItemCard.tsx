@@ -15,11 +15,12 @@ interface ItemCardProps {
   onItemUpdated?: () => void;
   temAcesso?: boolean;
   onAbrirModalPlanos?: () => void;
+  temPlanoMasEmailNaoValidado?: boolean;
 }
 
 import { getUser } from '../services/auth';
 
-const ItemCard = ({ item, isSelected, onToggleSelect, onEdit, onDelete, onItemUpdated, temAcesso = true, onAbrirModalPlanos }: ItemCardProps) => {
+const ItemCard = ({ item, isSelected, onToggleSelect, onEdit, onDelete, onItemUpdated, temAcesso = true, onAbrirModalPlanos, temPlanoMasEmailNaoValidado = false }: ItemCardProps) => {
   const user = getUser();
   const userId = user?.id;
   const [plataformas, setPlataformas] = useState(carregarPlataformasSync(userId));
@@ -183,7 +184,7 @@ const ItemCard = ({ item, isSelected, onToggleSelect, onEdit, onDelete, onItemUp
                 title={!temAcesso ? 'Clique para liberar acesso e editar preços' : ''}
                 style={!temAcesso ? { cursor: 'not-allowed', opacity: 0.6 } : {}}
               />
-              {!temAcesso && (
+              {!temAcesso && !temPlanoMasEmailNaoValidado && (
                 <span style={{
                   fontSize: '0.75em',
                   color: '#ffc107',
@@ -234,41 +235,43 @@ const ItemCard = ({ item, isSelected, onToggleSelect, onEdit, onDelete, onItemUp
                       );
                     })
                   ) : (
-                    <div style={{
-                      padding: '15px',
-                      background: '#fff3cd',
-                      border: '2px solid #ffc107',
-                      borderRadius: '8px',
-                      textAlign: 'center',
-                    }}>
-                      <p style={{ margin: '0 0 10px 0', color: '#856404', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
-                        <FaLock /> Acesso aos preços bloqueado
-                      </p>
-                      <button
-                        onClick={() => onAbrirModalPlanos?.()}
-                        style={{
-                          background: '#4CAF50',
-                          color: 'white',
-                          border: 'none',
-                          padding: '10px 20px',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontSize: '0.95em',
-                          fontWeight: 'bold',
-                          transition: 'all 0.3s',
-                        }}
-                        onMouseOver={(e) => {
-                          e.currentTarget.style.background = '#45a049';
-                          e.currentTarget.style.transform = 'scale(1.05)';
-                        }}
-                        onMouseOut={(e) => {
-                          e.currentTarget.style.background = '#4CAF50';
-                          e.currentTarget.style.transform = 'scale(1)';
-                        }}
-                      >
-                        Clique para liberar acesso
-                      </button>
-                    </div>
+                    !temPlanoMasEmailNaoValidado && (
+                      <div style={{
+                        padding: '15px',
+                        background: '#fff3cd',
+                        border: '2px solid #ffc107',
+                        borderRadius: '8px',
+                        textAlign: 'center',
+                      }}>
+                        <p style={{ margin: '0 0 10px 0', color: '#856404', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
+                          <FaLock /> Acesso aos preços bloqueado
+                        </p>
+                        <button
+                          onClick={() => onAbrirModalPlanos?.()}
+                          style={{
+                            background: '#4CAF50',
+                            color: 'white',
+                            border: 'none',
+                            padding: '10px 20px',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontSize: '0.95em',
+                            fontWeight: 'bold',
+                            transition: 'all 0.3s',
+                          }}
+                          onMouseOver={(e) => {
+                            e.currentTarget.style.background = '#45a049';
+                            e.currentTarget.style.transform = 'scale(1.05)';
+                          }}
+                          onMouseOut={(e) => {
+                            e.currentTarget.style.background = '#4CAF50';
+                            e.currentTarget.style.transform = 'scale(1)';
+                          }}
+                        >
+                          Clique para liberar acesso
+                        </button>
+                      </div>
+                    )
                   )}
                 </div>
               )}

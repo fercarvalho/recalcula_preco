@@ -13,6 +13,7 @@ interface ReajusteFormProps {
   onResetarValores: () => void;
   temAcesso?: boolean;
   onAbrirModalPlanos?: () => void;
+  temPlanoMasEmailNaoValidado?: boolean;
 }
 
 const ReajusteForm = ({
@@ -26,6 +27,7 @@ const ReajusteForm = ({
   onResetarValores,
   temAcesso = true,
   onAbrirModalPlanos,
+  temPlanoMasEmailNaoValidado = false,
 }: ReajusteFormProps) => {
   const handleAplicarReajuste = () => {
     if (!temAcesso) {
@@ -46,7 +48,7 @@ const ReajusteForm = ({
   return (
     <section className="reajuste-form">
       <h2>Configuração do Reajuste</h2>
-      {!temAcesso && (
+      {!temAcesso && !temPlanoMasEmailNaoValidado && (
         <div style={{
           padding: '15px',
           background: '#fff3cd',

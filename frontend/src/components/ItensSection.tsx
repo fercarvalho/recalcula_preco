@@ -15,6 +15,7 @@ interface ItensSectionProps {
   onItemUpdated: () => void;
   temAcesso?: boolean;
   onAbrirModalPlanos?: () => void;
+  temPlanoMasEmailNaoValidado?: boolean;
 }
 
 const ItensSection = ({
@@ -27,6 +28,7 @@ const ItensSection = ({
   onItemUpdated,
   temAcesso = true,
   onAbrirModalPlanos,
+  temPlanoMasEmailNaoValidado = false,
 }: ItensSectionProps) => {
   const [categoriasOrdenadas, setCategoriasOrdenadas] = useState<string[]>(Object.keys(itensPorCategoria));
 
@@ -82,6 +84,7 @@ const ItensSection = ({
               onDragLeave={categoriaDragDrop.handleDragLeave}
               temAcesso={temAcesso}
               onAbrirModalPlanos={onAbrirModalPlanos}
+              temPlanoMasEmailNaoValidado={temPlanoMasEmailNaoValidado}
             />
           );
         })}
