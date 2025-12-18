@@ -264,7 +264,8 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
   const [carregandoDados, setCarregandoDados] = useState(false);
   const [buscandoCepResidencial, setBuscandoCepResidencial] = useState(false);
   const [buscandoCepComercial, setBuscandoCepComercial] = useState(false);
-  const [mesmoEndereco, setMesmoEndereco] = useState(false);
+  const [mesmoEndereco, setMesmoEndereco] = useState(false); // Residencial é o mesmo que comercial
+  const [mesmoEnderecoComercial, setMesmoEnderecoComercial] = useState(false); // Comercial é o mesmo que residencial
   const [cepResidencialBuscado, setCepResidencialBuscado] = useState(false);
   const [cepComercialBuscado, setCepComercialBuscado] = useState(false);
   const [emailValidado, setEmailValidado] = useState(false);
@@ -304,12 +305,15 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
   const [codigoPaisTelefone, setCodigoPaisTelefone] = useState('+55');
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
   const [erroCpf, setErroCpf] = useState<string | null>(null);
+  const [erroCepResidencial, setErroCepResidencial] = useState<string | null>(null);
+  const [erroCepComercial, setErroCepComercial] = useState<string | null>(null);
 
   // Carregar dados do usuário ao abrir o modal
   useEffect(() => {
     if (isOpen) {
       carregarDados();
       setMesmoEndereco(false);
+      setMesmoEnderecoComercial(false);
       setCepResidencialBuscado(false);
       setCepComercialBuscado(false);
       setNaoPossuiCpf(false);
@@ -399,19 +403,40 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
       const data = await response.json();
 
       if (data.erro) {
-        await mostrarAlert('Erro', 'CEP não encontrado.');
+        if (tipo === 'residencial') {
+          setErroCepResidencial('CEP não encontrado');
+        } else {
+          setErroCepComercial('CEP não encontrado');
+        }
         return;
       }
 
       if (tipo === 'residencial') {
-        setDados(prev => ({
-          ...prev,
-          endereco_residencial: data.logradouro || '',
-          cidade_residencial: data.localidade || '',
-          estado_residencial: data.uf || '',
-          complemento_residencial: data.complemento || prev.complemento_residencial,
-        }));
+        setDados(prev => {
+          const novosDados = {
+            ...prev,
+            endereco_residencial: data.logradouro || '',
+            cidade_residencial: data.localidade || '',
+            estado_residencial: data.uf || '',
+            complemento_residencial: data.complemento || prev.complemento_residencial,
+          };
+          // Se comercial é o mesmo que residencial, copiar para comercial também
+          if (mesmoEnderecoComercial) {
+            novosDados.cep_comercial = prev.cep_residencial;
+            novosDados.endereco_comercial = novosDados.endereco_residencial;
+            novosDados.numero_comercial = prev.numero_residencial;
+            novosDados.complemento_comercial = novosDados.complemento_residencial;
+            novosDados.cidade_comercial = novosDados.cidade_residencial;
+            novosDados.estado_comercial = novosDados.estado_residencial;
+          }
+          return novosDados;
+        });
         setCepResidencialBuscado(true);
+        setErroCepResidencial(null); // Limpar erro se CEP for válido
+        if (mesmoEnderecoComercial) {
+          setCepComercialBuscado(true);
+          setErroCepComercial(null);
+        }
       } else {
         setDados(prev => {
           const novosDados = {
@@ -421,24 +446,31 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
             estado_comercial: data.uf || '',
             complemento_comercial: data.complemento || prev.complemento_comercial,
           };
-          // Se mesmo endereço está marcado, copiar para residencial
+          // Se mesmo endereço está marcado, copiar para residencial (incluindo complemento)
           if (mesmoEndereco) {
             novosDados.cep_residencial = prev.cep_comercial;
             novosDados.endereco_residencial = novosDados.endereco_comercial;
             novosDados.numero_residencial = prev.numero_comercial;
+            novosDados.complemento_residencial = novosDados.complemento_comercial;
             novosDados.cidade_residencial = novosDados.cidade_comercial;
             novosDados.estado_residencial = novosDados.estado_comercial;
           }
           return novosDados;
         });
         setCepComercialBuscado(true);
+        setErroCepComercial(null); // Limpar erro se CEP for válido
         if (mesmoEndereco) {
           setCepResidencialBuscado(true);
+          setErroCepResidencial(null);
         }
       }
     } catch (error) {
       console.error('Erro ao buscar CEP:', error);
-      await mostrarAlert('Erro', 'Erro ao buscar CEP. Tente novamente.');
+      if (tipo === 'residencial') {
+        setErroCepResidencial('Erro ao buscar CEP. Tente novamente.');
+      } else {
+        setErroCepComercial('Erro ao buscar CEP. Tente novamente.');
+      }
     } finally {
       if (tipo === 'residencial') {
         setBuscandoCepResidencial(false);
@@ -452,6 +484,10 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
     if (dados.cep_residencial && !mesmoEndereco) {
       buscarCep(dados.cep_residencial, 'residencial');
     }
+    // Se comercial é o mesmo que residencial, também atualizar comercial quando CEP residencial é buscado
+    if (mesmoEnderecoComercial && dados.cep_residencial) {
+      buscarCep(dados.cep_residencial, 'residencial');
+    }
   };
 
   const handleCepComercialBlur = () => {
@@ -462,37 +498,77 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
 
   const handleMesmoEnderecoChange = (checked: boolean) => {
     setMesmoEndereco(checked);
+    // Se marcar que residencial é o mesmo que comercial, desmarcar o inverso
     if (checked) {
-      // Copiar todos os campos do comercial para residencial (exceto complemento)
+      setMesmoEnderecoComercial(false);
+      // Copiar todos os campos do comercial para residencial (incluindo complemento)
       setDados(prev => ({
         ...prev,
         cep_residencial: prev.cep_comercial,
         endereco_residencial: prev.endereco_comercial,
         numero_residencial: prev.numero_comercial,
+        complemento_residencial: prev.complemento_comercial,
         cidade_residencial: prev.cidade_comercial,
         estado_residencial: prev.estado_comercial,
         pais_residencial: prev.pais_comercial,
-        // complemento_residencial não é copiado
       }));
       setCepResidencialBuscado(cepComercialBuscado);
       setNaoResidoBrasilResidencial(naoResidoBrasilComercial);
     } else {
-      // Limpar campos residenciais quando desmarcar
-      setDados(prev => ({
-        ...prev,
-        cep_residencial: '',
-        endereco_residencial: '',
-        numero_residencial: '',
-        cidade_residencial: '',
-        estado_residencial: '',
-        pais_residencial: 'Brasil',
-        // complemento_residencial não é limpo
-      }));
-      setCepResidencialBuscado(false);
-      setNaoResidoBrasilResidencial(false);
+      // Limpar campos residenciais quando desmarcar (só se não estiver marcado o inverso)
+      if (!mesmoEnderecoComercial) {
+        setDados(prev => ({
+          ...prev,
+          cep_residencial: '',
+          endereco_residencial: '',
+          numero_residencial: '',
+          complemento_residencial: '',
+          cidade_residencial: '',
+          estado_residencial: '',
+          pais_residencial: 'Brasil',
+        }));
+        setCepResidencialBuscado(false);
+        setNaoResidoBrasilResidencial(false);
+      }
     }
   };
 
+  const handleMesmoEnderecoComercialChange = (checked: boolean) => {
+    setMesmoEnderecoComercial(checked);
+    // Se marcar que comercial é o mesmo que residencial, desmarcar o inverso
+    if (checked) {
+      setMesmoEndereco(false);
+      // Copiar todos os campos do residencial para comercial (incluindo complemento)
+      setDados(prev => ({
+        ...prev,
+        cep_comercial: prev.cep_residencial,
+        endereco_comercial: prev.endereco_residencial,
+        numero_comercial: prev.numero_residencial,
+        complemento_comercial: prev.complemento_residencial,
+        cidade_comercial: prev.cidade_residencial,
+        estado_comercial: prev.estado_residencial,
+        pais_comercial: prev.pais_residencial,
+      }));
+      setCepComercialBuscado(cepResidencialBuscado);
+      setNaoResidoBrasilComercial(naoResidoBrasilResidencial);
+    } else {
+      // Limpar campos comerciais quando desmarcar (só se não estiver marcado o inverso)
+      if (!mesmoEndereco) {
+        setDados(prev => ({
+          ...prev,
+          cep_comercial: '',
+          endereco_comercial: '',
+          numero_comercial: '',
+          complemento_comercial: '',
+          cidade_comercial: '',
+          estado_comercial: '',
+          pais_comercial: 'Brasil',
+        }));
+        setCepComercialBuscado(false);
+        setNaoResidoBrasilComercial(false);
+      }
+    }
+  };
 
   const formatarCep = (value: string) => {
     const cepLimpo = value.replace(/\D/g, '');
@@ -586,7 +662,7 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
     if (!dados.nome_estabelecimento.trim()) camposVazios.push('Nome do Estabelecimento');
     
     // Validar endereço comercial
-    if (!naoResidoBrasilComercial) {
+    if (!naoResidoBrasilComercial && !mesmoEnderecoComercial) {
       if (!dados.cep_comercial.trim()) camposVazios.push('CEP Comercial');
       if (!dados.endereco_comercial.trim()) camposVazios.push('Endereço Comercial');
       if (!dados.numero_comercial.trim()) camposVazios.push('Número Comercial');
@@ -667,7 +743,7 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
       }
       
       // Validar endereço comercial
-      if (!naoResidoBrasilComercial) {
+      if (!naoResidoBrasilComercial && !mesmoEnderecoComercial) {
         if (!dados.cep_comercial.trim()) {
           await mostrarAlert('Erro', 'O CEP comercial é obrigatório quando o email está validado.');
           return;
@@ -908,7 +984,7 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                   disabled={loading || naoPossuiCpf}
                   required={emailValidado && !naoPossuiCpf}
                 />
-                {erroCpf && <span className="error-text" style={{ display: 'block', marginTop: '0.25rem', fontSize: '0.85rem', color: '#d32f2f' }}>{erroCpf}</span>}
+                {erroCpf && <span className="error-text">{erroCpf}</span>}
                 <div className="form-group checkbox-group" style={{ marginTop: '10px' }}>
                   <label className="checkbox-label">
                     <input
@@ -977,14 +1053,25 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
 
           {/* Endereço Comercial */}
           <div className="form-section">
-            <h3>Endereço Comercial {emailValidado && !naoResidoBrasilComercial && <span className="required">*</span>}</h3>
+            <h3>Endereço Comercial {emailValidado && !mesmoEnderecoComercial && !naoResidoBrasilComercial && <span className="required">*</span>}</h3>
+            <div className="form-group checkbox-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={mesmoEnderecoComercial}
+                  onChange={(e) => handleMesmoEnderecoComercialChange(e.target.checked)}
+                  disabled={loading}
+                />
+                <span>Endereço comercial é o mesmo que residencial</span>
+              </label>
+            </div>
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="cep-comercial">CEP {emailValidado && !naoResidoBrasilComercial && <span className="required">*</span>}:</label>
+                <label htmlFor="cep-comercial">CEP {emailValidado && !mesmoEnderecoComercial && !naoResidoBrasilComercial && <span className="required">*</span>}:</label>
                 <input
                   id="cep-comercial"
                   type="text"
-                  className={`form-input ${emailValidado && !naoResidoBrasilComercial ? 'required-field' : ''}`}
+                  className={`form-input ${emailValidado && !mesmoEnderecoComercial && !naoResidoBrasilComercial ? 'required-field' : ''} ${erroCepComercial ? 'input-error' : ''}`}
                   value={dados.cep_comercial || ''}
                   onChange={(e) => {
                     const novoValor = formatarCep(e.target.value);
@@ -995,21 +1082,25 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                       }
                       return novosDados;
                     });
+                    if (erroCepComercial) {
+                      setErroCepComercial(null); // Limpar erro ao digitar
+                    }
                   }}
                   onBlur={handleCepComercialBlur}
                   placeholder="00000-000"
-                  disabled={loading || naoResidoBrasilComercial}
-                  required={emailValidado && !naoResidoBrasilComercial}
+                  disabled={loading || naoResidoBrasilComercial || mesmoEnderecoComercial}
+                  required={emailValidado && !mesmoEnderecoComercial && !naoResidoBrasilComercial}
                 />
                 {buscandoCepComercial && <FaSpinner className="spinner-inline" />}
+                {erroCepComercial && <span className="error-text">{erroCepComercial}</span>}
               </div>
             </div>
             <div className="form-group">
-              <label htmlFor="endereco-comercial">Endereço {emailValidado && !naoResidoBrasilComercial && <span className="required">*</span>}:</label>
+              <label htmlFor="endereco-comercial">Endereço {emailValidado && !mesmoEnderecoComercial && !naoResidoBrasilComercial && <span className="required">*</span>}:</label>
               <input
                 id="endereco-comercial"
                 type="text"
-                className={`form-input ${emailValidado && !naoResidoBrasilComercial ? 'required-field' : ''}`}
+                className={`form-input ${emailValidado && !mesmoEnderecoComercial && !naoResidoBrasilComercial ? 'required-field' : ''}`}
                 value={dados.endereco_comercial || ''}
                 onChange={(e) => {
                   const novoValor = e.target.value;
@@ -1022,19 +1113,19 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                   });
                 }}
                 placeholder="Rua, Avenida, etc."
-                disabled={loading || naoResidoBrasilComercial}
-                required={emailValidado && !naoResidoBrasilComercial}
+                disabled={loading || naoResidoBrasilComercial || mesmoEnderecoComercial}
+                required={emailValidado && !mesmoEnderecoComercial && !naoResidoBrasilComercial}
               />
             </div>
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="numero-comercial">
-                  Número {(cepComercialBuscado || (emailValidado && !naoResidoBrasilComercial)) && <span className="required">*</span>}:
+                  Número {(cepComercialBuscado || (emailValidado && !mesmoEnderecoComercial && !naoResidoBrasilComercial)) && <span className="required">*</span>}:
                 </label>
                 <input
                   id="numero-comercial"
                   type="text"
-                  className={`form-input ${(cepComercialBuscado || (emailValidado && !naoResidoBrasilComercial)) ? 'required-field' : ''}`}
+                  className={`form-input ${(cepComercialBuscado || (emailValidado && !mesmoEnderecoComercial && !naoResidoBrasilComercial)) ? 'required-field' : ''}`}
                   value={dados.numero_comercial || ''}
                   onChange={(e) => {
                     const novoValor = e.target.value;
@@ -1047,8 +1138,8 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                     });
                   }}
                   placeholder="Número"
-                  disabled={loading || naoResidoBrasilComercial}
-                  required={cepComercialBuscado || (emailValidado && !naoResidoBrasilComercial)}
+                  disabled={loading || naoResidoBrasilComercial || mesmoEnderecoComercial}
+                  required={cepComercialBuscado || (emailValidado && !mesmoEnderecoComercial && !naoResidoBrasilComercial)}
                 />
               </div>
               <div className="form-group">
@@ -1058,19 +1149,29 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                   type="text"
                   className="form-input"
                   value={dados.complemento_comercial || ''}
-                  onChange={(e) => setDados(prev => ({ ...prev, complemento_comercial: e.target.value }))}
+                  onChange={(e) => {
+                    const novoValor = e.target.value;
+                    setDados(prev => {
+                      const novosDados = { ...prev, complemento_comercial: novoValor };
+                      // Se residencial é o mesmo que comercial, copiar complemento para residencial
+                      if (mesmoEndereco) {
+                        novosDados.complemento_residencial = novoValor;
+                      }
+                      return novosDados;
+                    });
+                  }}
                   placeholder="Apto, Bloco, etc."
-                  disabled={loading || naoResidoBrasilComercial}
+                  disabled={loading || naoResidoBrasilComercial || mesmoEnderecoComercial}
                 />
               </div>
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="cidade-comercial">Cidade {emailValidado && !naoResidoBrasilComercial && <span className="required">*</span>}:</label>
+                <label htmlFor="cidade-comercial">Cidade {emailValidado && !mesmoEnderecoComercial && !naoResidoBrasilComercial && <span className="required">*</span>}:</label>
                 <input
                   id="cidade-comercial"
                   type="text"
-                  className={`form-input ${emailValidado && !naoResidoBrasilComercial ? 'required-field' : ''}`}
+                  className={`form-input ${emailValidado && !mesmoEnderecoComercial && !naoResidoBrasilComercial ? 'required-field' : ''}`}
                   value={dados.cidade_comercial || ''}
                   onChange={(e) => {
                     const novoValor = e.target.value;
@@ -1083,16 +1184,16 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                     });
                   }}
                   placeholder="Cidade"
-                  disabled={loading || naoResidoBrasilComercial}
-                  required={emailValidado && !naoResidoBrasilComercial}
+                  disabled={loading || naoResidoBrasilComercial || mesmoEnderecoComercial}
+                  required={emailValidado && !mesmoEnderecoComercial && !naoResidoBrasilComercial}
                 />
               </div>
               <div className="form-group">
-                <label htmlFor="estado-comercial">Estado {emailValidado && !naoResidoBrasilComercial && <span className="required">*</span>}:</label>
+                <label htmlFor="estado-comercial">Estado {emailValidado && !mesmoEnderecoComercial && !naoResidoBrasilComercial && <span className="required">*</span>}:</label>
                 <input
                   id="estado-comercial"
                   type="text"
-                  className={`form-input ${emailValidado && !naoResidoBrasilComercial ? 'required-field' : ''}`}
+                  className={`form-input ${emailValidado && !mesmoEnderecoComercial && !naoResidoBrasilComercial ? 'required-field' : ''}`}
                   value={garantirString(dados.estado_comercial)}
                   onChange={(e) => {
                     const novoValor = (e.target.value || '').toUpperCase();
@@ -1106,8 +1207,8 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                   }}
                   placeholder="UF"
                   maxLength={2}
-                  disabled={loading || naoResidoBrasilComercial}
-                  required={emailValidado && !naoResidoBrasilComercial}
+                  disabled={loading || naoResidoBrasilComercial || mesmoEnderecoComercial}
+                  required={emailValidado && !mesmoEnderecoComercial && !naoResidoBrasilComercial}
                 />
               </div>
             </div>
@@ -1158,7 +1259,7 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                       return novosDados;
                     });
                   }}
-                  disabled={loading}
+                  disabled={loading || mesmoEnderecoComercial}
                 >
                   {PAISES.map(pais => (
                     <option key={pais} value={pais}>{pais}</option>
@@ -1188,15 +1289,21 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                 <input
                   id="cep-residencial"
                   type="text"
-                  className={`form-input ${emailValidado && !mesmoEndereco && !naoResidoBrasilResidencial ? 'required-field' : ''}`}
+                  className={`form-input ${emailValidado && !mesmoEndereco && !naoResidoBrasilResidencial ? 'required-field' : ''} ${erroCepResidencial ? 'input-error' : ''}`}
                   value={dados.cep_residencial || ''}
-                  onChange={(e) => setDados(prev => ({ ...prev, cep_residencial: formatarCep(e.target.value) }))}
+                  onChange={(e) => {
+                    setDados(prev => ({ ...prev, cep_residencial: formatarCep(e.target.value) }));
+                    if (erroCepResidencial) {
+                      setErroCepResidencial(null); // Limpar erro ao digitar
+                    }
+                  }}
                   onBlur={handleCepResidencialBlur}
                   placeholder="00000-000"
                   disabled={loading || mesmoEndereco || naoResidoBrasilResidencial}
                   required={emailValidado && !mesmoEndereco && !naoResidoBrasilResidencial}
                 />
                 {buscandoCepResidencial && <FaSpinner className="spinner-inline" />}
+                {erroCepResidencial && <span className="error-text">{erroCepResidencial}</span>}
               </div>
             </div>
             <div className="form-group">
@@ -1206,7 +1313,17 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                 type="text"
                 className={`form-input ${emailValidado && !mesmoEndereco && !naoResidoBrasilResidencial ? 'required-field' : ''}`}
                 value={dados.endereco_residencial || ''}
-                onChange={(e) => setDados(prev => ({ ...prev, endereco_residencial: e.target.value }))}
+                onChange={(e) => {
+                  const novoValor = e.target.value;
+                  setDados(prev => {
+                    const novosDados = { ...prev, endereco_residencial: novoValor };
+                    // Se comercial é o mesmo que residencial, copiar para comercial
+                    if (mesmoEnderecoComercial) {
+                      novosDados.endereco_comercial = novoValor;
+                    }
+                    return novosDados;
+                  });
+                }}
                 placeholder="Rua, Avenida, etc."
                 disabled={loading || mesmoEndereco || naoResidoBrasilResidencial}
                 required={emailValidado && !mesmoEndereco && !naoResidoBrasilResidencial}
@@ -1222,7 +1339,17 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                   type="text"
                   className={`form-input ${(cepResidencialBuscado || (emailValidado && !mesmoEndereco && !naoResidoBrasilResidencial)) ? 'required-field' : ''}`}
                   value={dados.numero_residencial || ''}
-                  onChange={(e) => setDados(prev => ({ ...prev, numero_residencial: e.target.value }))}
+                  onChange={(e) => {
+                    const novoValor = e.target.value;
+                    setDados(prev => {
+                      const novosDados = { ...prev, numero_residencial: novoValor };
+                      // Se comercial é o mesmo que residencial, copiar para comercial
+                      if (mesmoEnderecoComercial) {
+                        novosDados.numero_comercial = novoValor;
+                      }
+                      return novosDados;
+                    });
+                  }}
                   placeholder="Número"
                   disabled={loading || mesmoEndereco || naoResidoBrasilResidencial}
                   required={cepResidencialBuscado || (emailValidado && !mesmoEndereco && !naoResidoBrasilResidencial)}
@@ -1235,9 +1362,23 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                   type="text"
                   className="form-input"
                   value={dados.complemento_residencial || ''}
-                  onChange={(e) => setDados(prev => ({ ...prev, complemento_residencial: e.target.value }))}
+                  onChange={(e) => {
+                    const novoValor = e.target.value;
+                    setDados(prev => {
+                      const novosDados = { ...prev, complemento_residencial: novoValor };
+                      // Se residencial é o mesmo que comercial, copiar para comercial
+                      if (mesmoEndereco) {
+                        novosDados.complemento_comercial = novoValor;
+                      }
+                      // Se comercial é o mesmo que residencial, copiar para comercial
+                      if (mesmoEnderecoComercial) {
+                        novosDados.complemento_comercial = novoValor;
+                      }
+                      return novosDados;
+                    });
+                  }}
                   placeholder="Apto, Bloco, etc."
-                  disabled={loading || naoResidoBrasilResidencial}
+                  disabled={loading || naoResidoBrasilResidencial || mesmoEndereco}
                 />
               </div>
             </div>
@@ -1249,7 +1390,17 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                   type="text"
                   className={`form-input ${emailValidado && !mesmoEndereco && !naoResidoBrasilResidencial ? 'required-field' : ''}`}
                   value={dados.cidade_residencial || ''}
-                  onChange={(e) => setDados(prev => ({ ...prev, cidade_residencial: e.target.value }))}
+                  onChange={(e) => {
+                    const novoValor = e.target.value;
+                    setDados(prev => {
+                      const novosDados = { ...prev, cidade_residencial: novoValor };
+                      // Se comercial é o mesmo que residencial, copiar para comercial
+                      if (mesmoEnderecoComercial) {
+                        novosDados.cidade_comercial = novoValor;
+                      }
+                      return novosDados;
+                    });
+                  }}
                   placeholder="Cidade"
                   disabled={loading || mesmoEndereco || naoResidoBrasilResidencial}
                   required={emailValidado && !mesmoEndereco && !naoResidoBrasilResidencial}
@@ -1262,7 +1413,17 @@ const AlterarDadosModal = ({ isOpen, onClose }: AlterarDadosModalProps) => {
                   type="text"
                   className={`form-input ${emailValidado && !mesmoEndereco && !naoResidoBrasilResidencial ? 'required-field' : ''}`}
                   value={dados.estado_residencial || ''}
-                  onChange={(e) => setDados(prev => ({ ...prev, estado_residencial: e.target.value.toUpperCase() }))}
+                  onChange={(e) => {
+                    const novoValor = e.target.value.toUpperCase();
+                    setDados(prev => {
+                      const novosDados = { ...prev, estado_residencial: novoValor };
+                      // Se comercial é o mesmo que residencial, copiar para comercial
+                      if (mesmoEnderecoComercial) {
+                        novosDados.estado_comercial = novoValor;
+                      }
+                      return novosDados;
+                    });
+                  }}
                   placeholder="UF"
                   maxLength={2}
                   disabled={loading || mesmoEndereco || naoResidoBrasilResidencial}

@@ -97,7 +97,7 @@
 .checkout-form h2,
 .checkout-form h3,
 .checkout-form p,
-.checkout-form span:not(.required),
+.checkout-form span:not(.required):not(.error-text),
 .checkout-form div {
   color: white !important;
 }
@@ -201,9 +201,14 @@
 
 .error-text {
   display: block;
-  color: #d32f2f;
+  color: #d32f2f !important; /* Forçar cor vermelha mesmo dentro do checkout */
   font-size: 0.85rem;
   margin-top: 0.25rem;
+}
+
+/* Garantir que erros apareçam em vermelho dentro do checkout */
+.checkout-form .error-text {
+  color: #d32f2f !important;
 }
 
 .form-hint {

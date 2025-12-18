@@ -9,7 +9,7 @@
 .alterar-dados-form label,
 .alterar-dados-form h3,
 .alterar-dados-form p,
-.alterar-dados-form span:not(.required),
+.alterar-dados-form span:not(.required):not(.error-text),
 .alterar-dados-form div {
   color: #333 !important;
 }
@@ -95,9 +95,14 @@
 
 .error-text {
   display: block;
-  color: #d32f2f;
+  color: #d32f2f !important; /* Forçar cor vermelha mesmo dentro do modal */
   font-size: 0.85rem;
   margin-top: 0.25rem;
+}
+
+/* Garantir que erros apareçam em vermelho dentro do modal */
+.alterar-dados-form .error-text {
+  color: #d32f2f !important;
 }
 
 .aviso-obrigatorio {
