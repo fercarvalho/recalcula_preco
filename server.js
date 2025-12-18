@@ -39,24 +39,39 @@ app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 // ========== WEBHOOK DO STRIPE (DEVE VIR ANTES DO bodyParser.json) ==========
 // O webhook precisa processar raw body, então deve vir antes do bodyParser.json
 app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+    console.log('📥 Webhook endpoint chamado');
     const sig = req.headers['stripe-signature'];
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+    if (!sig) {
+        console.error('❌ Webhook sem assinatura (stripe-signature header ausente)');
+        return res.status(400).send('Webhook Error: Missing stripe-signature header');
+    }
+
+    if (!webhookSecret) {
+        console.error('❌ STRIPE_WEBHOOK_SECRET não configurado');
+        return res.status(500).send('Webhook Error: STRIPE_WEBHOOK_SECRET not configured');
+    }
 
     let event;
 
     try {
         if (!stripeService.stripe) {
-            console.error('Stripe não está configurado');
+            console.error('❌ Stripe não está configurado');
             return res.status(500).json({ error: 'Stripe não está configurado' });
         }
+        console.log('🔐 Verificando assinatura do webhook...');
         event = stripeService.stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+        console.log('✅ Assinatura do webhook verificada com sucesso');
     } catch (err) {
-        console.error('Erro na verificação do webhook:', err.message);
+        console.error('❌ Erro na verificação do webhook:', err.message);
         return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
     try {
         console.log('📥 Webhook recebido:', event.type);
+        console.log('📋 Event ID:', event.id);
+        console.log('📋 Event data object ID:', event.data?.object?.id);
         const resultado = await stripeService.processarWebhook(event);
 
         if (!resultado) {
@@ -68,154 +83,215 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
 
         // Processar pagamento único
         if (resultado.tipo === 'pagamento_unico' || resultado.tipo === 'pagamento_unico_sucesso') {
-            const userId = resultado.userId || (resultado.metadata?.user_id ? parseInt(resultado.metadata.user_id) : null);
-            const paymentIntentId = resultado.paymentIntentId || resultado.sessionId;
+            try {
+                const userId = resultado.userId || (resultado.metadata?.user_id ? parseInt(resultado.metadata.user_id) : null);
+                const paymentIntentId = resultado.paymentIntentId || resultado.sessionId;
 
-            console.log('💳 Processando pagamento único - UserId:', userId, 'PaymentIntentId:', paymentIntentId);
+                console.log('💳 Processando pagamento único - UserId:', userId, 'PaymentIntentId:', paymentIntentId);
+                console.log('📋 Resultado completo:', JSON.stringify(resultado, null, 2));
 
-            if (userId && paymentIntentId && stripeService.stripe) {
-                let valor = 199.00; // Valor padrão
-                let customerId = null;
-
-                // Se for checkout.session.completed, buscar dados da sessão
-                if (resultado.tipo === 'pagamento_unico' && resultado.sessionId) {
-                    try {
-                        const session = await stripeService.stripe.checkout.sessions.retrieve(resultado.sessionId);
-                        valor = session.amount_total ? session.amount_total / 100 : valor;
-                        customerId = session.customer || null;
-                    } catch (err) {
-                        console.error('Erro ao buscar sessão:', err);
-                    }
-                } else if (resultado.tipo === 'pagamento_unico_sucesso') {
-                    // Se for payment_intent.succeeded (checkout transparente), usar dados do payment intent
-                    valor = resultado.amount || valor;
-                    customerId = resultado.customerId || null;
+                // Validação rigorosa
+                if (!userId || !Number.isInteger(userId) || userId <= 0) {
+                    console.error('❌ UserId inválido ou ausente:', userId);
+                    throw new Error(`UserId inválido: ${userId}`);
                 }
 
-                const planoId = resultado.metadata?.plano_id ? parseInt(resultado.metadata.plano_id) : null;
+                if (!paymentIntentId || typeof paymentIntentId !== 'string') {
+                    console.error('❌ PaymentIntentId inválido ou ausente:', paymentIntentId);
+                    throw new Error(`PaymentIntentId inválido: ${paymentIntentId}`);
+                }
 
-                console.log('💰 Valor do pagamento:', valor);
-                console.log('📋 Plano ID:', planoId);
+                if (!stripeService.stripe) {
+                    console.error('❌ Stripe não está configurado');
+                    throw new Error('Stripe não está configurado');
+                }
 
-                // Verificar se o pagamento já foi salvo (idempotência)
-                const pagamentoExistente = await db.obterPagamentoUnicoPorStripeId(paymentIntentId);
-                if (pagamentoExistente) {
-                    console.log('ℹ️  Pagamento já foi processado anteriormente (via confirmação direta ou webhook anterior)');
-                } else {
-                    await db.criarPagamentoUnico(userId, {
-                        stripe_payment_intent_id: paymentIntentId,
-                        stripe_customer_id: customerId,
-                        valor: valor,
-                        status: 'succeeded',
-                        plano_id: planoId,
-                    });
+                if (userId && paymentIntentId && stripeService.stripe) {
+                    let valor = 199.00; // Valor padrão
+                    let customerId = null;
 
-                    console.log('✅ Pagamento único salvo no banco de dados via webhook para usuário:', userId, 'PlanoId:', planoId);
-                    
-                    // Registrar uso do cupom na Stripe se houver
-                    const promotionCodeId = resultado.metadata?.promotion_code_id;
-                    if (promotionCodeId) {
+                    // Se for checkout.session.completed, buscar dados da sessão
+                    if (resultado.tipo === 'pagamento_unico' && resultado.sessionId) {
                         try {
-                            const promotionCode = await stripeService.stripe.promotionCodes.retrieve(promotionCodeId);
-                            const totalUses = parseInt(promotionCode.metadata?.total_uses || '0') + 1;
-                            await stripeService.stripe.promotionCodes.update(promotionCodeId, {
-                                metadata: {
-                                    ...promotionCode.metadata,
-                                    [`used_${Date.now()}`]: paymentIntentId,
-                                    last_used_at: new Date().toISOString(),
-                                    last_used_by_user: userId.toString(),
-                                    total_uses: totalUses.toString(),
-                                }
-                            });
-                            console.log(`✅ Uso do cupom registrado via webhook (total: ${totalUses})`);
+                            const session = await stripeService.stripe.checkout.sessions.retrieve(resultado.sessionId);
+                            valor = session.amount_total ? session.amount_total / 100 : valor;
+                            customerId = session.customer || null;
                         } catch (err) {
-                            console.log('⚠️  Erro ao registrar uso do cupom via webhook:', err.message);
+                            console.error('Erro ao buscar sessão:', err);
+                            throw err; // Re-throw para ser capturado pelo catch externo
+                        }
+                    } else if (resultado.tipo === 'pagamento_unico_sucesso') {
+                        // Se for payment_intent.succeeded (checkout transparente), usar dados do payment intent
+                        valor = resultado.amount || valor;
+                        customerId = resultado.customerId || null;
+                        console.log('💰 Valor do payment intent (em reais):', valor);
+                        console.log('👤 Customer ID:', customerId);
+                    }
+
+                    const planoId = resultado.metadata?.plano_id ? parseInt(resultado.metadata.plano_id) : null;
+
+                    console.log('💰 Valor do pagamento:', valor);
+                    console.log('📋 Plano ID:', planoId);
+
+                    // Verificar se o pagamento já foi salvo (idempotência)
+                    const pagamentoExistente = await db.obterPagamentoUnicoPorStripeId(paymentIntentId);
+                    if (pagamentoExistente) {
+                        console.log('ℹ️  Pagamento já foi processado anteriormente (via confirmação direta ou webhook anterior)');
+                    } else {
+                        await db.criarPagamentoUnico(userId, {
+                            stripe_payment_intent_id: paymentIntentId,
+                            stripe_customer_id: customerId,
+                            valor: valor,
+                            status: 'succeeded',
+                            plano_id: planoId,
+                        });
+
+                        console.log('✅ Pagamento único salvo no banco de dados via webhook para usuário:', userId, 'PlanoId:', planoId);
+                        
+                        // Registrar uso do cupom na Stripe se houver
+                        const promotionCodeId = resultado.metadata?.promotion_code_id;
+                        if (promotionCodeId) {
+                            try {
+                                const promotionCode = await stripeService.stripe.promotionCodes.retrieve(promotionCodeId);
+                                const totalUses = parseInt(promotionCode.metadata?.total_uses || '0') + 1;
+                                await stripeService.stripe.promotionCodes.update(promotionCodeId, {
+                                    metadata: {
+                                        ...promotionCode.metadata,
+                                        [`used_${Date.now()}`]: paymentIntentId,
+                                        last_used_at: new Date().toISOString(),
+                                        last_used_by_user: userId.toString(),
+                                        total_uses: totalUses.toString(),
+                                    }
+                                });
+                                console.log(`✅ Uso do cupom registrado via webhook (total: ${totalUses})`);
+                            } catch (err) {
+                                console.log('⚠️  Erro ao registrar uso do cupom via webhook:', err.message);
+                                // Não falhar o webhook se houver erro ao registrar o cupom
+                            }
                         }
                     }
+                } else if (resultado.tipo === 'pagamento_unico_sucesso' && !userId) {
+                    // payment_intent.succeeded sem userId no metadata (pode ser de checkout session já processado)
+                    // Verificar se já foi processado por checkout.session.completed
+                    console.log('ℹ️  payment_intent.succeeded recebido sem userId - verificando se já foi processado');
+                } else {
+                    console.error('❌ Dados insuficientes para processar pagamento único:', { 
+                        userId, 
+                        paymentIntentId, 
+                        temStripe: !!stripeService.stripe,
+                        tipo: resultado.tipo
+                    });
+                    // Não lançar erro aqui, apenas logar - pode ser um evento legítimo sem userId
                 }
-            } else if (resultado.tipo === 'pagamento_unico_sucesso' && !userId) {
-                // payment_intent.succeeded sem userId no metadata (pode ser de checkout session já processado)
-                // Verificar se já foi processado por checkout.session.completed
-                console.log('ℹ️  payment_intent.succeeded recebido sem userId - verificando se já foi processado');
-            } else {
-                console.error('❌ Dados insuficientes para processar pagamento único:', { userId, paymentIntentId });
+            } catch (err) {
+                console.error('❌ Erro ao processar pagamento único no webhook:', err);
+                console.error('Stack trace:', err.stack);
+                throw err; // Re-throw para ser capturado pelo catch principal
             }
         }
 
         // Processar assinatura
         if (resultado.tipo === 'assinatura') {
-            const userId = resultado.metadata?.user_id ? parseInt(resultado.metadata.user_id) : null;
-            const planoId = resultado.metadata?.plano_id ? parseInt(resultado.metadata.plano_id) : null;
+            try {
+                const userId = resultado.metadata?.user_id ? parseInt(resultado.metadata.user_id) : null;
+                const planoId = resultado.metadata?.plano_id ? parseInt(resultado.metadata.plano_id) : null;
 
-            console.log('📋 Processando assinatura - UserId:', userId, 'PlanoId:', planoId, 'SubscriptionId:', resultado.subscriptionId);
+                console.log('📋 Processando assinatura - UserId:', userId, 'PlanoId:', planoId, 'SubscriptionId:', resultado.subscriptionId);
+                console.log('📋 Metadata completa:', JSON.stringify(resultado.metadata, null, 2));
 
-            if (userId) {
-                await db.criarOuAtualizarAssinatura(userId, {
-                    stripe_subscription_id: resultado.subscriptionId,
-                    stripe_customer_id: resultado.customerId,
-                    plano_tipo: 'anual',
-                    plano_id: planoId,
-                    status: resultado.status,
-                    current_period_start: resultado.currentPeriodStart,
-                    current_period_end: resultado.currentPeriodEnd,
-                    cancel_at_period_end: resultado.cancelAtPeriodEnd || false,
-                });
+                if (userId) {
+                    await db.criarOuAtualizarAssinatura(userId, {
+                        stripe_subscription_id: resultado.subscriptionId,
+                        stripe_customer_id: resultado.customerId,
+                        plano_tipo: 'anual',
+                        plano_id: planoId,
+                        status: resultado.status,
+                        current_period_start: resultado.currentPeriodStart,
+                        current_period_end: resultado.currentPeriodEnd,
+                        cancel_at_period_end: resultado.cancelAtPeriodEnd || false,
+                    });
 
-                console.log('✅ Assinatura salva no banco de dados para usuário:', userId, 'PlanoId:', planoId, 'Status:', resultado.status);
-            } else {
-                console.error('❌ UserId não encontrado no metadata da assinatura');
+                    console.log('✅ Assinatura salva no banco de dados para usuário:', userId, 'PlanoId:', planoId, 'Status:', resultado.status);
+                } else {
+                    console.warn('⚠️  UserId não encontrado no metadata da assinatura - SubscriptionId:', resultado.subscriptionId);
+                    console.warn('⚠️  Isso pode ser normal se a assinatura já foi processada via confirmar-assinatura');
+                    // Não lançar erro - apenas logar como aviso
+                }
+            } catch (err) {
+                console.error('❌ Erro ao processar assinatura no webhook:', err);
+                console.error('Stack trace:', err.stack);
+                // Não lançar erro aqui - apenas logar, pois a assinatura já pode ter sido salva via confirmar-assinatura
+                // O webhook é um backup, não crítico se já foi processado diretamente
             }
         }
 
         // Processar cancelamento de assinatura
         if (resultado.tipo === 'assinatura_cancelada') {
-            console.log('🚫 Processando cancelamento de assinatura:', resultado.subscriptionId);
-            const assinatura = await db.obterAssinaturaPorStripeId(resultado.subscriptionId);
-            if (assinatura) {
-                await db.criarOuAtualizarAssinatura(assinatura.usuario_id, {
-                    stripe_subscription_id: resultado.subscriptionId,
-                    stripe_customer_id: resultado.customerId,
-                    plano_tipo: 'anual',
-                    plano_id: assinatura.plano_id,
-                    status: 'canceled',
-                    current_period_start: assinatura.current_period_start,
-                    current_period_end: assinatura.current_period_end,
-                    cancel_at_period_end: false,
-                });
-                console.log('✅ Assinatura cancelada no banco de dados para usuário:', assinatura.usuario_id);
-            } else {
-                // Tentar buscar por customerId se não encontrar por subscriptionId
-                const userId = resultado.metadata?.user_id ? parseInt(resultado.metadata.user_id) : null;
-                if (userId) {
-                    await db.criarOuAtualizarAssinatura(userId, {
+            try {
+                console.log('🚫 Processando cancelamento de assinatura:', resultado.subscriptionId);
+                const assinatura = await db.obterAssinaturaPorStripeId(resultado.subscriptionId);
+                if (assinatura) {
+                    await db.criarOuAtualizarAssinatura(assinatura.usuario_id, {
+                        stripe_subscription_id: resultado.subscriptionId,
+                        stripe_customer_id: resultado.customerId,
+                        plano_tipo: 'anual',
+                        plano_id: assinatura.plano_id,
                         status: 'canceled',
+                        current_period_start: assinatura.current_period_start,
+                        current_period_end: assinatura.current_period_end,
+                        cancel_at_period_end: false,
                     });
-                    console.log('✅ Status da assinatura atualizado para canceled - UserId:', userId);
+                    console.log('✅ Assinatura cancelada no banco de dados para usuário:', assinatura.usuario_id);
+                } else {
+                    // Tentar buscar por customerId se não encontrar por subscriptionId
+                    const userId = resultado.metadata?.user_id ? parseInt(resultado.metadata.user_id) : null;
+                    if (userId) {
+                        await db.criarOuAtualizarAssinatura(userId, {
+                            status: 'canceled',
+                        });
+                        console.log('✅ Status da assinatura atualizado para canceled - UserId:', userId);
+                    } else {
+                        console.warn('⚠️  Assinatura não encontrada para cancelar - SubscriptionId:', resultado.subscriptionId);
+                    }
                 }
+            } catch (err) {
+                console.error('❌ Erro ao processar cancelamento de assinatura no webhook:', err);
+                console.error('Stack trace:', err.stack);
+                // Não lançar erro - apenas logar
             }
         }
 
         // Processar pagamento de assinatura (renovação ou primeira cobrança)
         if (resultado.tipo === 'pagamento_assinatura') {
-            const userId = resultado.metadata?.user_id ? parseInt(resultado.metadata.user_id) : null;
-            const planoId = resultado.metadata?.plano_id ? parseInt(resultado.metadata.plano_id) : null;
+            try {
+                const userId = resultado.metadata?.user_id ? parseInt(resultado.metadata.user_id) : null;
+                const planoId = resultado.metadata?.plano_id ? parseInt(resultado.metadata.plano_id) : null;
 
-            if (userId && resultado.subscriptionId) {
-                // Buscar subscription atualizada no Stripe
-                const subscription = await stripeService.stripe.subscriptions.retrieve(resultado.subscriptionId);
-                
-                await db.criarOuAtualizarAssinatura(userId, {
-                    stripe_subscription_id: subscription.id,
-                    stripe_customer_id: subscription.customer,
-                    plano_tipo: 'anual',
-                    plano_id: planoId,
-                    status: subscription.status,
-                    current_period_start: new Date(subscription.current_period_start * 1000),
-                    current_period_end: new Date(subscription.current_period_end * 1000),
-                    cancel_at_period_end: subscription.cancel_at_period_end || false,
-                });
+                console.log('💰 Processando pagamento de assinatura - UserId:', userId, 'PlanoId:', planoId, 'SubscriptionId:', resultado.subscriptionId);
 
-                console.log('✅ Assinatura atualizada após pagamento - UserId:', userId, 'Status:', subscription.status);
+                if (userId && resultado.subscriptionId) {
+                    // Buscar subscription atualizada no Stripe
+                    const subscription = await stripeService.stripe.subscriptions.retrieve(resultado.subscriptionId);
+                    
+                    await db.criarOuAtualizarAssinatura(userId, {
+                        stripe_subscription_id: subscription.id,
+                        stripe_customer_id: subscription.customer,
+                        plano_tipo: 'anual',
+                        plano_id: planoId,
+                        status: subscription.status,
+                        current_period_start: new Date(subscription.current_period_start * 1000),
+                        current_period_end: new Date(subscription.current_period_end * 1000),
+                        cancel_at_period_end: subscription.cancel_at_period_end || false,
+                    });
+
+                    console.log('✅ Assinatura atualizada após pagamento - UserId:', userId, 'Status:', subscription.status);
+                } else {
+                    console.warn('⚠️  Dados insuficientes para processar pagamento de assinatura:', { userId, subscriptionId: resultado.subscriptionId });
+                }
+            } catch (err) {
+                console.error('❌ Erro ao processar pagamento de assinatura no webhook:', err);
+                console.error('Stack trace:', err.stack);
+                // Não lançar erro - apenas logar, pois o pagamento já foi processado
             }
         }
 
@@ -248,8 +324,14 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
         console.log('✅ Webhook processado com sucesso');
         res.json({ received: true });
     } catch (error) {
-        console.error('Erro ao processar webhook:', error);
-        res.status(500).json({ error: 'Erro ao processar webhook' });
+        console.error('❌ Erro ao processar webhook:', error);
+        console.error('❌ Stack trace:', error.stack);
+        console.error('❌ Error message:', error.message);
+        console.error('❌ Error name:', error.name);
+        if (error.response) {
+            console.error('❌ Error response:', error.response);
+        }
+        res.status(500).json({ error: 'Erro ao processar webhook', details: error.message });
     }
 });
 
@@ -1585,13 +1667,13 @@ app.post('/api/stripe/create-customer', authenticateToken, async (req, res) => {
 // Criar Subscription no Stripe
 app.post('/api/stripe/create-subscription', authenticateToken, async (req, res) => {
     try {
-        const { customerId, paymentMethodId, priceId, planoId, couponId } = req.body;
+        const { paymentMethodId, priceId, planoId, couponId, promotionCodeId } = req.body;
         const userId = req.user.id;
 
         // Validações
-        if (!customerId || !paymentMethodId || !priceId) {
+        if (!paymentMethodId || !priceId) {
             return res.status(400).json({ 
-                error: 'customerId, paymentMethodId e priceId são obrigatórios' 
+                error: 'paymentMethodId e priceId são obrigatórios' 
             });
         }
 
@@ -1607,6 +1689,44 @@ app.post('/api/stripe/create-subscription', authenticateToken, async (req, res) 
             });
         }
 
+        // Criar ou obter Customer na Stripe (mesmo padrão do create-payment-intent)
+        let customerId = null;
+        const usuario = await db.obterUsuarioPorId(userId);
+        
+        if (usuario) {
+            // Verificar se já existe customer no banco
+            const assinaturaExistente = await db.obterAssinatura(userId);
+            
+            if (assinaturaExistente?.stripe_customer_id) {
+                // Customer já existe, usar o existente
+                customerId = assinaturaExistente.stripe_customer_id;
+                console.log('✅ Usando customer existente para assinatura:', customerId);
+            } else {
+                // Criar novo Customer na Stripe
+                const customer = await stripeService.stripe.customers.create({
+                    email: usuario.email,
+                    name: `${usuario.nome || ''} ${usuario.sobrenome || ''}`.trim() || usuario.username,
+                    metadata: {
+                        user_id: userId.toString(),
+                    },
+                });
+                
+                customerId = customer.id;
+                console.log('✅ Customer criado na Stripe para assinatura:', customerId);
+                
+                // Salvar customer_id no banco
+                await db.criarOuAtualizarAssinatura(userId, {
+                    stripe_customer_id: customerId,
+                    plano_tipo: 'anual',
+                    status: 'incomplete',
+                });
+            }
+        }
+
+        if (!customerId) {
+            return res.status(500).json({ error: 'Erro ao criar ou obter customer' });
+        }
+
         // Anexar PaymentMethod ao Customer
         await stripeService.stripe.paymentMethods.attach(paymentMethodId, {
             customer: customerId,
@@ -1619,21 +1739,39 @@ app.post('/api/stripe/create-subscription', authenticateToken, async (req, res) 
             },
         });
 
+        // Buscar Promotion Code se houver para registrar o uso na Stripe (mesmo padrão do create-payment-intent)
+        let promotionCode = null;
+        if (promotionCodeId) {
+            try {
+                promotionCode = await stripeService.stripe.promotionCodes.retrieve(promotionCodeId);
+                console.log('✅ Promotion Code encontrado para assinatura:', promotionCode.code);
+                console.log('🎟️  Cupom ID:', promotionCode.coupon.id);
+            } catch (err) {
+                console.log('⚠️  Erro ao buscar Promotion Code:', err.message);
+            }
+        }
+
         // Criar Subscription
         const subscriptionData = {
             customer: customerId,
             items: [{ price: priceId }],
             payment_behavior: 'default_incomplete',
             payment_settings: { save_default_payment_method: 'on_subscription' },
-            expand: ['latest_invoice.payment_intent'],
+            expand: ['latest_invoice', 'latest_invoice.payment_intent'],
             metadata: {
                 user_id: userId.toString(),
                 plano_id: planoId ? planoId.toString() : '',
+                plano_tipo: 'anual',
             },
         };
 
-        // Adicionar cupom se fornecido
-        if (couponId) {
+        // Adicionar cupom se fornecido (usar Promotion Code se disponível, senão usar couponId direto)
+        if (promotionCodeId && promotionCode) {
+            subscriptionData.promotion_code = promotionCodeId;
+            subscriptionData.metadata.promotion_code_id = promotionCodeId;
+            subscriptionData.metadata.promotion_code = promotionCode.code || '';
+            subscriptionData.metadata.coupon_id = promotionCode.coupon?.id || '';
+        } else if (couponId) {
             subscriptionData.coupon = couponId;
             subscriptionData.metadata.coupon_id = couponId;
         }
@@ -1644,10 +1782,78 @@ app.post('/api/stripe/create-subscription', authenticateToken, async (req, res) 
         // Se o valor for zero (cupom de 100%), a subscription será criada como "active" automaticamente
         // Não precisamos de lógica especial - a Stripe cuida disso
 
+        // Registrar o uso do cupom na Stripe através de metadados (mesmo padrão do create-payment-intent)
+        if (promotionCodeId && promotionCode) {
+            try {
+                // Atualizar metadados do Promotion Code para rastrear uso
+                await stripeService.stripe.promotionCodes.update(promotionCodeId, {
+                    metadata: {
+                        ...promotionCode.metadata,
+                        last_used_at: new Date().toISOString(),
+                        last_used_by_user: userId.toString(),
+                        last_subscription: subscription.id,
+                    }
+                });
+                console.log('✅ Uso do cupom registrado nos metadados da Stripe (assinatura)');
+                console.log('📊 O cupom pode ser rastreado através dos metadados da Subscription e Promotion Code');
+            } catch (err) {
+                console.log('⚠️  Erro ao registrar uso do cupom:', err.message);
+                // Não falhar a subscription se houver erro ao registrar o cupom
+            }
+        }
+
         // Obter client_secret do PaymentIntent (se houver)
-        const latestInvoice = subscription.latest_invoice;
+        // Para subscriptions com cupom de 100%, o latest_invoice pode ser um objeto expandido ou apenas um ID
+        let latestInvoice = null;
+        if (subscription.latest_invoice) {
+            if (typeof subscription.latest_invoice === 'string') {
+                // Se for apenas um ID, buscar o invoice completo
+                try {
+                    latestInvoice = await stripeService.stripe.invoices.retrieve(subscription.latest_invoice);
+                } catch (err) {
+                    console.log('⚠️  Erro ao buscar invoice:', err.message);
+                }
+            } else {
+                // Se já estiver expandido
+                latestInvoice = subscription.latest_invoice;
+            }
+        }
+        
         const paymentIntent = latestInvoice?.payment_intent;
         const clientSecret = paymentIntent?.client_secret;
+
+        // Log detalhado da subscription criada (mesmo padrão do create-payment-intent)
+        console.log('✅ Subscription criada na Stripe:');
+        console.log('   ID:', subscription.id);
+        console.log('   Status:', subscription.status);
+        console.log('   Customer:', subscription.customer || 'N/A');
+        console.log('   Metadata:', subscription.metadata);
+        if (latestInvoice) {
+            console.log('   Invoice ID:', latestInvoice.id);
+            console.log('   Invoice Status:', latestInvoice.status);
+            console.log('   Invoice Amount Due: R$', latestInvoice.amount_due ? (latestInvoice.amount_due / 100).toFixed(2) : '0.00');
+            console.log('   Invoice Total: R$', latestInvoice.total ? (latestInvoice.total / 100).toFixed(2) : '0.00');
+            console.log('   Invoice Subtotal: R$', latestInvoice.subtotal ? (latestInvoice.subtotal / 100).toFixed(2) : '0.00');
+            if (latestInvoice.discount) {
+                console.log('   Invoice Discount: R$', latestInvoice.discount.coupon ? 'Cupom aplicado' : 'N/A');
+            }
+        } else {
+            console.log('   ⚠️  Nenhum Invoice encontrado (pode ser cupom de 100%)');
+        }
+        if (paymentIntent) {
+            console.log('   Payment Intent ID:', paymentIntent.id);
+            console.log('   Payment Intent Status:', paymentIntent.status);
+            console.log('   Payment Intent Amount: R$', paymentIntent.amount ? (paymentIntent.amount / 100).toFixed(2) : '0.00');
+        } else {
+            console.log('   ⚠️  Nenhum Payment Intent encontrado (pode ser cupom de 100% - subscription criada sem cobrança)');
+        }
+        
+        // Para cupons de 100%, a subscription é criada mas pode não ter Invoice/Payment Intent
+        // A subscription em si já é uma transação registrada na Stripe, mesmo sem Invoice
+        if (!latestInvoice || latestInvoice.amount_due === 0) {
+            console.log('🎁 Subscription com cupom de 100% - Subscription criada na Stripe (visível no histórico de Subscriptions)');
+            console.log('📊 A subscription aparece no dashboard da Stripe em: Customers > [Customer] > Subscriptions');
+        }
 
         // Salvar assinatura no banco (status incomplete até confirmação)
         await db.criarOuAtualizarAssinatura(userId, {

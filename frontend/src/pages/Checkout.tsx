@@ -331,7 +331,7 @@ const CheckoutForm = ({
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          amount: valorOriginal, // Enviar valor original (sem desconto) para a Stripe aplicar o cupom
+          amount: valorFinal, // Enviar valor final (com desconto aplicado) - se cupom 100%, será 0
           userId,
           planoId,
           couponId: cupomAplicado?.couponId || null, // ID do cupom na Stripe

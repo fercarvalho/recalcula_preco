@@ -62,16 +62,12 @@ interface FaturamentoData {
 const CheckoutAssinaturaForm = ({ 
   amount, 
   planoId,
-  customerId,
-  onCustomerCreated,
   onCupomAplicado,
   valorAnualComDesconto,
   valorMensalComDesconto
 }: { 
   amount: number; 
   planoId: number;
-  customerId: string | null;
-  onCustomerCreated: (id: string) => void;
   onCupomAplicado?: (cupom: any) => void;
   valorAnualComDesconto?: number;
   valorMensalComDesconto?: number;
@@ -81,7 +77,6 @@ const CheckoutAssinaturaForm = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [buscandoCep, setBuscandoCep] = useState(false);
-  const [criandoCustomer, setCriandoCustomer] = useState(false);
 
   // Dados do formulário (mesmos do Checkout.tsx)
   const [faturamento, setFaturamento] = useState<FaturamentoData>({
@@ -108,49 +103,6 @@ const CheckoutAssinaturaForm = ({
   const [naoResidoBrasil, setNaoResidoBrasil] = useState(false);
   const [pais, setPais] = useState('Brasil');
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-
-  // Criar/obter Customer quando componente montar (sempre, mesmo com cupom de 100%)
-  useEffect(() => {
-    if (!customerId && !criandoCustomer) {
-      criarCustomer();
-    }
-  }, []);
-
-  const criarCustomer = async () => {
-    setCriandoCustomer(true);
-    try {
-      const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
-      const token = localStorage.getItem('calculadora_auth_token');
-      const usuario = getUser();
-
-      const response = await fetch(`${API_BASE}/api/stripe/create-customer`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          userId: usuario?.id,
-          email: usuario?.email,
-          nome: faturamento.nomeCompleto || usuario?.username || '',
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Erro ao criar customer');
-      }
-
-      const data = await response.json();
-      if (data.customerId) {
-        onCustomerCreated(data.customerId);
-      }
-    } catch (error) {
-      console.error('Erro ao criar customer:', error);
-      await mostrarAlert('Erro', 'Erro ao processar. Tente novamente.');
-    } finally {
-      setCriandoCustomer(false);
-    }
-  };
 
   // Buscar CEP
   const buscarCep = async (cep: string) => {
@@ -342,18 +294,10 @@ const CheckoutAssinaturaForm = ({
         return;
       }
 
-      // Se não tem customerId ainda, criar agora
-      if (!customerId) {
-        await criarCustomer();
-        // Verificar novamente após criar
-        if (!customerId) {
-          await mostrarAlert('Erro', 'Erro ao criar customer. Tente novamente.');
-          setLoading(false);
-          return;
-        }
-      }
+      // O customer será criado automaticamente pelo backend no create-subscription
+      // Não precisamos criar manualmente aqui, seguindo o mesmo padrão do checkout de pagamentos únicos
 
-      // 2. Criar PaymentMethod (apenas para pagamentos)
+      // 2. Criar PaymentMethod
       const cardNumberElement = elements.getElement(CardNumberElement);
       if (!cardNumberElement) {
         throw new Error('Elemento de número do cartão não encontrado');
@@ -401,11 +345,11 @@ const CheckoutAssinaturaForm = ({
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          customerId,
           paymentMethodId: paymentMethod.id,
           priceId: plano.stripe_price_id,
           planoId: plano.id,
           couponId: cupomAplicado?.couponId || null,
+          promotionCodeId: cupomAplicado?.promotionCodeId || null, // ID do Promotion Code na Stripe
         }),
       });
 
@@ -476,7 +420,7 @@ const CheckoutAssinaturaForm = ({
       }
 
       // 7. Sucesso!
-      await mostrarAlert('Sucesso', 'Assinatura criada com sucesso!');
+      await mostrarAlert('Sucesso', 'Assinatura realizada com sucesso!');
       window.location.href = '/';
     } catch (err: any) {
       const errorMessage = err.message || 'Erro ao processar assinatura';
@@ -591,14 +535,14 @@ const CheckoutAssinaturaForm = ({
         </div>
 
         {cupomAplicado && (
-          <div style={{
+          <div className="cupom-resumo-box" style={{
             marginTop: '1rem',
             padding: '1rem',
             background: 'rgba(0, 0, 0, 0.3)',
             border: '1px solid rgba(255, 255, 255, 0.3)',
             borderRadius: '8px'
           }}>
-            <div style={{ 
+            <div className="cupom-aplicado-mensagem" style={{ 
               display: 'flex', 
               alignItems: 'center',
               gap: '0.5rem',
@@ -613,23 +557,23 @@ const CheckoutAssinaturaForm = ({
               <span>Valor original:</span>
               <span>{valorFormatadoOriginal}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: '#4CAF50' }}>
+            <div className="desconto-linha" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: '#4CAF50' }}>
               <span>Desconto:</span>
               <span>
                 - R$ {(cupomAplicado.descontoAplicado / 100).toFixed(2).replace('.', ',')}
               </span>
             </div>
-            <div style={{ 
+            <div className="total-linha" style={{ 
               display: 'flex', 
               justifyContent: 'space-between', 
               fontWeight: 'bold', 
               fontSize: '1.1rem', 
               paddingTop: '0.5rem', 
               borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-              color: 'white'
+              color: 'var(--cor-primaria, #FF6B35)'
             }}>
               <span>Total:</span>
-              <span style={{ color: 'var(--cor-primaria, #FF6B35)' }}>{valorFormatadoFinal}</span>
+              <span className="valor-total-laranja">{valorFormatadoFinal}</span>
             </div>
           </div>
         )}
@@ -1118,10 +1062,10 @@ const CheckoutAssinaturaForm = ({
 
       <button
         type="submit"
-        disabled={!stripe || loading || !customerId || criandoCustomer}
+        disabled={!stripe || loading}
         className="btn-pagar"
       >
-        {criandoCustomer ? 'Criando conta...' : loading ? 'Processando...' : `Assinar ${valorFormatadoMensal}/mês`}
+        {loading ? 'Processando...' : `Assinar ${valorFormatadoMensal}/mês`}
       </button>
 
       <div className="stripe-powered-by" style={{
@@ -1185,7 +1129,6 @@ const CheckoutAssinatura = () => {
     periodo?: string | null;
   } | null>(null);
   const [stripeError, setStripeError] = useState<string | null>(null);
-  const [customerId, setCustomerId] = useState<string | null>(null);
   const [cupomAplicado, setCupomAplicado] = useState<any>(null);
 
   useEffect(() => {
@@ -1406,8 +1349,6 @@ const CheckoutAssinatura = () => {
           <CheckoutAssinaturaForm
             amount={amount}
             planoId={plano.id}
-            customerId={customerId}
-            onCustomerCreated={setCustomerId}
             onCupomAplicado={setCupomAplicado}
             valorAnualComDesconto={valorAnualComDesconto}
             valorMensalComDesconto={valorMensalComDesconto}
