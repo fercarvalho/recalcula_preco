@@ -252,7 +252,7 @@ export const apiService = {
   },
 
   // Planos
-  async obterPlanos(): Promise<Array<{
+  async obterPlanos(mostrarNaLP?: boolean, mostrarNoModal?: boolean): Promise<Array<{
     id: number;
     nome: string;
     tipo: string;
@@ -270,8 +270,17 @@ export const apiService = {
     ordem: number;
     beneficios: string[];
     stripe_price_id: string | null;
+    mostrar_na_lp?: boolean;
+    mostrar_no_modal_assinatura?: boolean;
   }>> {
-    const response = await api.get('/api/planos');
+    const params: any = {};
+    if (mostrarNaLP !== undefined) {
+      params.mostrar_na_lp = mostrarNaLP.toString();
+    }
+    if (mostrarNoModal !== undefined) {
+      params.mostrar_no_modal = mostrarNoModal.toString();
+    }
+    const response = await api.get('/api/planos', { params });
     return response.data;
   },
 

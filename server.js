@@ -3529,10 +3529,24 @@ app.put('/api/configuracoes-sessoes/ordem', authenticateToken, requireAdmin, asy
 // Obter todos os planos (público - usado na landing page)
 app.get('/api/planos', async (req, res) => {
     try {
+        const { mostrar_na_lp, mostrar_no_modal } = req.query;
         const planos = await db.obterPlanos();
-        // Retornar apenas planos ativos para a landing page
-        const planosAtivos = planos.filter(p => p.ativo);
-        res.json(planosAtivos);
+        // Filtrar planos ativos
+        let planosFiltrados = planos.filter(p => p.ativo);
+        
+        // Se especificar mostrar_na_lp, filtrar por isso
+        if (mostrar_na_lp !== undefined) {
+            const mostrar = mostrar_na_lp === 'true';
+            planosFiltrados = planosFiltrados.filter(p => p.mostrar_na_lp === mostrar);
+        }
+        
+        // Se especificar mostrar_no_modal, filtrar por isso
+        if (mostrar_no_modal !== undefined) {
+            const mostrar = mostrar_no_modal === 'true';
+            planosFiltrados = planosFiltrados.filter(p => p.mostrar_no_modal_assinatura === mostrar);
+        }
+        
+        res.json(planosFiltrados);
     } catch (error) {
         console.error('Erro ao obter planos:', error);
         res.status(500).json({ error: 'Erro ao obter planos' });

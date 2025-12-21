@@ -70,7 +70,7 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
 
   const carregarPlanos = async () => {
     try {
-      const planosCarregados = await apiService.obterPlanos();
+      const planosCarregados = await apiService.obterPlanos(undefined, true); // undefined = todos, true = mostrar_no_modal
       // Converter para o tipo Plano e ordenar por ordem
       const planosConvertidos: Plano[] = planosCarregados.map(p => ({
         id: p.id,

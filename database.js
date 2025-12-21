@@ -712,6 +712,16 @@ async function inicializar() {
             await pool.query('ALTER TABLE planos ADD COLUMN frase_reforco TEXT');
         }
         
+        // Adicionar coluna mostrar_na_lp se não existir
+        if (!(await colunaExiste('planos', 'mostrar_na_lp'))) {
+            await pool.query('ALTER TABLE planos ADD COLUMN mostrar_na_lp BOOLEAN DEFAULT TRUE');
+        }
+        
+        // Adicionar coluna mostrar_no_modal_assinatura se não existir
+        if (!(await colunaExiste('planos', 'mostrar_no_modal_assinatura'))) {
+            await pool.query('ALTER TABLE planos ADD COLUMN mostrar_no_modal_assinatura BOOLEAN DEFAULT TRUE');
+        }
+        
         // Criar tabela de benefícios (sem plano_id - benefícios são compartilhados)
         await pool.query(`
             CREATE TABLE IF NOT EXISTS beneficios (
@@ -5213,6 +5223,8 @@ async function obterPlanos(apenasAtivos = false) {
                 ordem: row.ordem,
                 stripe_price_id: row.stripe_price_id,
                 frase_reforco: row.frase_reforco,
+                mostrar_na_lp: row.mostrar_na_lp !== false,
+                mostrar_no_modal_assinatura: row.mostrar_no_modal_assinatura !== false,
                 beneficios: beneficios
             });
         }
@@ -5283,6 +5295,8 @@ async function obterPlanoPorId(id) {
             ordem: row.ordem,
             stripe_price_id: row.stripe_price_id,
             frase_reforco: row.frase_reforco,
+            mostrar_na_lp: row.mostrar_na_lp !== false,
+            mostrar_no_modal_assinatura: row.mostrar_no_modal_assinatura !== false,
             beneficios: beneficios
         };
     } catch (error) {
@@ -5299,8 +5313,9 @@ async function criarPlano(plano) {
                 nome, tipo, valor, valor_parcelado, valor_total, periodo,
                 desconto_percentual, desconto_valor, desconto_motivo, mais_popular,
                 mostrar_valor_total, mostrar_valor_parcelado, ativo, ordem, stripe_price_id, frase_reforco,
+                mostrar_na_lp, mostrar_no_modal_assinatura,
                 created_at, updated_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             RETURNING *`,
             [
                 plano.nome,
@@ -5318,7 +5333,9 @@ async function criarPlano(plano) {
                 plano.ativo !== undefined ? plano.ativo : true,
                 plano.ordem || 0,
                 plano.stripe_price_id || null,
-                plano.frase_reforco || null
+                plano.frase_reforco || null,
+                plano.mostrar_na_lp !== undefined ? plano.mostrar_na_lp : true,
+                plano.mostrar_no_modal_assinatura !== undefined ? plano.mostrar_no_modal_assinatura : true
             ]
         );
         const row = result.rows[0];
@@ -5384,6 +5401,8 @@ async function criarPlano(plano) {
             ordem: row.ordem,
             stripe_price_id: row.stripe_price_id,
             frase_reforco: row.frase_reforco,
+            mostrar_na_lp: row.mostrar_na_lp !== false,
+            mostrar_no_modal_assinatura: row.mostrar_no_modal_assinatura !== false,
             beneficios: beneficios
         };
     } catch (error) {
@@ -5418,8 +5437,10 @@ async function atualizarPlano(id, plano) {
                 ordem = $14,
                 stripe_price_id = $15,
                 frase_reforco = $16,
+                mostrar_na_lp = $17,
+                mostrar_no_modal_assinatura = $18,
                 updated_at = CURRENT_TIMESTAMP
-            WHERE id = $17
+            WHERE id = $19
             RETURNING *`,
             [
                 plano.nome,
@@ -5438,6 +5459,8 @@ async function atualizarPlano(id, plano) {
                 plano.ordem || 0,
                 plano.stripe_price_id || null,
                 plano.frase_reforco || null,
+                plano.mostrar_na_lp !== undefined ? plano.mostrar_na_lp : true,
+                plano.mostrar_no_modal_assinatura !== undefined ? plano.mostrar_no_modal_assinatura : true,
                 id
             ]
         );

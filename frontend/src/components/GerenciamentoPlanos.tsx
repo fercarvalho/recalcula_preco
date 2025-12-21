@@ -33,6 +33,8 @@ export interface Plano {
   beneficios?: Beneficio[] | string[];
   stripe_price_id?: string | null;
   frase_reforco?: string | null;
+  mostrar_na_lp?: boolean;
+  mostrar_no_modal_assinatura?: boolean;
 }
 
 interface GerenciamentoPlanosProps {
@@ -197,6 +199,56 @@ const GerenciamentoPlanos = ({ isOpen, onClose }: GerenciamentoPlanosProps) => {
     }
   };
 
+  const handleToggleMostrarNaLP = async (plano: Plano) => {
+    if (!plano.id) return;
+    
+    try {
+      const planoAtualizado = {
+        ...plano,
+        mostrar_na_lp: plano.mostrar_na_lp === false ? true : false
+      };
+      const planoParaEnviar = {
+        ...planoAtualizado,
+        beneficios: Array.isArray(planoAtualizado.beneficios) 
+          ? planoAtualizado.beneficios.map(b => typeof b === 'string' ? b : b.texto || '')
+          : []
+      };
+      await apiService.atualizarPlano(plano.id, planoParaEnviar);
+      await carregarPlanos();
+      
+      // Disparar evento para atualizar os planos na landing page
+      window.dispatchEvent(new CustomEvent('planos-updated'));
+    } catch (error) {
+      console.error('Erro ao atualizar plano:', error);
+      await mostrarAlert('Erro', 'Erro ao atualizar plano. Tente novamente.');
+    }
+  };
+
+  const handleToggleMostrarNoModal = async (plano: Plano) => {
+    if (!plano.id) return;
+    
+    try {
+      const planoAtualizado = {
+        ...plano,
+        mostrar_no_modal_assinatura: plano.mostrar_no_modal_assinatura === false ? true : false
+      };
+      const planoParaEnviar = {
+        ...planoAtualizado,
+        beneficios: Array.isArray(planoAtualizado.beneficios) 
+          ? planoAtualizado.beneficios.map(b => typeof b === 'string' ? b : b.texto || '')
+          : []
+      };
+      await apiService.atualizarPlano(plano.id, planoParaEnviar);
+      await carregarPlanos();
+      
+      // Disparar evento para atualizar os planos na landing page
+      window.dispatchEvent(new CustomEvent('planos-updated'));
+    } catch (error) {
+      console.error('Erro ao atualizar plano:', error);
+      await mostrarAlert('Erro', 'Erro ao atualizar plano. Tente novamente.');
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -280,17 +332,39 @@ const GerenciamentoPlanos = ({ isOpen, onClose }: GerenciamentoPlanosProps) => {
                           </button>
                         </label>
                       </div>
-                    <div className="switch-group">
-                      <label>
-                        <span>Mais Popular</span>
-                        <button
-                          onClick={() => handleToggleMaisPopular(plano)}
-                          className={`switch-btn ${plano.mais_popular ? 'active' : ''}`}
-                        >
-                          {plano.mais_popular ? <FaToggleOn /> : <FaToggleOff />}
-                        </button>
-                      </label>
-                    </div>
+                      <div className="switch-group">
+                        <label>
+                          <span>Mais Popular</span>
+                          <button
+                            onClick={() => handleToggleMaisPopular(plano)}
+                            className={`switch-btn ${plano.mais_popular ? 'active' : ''}`}
+                          >
+                            {plano.mais_popular ? <FaToggleOn /> : <FaToggleOff />}
+                          </button>
+                        </label>
+                      </div>
+                      <div className="switch-group">
+                        <label>
+                          <span>Mostrar na LP</span>
+                          <button
+                            onClick={() => handleToggleMostrarNaLP(plano)}
+                            className={`switch-btn ${plano.mostrar_na_lp !== false ? 'active' : ''}`}
+                          >
+                            {plano.mostrar_na_lp !== false ? <FaToggleOn /> : <FaToggleOff />}
+                          </button>
+                        </label>
+                      </div>
+                      <div className="switch-group">
+                        <label>
+                          <span>Mostrar no Modal</span>
+                          <button
+                            onClick={() => handleToggleMostrarNoModal(plano)}
+                            className={`switch-btn ${plano.mostrar_no_modal_assinatura !== false ? 'active' : ''}`}
+                          >
+                            {plano.mostrar_no_modal_assinatura !== false ? <FaToggleOn /> : <FaToggleOff />}
+                          </button>
+                        </label>
+                      </div>
                     </div>
                     <div className="plano-actions">
                     <button
@@ -392,6 +466,8 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
   const [stripePriceId, setStripePriceId] = useState(plano?.stripe_price_id || '');
   const [fraseReforco, setFraseReforco] = useState(plano?.frase_reforco || '');
   const [mostrarModalSelecionarPlano, setMostrarModalSelecionarPlano] = useState(false);
+  const [mostrarNaLP, setMostrarNaLP] = useState(plano?.mostrar_na_lp !== false);
+  const [mostrarNoModalAssinatura, setMostrarNoModalAssinatura] = useState(plano?.mostrar_no_modal_assinatura !== false);
 
   useEffect(() => {
     if (plano) {
@@ -416,6 +492,8 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
       setAtivo(plano.ativo !== undefined ? plano.ativo : true);
       setFraseReforco(plano.frase_reforco || '');
       setStripePriceId(plano.stripe_price_id || '');
+      setMostrarNaLP(plano.mostrar_na_lp !== undefined ? plano.mostrar_na_lp !== false : true);
+      setMostrarNoModalAssinatura(plano.mostrar_no_modal_assinatura !== undefined ? plano.mostrar_no_modal_assinatura !== false : true);
       // Ordem é gerenciada pelo drag and drop, não precisa ser setada aqui
       // Converter benefícios para formato Beneficio[]
       const beneficiosFormatados = (plano.beneficios || []).map((b, index) => {
@@ -437,6 +515,10 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
         return b;
       });
       setBeneficios(beneficiosFormatados);
+    } else {
+      // Resetar valores quando não há plano (criando novo)
+      setMostrarNaLP(true);
+      setMostrarNoModalAssinatura(true);
     }
   }, [plano]);
 
@@ -788,7 +870,9 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
         ordem: plano?.ordem || (planos.length > 0 ? Math.max(...planos.map(p => p.ordem || 0)) + 1 : 1), // Manter ordem atual ao editar, ou adicionar no final se for novo
         beneficios: beneficiosComOrdem,
         stripe_price_id: stripePriceId.trim() || null,
-        frase_reforco: fraseReforco.trim() || null
+        frase_reforco: fraseReforco.trim() || null,
+        mostrar_na_lp: mostrarNaLP,
+        mostrar_no_modal_assinatura: mostrarNoModalAssinatura
       };
 
       if (plano?.id) {
@@ -1212,6 +1296,42 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
               </label>
             </div>
           )}
+
+          <div className="switch-group">
+            <label>
+              <span>Mostrar na Landing Page</span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setMostrarNaLP(!mostrarNaLP);
+                }}
+                className={`switch-btn ${mostrarNaLP ? 'active' : ''}`}
+                disabled={loading}
+              >
+                {mostrarNaLP ? <FaToggleOn /> : <FaToggleOff />}
+              </button>
+            </label>
+          </div>
+
+          <div className="switch-group">
+            <label>
+              <span>Mostrar no Modal de Assinatura</span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setMostrarNoModalAssinatura(!mostrarNoModalAssinatura);
+                }}
+                className={`switch-btn ${mostrarNoModalAssinatura ? 'active' : ''}`}
+                disabled={loading}
+              >
+                {mostrarNoModalAssinatura ? <FaToggleOn /> : <FaToggleOff />}
+              </button>
+            </label>
+          </div>
         </div>
 
         <div className="form-group" style={{ marginBottom: 0 }}>

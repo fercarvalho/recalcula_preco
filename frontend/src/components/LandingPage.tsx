@@ -181,7 +181,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
 
   const carregarPlanos = async () => {
     try {
-      const planosCarregados = await apiService.obterPlanos();
+      const planosCarregados = await apiService.obterPlanos(true); // true = mostrar_na_lp
       // Converter para o tipo Plano e ordenar por ordem e depois por mais popular
       const planosConvertidos: Plano[] = planosCarregados.map(p => ({
         id: p.id,
