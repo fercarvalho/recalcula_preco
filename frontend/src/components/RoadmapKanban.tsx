@@ -437,6 +437,97 @@ const RoadmapKanban = ({ isOpen, onClose }: RoadmapKanbanProps) => {
     return index >= 0 ? index + 1 : itensColuna.length + 1;
   };
 
+  // Obter próximo status na sequência
+  const obterProximoStatus = (statusAtual: RoadmapItem['status']): RoadmapItem['status'] | null => {
+    const ordemStatus: RoadmapItem['status'][] = ['backlog', 'doing', 'em_testes', 'em_beta', 'lancado', 'done'];
+    const indexAtual = ordemStatus.indexOf(statusAtual);
+    if (indexAtual === -1 || indexAtual === ordemStatus.length - 1) {
+      return null; // Já está no último status
+    }
+    return ordemStatus[indexAtual + 1];
+  };
+
+  // Avançar tarefa para a próxima coluna
+  const handleAvançar = async (itemId: number) => {
+    try {
+      const item = itens.find(i => i.id === itemId);
+      if (!item) {
+        console.error('Item não encontrado:', itemId);
+        alert('Erro: Item não encontrado');
+        return;
+      }
+
+      const proximoStatus = obterProximoStatus(item.status);
+      if (!proximoStatus) {
+        alert('A tarefa já está na última coluna');
+        return;
+      }
+
+      // Atualizar estado local imediatamente
+      setItens(prev => {
+        return prev.map(i => 
+          i.id === itemId 
+            ? { ...i, status: proximoStatus }
+            : i
+        );
+      });
+
+      // Atualizar no backend
+      try {
+        await apiService.atualizarStatusRoadmapItem(itemId, proximoStatus);
+        // Não recarregar - o estado já foi atualizado localmente
+      } catch (error) {
+        // Se der erro, recarregar do servidor para reverter
+        await carregarRoadmap();
+        throw error;
+      }
+    } catch (error: any) {
+      console.error('Erro ao avançar tarefa:', error);
+      const errorMessage = error?.response?.data?.error || error?.message || 'Erro desconhecido';
+      alert(`Erro ao avançar tarefa: ${errorMessage}`);
+    }
+  };
+
+  // Concluir tarefa (mover para done)
+  const handleConcluir = async (itemId: number) => {
+    try {
+      const item = itens.find(i => i.id === itemId);
+      if (!item) {
+        console.error('Item não encontrado:', itemId);
+        alert('Erro: Item não encontrado');
+        return;
+      }
+
+      if (item.status === 'done') {
+        alert('A tarefa já está concluída');
+        return;
+      }
+
+      // Atualizar estado local imediatamente
+      setItens(prev => {
+        return prev.map(i => 
+          i.id === itemId 
+            ? { ...i, status: 'done' }
+            : i
+        );
+      });
+
+      // Atualizar no backend
+      try {
+        await apiService.atualizarStatusRoadmapItem(itemId, 'done');
+        // Não recarregar - o estado já foi atualizado localmente
+      } catch (error) {
+        // Se der erro, recarregar do servidor para reverter
+        await carregarRoadmap();
+        throw error;
+      }
+    } catch (error: any) {
+      console.error('Erro ao concluir tarefa:', error);
+      const errorMessage = error?.response?.data?.error || error?.message || 'Erro desconhecido';
+      alert(`Erro ao concluir tarefa: ${errorMessage}`);
+    }
+  };
+
   // Atualizar prioridade manualmente e recalcular ordem
   const handleAtualizarPrioridade = async (itemId: number, novaPrioridade: number) => {
     try {
@@ -637,6 +728,8 @@ const RoadmapKanban = ({ isOpen, onClose }: RoadmapKanbanProps) => {
                         prioridade={calcularPrioridade(item)}
                         totalItensColuna={itensColuna.length}
                         onAtualizarPrioridade={handleAtualizarPrioridade}
+                        onAvançar={handleAvançar}
+                        onConcluir={handleConcluir}
                       />
                     ))}
                     {itensColuna.length === 0 && (
@@ -667,9 +760,11 @@ interface RoadmapCardProps {
   prioridade: number;
   totalItensColuna: number;
   onAtualizarPrioridade: (itemId: number, novaPrioridade: number) => void;
+  onAvançar: (itemId: number) => void;
+  onConcluir: (itemId: number) => void;
 }
 
-const RoadmapCard = ({ item, onEdit, onDelete, onDragStart, onDragEnd, isDragging, onIniciarTempo, onPararTempo, tempoAtual, formatarTempo, prioridade, totalItensColuna, onAtualizarPrioridade }: RoadmapCardProps) => {
+const RoadmapCard = ({ item, onEdit, onDelete, onDragStart, onDragEnd, isDragging, onIniciarTempo, onPararTempo, tempoAtual, formatarTempo, prioridade, totalItensColuna, onAtualizarPrioridade, onAvançar, onConcluir }: RoadmapCardProps) => {
   const prioridadeTipo = PRIORIDADE_CONFIG[item.prioridade];
   const [prioridadeEditando, setPrioridadeEditando] = useState<string>(prioridade.toString());
   
@@ -772,6 +867,20 @@ const RoadmapCard = ({ item, onEdit, onDelete, onDragStart, onDragEnd, isDraggin
           className={`roadmap-card-btn-timer ${item.em_andamento ? 'stop' : 'start'}`}
         >
           {item.em_andamento ? '⏹ Stop' : '▶ Start'}
+        </button>
+        <button
+          onClick={() => onAvançar(item.id)}
+          className="roadmap-card-btn-avancar"
+          disabled={item.status === 'done'}
+        >
+          ➡ Avançar
+        </button>
+        <button
+          onClick={() => onConcluir(item.id)}
+          className="roadmap-card-btn-concluir"
+          disabled={item.status === 'done'}
+        >
+          ✓ Concluir
         </button>
       </div>
       <div className="roadmap-card-footer">

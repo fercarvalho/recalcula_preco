@@ -280,6 +280,49 @@
   background: #c82333;
 }
 
+.roadmap-card-btn-avancar,
+.roadmap-card-btn-concluir {
+  width: 100%;
+  padding: 8px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 12px;
+  transition: all 0.2s;
+  margin-top: 5px;
+}
+
+.roadmap-card-btn-avancar {
+  background: #007bff;
+  color: white;
+}
+
+.roadmap-card-btn-avancar:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.roadmap-card-btn-avancar:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.roadmap-card-btn-concluir {
+  background: #28a745;
+  color: white;
+}
+
+.roadmap-card-btn-concluir:hover:not(:disabled) {
+  background: #218838;
+}
+
+.roadmap-card-btn-concluir:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .roadmap-card-footer {
   display: flex;
   justify-content: space-between;
