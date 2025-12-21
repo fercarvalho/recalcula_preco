@@ -120,7 +120,7 @@
 
 /* Forçar o espaçamento acima quando vier após a lista de benefícios */
 .modal-upgrade-content .plano-beneficios + .garantia-aviso-plano {
-  margin-top: 0.5rem !important;
+  margin-top: 1.0rem !important;
 }
 
 /* Quando a lista está vazia, o quadro de garantia vem direto após o header */
@@ -130,7 +130,7 @@
 
 /* Garantir que não há espaçamento extra entre o quadro de garantia e o botão */
 .modal-upgrade-content .garantia-aviso-plano + .btn-plano {
-  margin-top: 0.5rem !important;
+  margin-top: 0.9rem !important;
 }
 
 /* Debug: adicionar bordas temporárias para visualizar o espaçamento (remover depois) */
