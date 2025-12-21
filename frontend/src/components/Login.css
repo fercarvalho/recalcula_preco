@@ -70,8 +70,8 @@
   gap: 8px;
 }
 
-.login-form label {
-  color: rgba(255, 255, 255, 0.9);
+.login-container .login-form label {
+  color: white !important;
   font-weight: 500;
   font-size: 0.9rem;
 }

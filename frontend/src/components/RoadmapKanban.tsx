@@ -51,7 +51,7 @@ const RoadmapKanban = ({ isOpen, onClose }: RoadmapKanbanProps) => {
   const [draggedItem, setDraggedItem] = useState<RoadmapItem | null>(null);
   const [draggedOverColumn, setDraggedOverColumn] = useState<string | null>(null);
   const [temposAtuais, setTemposAtuais] = useState<{ [key: number]: number }>({});
-  const timersRef = useRef<{ [key: number]: NodeJS.Timeout }>({});
+  const timersRef = useRef<{ [key: number]: ReturnType<typeof setInterval> }>({});
   const itensRef = useRef<RoadmapItem[]>([]);
 
   useEffect(() => {
@@ -165,6 +165,7 @@ const RoadmapKanban = ({ isOpen, onClose }: RoadmapKanbanProps) => {
             itemPrev.descricao !== itemDados.descricao ||
             itemPrev.status !== itemDados.status ||
             itemPrev.prioridade !== itemDados.prioridade ||
+            itemPrev.ordem !== itemDados.ordem ||
             itemPrev.data_inicio !== itemDados.data_inicio ||
             itemPrev.depende_de !== itemDados.depende_de ||
             itemPrev.tempo_acumulado !== itemDados.tempo_acumulado ||
@@ -301,21 +302,101 @@ const RoadmapKanban = ({ isOpen, onClose }: RoadmapKanbanProps) => {
     setDraggedOverColumn(null);
   };
 
-  const handleDrop = async (e: React.DragEvent, novoStatus: string) => {
+  const handleDrop = async (e: React.DragEvent, novoStatus: string, targetIndex?: number) => {
     e.preventDefault();
     setDraggedOverColumn(null);
 
-    if (!draggedItem || draggedItem.status === novoStatus) {
+    if (!draggedItem) {
       setDraggedItem(null);
       return;
     }
 
     try {
-      await apiService.atualizarStatusRoadmapItem(draggedItem.id, novoStatus);
-      await carregarRoadmap();
-    } catch (error) {
-      console.error('Erro ao atualizar status:', error);
-      alert('Erro ao mover item');
+      const itensColuna = getItensPorStatus(novoStatus);
+      const mudouStatus = draggedItem.status !== novoStatus;
+      
+      // Se mudou de coluna, apenas atualiza o status
+      if (mudouStatus) {
+        await apiService.atualizarStatusRoadmapItem(draggedItem.id, novoStatus);
+        await carregarRoadmap();
+      } else {
+        // Se está na mesma coluna, precisa reordenar
+        // Encontrar a posição atual do item arrastado
+        const posicaoAtual = itensColuna.findIndex(item => item.id === draggedItem.id);
+        
+        if (posicaoAtual === -1) {
+          console.error('Item não encontrado na coluna');
+          setDraggedItem(null);
+          return;
+        }
+        
+        // Se não mudou de posição, não precisa fazer nada
+        if (targetIndex !== undefined && targetIndex === posicaoAtual) {
+          setDraggedItem(null);
+          return;
+        }
+        
+        // Remover o item arrastado da lista
+        const itensSemArrastado = itensColuna.filter(item => item.id !== draggedItem.id);
+        
+        // Calcular nova posição
+        let novaPosicao: number;
+        if (targetIndex !== undefined) {
+          // targetIndex já considera que o item arrastado não está na lista
+          // Então podemos usar diretamente, mas precisamos garantir que está dentro dos limites
+          novaPosicao = Math.max(0, Math.min(targetIndex, itensSemArrastado.length));
+        } else {
+          // Se não há targetIndex, manter na mesma posição
+          novaPosicao = posicaoAtual;
+        }
+        
+        // Inserir na nova posição
+        itensSemArrastado.splice(novaPosicao, 0, draggedItem);
+        
+        // Recalcular ordem para todos os itens da coluna
+        const itensAtualizados = itensSemArrastado.map((item, index) => ({
+          id: item.id,
+          ordem: index
+        }));
+        
+        // Verificar se há itens para atualizar
+        if (itensAtualizados.length === 0) {
+          console.warn('Nenhum item para atualizar');
+          setDraggedItem(null);
+          return;
+        }
+        
+        // Atualizar estado local imediatamente para feedback visual instantâneo
+        setItens(prev => {
+          const novosItens = [...prev];
+          
+          // Atualizar a ordem de cada item da coluna
+          itensAtualizados.forEach(({ id, ordem }) => {
+            const index = novosItens.findIndex(item => item.id === id);
+            if (index !== -1) {
+              novosItens[index] = { ...novosItens[index], ordem };
+            }
+          });
+          
+          return novosItens;
+        });
+        
+        console.log('Atualizando ordem dos itens:', JSON.stringify(itensAtualizados, null, 2));
+        
+        // Atualizar no backend
+        try {
+          await apiService.atualizarOrdemRoadmap(itensAtualizados);
+          // Não recarregar - o estado já foi atualizado localmente
+        } catch (error) {
+          // Se der erro, recarregar do servidor para reverter
+          await carregarRoadmap();
+          throw error;
+        }
+      }
+    } catch (error: any) {
+      console.error('Erro ao atualizar status/ordem:', error);
+      const errorMessage = error?.response?.data?.error || error?.message || 'Erro desconhecido';
+      alert(`Erro ao mover item: ${errorMessage}`);
     } finally {
       setDraggedItem(null);
     }
@@ -330,6 +411,67 @@ const RoadmapKanban = ({ isOpen, onClose }: RoadmapKanbanProps) => {
     return itens
       .filter(item => item.status === status)
       .sort((a, b) => a.ordem - b.ordem);
+  };
+
+  // Calcular prioridade baseada na posição na coluna (1 = mais importante)
+  const calcularPrioridade = (item: RoadmapItem): number => {
+    const itensColuna = getItensPorStatus(item.status);
+    const index = itensColuna.findIndex(i => i.id === item.id);
+    return index >= 0 ? index + 1 : itensColuna.length + 1;
+  };
+
+  // Atualizar prioridade manualmente e recalcular ordem
+  const handleAtualizarPrioridade = async (itemId: number, novaPrioridade: number) => {
+    try {
+      const item = itens.find(i => i.id === itemId);
+      if (!item) return;
+
+      const itensColuna = getItensPorStatus(item.status);
+      
+      // Validar nova prioridade
+      const prioridadeValida = Math.max(1, Math.min(novaPrioridade, itensColuna.length));
+      
+      // Remover item da posição atual
+      const itensSemItem = itensColuna.filter(i => i.id !== itemId);
+      
+      // Inserir na nova posição (prioridade - 1 porque é índice baseado em 0)
+      const novaPosicao = prioridadeValida - 1;
+      itensSemItem.splice(novaPosicao, 0, item);
+      
+      // Recalcular ordem para todos os itens da coluna
+      const itensAtualizados = itensSemItem.map((item, index) => ({
+        id: item.id,
+        ordem: index
+      }));
+      
+      // Atualizar estado local imediatamente para feedback visual instantâneo
+      setItens(prev => {
+        const novosItens = [...prev];
+        
+        // Atualizar a ordem de cada item da coluna
+        itensAtualizados.forEach(({ id, ordem }) => {
+          const index = novosItens.findIndex(item => item.id === id);
+          if (index !== -1) {
+            novosItens[index] = { ...novosItens[index], ordem };
+          }
+        });
+        
+        return novosItens;
+      });
+      
+      // Atualizar no backend
+      try {
+        await apiService.atualizarOrdemRoadmap(itensAtualizados);
+        // Não recarregar - o estado já foi atualizado localmente
+      } catch (error) {
+        // Se der erro, recarregar do servidor para reverter
+        await carregarRoadmap();
+        throw error;
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar prioridade:', error);
+      alert('Erro ao atualizar prioridade');
+    }
   };
 
   if (!isOpen) return null;
@@ -383,9 +525,41 @@ const RoadmapKanban = ({ isOpen, onClose }: RoadmapKanbanProps) => {
                 <div
                   key={status}
                   className={`roadmap-column ${draggedOverColumn === status ? 'drag-over-column' : ''}`}
-                  onDragOver={(e) => handleDragOver(e, status)}
+                  onDragOver={(e) => {
+                    handleDragOver(e, status);
+                    e.dataTransfer.dropEffect = 'move';
+                  }}
                   onDragLeave={handleDragLeave}
-                  onDrop={(e) => handleDrop(e, status)}
+                  onDrop={(e) => {
+                    const columnContent = e.currentTarget.querySelector('.roadmap-column-content');
+                    let targetIndex: number | undefined = undefined;
+                    
+                    if (columnContent && draggedItem) {
+                      // Obter cards visíveis (sem o que está sendo arrastado) na ordem correta
+                      const cardsSemDragging = Array.from(columnContent.querySelectorAll('.roadmap-card:not(.dragging)'));
+                      
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const mouseY = e.clientY - rect.top;
+                      
+                      // Encontrar a posição baseada nos cards visíveis (sem o dragging)
+                      // Os cards estão na mesma ordem dos itens, então podemos usar o índice diretamente
+                      for (let i = 0; i < cardsSemDragging.length; i++) {
+                        const cardRect = cardsSemDragging[i].getBoundingClientRect();
+                        const cardTop = cardRect.top - rect.top;
+                        if (mouseY < cardTop + cardRect.height / 2) {
+                          targetIndex = i;
+                          break;
+                        }
+                      }
+                      
+                      // Se não encontrou posição, colocar no final
+                      if (targetIndex === undefined) {
+                        targetIndex = cardsSemDragging.length;
+                      }
+                    }
+                    
+                    handleDrop(e, status, targetIndex);
+                  }}
                 >
                   <div className="roadmap-column-header" style={{ borderTopColor: config.color }}>
                     <Icon style={{ color: config.color }} />
@@ -406,6 +580,9 @@ const RoadmapKanban = ({ isOpen, onClose }: RoadmapKanbanProps) => {
                         onPararTempo={handlePararTempo}
                         tempoAtual={temposAtuais[item.id]}
                         formatarTempo={formatarTempo}
+                        prioridade={calcularPrioridade(item)}
+                        totalItensColuna={itensColuna.length}
+                        onAtualizarPrioridade={handleAtualizarPrioridade}
                       />
                     ))}
                     {itensColuna.length === 0 && (
@@ -433,14 +610,31 @@ interface RoadmapCardProps {
   onPararTempo: (id: number) => void;
   tempoAtual?: number;
   formatarTempo: (segundos: number) => string;
+  prioridade: number;
+  totalItensColuna: number;
+  onAtualizarPrioridade: (itemId: number, novaPrioridade: number) => void;
 }
 
-const RoadmapCard = ({ item, onEdit, onDelete, onDragStart, onDragEnd, isDragging, onIniciarTempo, onPararTempo, tempoAtual, formatarTempo }: RoadmapCardProps) => {
-  const prioridade = PRIORIDADE_CONFIG[item.prioridade];
+const RoadmapCard = ({ item, onEdit, onDelete, onDragStart, onDragEnd, isDragging, onIniciarTempo, onPararTempo, tempoAtual, formatarTempo, prioridade, totalItensColuna, onAtualizarPrioridade }: RoadmapCardProps) => {
+  const prioridadeTipo = PRIORIDADE_CONFIG[item.prioridade];
+  const [prioridadeEditando, setPrioridadeEditando] = useState(prioridade);
+  
+  // Sincronizar prioridade quando mudar externamente
+  useEffect(() => {
+    setPrioridadeEditando(prioridade);
+  }, [prioridade]);
   
   // Calcular tempo total (acumulado + tempo atual se estiver rodando)
   const tempoTotal = item.tempo_acumulado + (tempoAtual || 0);
   const tempoTotalFormatado = formatarTempo(tempoTotal);
+
+  const handlePrioridadeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const novaPrioridade = parseInt(e.target.value, 10);
+    if (!isNaN(novaPrioridade) && novaPrioridade >= 1 && novaPrioridade <= totalItensColuna) {
+      setPrioridadeEditando(novaPrioridade);
+      onAtualizarPrioridade(item.id, novaPrioridade);
+    }
+  };
 
   return (
     <div
@@ -466,6 +660,20 @@ const RoadmapCard = ({ item, onEdit, onDelete, onDragStart, onDragEnd, isDraggin
           <p className="roadmap-card-description">{item.descricao}</p>
         )}
       </div>
+      <div className="roadmap-card-prioridade-section">
+        <label className="roadmap-card-prioridade-label">
+          Prioridade:
+          <input
+            type="number"
+            min="1"
+            max={totalItensColuna}
+            value={prioridadeEditando}
+            onChange={handlePrioridadeChange}
+            className="roadmap-card-prioridade-input"
+          />
+          <span className="roadmap-card-prioridade-total">/ {totalItensColuna}</span>
+        </label>
+      </div>
       <div className="roadmap-card-time-section">
         {item.data_inicio && (
           <div className="roadmap-card-data-inicio">
@@ -484,10 +692,10 @@ const RoadmapCard = ({ item, onEdit, onDelete, onDragStart, onDragEnd, isDraggin
       </div>
       <div className="roadmap-card-footer">
         <span
-          className="roadmap-card-prioridade"
-          style={{ backgroundColor: prioridade.color + '20', color: prioridade.color }}
+          className="roadmap-card-prioridade-tipo"
+          style={{ backgroundColor: prioridadeTipo.color + '20', color: prioridadeTipo.color }}
         >
-          {prioridade.label}
+          {prioridadeTipo.label}
         </span>
         {item.created_by_username && (
           <span className="roadmap-card-author">por {item.created_by_username}</span>

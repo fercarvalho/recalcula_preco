@@ -6318,18 +6318,23 @@ async function criarRoadmapItem(dados) {
 async function atualizarRoadmapItem(id, dados) {
     try {
         const { titulo, descricao, status, prioridade, data_inicio, depende_de } = dados;
+        
+        // Garantir que data_inicio seja null ou uma string válida
+        const dataInicioParam = data_inicio ? data_inicio : null;
+        const dependeDeParam = depende_de !== undefined && depende_de !== null ? depende_de : null;
+        
         const result = await pool.query(`
             UPDATE roadmap
             SET titulo = COALESCE($1, titulo),
                 descricao = COALESCE($2, descricao),
                 status = COALESCE($3, status),
                 prioridade = COALESCE($4, prioridade),
-                data_inicio = CASE WHEN $5 IS NOT NULL THEN $5::timestamp ELSE data_inicio END,
+                data_inicio = CASE WHEN $5::text IS NOT NULL AND $5::text != '' THEN $5::timestamp ELSE data_inicio END,
                 depende_de = CASE WHEN $6 IS NOT NULL THEN $6 ELSE depende_de END,
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = $7
             RETURNING *
-        `, [titulo, descricao, status, prioridade, data_inicio || null, depende_de !== undefined ? depende_de : null, id]);
+        `, [titulo, descricao, status, prioridade, dataInicioParam, dependeDeParam, id]);
         
         return result.rows[0] || null;
     } catch (error) {
@@ -6384,29 +6389,53 @@ async function atualizarStatusRoadmapItem(id, novoStatus) {
 
 // Atualizar ordem dos itens do roadmap
 async function atualizarOrdemRoadmap(itens) {
+    const client = await pool.connect();
     try {
-        const client = await pool.connect();
-        try {
-            await client.query('BEGIN');
-            
-            for (const item of itens) {
-                await client.query(`
-                    UPDATE roadmap
-                    SET ordem = $1, updated_at = CURRENT_TIMESTAMP
-                    WHERE id = $2
-                `, [item.ordem, item.id]);
+        if (!Array.isArray(itens) || itens.length === 0) {
+            throw new Error('Itens deve ser um array não vazio');
+        }
+        
+        console.log('Iniciando atualização de ordem para', itens.length, 'itens');
+        
+        await client.query('BEGIN');
+        
+        for (const item of itens) {
+            if (!item.id || item.ordem === undefined || item.ordem === null) {
+                throw new Error(`Item inválido: ${JSON.stringify(item)}`);
             }
             
-            await client.query('COMMIT');
-        } catch (error) {
-            await client.query('ROLLBACK');
-            throw error;
-        } finally {
-            client.release();
+            console.log(`Atualizando item id=${item.id}, ordem=${item.ordem}`);
+            
+            const result = await client.query(`
+                UPDATE roadmap
+                SET ordem = $1, updated_at = CURRENT_TIMESTAMP
+                WHERE id = $2
+                RETURNING id
+            `, [item.ordem, item.id]);
+            
+            if (result.rows.length === 0) {
+                throw new Error(`Item com id ${item.id} não encontrado no banco de dados`);
+            }
+            
+            console.log(`Item id=${item.id} atualizado com sucesso`);
         }
+        
+        await client.query('COMMIT');
+        console.log('Ordem atualizada com sucesso para todos os itens');
     } catch (error) {
+        await client.query('ROLLBACK').catch(rollbackError => {
+            console.error('Erro ao fazer rollback:', rollbackError);
+        });
         console.error('Erro ao atualizar ordem do roadmap:', error);
+        console.error('Detalhes do erro:', {
+            message: error.message,
+            code: error.code,
+            detail: error.detail,
+            constraint: error.constraint
+        });
         throw error;
+    } finally {
+        client.release();
     }
 }
 

@@ -2456,7 +2456,56 @@ app.post('/api/admin/roadmap', authenticateToken, requireAdmin, async (req, res)
     }
 });
 
-// Atualizar item do roadmap
+// Atualizar ordem dos itens do roadmap (DEVE VIR ANTES DA ROTA :id para não capturar "ordem" como ID)
+app.put('/api/admin/roadmap/ordem', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { itens } = req.body;
+        
+        console.log('Recebido para atualizar ordem:', JSON.stringify(itens, null, 2));
+        
+        if (!Array.isArray(itens)) {
+            return res.status(400).json({ error: 'Itens deve ser um array' });
+        }
+        
+        if (itens.length === 0) {
+            return res.status(400).json({ error: 'Array de itens não pode estar vazio' });
+        }
+        
+        // Validar e converter tipos de cada item
+        const itensValidados = [];
+        for (const item of itens) {
+            if (!item.id || item.ordem === undefined || item.ordem === null) {
+                return res.status(400).json({ 
+                    error: `Item inválido: ${JSON.stringify(item)}. Cada item deve ter 'id' e 'ordem'` 
+                });
+            }
+            
+            // Garantir que id e ordem são números
+            const id = parseInt(item.id, 10);
+            const ordem = parseInt(item.ordem, 10);
+            
+            if (isNaN(id) || isNaN(ordem)) {
+                return res.status(400).json({ 
+                    error: `Item com tipos inválidos: id=${item.id}, ordem=${item.ordem}` 
+                });
+            }
+            
+            itensValidados.push({ id, ordem });
+        }
+        
+        console.log('Itens validados:', JSON.stringify(itensValidados, null, 2));
+        
+        await db.atualizarOrdemRoadmap(itensValidados);
+        res.json({ message: 'Ordem atualizada com sucesso' });
+    } catch (error) {
+        console.error('Erro ao atualizar ordem do roadmap:', error);
+        console.error('Stack trace:', error.stack);
+        const errorMessage = error.message || 'Erro ao atualizar ordem do roadmap';
+        res.status(500).json({ error: errorMessage });
+    }
+});
+
+// Atualizar item do roadmap (DEVE VIR DEPOIS DA ROTA /ordem)
 app.put('/api/admin/roadmap/:id', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
@@ -2489,12 +2538,7 @@ app.put('/api/admin/roadmap/:id/status', authenticateToken, requireAdmin, async 
         const { status } = req.body;
         
         if (!status) {
-            return res.status(400).json({ error: 'O status é obrigatório' });
-        }
-        
-        const statusValidos = ['backlog', 'doing', 'em_testes', 'em_beta', 'lancado', 'done'];
-        if (!statusValidos.includes(status)) {
-            return res.status(400).json({ error: 'Status inválido' });
+            return res.status(400).json({ error: 'Status é obrigatório' });
         }
         
         const itemAtualizado = await db.atualizarStatusRoadmapItem(parseInt(id), status);
@@ -2507,23 +2551,6 @@ app.put('/api/admin/roadmap/:id/status', authenticateToken, requireAdmin, async 
     } catch (error) {
         console.error('Erro ao atualizar status do item do roadmap:', error);
         res.status(500).json({ error: 'Erro ao atualizar status do item do roadmap' });
-    }
-});
-
-// Atualizar ordem dos itens do roadmap
-app.put('/api/admin/roadmap/ordem', authenticateToken, requireAdmin, async (req, res) => {
-    try {
-        const { itens } = req.body;
-        
-        if (!Array.isArray(itens)) {
-            return res.status(400).json({ error: 'Itens deve ser um array' });
-        }
-        
-        await db.atualizarOrdemRoadmap(itens);
-        res.json({ message: 'Ordem atualizada com sucesso' });
-    } catch (error) {
-        console.error('Erro ao atualizar ordem do roadmap:', error);
-        res.status(500).json({ error: 'Erro ao atualizar ordem do roadmap' });
     }
 });
 
