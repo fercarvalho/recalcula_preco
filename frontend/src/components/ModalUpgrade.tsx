@@ -167,6 +167,7 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
   const handleCheckoutSuccess = async () => {
     await mostrarAlert('Sucesso', 'Upgrade realizado com sucesso! Você agora tem acesso completo ao sistema.');
     setPlanoSelecionado(null);
+    onClose(); // Fechar o modal antes de recarregar
     if (onPagamentoSucesso) {
       onPagamentoSucesso();
     }
