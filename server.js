@@ -2302,6 +2302,11 @@ app.get('/api/stripe/status', authenticateToken, async (req, res) => {
             tipoPlano = acesso.acesso.tipo;
         }
 
+        // Se ainda não tem tipo mas há um pagamento único, verificar diretamente
+        if (!tipoPlano && acesso.emailNaoValidado && acesso.acesso && acesso.acesso.pagamento) {
+            tipoPlano = acesso.acesso.pagamento.periodo === 'anual' ? 'anual' : 'unico';
+        }
+
         res.json({
             temAcesso: acesso.temAcesso,
             tipo: tipoPlano === 'vitalicio' ? 'vitalicio' : tipoPlano, // Manter 'vitalicio' para permitir feedback beta

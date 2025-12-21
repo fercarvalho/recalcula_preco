@@ -470,18 +470,20 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
                   // Não tem acesso - verificar status de pagamento para mostrar modal apropriado
                   const status = await apiService.verificarStatusPagamento();
                   
-                  if (!status.temAcesso) {
-                    // Usuário não tem plano ativo - abrir modal de planos
-                    if (onOpenModalPlanos) {
-                      onOpenModalPlanos();
-                    }
-                    return;
-                  }
-                  
+                  // Verificar se tem plano único (mesmo que email não validado)
+                  // O backend agora retorna o tipo corretamente mesmo quando email não validado
                   if (status.tipo === 'unico') {
                     // Usuário tem plano único - abrir modal de upgrade
                     if (onOpenModalUpgrade) {
                       onOpenModalUpgrade();
+                    }
+                    return;
+                  }
+                  
+                  if (!status.temAcesso && !status.emailNaoValidado) {
+                    // Usuário não tem plano ativo - abrir modal de planos
+                    if (onOpenModalPlanos) {
+                      onOpenModalPlanos();
                     }
                     return;
                   }
@@ -504,18 +506,20 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
                     // Não tem acesso - verificar status de pagamento para mostrar modal apropriado
                     const status = await apiService.verificarStatusPagamento();
                     
-                    if (!status.temAcesso) {
-                      // Usuário não tem plano ativo - abrir modal de planos
-                      if (onOpenModalPlanos) {
-                        onOpenModalPlanos();
-                      }
-                      return;
-                    }
-                    
+                    // Verificar se tem plano único (mesmo que email não validado)
+                    // O backend agora retorna o tipo corretamente mesmo quando email não validado
                     if (status.tipo === 'unico') {
                       // Usuário tem plano único - abrir modal de upgrade
                       if (onOpenModalUpgrade) {
                         onOpenModalUpgrade();
+                      }
+                      return;
+                    }
+                    
+                    if (!status.temAcesso && !status.emailNaoValidado) {
+                      // Usuário não tem plano ativo - abrir modal de planos
+                      if (onOpenModalPlanos) {
+                        onOpenModalPlanos();
                       }
                       return;
                     }
