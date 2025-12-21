@@ -476,20 +476,49 @@ function App() {
         userId: user?.id
       });
       
-      // Mostrar modal para usuários com assinatura ativa (plano recorrente/parcelado)
-      if (status.tipo === 'anual' && status.assinatura && !upgradeModalJaMostrado) {
-        console.log('[App] Mostrando modal de upgrade no login (usuário com assinatura ativa)');
+      // Verificar se deve mostrar modal/banner de upgrade
+      // Mostrar APENAS para usuários com assinatura ativa (plano recorrente/parcelado)
+      // NÃO mostrar se o usuário já tem pagamento único anual (upgrade já feito)
+      const temPagamentoUnico = !!status.pagamento;
+      const temAssinaturaAtiva = !!status.assinatura && status.assinatura.status === 'active';
+      
+      // Mostrar modal APENAS para usuários com assinatura ativa (plano recorrente/parcelado)
+      // NÃO mostrar se o usuário já tem pagamento único anual (upgrade já feito)
+      if (status.tipo === 'anual' && temAssinaturaAtiva && !temPagamentoUnico && !upgradeModalJaMostrado) {
+        console.log('[App] Mostrando modal de upgrade no login (usuário com assinatura ativa, sem upgrade)');
         setTimeout(() => {
           setShowModalUpgrade(true);
           localStorage.setItem(upgradeModalKey, 'true');
         }, 2000); // Aguardar 2 segundos após login para não sobrecarregar
+      } else {
+        console.log('[App] Não mostrando modal de upgrade:', {
+          tipo: status.tipo,
+          temAssinatura: temAssinaturaAtiva,
+          temPagamento: temPagamentoUnico,
+          upgradeModalJaMostrado,
+          statusAssinatura: status.assinatura?.status
+        });
       }
       
       // Verificar se deve mostrar aviso de upgrade no início do sistema
-      // Mostrar para TODOS os usuários com assinatura ativa (plano recorrente/parcelado)
-      if (status.tipo === 'anual' && status.assinatura) {
-        console.log('[App] Mostrando aviso de upgrade no início do sistema (usuário com assinatura ativa)');
+      // Mostrar APENAS para usuários com assinatura ativa (plano recorrente/parcelado)
+      // NÃO mostrar se o usuário já tem pagamento único anual (upgrade já feito)
+      
+      // Só mostrar banner se:
+      // 1. Tipo é 'anual' (plano recorrente)
+      // 2. Tem assinatura ativa
+      // 3. NÃO tem pagamento único (não fez upgrade)
+      if (status.tipo === 'anual' && temAssinaturaAtiva && !temPagamentoUnico) {
+        console.log('[App] Mostrando aviso de upgrade no início do sistema (usuário com assinatura ativa, sem upgrade)');
         setMostrarAvisoUpgrade(true);
+      } else {
+        console.log('[App] Não mostrando aviso de upgrade:', {
+          tipo: status.tipo,
+          temAssinatura: temAssinaturaAtiva,
+          temPagamento: temPagamentoUnico,
+          statusAssinatura: status.assinatura?.status
+        });
+        setMostrarAvisoUpgrade(false);
       }
       // Carregar plataformas após autenticação
       if (user?.id) {

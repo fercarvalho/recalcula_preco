@@ -3332,46 +3332,11 @@ async function verificarAcessoAtivo(usuarioId) {
             }
         }
         
-        // Verificar assinatura anual ativa
-        console.log(`[verificarAcessoAtivo] Verificando assinaturas para usuário ${usuarioId}`);
-        const assinatura = await pool.query(`
-            SELECT * FROM assinaturas 
-            WHERE usuario_id = $1 
-            AND plano_tipo = 'anual'
-            AND status IN ('active', 'trialing')
-            AND (current_period_end IS NULL OR current_period_end > NOW())
-        `, [usuarioId]);
-
-        console.log(`[verificarAcessoAtivo] Assinaturas encontradas: ${assinatura.rows.length}`);
-        if (assinatura.rows.length > 0) {
-            console.log(`[verificarAcessoAtivo] Assinatura:`, {
-                id: assinatura.rows[0].id,
-                plano_id: assinatura.rows[0].plano_id,
-                status: assinatura.rows[0].status,
-                current_period_end: assinatura.rows[0].current_period_end
-            });
-            const acessoAnual = {
-                temAcesso: true,
-                tipo: 'anual',
-                assinatura: assinatura.rows[0]
-            };
-            
-            // Se o usuário tem acesso pago, verificar se email foi validado
-            const emailValidado = await verificarEmailValidado(usuarioId);
-            if (!emailValidado) {
-                return {
-                    temAcesso: false,
-                    tipo: null,
-                    emailNaoValidado: true, // Flag indicando que precisa validar email
-                    acesso: acessoAnual // Manter dados do acesso para não perder
-                };
-            }
-            
-            return acessoAnual;
-        }
-
+        // PRIMEIRO verificar pagamento único (tem prioridade sobre assinatura)
         // Verificar pagamento único não usado e não expirado
         // Para planos anuais pagos à vista, validade é de 1 ano; para outros, 24 horas
+        // IMPORTANTE: Pagamentos de upgrade dinâmico podem ter plano_id NULL, mas devem ser tratados como anuais
+        // se a data de criação foi ajustada para manter validade de 1 ano (created_at < NOW() - INTERVAL '1 year' significa que foi ajustado)
         console.log(`[verificarAcessoAtivo] Verificando pagamentos únicos para usuário ${usuarioId}`);
         const pagamentoUnico = await pool.query(`
             SELECT pu.*, p.periodo, p.tipo as plano_tipo, p.nome as plano_nome
@@ -3384,8 +3349,13 @@ async function verificarAcessoAtivo(usuarioId) {
                 -- Se for plano anual (periodo = 'anual' OU nome contém 'anual'), validade é 1 ano
                 ((p.periodo = 'anual' OR LOWER(p.nome) LIKE '%anual%') AND pu.created_at > NOW() - INTERVAL '1 year')
                 OR
+                -- Se plano_id é NULL mas created_at está dentro de 1 ano, tratar como anual (upgrade dinâmico)
+                (pu.plano_id IS NULL AND pu.created_at > NOW() - INTERVAL '1 year')
+                OR
                 -- Caso contrário, validade é 24 horas (plano sem período ou período diferente de 'anual')
-                ((p.periodo IS NULL OR (p.periodo != 'anual' AND LOWER(p.nome) NOT LIKE '%anual%')) AND pu.created_at > NOW() - INTERVAL '24 hours')
+                ((p.periodo IS NULL OR (p.periodo != 'anual' AND LOWER(p.nome) NOT LIKE '%anual%')) 
+                 AND pu.plano_id IS NOT NULL 
+                 AND pu.created_at > NOW() - INTERVAL '24 hours')
             )
             ORDER BY pu.created_at DESC
             LIMIT 1
@@ -3437,14 +3407,21 @@ async function verificarAcessoAtivo(usuarioId) {
             // Se o plano é anual (verificar por período ou nome), retornar tipo como 'anual' para compatibilidade com funções beta
             // IMPORTANTE: Planos de upgrade (tipo 'unico' que estendem acesso de 24h para 1 ano) 
             // devem ter "anual" no nome para serem tratados como anuais e terem acesso às funções beta
-            if (pagamento.periodo === 'anual' || (pagamento.plano_nome && pagamento.plano_nome.toLowerCase().includes('anual'))) {
+            // Se plano_id é NULL mas created_at está dentro de 1 ano, também tratar como anual (upgrade dinâmico)
+            const isAnual = pagamento.periodo === 'anual' || 
+                           (pagamento.plano_nome && pagamento.plano_nome.toLowerCase().includes('anual')) ||
+                           (pagamento.plano_id === null && pagamento.created_at && 
+                            new Date(pagamento.created_at) > new Date(Date.now() - 365 * 24 * 60 * 60 * 1000));
+            
+            if (isAnual) {
                 acessoUnico.tipo = 'anual';
                 console.log(`[verificarAcessoAtivo] Plano anual detectado - tipo alterado para 'anual'`);
                 console.log(`[verificarAcessoAtivo] Detalhes do plano:`, {
                     plano_id: pagamento.plano_id,
                     plano_nome: pagamento.plano_nome,
                     periodo: pagamento.periodo,
-                    tipo_acesso: 'anual (1 ano)'
+                    tipo_acesso: 'anual (1 ano)',
+                    is_upgrade_dinamico: pagamento.plano_id === null
                 });
             }
             
@@ -3460,6 +3437,45 @@ async function verificarAcessoAtivo(usuarioId) {
             }
             
             return acessoUnico;
+        }
+
+        // DEPOIS verificar assinatura anual ativa (apenas se não houver pagamento único)
+        console.log(`[verificarAcessoAtivo] Verificando assinaturas para usuário ${usuarioId}`);
+        const assinatura = await pool.query(`
+            SELECT * FROM assinaturas 
+            WHERE usuario_id = $1 
+            AND plano_tipo = 'anual'
+            AND status IN ('active', 'trialing')
+            AND (current_period_end IS NULL OR current_period_end > NOW())
+            AND canceled_at IS NULL
+        `, [usuarioId]);
+
+        console.log(`[verificarAcessoAtivo] Assinaturas encontradas: ${assinatura.rows.length}`);
+        if (assinatura.rows.length > 0) {
+            console.log(`[verificarAcessoAtivo] Assinatura:`, {
+                id: assinatura.rows[0].id,
+                plano_id: assinatura.rows[0].plano_id,
+                status: assinatura.rows[0].status,
+                current_period_end: assinatura.rows[0].current_period_end
+            });
+            const acessoAnual = {
+                temAcesso: true,
+                tipo: 'anual',
+                assinatura: assinatura.rows[0]
+            };
+            
+            // Se o usuário tem acesso pago, verificar se email foi validado
+            const emailValidado = await verificarEmailValidado(usuarioId);
+            if (!emailValidado) {
+                return {
+                    temAcesso: false,
+                    tipo: null,
+                    emailNaoValidado: true, // Flag indicando que precisa validar email
+                    acesso: acessoAnual // Manter dados do acesso para não perder
+                };
+            }
+            
+            return acessoAnual;
         }
 
         return {
@@ -3559,14 +3575,37 @@ async function atualizarDataCriacaoPagamentoUnico(pagamentoId, novaDataCriacao) 
 // Cancelar assinatura no banco de dados
 async function cancelarAssinaturaNoBanco(assinaturaId) {
     try {
-        const result = await pool.query(`
-            UPDATE assinaturas
-            SET status = 'canceled',
-                cancel_at_period_end = false,
-                canceled_at = NOW()
-            WHERE id = $1
-            RETURNING *
-        `, [assinaturaId]);
+        // Verificar se a coluna canceled_at existe
+        const colunaExiste = await pool.query(`
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'assinaturas' 
+            AND column_name = 'canceled_at'
+        `);
+        
+        let query;
+        if (colunaExiste.rows.length > 0) {
+            // Se a coluna existe, usar ela
+            query = `
+                UPDATE assinaturas
+                SET status = 'canceled',
+                    cancel_at_period_end = false,
+                    canceled_at = NOW()
+                WHERE id = $1
+                RETURNING *
+            `;
+        } else {
+            // Se não existe, apenas atualizar status
+            query = `
+                UPDATE assinaturas
+                SET status = 'canceled',
+                    cancel_at_period_end = false
+                WHERE id = $1
+                RETURNING *
+            `;
+        }
+        
+        const result = await pool.query(query, [assinaturaId]);
 
         return result.rows.length > 0 ? result.rows[0] : null;
     } catch (error) {

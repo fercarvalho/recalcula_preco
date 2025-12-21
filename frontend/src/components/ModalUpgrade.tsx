@@ -109,9 +109,27 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
           console.error('Erro ao calcular valor dinâmico antecipadamente:', error);
         }
         
+        // Buscar um plano anual à vista para usar como referência (para plano_id válido)
+        let planoAnualAvistaId = null;
+        try {
+          const todosPlanos = await apiService.obterPlanos();
+          const planoAnualAvista = todosPlanos.find(p => 
+            p.ativo && 
+            p.tipo === 'unico' && 
+            p.periodo === 'anual' &&
+            (p.nome?.toLowerCase().includes('anual') || p.nome?.toLowerCase().includes('a vista'))
+          );
+          if (planoAnualAvista) {
+            planoAnualAvistaId = planoAnualAvista.id;
+            console.log('✅ Plano anual à vista encontrado para upgrade:', planoAnualAvista.id, planoAnualAvista.nome);
+          }
+        } catch (error) {
+          console.error('Erro ao buscar plano anual à vista:', error);
+        }
+        
         // Criar um plano "virtual" para upgrade de recorrente para anual
         const planoUpgradeRecorrente: Plano = {
-          id: status.assinatura.plano_id || 999, // Usar plano_id da assinatura se disponível
+          id: planoAnualAvistaId || status.assinatura.plano_id || 999, // Usar plano anual à vista se encontrado
           nome: 'Upgrade para Plano Anual Completo',
           tipo: 'unico',
           valor: valorDinamicoCalculado, // Valor dinâmico calculado
@@ -126,7 +144,7 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
           ativo: true,
           ordem: 1,
           beneficios: [],
-          stripe_price_id: null,
+          stripe_price_id: null, // Sem price_id para preço dinâmico
           frase_reforco: 'Valor calculado dinamicamente baseado nos seus pagamentos realizados'
         };
         setPlanos([planoUpgradeRecorrente]);

@@ -1528,10 +1528,66 @@ app.post('/api/stripe/create-payment-intent', authenticateToken, async (req, res
             return res.status(400).json({ error: 'UserId é obrigatório' });
         }
 
-        // Buscar plano para obter price_id
-        const plano = await db.obterPlanoPorId(planoId);
-        if (!plano || !plano.stripe_price_id) {
-            return res.status(400).json({ error: 'Plano não encontrado ou sem price_id configurado' });
+        // Verificar se é upgrade dinâmico (usuário com assinatura ativa fazendo upgrade)
+        const assinaturaAtiva = await db.obterAssinatura(userIdFinal);
+        const isUpgradeDinamico = assinaturaAtiva && assinaturaAtiva.status === 'active' && assinaturaAtiva.stripe_subscription_id;
+        
+        let plano = null;
+        
+        // Para upgrade dinâmico, planoId pode ser opcional ou inválido
+        // Buscar um plano anual à vista se planoId não for válido
+        if (isUpgradeDinamico) {
+            console.log('💰 Upgrade dinâmico detectado - usando amount direto sem price_id');
+            
+            // Tentar buscar o plano se fornecido
+            if (planoId) {
+                try {
+                    plano = await db.obterPlanoPorId(planoId);
+                } catch (error) {
+                    console.log('⚠️  PlanoId fornecido não encontrado, buscando plano anual à vista alternativo');
+                }
+            }
+            
+            // Se não encontrou o plano, buscar um plano anual à vista
+            if (!plano) {
+                try {
+                    const todosPlanos = await db.obterPlanos();
+                    const planoAnualAvista = todosPlanos.find(p => 
+                        p.ativo && 
+                        p.tipo === 'unico' && 
+                        p.periodo === 'anual' &&
+                        (p.nome?.toLowerCase().includes('anual') || p.nome?.toLowerCase().includes('a vista'))
+                    );
+                    if (planoAnualAvista) {
+                        plano = planoAnualAvista;
+                        console.log('✅ Plano anual à vista encontrado para upgrade dinâmico:', plano.id, plano.nome);
+                    }
+                } catch (error) {
+                    console.error('⚠️  Erro ao buscar plano anual à vista:', error);
+                }
+            }
+            
+            // Se ainda não encontrou, criar um plano "virtual" apenas para referência
+            if (!plano) {
+                console.log('⚠️  Nenhum plano anual à vista encontrado, usando referência virtual');
+                // Não precisa de plano para upgrade dinâmico, mas vamos criar uma referência mínima
+                plano = { id: planoId || 999, stripe_price_id: null };
+            }
+        } else {
+            // Para planos normais, buscar e validar
+            if (!planoId) {
+                return res.status(400).json({ error: 'PlanoId é obrigatório' });
+            }
+            
+            plano = await db.obterPlanoPorId(planoId);
+            if (!plano) {
+                return res.status(400).json({ error: 'Plano não encontrado' });
+            }
+            
+            // Se não é upgrade dinâmico e não tem price_id, retornar erro
+            if (!plano.stripe_price_id) {
+                return res.status(400).json({ error: 'Plano não encontrado ou sem price_id configurado' });
+            }
         }
 
         // Verificar se o Stripe está configurado
@@ -1618,6 +1674,33 @@ app.post('/api/stripe/create-payment-intent', authenticateToken, async (req, res
             }
         }
         
+        // Para upgrade dinâmico, garantir que temos um planoId válido
+        let planoIdFinal = planoId;
+        if (isUpgradeDinamico && (!plano || !plano.id || plano.id === 999)) {
+            // Buscar um plano anual à vista válido
+            try {
+                const todosPlanos = await db.obterPlanos();
+                const planoAnualAvista = todosPlanos.find(p => 
+                    p.ativo && 
+                    p.tipo === 'unico' && 
+                    p.periodo === 'anual' &&
+                    (p.nome?.toLowerCase().includes('anual') || p.nome?.toLowerCase().includes('a vista'))
+                );
+                if (planoAnualAvista) {
+                    planoIdFinal = planoAnualAvista.id;
+                    console.log('✅ Plano anual à vista encontrado para metadata do Payment Intent:', planoIdFinal);
+                } else {
+                    console.log('⚠️  Nenhum plano anual à vista encontrado, usando planoId NULL no metadata');
+                    planoIdFinal = null;
+                }
+            } catch (error) {
+                console.error('⚠️  Erro ao buscar plano anual à vista:', error);
+                planoIdFinal = null;
+            }
+        } else if (plano && plano.id) {
+            planoIdFinal = plano.id;
+        }
+        
         // Criar Payment Intent com valor já descontado (amount vem do frontend com desconto aplicado)
         // Registrar o cupom usado nos metadados para rastreamento na Stripe
         const paymentIntentData = {
@@ -1626,8 +1709,9 @@ app.post('/api/stripe/create-payment-intent', authenticateToken, async (req, res
             customer: customerId, // Associar Customer ao Payment Intent
             metadata: {
                 user_id: userIdFinal.toString(),
-                plano_id: planoId ? planoId.toString() : '',
+                plano_id: planoIdFinal ? planoIdFinal.toString() : '',
                 plano_tipo: 'unico',
+                is_upgrade_dinamico: isUpgradeDinamico ? 'true' : 'false',
             },
         };
 
@@ -2175,6 +2259,49 @@ app.post('/api/stripe/confirmar-pagamento', authenticateToken, async (req, res) 
             valor = paymentIntent.amount / 100; // Converter de centavos para reais
             planoId = paymentIntent.metadata?.plano_id ? parseInt(paymentIntent.metadata.plano_id) : null;
             customerId = paymentIntent.customer || null;
+            
+            // Verificar se é upgrade dinâmico e se o planoId é válido
+            const assinaturaAtiva = await db.obterAssinatura(userId);
+            const isUpgradeDinamico = assinaturaAtiva && assinaturaAtiva.status === 'active' && assinaturaAtiva.stripe_subscription_id;
+            
+            if (isUpgradeDinamico) {
+                // Verificar se o planoId existe no banco
+                if (planoId) {
+                    try {
+                        const planoVerificado = await db.obterPlanoPorId(planoId);
+                        if (!planoVerificado) {
+                            console.log('⚠️  PlanoId do metadata não encontrado, buscando plano anual à vista alternativo');
+                            planoId = null; // Resetar para buscar outro
+                        }
+                    } catch (error) {
+                        console.log('⚠️  Erro ao verificar planoId, buscando plano anual à vista alternativo');
+                        planoId = null;
+                    }
+                }
+                
+                // Se não tem planoId válido, buscar um plano anual à vista
+                if (!planoId) {
+                    try {
+                        const todosPlanos = await db.obterPlanos();
+                        const planoAnualAvista = todosPlanos.find(p => 
+                            p.ativo && 
+                            p.tipo === 'unico' && 
+                            p.periodo === 'anual' &&
+                            (p.nome?.toLowerCase().includes('anual') || p.nome?.toLowerCase().includes('a vista'))
+                        );
+                        if (planoAnualAvista) {
+                            planoId = planoAnualAvista.id;
+                            console.log('✅ Plano anual à vista encontrado para upgrade dinâmico:', planoId, planoAnualAvista.nome);
+                        } else {
+                            console.log('⚠️  Nenhum plano anual à vista encontrado, usando plano_id NULL');
+                            planoId = null; // Permitir NULL para upgrade dinâmico
+                        }
+                    } catch (error) {
+                        console.error('⚠️  Erro ao buscar plano anual à vista:', error);
+                        planoId = null; // Permitir NULL em caso de erro
+                    }
+                }
+            }
         }
 
         // Verificar se o usuário tem assinatura ativa (upgrade de recorrente para anual)
@@ -2221,13 +2348,28 @@ app.post('/api/stripe/confirmar-pagamento', authenticateToken, async (req, res) 
         } else {
             // Salvar pagamento no banco de dados
             // Se é upgrade de recorrente, usar plano anual à vista se encontrado
-            const planoIdFinal = planoIdAnualAvista || planoId;
+            let planoIdFinal = planoIdAnualAvista || planoId;
+            
+            // Verificar se o planoIdFinal é válido (existe no banco)
+            if (planoIdFinal) {
+                try {
+                    const planoVerificado = await db.obterPlanoPorId(planoIdFinal);
+                    if (!planoVerificado) {
+                        console.log('⚠️  PlanoId não encontrado no banco, usando NULL');
+                        planoIdFinal = null;
+                    }
+                } catch (error) {
+                    console.error('⚠️  Erro ao verificar planoId:', error);
+                    planoIdFinal = null;
+                }
+            }
+            
             pagamento = await db.criarPagamentoUnico(userId, {
                 stripe_payment_intent_id: paymentIntentId,
                 stripe_customer_id: customerId,
                 valor: valor,
                 status: 'succeeded',
-                plano_id: planoIdFinal,
+                plano_id: planoIdFinal || null, // Garantir NULL se não tiver plano válido
             });
             
             // Se é upgrade de recorrente para anual, ajustar a data de criação do pagamento
@@ -2264,6 +2406,7 @@ app.post('/api/stripe/confirmar-pagamento', authenticateToken, async (req, res) 
                     console.log('✅ Assinatura cancelada na Stripe com sucesso');
                     
                     // Atualizar status da assinatura no banco de dados para 'canceled'
+                    // A função cancelarAssinaturaNoBanco espera o ID do banco, não o subscription_id
                     await db.cancelarAssinaturaNoBanco(assinaturaAtiva.id);
                     console.log('✅ Status da assinatura atualizado para "canceled" no banco de dados');
                 } catch (error) {
@@ -2436,13 +2579,32 @@ app.get('/api/stripe/status', authenticateToken, async (req, res) => {
 
         // Se o email não está validado mas há um plano pago, usar o tipo do objeto acesso
         let tipoPlano = acesso.tipo;
+        let pagamento = acesso.pagamento || null;
+        
         if (!tipoPlano && acesso.emailNaoValidado && acesso.acesso) {
             tipoPlano = acesso.acesso.tipo;
+            // Se há pagamento no objeto acesso, usar ele
+            if (acesso.acesso.pagamento) {
+                pagamento = acesso.acesso.pagamento;
+            }
         }
 
         // Se ainda não tem tipo mas há um pagamento único, verificar diretamente
         if (!tipoPlano && acesso.emailNaoValidado && acesso.acesso && acesso.acesso.pagamento) {
-            tipoPlano = acesso.acesso.pagamento.periodo === 'anual' ? 'anual' : 'unico';
+            const pag = acesso.acesso.pagamento;
+            // Verificar se é anual (upgrade dinâmico com plano_id NULL)
+            const isAnual = pag.periodo === 'anual' || 
+                           (pag.plano_nome && pag.plano_nome.toLowerCase().includes('anual')) ||
+                           (pag.plano_id === null && pag.created_at && 
+                            new Date(pag.created_at) > new Date(Date.now() - 365 * 24 * 60 * 60 * 1000));
+            tipoPlano = isAnual ? 'anual' : 'unico';
+            pagamento = pag; // Garantir que o pagamento seja retornado
+        }
+        
+        // Se tipoPlano é 'anual' e há pagamento, garantir que o tipo seja 'anual' mesmo com email não validado
+        if (tipoPlano === 'anual' && pagamento) {
+            // Já está correto, mas garantir que o tipo seja mantido
+            tipoPlano = 'anual';
         }
 
         res.json({
@@ -2454,12 +2616,14 @@ app.get('/api/stripe/status', authenticateToken, async (req, res) => {
                 plano_tipo: 'vitalicio',
                 current_period_end: null, // Vitalício não expira
                 cancel_at_period_end: false,
-            } : (assinatura ? {
+            } : (assinatura && !pagamento ? {
+                // Só retornar assinatura se não houver pagamento único (pagamento único tem prioridade)
                 status: assinatura.status,
                 plano_tipo: assinatura.plano_tipo,
                 current_period_end: assinatura.current_period_end,
                 cancel_at_period_end: assinatura.cancel_at_period_end,
             } : null),
+            pagamento: pagamento
         });
     } catch (error) {
         console.error('Erro ao verificar status:', error);

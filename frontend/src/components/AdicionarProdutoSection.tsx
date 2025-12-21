@@ -32,6 +32,7 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
   const [funcaoFeedback, setFuncaoFeedback] = useState<string>('');
   const [temAcessoModoCardapio, setTemAcessoModoCardapio] = useState<boolean | null>(null);
   const [temAcessoCompartilharCardapio, setTemAcessoCompartilharCardapio] = useState<boolean | null>(null);
+  const [temPlanoAnual, setTemPlanoAnual] = useState<boolean>(false);
 
   // Carregar estado do cardápio público, status de pagamento e permissões de funções especiais
   useEffect(() => {
@@ -41,6 +42,20 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
         if (response.user) {
           setCardapioPublico(response.user.cardapio_publico === true);
           setUsername(response.user.username || '');
+        }
+        
+        // Verificar se tem plano anual primeiro
+        try {
+          const status = await apiService.verificarStatusPagamento();
+          const temPlanoAnualCheck = status.tipo === 'anual' || status.tipo === 'vitalicio';
+          setTemPlanoAnual(temPlanoAnualCheck);
+          console.log('[AdicionarProdutoSection] Status de pagamento:', {
+            tipo: status.tipo,
+            temPlanoAnual: temPlanoAnualCheck
+          });
+        } catch (error) {
+          console.error('Erro ao verificar status de pagamento:', error);
+          setTemPlanoAnual(false);
         }
         
         // Verificar acesso às funções especiais
@@ -465,6 +480,19 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
                   return;
                 }
                 
+                // PRIMEIRO: Verificar se tem plano anual mas email não validado
+                // Esta verificação deve ser feita ANTES de qualquer outra
+                if (temPlanoAnual) {
+                  const status = await apiService.verificarStatusPagamento();
+                  if (status.emailNaoValidado) {
+                    await mostrarAlert(
+                      'Email não validado',
+                      'É necessário validar seu email antes de usar as funções especiais. Verifique sua caixa de entrada e clique no link de validação.'
+                    );
+                    return;
+                  }
+                }
+                
                 // Verificar acesso à função especial primeiro
                 if (temAcessoModoCardapio === false) {
                   // Não tem acesso - verificar status de pagamento para mostrar modal apropriado
@@ -532,28 +560,8 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
                   }
                 }
                 
-                // Verificar se email foi validado antes de permitir ativar funções especiais
-                if (temAcessoModoCardapio === true && !cardapioPublico) {
-                  const status = await apiService.verificarStatusPagamento();
-                  
-                  if (status.emailNaoValidado) {
-                    await mostrarAlert(
-                      'Email não validado',
-                      'É necessário validar seu email antes de usar as funções especiais. Verifique sua caixa de entrada e clique no link de validação.'
-                    );
-                    return;
-                  }
-                  
-                  if (!status.temAcesso) {
-                    // Usuário não tem plano ativo - abrir modal de planos
-                    if (onOpenModalPlanos) {
-                      onOpenModalPlanos();
-                    }
-                    return;
-                  }
-                }
-                
                 // Se chegou aqui e temAcessoModoCardapio é true e email foi validado, pode ativar/desativar
+                // Ou se tem plano anual e email validado
                 const novoValor = !cardapioPublico;
                 setCardapioPublico(novoValor);
                 try {
@@ -571,7 +579,7 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
             </button>
           </label>
           <small className="cardapio-switch-description">
-            {temAcessoModoCardapio === false ? (
+            {!temPlanoAnual ? (
               <div style={{
                 marginTop: '1rem',
                 padding: '1rem',
@@ -622,7 +630,7 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
             )}
           </div>
           <small className="cardapio-switch-description" style={{ marginBottom: '1rem', display: 'block' }}>
-            {temAcessoCompartilharCardapio === false ? (
+            {!temPlanoAnual ? (
               <div style={{
                 marginTop: '1rem',
                 padding: '1rem',
