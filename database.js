@@ -6319,26 +6319,97 @@ async function atualizarRoadmapItem(id, dados) {
     try {
         const { titulo, descricao, status, prioridade, data_inicio, depende_de } = dados;
         
-        // Garantir que data_inicio seja null ou uma string válida
-        const dataInicioParam = data_inicio ? data_inicio : null;
-        const dependeDeParam = depende_de !== undefined && depende_de !== null ? depende_de : null;
+        // Construir query dinamicamente baseado nos campos fornecidos
+        const updates = [];
+        const values = [];
+        let paramIndex = 1;
         
-        const result = await pool.query(`
+        if (titulo !== undefined) {
+            updates.push(`titulo = $${paramIndex}`);
+            values.push(titulo?.trim() || null);
+            paramIndex++;
+        }
+        
+        if (descricao !== undefined) {
+            updates.push(`descricao = $${paramIndex}`);
+            values.push(descricao?.trim() || null);
+            paramIndex++;
+        }
+        
+        if (status !== undefined) {
+            updates.push(`status = $${paramIndex}`);
+            values.push(status);
+            paramIndex++;
+        }
+        
+        if (prioridade !== undefined) {
+            updates.push(`prioridade = $${paramIndex}`);
+            values.push(prioridade);
+            paramIndex++;
+        }
+        
+        if (data_inicio !== undefined) {
+            if (data_inicio && data_inicio.trim() !== '') {
+                // Validar formato de data
+                const dataObj = new Date(data_inicio);
+                if (!isNaN(dataObj.getTime())) {
+                    updates.push(`data_inicio = $${paramIndex}::timestamp`);
+                    values.push(data_inicio);
+                    paramIndex++;
+                } else {
+                    // Data inválida, setar como NULL
+                    updates.push(`data_inicio = NULL`);
+                }
+            } else {
+                // String vazia ou null, setar como NULL
+                updates.push(`data_inicio = NULL`);
+            }
+        }
+        
+        if (depende_de !== undefined) {
+            if (depende_de !== null && depende_de !== '') {
+                const dependeDeNum = parseInt(depende_de, 10);
+                if (!isNaN(dependeDeNum)) {
+                    updates.push(`depende_de = $${paramIndex}`);
+                    values.push(dependeDeNum);
+                    paramIndex++;
+                } else {
+                    updates.push(`depende_de = NULL`);
+                }
+            } else {
+                updates.push(`depende_de = NULL`);
+            }
+        }
+        
+        // Sempre atualizar updated_at
+        updates.push(`updated_at = CURRENT_TIMESTAMP`);
+        
+        // Adicionar id no final
+        values.push(id);
+        
+        const query = `
             UPDATE roadmap
-            SET titulo = COALESCE($1, titulo),
-                descricao = COALESCE($2, descricao),
-                status = COALESCE($3, status),
-                prioridade = COALESCE($4, prioridade),
-                data_inicio = CASE WHEN $5::text IS NOT NULL AND $5::text != '' THEN $5::timestamp ELSE data_inicio END,
-                depende_de = CASE WHEN $6 IS NOT NULL THEN $6 ELSE depende_de END,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = $7
+            SET ${updates.join(', ')}
+            WHERE id = $${paramIndex}
             RETURNING *
-        `, [titulo, descricao, status, prioridade, dataInicioParam, dependeDeParam, id]);
+        `;
+        
+        console.log('Query de atualização:', query);
+        console.log('Valores:', values);
+        console.log('Dados recebidos:', dados);
+        
+        const result = await pool.query(query, values);
         
         return result.rows[0] || null;
     } catch (error) {
         console.error('Erro ao atualizar item do roadmap:', error);
+        console.error('Detalhes do erro:', {
+            message: error.message,
+            code: error.code,
+            detail: error.detail,
+            constraint: error.constraint,
+            stack: error.stack
+        });
         throw error;
     }
 }

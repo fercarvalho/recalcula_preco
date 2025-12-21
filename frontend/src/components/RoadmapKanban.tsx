@@ -441,18 +441,39 @@ const RoadmapKanban = ({ isOpen, onClose }: RoadmapKanbanProps) => {
   const handleAtualizarPrioridade = async (itemId: number, novaPrioridade: number) => {
     try {
       const item = itens.find(i => i.id === itemId);
-      if (!item) return;
+      if (!item) {
+        console.error('Item não encontrado:', itemId);
+        alert('Erro: Item não encontrado');
+        return;
+      }
 
       const itensColuna = getItensPorStatus(item.status);
+      
+      if (itensColuna.length === 0) {
+        console.error('Nenhum item encontrado na coluna:', item.status);
+        alert('Erro: Nenhum item encontrado na coluna');
+        return;
+      }
       
       // Validar nova prioridade
       const prioridadeValida = Math.max(1, Math.min(novaPrioridade, itensColuna.length));
       
+      // Se a prioridade não mudou, não fazer nada
+      const prioridadeAtual = calcularPrioridade(item);
+      if (prioridadeValida === prioridadeAtual) {
+        return;
+      }
+      
       // Remover item da posição atual
       const itensSemItem = itensColuna.filter(i => i.id !== itemId);
       
+      if (itensSemItem.length === 0) {
+        // Se só tem um item, não precisa reordenar
+        return;
+      }
+      
       // Inserir na nova posição (prioridade - 1 porque é índice baseado em 0)
-      const novaPosicao = prioridadeValida - 1;
+      const novaPosicao = Math.max(0, Math.min(prioridadeValida - 1, itensSemItem.length));
       itensSemItem.splice(novaPosicao, 0, item);
       
       // Recalcular ordem para todos os itens da coluna
@@ -460,6 +481,14 @@ const RoadmapKanban = ({ isOpen, onClose }: RoadmapKanbanProps) => {
         id: item.id,
         ordem: index
       }));
+      
+      if (itensAtualizados.length === 0) {
+        console.error('Nenhum item para atualizar após reordenação');
+        alert('Erro: Nenhum item para atualizar');
+        return;
+      }
+      
+      console.log('Atualizando prioridade - Itens a atualizar:', JSON.stringify(itensAtualizados, null, 2));
       
       // Atualizar estado local imediatamente para feedback visual instantâneo
       setItens(prev => {
@@ -479,15 +508,23 @@ const RoadmapKanban = ({ isOpen, onClose }: RoadmapKanbanProps) => {
       // Atualizar no backend
       try {
         await apiService.atualizarOrdemRoadmap(itensAtualizados);
+        console.log('Prioridade atualizada com sucesso');
         // Não recarregar - o estado já foi atualizado localmente
-      } catch (error) {
+      } catch (error: any) {
+        console.error('Erro ao atualizar ordem no backend:', error);
+        const errorMessage = error?.response?.data?.error || error?.message || 'Erro desconhecido';
+        console.error('Detalhes do erro:', errorMessage);
+        
         // Se der erro, recarregar do servidor para reverter
         await carregarRoadmap();
-        throw error;
+        alert(`Erro ao atualizar prioridade: ${errorMessage}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao atualizar prioridade:', error);
-      alert('Erro ao atualizar prioridade');
+      const errorMessage = error?.message || 'Erro desconhecido';
+      alert(`Erro ao atualizar prioridade: ${errorMessage}`);
+      // Recarregar para garantir que o estado está sincronizado
+      await carregarRoadmap();
     }
   };
 
