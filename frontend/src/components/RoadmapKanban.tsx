@@ -634,11 +634,11 @@ interface RoadmapCardProps {
 
 const RoadmapCard = ({ item, onEdit, onDelete, onDragStart, onDragEnd, isDragging, onIniciarTempo, onPararTempo, tempoAtual, formatarTempo, prioridade, totalItensColuna, onAtualizarPrioridade }: RoadmapCardProps) => {
   const prioridadeTipo = PRIORIDADE_CONFIG[item.prioridade];
-  const [prioridadeEditando, setPrioridadeEditando] = useState(prioridade);
+  const [prioridadeEditando, setPrioridadeEditando] = useState<string>(prioridade.toString());
   
   // Sincronizar prioridade quando mudar externamente
   useEffect(() => {
-    setPrioridadeEditando(prioridade);
+    setPrioridadeEditando(prioridade.toString());
   }, [prioridade]);
   
   // Calcular tempo total (acumulado + tempo atual se estiver rodando)
@@ -646,10 +646,38 @@ const RoadmapCard = ({ item, onEdit, onDelete, onDragStart, onDragEnd, isDraggin
   const tempoTotalFormatado = formatarTempo(tempoTotal);
 
   const handlePrioridadeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const novaPrioridade = parseInt(e.target.value, 10);
-    if (!isNaN(novaPrioridade) && novaPrioridade >= 1 && novaPrioridade <= totalItensColuna) {
-      setPrioridadeEditando(novaPrioridade);
-      onAtualizarPrioridade(item.id, novaPrioridade);
+    const valor = e.target.value;
+    // Permitir campo vazio ou apenas números durante a digitação
+    if (valor === '' || /^\d*$/.test(valor)) {
+      setPrioridadeEditando(valor);
+    }
+  };
+
+  const handlePrioridadeBlur = () => {
+    // Validar e aplicar quando o usuário sair do campo
+    const valorStr = prioridadeEditando.trim();
+    const valorNum = valorStr === '' ? prioridade : parseInt(valorStr, 10);
+    
+    if (!isNaN(valorNum)) {
+      const prioridadeValida = Math.max(1, Math.min(valorNum, totalItensColuna));
+      
+      if (prioridadeValida !== prioridade) {
+        setPrioridadeEditando(prioridadeValida.toString());
+        onAtualizarPrioridade(item.id, prioridadeValida);
+      } else {
+        // Se não mudou, garantir que o valor está correto
+        setPrioridadeEditando(prioridade.toString());
+      }
+    } else {
+      // Se o valor não é válido, reverter para o valor atual
+      setPrioridadeEditando(prioridade.toString());
+    }
+  };
+
+  const handlePrioridadeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Aplicar quando pressionar Enter
+    if (e.key === 'Enter') {
+      e.currentTarget.blur();
     }
   };
 
@@ -686,6 +714,8 @@ const RoadmapCard = ({ item, onEdit, onDelete, onDragStart, onDragEnd, isDraggin
             max={totalItensColuna}
             value={prioridadeEditando}
             onChange={handlePrioridadeChange}
+            onBlur={handlePrioridadeBlur}
+            onKeyDown={handlePrioridadeKeyDown}
             className="roadmap-card-prioridade-input"
           />
           <span className="roadmap-card-prioridade-total">/ {totalItensColuna}</span>
