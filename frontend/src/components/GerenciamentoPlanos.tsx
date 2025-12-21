@@ -247,23 +247,24 @@ const GerenciamentoPlanos = ({ isOpen, onClose }: GerenciamentoPlanosProps) => {
                   <div className="plano-content">
                     <div className="plano-header">
                       <div className="plano-info">
-                      <h3>
-                        {plano.nome}
-                        {plano.mais_popular && (
-                          <span className="badge-popular" title="Mais Popular">
-                            <FaStar /> Mais Popular
-                          </span>
-                        )}
-                        {!plano.ativo && (
-                          <span className="badge-inativo">Inativo</span>
-                        )}
-                      </h3>
-                      <div className="plano-detalhes">
-                        <span className="plano-tipo">{plano.tipo}</span>
-                        <span className="plano-valor">R$ {plano.valor.toFixed(2)}</span>
-                        {plano.valor_total && plano.mostrar_valor_total && (
-                          <span className="plano-total">Total: R$ {plano.valor_total.toFixed(2)}</span>
-                        )}
+                        <h3>
+                          {plano.nome}
+                          {plano.mais_popular && (
+                            <span className="badge-popular" title="Mais Popular">
+                              <FaStar /> Mais Popular
+                            </span>
+                          )}
+                          {!plano.ativo && (
+                            <span className="badge-inativo">Inativo</span>
+                          )}
+                        </h3>
+                        <div className="plano-detalhes">
+                          <span className="plano-tipo">{plano.tipo}</span>
+                          <span className="plano-valor">R$ {plano.valor.toFixed(2)}</span>
+                          {plano.valor_total && plano.mostrar_valor_total && (
+                            <span className="plano-total">Total: R$ {plano.valor_total.toFixed(2)}</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className="plano-switches">
@@ -278,18 +279,17 @@ const GerenciamentoPlanos = ({ isOpen, onClose }: GerenciamentoPlanosProps) => {
                           </button>
                         </label>
                       </div>
-                      <div className="switch-group">
-                        <label>
-                          <span>Mais Popular</span>
-                          <button
-                            onClick={() => handleToggleMaisPopular(plano)}
-                            className={`switch-btn ${plano.mais_popular ? 'active' : ''}`}
-                          >
-                            {plano.mais_popular ? <FaToggleOn /> : <FaToggleOff />}
-                          </button>
-                        </label>
-                      </div>
-                      </div>
+                    <div className="switch-group">
+                      <label>
+                        <span>Mais Popular</span>
+                        <button
+                          onClick={() => handleToggleMaisPopular(plano)}
+                          className={`switch-btn ${plano.mais_popular ? 'active' : ''}`}
+                        >
+                          {plano.mais_popular ? <FaToggleOn /> : <FaToggleOff />}
+                        </button>
+                      </label>
+                    </div>
                     </div>
                     <div className="plano-actions">
                     <button

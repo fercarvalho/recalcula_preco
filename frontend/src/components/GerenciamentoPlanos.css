@@ -1,23 +1,29 @@
 .planos-container {
-  padding: 20px 0;
+  padding: 0;
+  margin: 0;
 }
 
 .planos-list {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
 }
 
 .plano-card {
   background: #fff;
-  border: 2px solid #e9ecef;
-  border-radius: 8px;
-  padding: 20px;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  padding: 4px 8px;
   transition: all 0.2s ease;
   position: relative;
-  display: flex;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 10px;
+  align-items: start;
   cursor: grab;
+  margin: 0;
 }
 
 .plano-card:hover {
@@ -63,9 +69,11 @@
   justify-content: center;
   color: #999;
   cursor: grab;
-  padding: 4px;
+  padding: 2px !important;
   flex-shrink: 0;
   user-select: none;
+  margin: 0 !important;
+  align-self: center;
 }
 
 .plano-drag-handle:active {
@@ -77,74 +85,153 @@
 }
 
 .plano-content {
-  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0 !important;
+  min-height: 0 !important;
+}
+
+/* Garantir que elementos filhos não tenham espaçamento vertical */
+.plano-content > * {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  line-height: 1 !important;
+}
+
+/* Espaçamento entre h3 e detalhes dentro de plano-info */
+.plano-info h3 + .plano-detalhes {
+  margin-top: 15px !important;
+}
+
+/* Espaçamento entre header e switches */
+.plano-header {
+  margin-bottom: 5px !important;
+}
+
+.plano-header + .plano-switches {
+  margin-top: 5px !important;
+}
+
+/* Espaçamento entre switches e actions */
+.plano-switches + .plano-actions {
+  margin-top: 5px !important;
 }
 
 .plano-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 15px;
+  margin: 0;
+  padding: 0;
+}
+
+.plano-info {
+  margin: 0 !important;
+  padding: 0 !important;
+  display: flex;
+  flex-direction: column;
+  gap: 0 !important;
+}
+
+.plano-info > * {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.plano-info > .plano-detalhes {
+  margin-bottom: 15px !important;
 }
 
 .plano-info h3 {
-  margin: 0 0 10px 0;
+  margin: 0 !important;
+  padding: 0 !important;
+  font-size: 15px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   flex-wrap: wrap;
+  line-height: 1 !important;
+  min-height: 0 !important;
+  height: auto !important;
 }
 
 .badge-popular {
   background: #ffd700;
   color: #333;
-  padding: 4px 10px;
+  padding: 4px 10px !important;
   border-radius: 12px;
-  font-size: 12px;
+  font-size: 12px !important;
   font-weight: 600;
   display: flex;
   align-items: center;
   gap: 4px;
+  line-height: 1 !important;
+  margin: 0 !important;
 }
 
 .badge-inativo {
   background: #ccc;
   color: #666;
-  padding: 4px 10px;
+  padding: 4px 10px !important;
   border-radius: 12px;
-  font-size: 12px;
+  font-size: 12px !important;
   font-weight: 600;
+  line-height: 1 !important;
+  margin: 0 !important;
 }
 
 .plano-detalhes {
   display: flex;
-  gap: 15px;
+  gap: 8px;
   flex-wrap: wrap;
   align-items: center;
+  margin: 0 !important;
+  padding: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 15px !important;
+  line-height: 1 !important;
+  min-height: 0 !important;
+  height: auto !important;
 }
 
 .plano-tipo {
   background: #f0f0f0;
-  padding: 4px 10px;
+  padding: 4px 10px !important;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 12px !important;
   text-transform: capitalize;
+  line-height: 1 !important;
+  margin: 0 !important;
 }
 
 .plano-valor {
-  font-size: 18px;
+  font-size: 18px !important;
   font-weight: 600;
   color: var(--cor-primaria, #FF6B35);
+  line-height: 1 !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 .plano-total {
-  font-size: 14px;
+  font-size: 14px !important;
   color: #666;
+  line-height: 1 !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 .plano-switches {
   display: flex;
-  gap: 15px;
+  gap: 12px;
+  margin: 0 !important;
+  padding: 0 !important;
+  margin-top: 5px !important;
+  margin-bottom: 5px !important;
+  height: auto !important;
+  min-height: 0 !important;
 }
 
 .switch-group {
@@ -156,21 +243,32 @@
 .switch-group label {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
+  gap: 6px;
+  font-size: 14px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+}
+
+.switch-group label span {
+  line-height: 1 !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 .switch-btn {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 24px;
+  font-size: 20px;
   color: #ccc;
   transition: color 0.2s ease;
-  padding: 5px;
+  padding: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
+  margin: 0;
+  line-height: 1;
 }
 
 .switch-btn:hover:not(:disabled) {
@@ -188,22 +286,30 @@
 
 .plano-actions {
   display: flex;
-  gap: 10px;
-  padding-top: 15px;
+  gap: 6px;
+  padding-top: 8px !important;
+  padding-bottom: 4px !important;
+  margin: 0 !important;
+  margin-top: 6px !important;
   border-top: 1px solid #e9ecef;
+  height: auto !important;
+  min-height: 0 !important;
 }
 
 .btn-edit,
 .btn-delete {
-  padding: 8px 16px;
+  padding: 6px 12px !important;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px !important;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   transition: all 0.2s ease;
+  line-height: 1 !important;
+  margin: 0 !important;
+  height: auto !important;
 }
 
 .btn-edit {
@@ -228,9 +334,79 @@
   padding: 20px 0 0 0;
 }
 
-/* Remover padding inferior do modal-body quando há footer */
-.modal-nested .modal-body {
-  padding-bottom: 0;
+/* Reduzir padding do modal-body para lista mais compacta */
+.modal-nested .modal-body,
+.modal.show .modal-body:has(.planos-container) {
+  padding: 6px 10px !important;
+}
+
+/* Garantir que não há espaços extras */
+.planos-container {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.planos-container > .planos-list {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Reduzir espaçamento interno dos cards - REGRAS FINAIS */
+.plano-card {
+  padding: 2px 4px !important;
+  margin: 0 !important;
+  gap: 2px !important;
+}
+
+.plano-content {
+  gap: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.plano-content * {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.plano-header {
+  margin: 0 !important;
+  padding: 0 !important;
+  margin-bottom: 0 !important;
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+.plano-info {
+  margin: 0 !important;
+  padding: 0 !important;
+  gap: 0 !important;
+}
+
+.plano-info h3 {
+  margin: 0 !important;
+  padding: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.plano-detalhes {
+  margin: 0 !important;
+  padding: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 15px !important;
+}
+
+.plano-switches {
+  margin: 0 !important;
+  padding: 0 !important;
+  margin-top: 0 !important;
+}
+
+.plano-actions {
+  margin: 0 !important;
+  padding-top: 8px !important;
+  padding-bottom: 4px !important;
+  margin-top: 6px !important;
 }
 
 .form-row {
