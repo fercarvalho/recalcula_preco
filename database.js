@@ -3539,6 +3539,42 @@ async function atualizarPagamentoUnico(stripe_payment_intent_id, status) {
     }
 }
 
+// Atualizar data de criação do pagamento único (para manter validade original em upgrades)
+async function atualizarDataCriacaoPagamentoUnico(pagamentoId, novaDataCriacao) {
+    try {
+        const result = await pool.query(`
+            UPDATE pagamentos_unicos 
+            SET created_at = $1
+            WHERE id = $2
+            RETURNING *
+        `, [novaDataCriacao, pagamentoId]);
+
+        return result.rows.length > 0 ? result.rows[0] : null;
+    } catch (error) {
+        console.error('Erro ao atualizar data de criação do pagamento único:', error);
+        throw error;
+    }
+}
+
+// Cancelar assinatura no banco de dados
+async function cancelarAssinaturaNoBanco(assinaturaId) {
+    try {
+        const result = await pool.query(`
+            UPDATE assinaturas
+            SET status = 'canceled',
+                cancel_at_period_end = false,
+                canceled_at = NOW()
+            WHERE id = $1
+            RETURNING *
+        `, [assinaturaId]);
+
+        return result.rows.length > 0 ? result.rows[0] : null;
+    } catch (error) {
+        console.error('Erro ao cancelar assinatura no banco:', error);
+        throw error;
+    }
+}
+
 // Marcar pagamento único como usado
 async function marcarPagamentoUnicoComoUsado(usuarioId) {
     try {
@@ -7233,6 +7269,8 @@ module.exports = {
     criarPagamentoUnico,
     obterPagamentoUnicoPorStripeId,
     atualizarPagamentoUnico,
+    atualizarDataCriacaoPagamentoUnico,
+    cancelarAssinaturaNoBanco,
     marcarPagamentoUnicoComoUsado,
     obterAssinaturaPorStripeId,
     // Funções de plataformas

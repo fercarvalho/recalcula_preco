@@ -28,12 +28,14 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
 
   useEffect(() => {
     if (isOpen) {
-      verificarAcessoUnico();
-      carregarPlanos();
       const user = getUser();
       if (user?.id) {
         setUserId(user.id);
       }
+      verificarAcessoUnico().then(() => {
+        // Carregar planos depois de verificar o tipo de acesso
+        carregarPlanos();
+      });
     } else {
       // Resetar estado ao fechar
       setPlanoSelecionado(null);
@@ -92,6 +94,47 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
   const carregarPlanos = async () => {
     try {
       setCarregando('carregando');
+      
+      // Verificar status para determinar qual tipo de upgrade mostrar
+      const status = await apiService.verificarStatusPagamento();
+      
+      // Se o usuário tem assinatura ativa (plano recorrente), mostrar upgrade com preço dinâmico
+      if (status.tipo === 'anual' && status.assinatura) {
+        // Calcular valor dinâmico antecipadamente para mostrar no card
+        let valorDinamicoCalculado = 29.00; // Valor padrão mínimo
+        try {
+          const resultado = await apiService.calcularValorUpgrade();
+          valorDinamicoCalculado = resultado.valor;
+        } catch (error) {
+          console.error('Erro ao calcular valor dinâmico antecipadamente:', error);
+        }
+        
+        // Criar um plano "virtual" para upgrade de recorrente para anual
+        const planoUpgradeRecorrente: Plano = {
+          id: status.assinatura.plano_id || 999, // Usar plano_id da assinatura se disponível
+          nome: 'Upgrade para Plano Anual Completo',
+          tipo: 'unico',
+          valor: valorDinamicoCalculado, // Valor dinâmico calculado
+          valor_parcelado: null,
+          valor_total: null,
+          periodo: 'anual',
+          desconto_percentual: null,
+          desconto_valor: null,
+          mais_popular: false,
+          mostrar_valor_total: false,
+          mostrar_valor_parcelado: false,
+          ativo: true,
+          ordem: 1,
+          beneficios: [],
+          stripe_price_id: null,
+          frase_reforco: 'Valor calculado dinamicamente baseado nos seus pagamentos realizados'
+        };
+        setPlanos([planoUpgradeRecorrente]);
+        setCarregando(null);
+        return;
+      }
+      
+      // Para usuários com plano único, carregar planos de upgrade normais
       // Buscar todos os planos sem filtros para ter acesso aos campos de visibilidade
       const planosCarregados = await apiService.obterPlanos();
       
@@ -170,6 +213,19 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
         const resultado = await apiService.calcularValorUpgrade();
         setValorDinamico(resultado.valor);
         console.log(`Valor dinâmico calculado: R$ ${resultado.valor} (${resultado.numeroPagamentos} pagamentos realizados)`);
+        
+        // Garantir que o plano_id seja válido (usar o da assinatura se disponível)
+        const status = await apiService.verificarStatusPagamento();
+        if (status.assinatura?.plano_id) {
+          const planoComId: Plano = {
+            ...plano,
+            id: status.assinatura.plano_id,
+            valor: resultado.valor // Atualizar valor com o calculado
+          };
+          setPlanoSelecionado(planoComId);
+        } else {
+          setPlanoSelecionado(plano);
+        }
       } catch (error) {
         console.error('Erro ao calcular valor dinâmico:', error);
         await mostrarAlert('Erro', 'Erro ao calcular valor de upgrade. Tente novamente.');
@@ -181,9 +237,8 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
     } else {
       // Para acesso único, usar valor do plano
       setValorDinamico(null);
+      setPlanoSelecionado(plano);
     }
-    
-    setPlanoSelecionado(plano);
   };
 
   const handleCheckoutSuccess = async () => {
@@ -306,14 +361,27 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
               color: '#856404'
             }}>
               <strong style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center', marginBottom: '0.5rem' }}>
-                <FaExclamationTriangle /> Upgrade Necessário
+                <FaExclamationTriangle /> {temAssinaturaAtiva ? 'Upgrade Disponível' : 'Upgrade Necessário'}
               </strong>
-              <p style={{ margin: 0, fontSize: '0.95rem' }}>
-                O <strong>Modo Cardápio</strong> e outras funcionalidades Beta estão disponíveis apenas para usuários do <strong>Plano Anual</strong>.
-              </p>
-              <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.9rem' }}>
-                Faça upgrade agora e tenha acesso completo a todas as funcionalidades!
-              </p>
+              {temAssinaturaAtiva ? (
+                <>
+                  <p style={{ margin: 0, fontSize: '0.95rem' }}>
+                    Faça upgrade do seu <strong>Plano Anual Parcelado</strong> para o <strong>Plano Anual Completo</strong>.
+                  </p>
+                  <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.9rem' }}>
+                    Tenha acesso completo e ilimitado a todas as funcionalidades do sistema com um valor especial feito especialmente para você!
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p style={{ margin: 0, fontSize: '0.95rem' }}>
+                    O <strong>Modo Cardápio</strong> e outras funcionalidades Beta estão disponíveis apenas para usuários do <strong>Plano Anual</strong>.
+                  </p>
+                  <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.9rem' }}>
+                    Faça upgrade agora e tenha acesso completo a todas as funcionalidades!
+                  </p>
+                </>
+              )}
             </div>
           </div>
 

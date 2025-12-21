@@ -2177,25 +2177,100 @@ app.post('/api/stripe/confirmar-pagamento', authenticateToken, async (req, res) 
             customerId = paymentIntent.customer || null;
         }
 
+        // Verificar se o usuário tem assinatura ativa (upgrade de recorrente para anual)
+        const assinaturaAtiva = await db.obterAssinatura(userId);
+        let dataValidadeOriginal = null;
+        let subscriptionIdParaCancelar = null;
+        let planoIdAnualAvista = null;
+        
+        if (assinaturaAtiva && assinaturaAtiva.status === 'active' && assinaturaAtiva.stripe_subscription_id) {
+            console.log('🔄 Detectado upgrade de plano recorrente para anual');
+            console.log('   Assinatura ID:', assinaturaAtiva.id);
+            console.log('   Stripe Subscription ID:', assinaturaAtiva.stripe_subscription_id);
+            console.log('   Data de validade original:', assinaturaAtiva.current_period_end);
+            
+            // Guardar a data de validade original da assinatura
+            dataValidadeOriginal = assinaturaAtiva.current_period_end;
+            subscriptionIdParaCancelar = assinaturaAtiva.stripe_subscription_id;
+            
+            // Buscar um plano anual à vista para usar no pagamento único
+            // Se não foi fornecido planoId no metadata, buscar um plano anual à vista
+            if (!planoId) {
+                try {
+                    const todosPlanos = await db.obterPlanos();
+                    const planoAnualAvista = todosPlanos.find(p => 
+                        p.ativo && 
+                        p.tipo === 'unico' && 
+                        p.periodo === 'anual' &&
+                        (p.nome?.toLowerCase().includes('anual') || p.nome?.toLowerCase().includes('a vista'))
+                    );
+                    if (planoAnualAvista) {
+                        planoIdAnualAvista = planoAnualAvista.id;
+                        console.log('✅ Plano anual à vista encontrado para upgrade:', planoAnualAvista.id, planoAnualAvista.nome);
+                    }
+                } catch (error) {
+                    console.error('⚠️  Erro ao buscar plano anual à vista:', error);
+                }
+            }
+        }
+        
         // Verificar se o pagamento já foi salvo
         let pagamento = await db.obterPagamentoUnicoPorStripeId(paymentIntentId);
         if (pagamento) {
             console.log('ℹ️  Pagamento já existe no banco de dados:', pagamento.id);
         } else {
             // Salvar pagamento no banco de dados
+            // Se é upgrade de recorrente, usar plano anual à vista se encontrado
+            const planoIdFinal = planoIdAnualAvista || planoId;
             pagamento = await db.criarPagamentoUnico(userId, {
                 stripe_payment_intent_id: paymentIntentId,
                 stripe_customer_id: customerId,
                 valor: valor,
                 status: 'succeeded',
-                plano_id: planoId,
+                plano_id: planoIdFinal,
             });
+            
+            // Se é upgrade de recorrente para anual, ajustar a data de criação do pagamento
+            // para que a validade seja baseada na data original da assinatura
+            if (dataValidadeOriginal && subscriptionIdParaCancelar) {
+                try {
+                    // Calcular a data de criação que resulta na validade original
+                    // Se a validade é 1 ano após a criação, precisamos ajustar a created_at
+                    const dataValidade = new Date(dataValidadeOriginal);
+                    const dataCriacaoAjustada = new Date(dataValidade);
+                    dataCriacaoAjustada.setFullYear(dataCriacaoAjustada.getFullYear() - 1);
+                    
+                    // Atualizar a data de criação do pagamento para manter a validade original
+                    await db.atualizarDataCriacaoPagamentoUnico(pagamento.id, dataCriacaoAjustada);
+                    
+                    console.log('✅ Data de criação do pagamento ajustada para manter validade original:', dataCriacaoAjustada);
+                    console.log('   Validade mantida:', dataValidade);
+                } catch (error) {
+                    console.error('⚠️  Erro ao ajustar data de criação do pagamento:', error);
+                }
+            }
             
             if (isFreeAccess) {
                 console.log('✅ Acesso gratuito concedido. Pagamento salvo:', pagamento.id);
             }
 
             console.log('✅ Pagamento único salvo diretamente no banco de dados para usuário:', userId, 'PlanoId:', planoId);
+            
+            // Se é upgrade de recorrente para anual, cancelar a assinatura na Stripe
+            if (subscriptionIdParaCancelar) {
+                try {
+                    console.log('🔄 Cancelando assinatura na Stripe:', subscriptionIdParaCancelar);
+                    await stripeService.cancelarAssinatura(subscriptionIdParaCancelar, true); // Cancelar imediatamente
+                    console.log('✅ Assinatura cancelada na Stripe com sucesso');
+                    
+                    // Atualizar status da assinatura no banco de dados para 'canceled'
+                    await db.cancelarAssinaturaNoBanco(assinaturaAtiva.id);
+                    console.log('✅ Status da assinatura atualizado para "canceled" no banco de dados');
+                } catch (error) {
+                    console.error('⚠️  Erro ao cancelar assinatura na Stripe:', error);
+                    // Não falhar o pagamento se houver erro ao cancelar assinatura
+                }
+            }
             
             // Registrar uso do cupom na Stripe se houver
             if (!isFreeAccess && paymentIntent) {
