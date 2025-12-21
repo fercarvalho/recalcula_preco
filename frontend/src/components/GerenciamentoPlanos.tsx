@@ -12,6 +12,7 @@ export interface Beneficio {
   ordem?: number;
   eh_aviso?: boolean;
   em_beta?: boolean;
+  importado?: boolean; // Flag para identificar benefícios importados de outros planos
 }
 
 export interface Plano {
@@ -390,6 +391,7 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
   const [mostrarResultadosBusca, setMostrarResultadosBusca] = useState(false);
   const [stripePriceId, setStripePriceId] = useState(plano?.stripe_price_id || '');
   const [fraseReforco, setFraseReforco] = useState(plano?.frase_reforco || '');
+  const [mostrarModalSelecionarPlano, setMostrarModalSelecionarPlano] = useState(false);
 
   useEffect(() => {
     if (plano) {
@@ -486,6 +488,88 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
       setBuscaBeneficio('');
       setMostrarResultadosBusca(false);
     }
+  };
+
+  // Função para abrir modal de seleção de plano
+  const handlePreencherBeneficiosOutrosPlanos = () => {
+    // Filtrar planos disponíveis (exceto o plano atual)
+    const planosDisponiveis = planos.filter(p => {
+      if (plano && p.id === plano.id) return false;
+      return p.beneficios && Array.isArray(p.beneficios) && p.beneficios.length > 0;
+    });
+
+    if (planosDisponiveis.length === 0) {
+      mostrarAlert('Info', 'Não há planos com benefícios disponíveis para copiar.');
+      return;
+    }
+
+    setMostrarModalSelecionarPlano(true);
+  };
+
+  // Função para copiar benefícios de um plano específico
+  const handleCopiarBeneficiosDoPlano = (planoOrigem: Plano) => {
+    if (!planoOrigem.beneficios || !Array.isArray(planoOrigem.beneficios)) {
+      mostrarAlert('Erro', 'O plano selecionado não possui benefícios.');
+      setMostrarModalSelecionarPlano(false);
+      return;
+    }
+
+    // Separar benefícios importados dos adicionados manualmente
+    const beneficiosManuais = beneficios.filter(b => !b.importado);
+    const textosJaAdicionados = new Set<string>();
+    
+    // Adicionar benefícios manuais à lista de textos já adicionados para evitar duplicatas
+    beneficiosManuais.forEach(b => {
+      const textoNormalizado = b.texto.toLowerCase().trim();
+      textosJaAdicionados.add(textoNormalizado);
+    });
+
+    const beneficiosNovos: Beneficio[] = [];
+    
+    planoOrigem.beneficios.forEach(b => {
+      let texto: string;
+      let ehAviso = false;
+      let emBeta = false;
+      
+      if (typeof b === 'string') {
+        texto = b;
+        ehAviso = texto.startsWith('⚠️');
+        emBeta = texto.startsWith('🚀');
+        if (ehAviso) texto = texto.substring(2).trim();
+        if (emBeta) texto = texto.substring(2).trim();
+      } else {
+        texto = b.texto || '';
+        ehAviso = b.eh_aviso || false;
+        emBeta = b.em_beta || false;
+      }
+      
+      const textoNormalizado = texto.toLowerCase().trim();
+      
+      // Adicionar apenas se não estiver duplicado com benefícios manuais
+      if (texto && !textosJaAdicionados.has(textoNormalizado)) {
+        textosJaAdicionados.add(textoNormalizado);
+        beneficiosNovos.push({
+          id: typeof b === 'object' && b.id ? b.id : undefined,
+          texto: texto,
+          ordem: beneficiosManuais.length + beneficiosNovos.length + 1,
+          eh_aviso: ehAviso,
+          em_beta: emBeta,
+          importado: true // Marcar como importado
+        });
+      }
+    });
+
+    if (beneficiosNovos.length === 0) {
+      mostrarAlert('Info', 'Todos os benefícios deste plano já estão adicionados ou o plano não possui benefícios únicos.');
+      setMostrarModalSelecionarPlano(false);
+      return;
+    }
+
+    // Remover todos os benefícios importados anteriores e adicionar os novos
+    // Mantendo apenas os benefícios manuais + os novos importados
+    setBeneficios([...beneficiosManuais, ...beneficiosNovos]);
+    setMostrarModalSelecionarPlano(false);
+    mostrarAlert('Sucesso', `${beneficiosNovos.length} benefício(s) copiado(s) do plano "${planoOrigem.nome}". Benefícios importados anteriormente foram substituídos.`);
   };
 
   // Filtrar benefícios disponíveis baseado na busca
@@ -1279,27 +1363,39 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
           
           {/* Campo de busca de benefícios existentes */}
           <div style={{ marginTop: '12px', marginBottom: '0', position: 'relative' }}>
-            <input
-              type="text"
-              value={buscaBeneficio}
-              onChange={(e) => {
-                setBuscaBeneficio(e.target.value);
-                setMostrarResultadosBusca(e.target.value.trim().length > 0);
-              }}
-              onFocus={() => {
-                if (buscaBeneficio.trim().length > 0) {
-                  setMostrarResultadosBusca(true);
-                }
-              }}
-              onBlur={() => {
-                // Delay para permitir clique nos resultados
-                setTimeout(() => setMostrarResultadosBusca(false), 200);
-              }}
-              placeholder="Buscar benefícios existentes..."
-              className="form-input"
-              style={{ width: '100%' }}
-              disabled={loading}
-            />
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+              <input
+                type="text"
+                value={buscaBeneficio}
+                onChange={(e) => {
+                  setBuscaBeneficio(e.target.value);
+                  setMostrarResultadosBusca(e.target.value.trim().length > 0);
+                }}
+                onFocus={() => {
+                  if (buscaBeneficio.trim().length > 0) {
+                    setMostrarResultadosBusca(true);
+                  }
+                }}
+                onBlur={() => {
+                  // Delay para permitir clique nos resultados
+                  setTimeout(() => setMostrarResultadosBusca(false), 200);
+                }}
+                placeholder="Buscar benefícios existentes..."
+                className="form-input"
+                style={{ flex: 1 }}
+                disabled={loading}
+              />
+              <button
+                type="button"
+                onClick={handlePreencherBeneficiosOutrosPlanos}
+                className="btn-secondary"
+                disabled={loading}
+                title="Puxar benefícios de outro plano"
+                style={{ whiteSpace: 'nowrap' }}
+              >
+                <FaRocket /> Puxar benefícios de outro plano
+              </button>
+            </div>
             
             {/* Lista de resultados da busca */}
             {mostrarResultadosBusca && beneficiosFiltrados.length > 0 && (
@@ -1315,7 +1411,8 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
                 overflowY: 'auto',
                 zIndex: 1000,
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                marginTop: '4px'
+                marginTop: '4px',
+                width: 'calc(100% - 140px)' // Ajustar largura para não sobrepor o botão
               }}>
                 {beneficiosFiltrados.map((beneficio) => (
                   <div
@@ -1362,6 +1459,64 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
           </div>
         </div>
       </div>
+
+      {/* Modal de seleção de plano para copiar benefícios */}
+      {mostrarModalSelecionarPlano && (
+        <Modal
+          isOpen={mostrarModalSelecionarPlano}
+          onClose={() => setMostrarModalSelecionarPlano(false)}
+          title="Selecionar Plano"
+        >
+          <div style={{ padding: '20px' }}>
+            <p style={{ marginBottom: '20px', color: '#666' }}>
+              Selecione o plano do qual deseja copiar os benefícios:
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '400px', overflowY: 'auto' }}>
+              {planos
+                .filter(p => {
+                  if (plano && p.id === plano.id) return false;
+                  return p.beneficios && Array.isArray(p.beneficios) && p.beneficios.length > 0;
+                })
+                .map(p => {
+                  const quantidadeBeneficios = Array.isArray(p.beneficios) ? p.beneficios.length : 0;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => handleCopiarBeneficiosDoPlano(p)}
+                      className="btn-secondary"
+                      style={{
+                        textAlign: 'left',
+                        padding: '12px 16px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        width: '100%'
+                      }}
+                    >
+                      <span>
+                        <strong>{p.nome}</strong>
+                        <span style={{ marginLeft: '8px', color: '#666', fontSize: '0.9em' }}>
+                          ({quantidadeBeneficios} benefício{quantidadeBeneficios !== 1 ? 's' : ''})
+                        </span>
+                      </span>
+                      <FaRocket style={{ marginLeft: '8px' }} />
+                    </button>
+                  );
+                })}
+            </div>
+            <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setMostrarModalSelecionarPlano(false)}
+                className="btn-secondary"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </Modal>
   );
 };
