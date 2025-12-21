@@ -722,5 +722,14 @@ export const apiService = {
     const response = await api.post(`/api/admin/roadmap/${id}/parar-tempo`, { tempoDecorrido });
     return response.data;
   },
+
+  async calcularValorUpgrade(): Promise<{
+    valor: number;
+    numeroPagamentos: number;
+    valorCalculado: number;
+  }> {
+    const response = await api.get('/api/stripe/calcular-valor-upgrade');
+    return response.data;
+  },
 };
 

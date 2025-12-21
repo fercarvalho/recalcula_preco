@@ -1347,6 +1347,69 @@ app.post('/api/stripe/checkout/unico', authenticateToken, async (req, res) => {
     }
 });
 
+// Calcular valor dinâmico para upgrade de plano parcelado para anual
+app.get('/api/stripe/calcular-valor-upgrade', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        
+        // Verificar se o usuário tem assinatura ativa
+        const assinatura = await db.obterAssinatura(userId);
+        if (!assinatura || assinatura.status !== 'active') {
+            return res.status(400).json({ error: 'Usuário não possui assinatura ativa' });
+        }
+        
+        // Verificar se o Stripe está configurado
+        if (!stripeService.stripe) {
+            return res.status(500).json({ error: 'Stripe não está configurado' });
+        }
+        
+        const subscriptionId = assinatura.stripe_subscription_id;
+        if (!subscriptionId) {
+            return res.status(400).json({ error: 'Assinatura não possui subscription_id do Stripe' });
+        }
+        
+        // Buscar invoices pagos da assinatura no Stripe
+        let numeroPagamentos = 0;
+        try {
+            const invoices = await stripeService.stripe.invoices.list({
+                subscription: subscriptionId,
+                status: 'paid',
+                limit: 100
+            });
+            
+            numeroPagamentos = invoices.data.length;
+            console.log(`[calcular-valor-upgrade] Usuário ${userId} - ${numeroPagamentos} pagamentos realizados`);
+        } catch (stripeError) {
+            console.error('Erro ao buscar invoices do Stripe:', stripeError);
+            // Se não conseguir buscar, retornar erro ou valor padrão
+            return res.status(500).json({ error: 'Erro ao buscar pagamentos da assinatura' });
+        }
+        
+        // Calcular valor: (11 - numeroPagamentos) * 29,00
+        // Se numeroPagamentos >= 11, valor mínimo é R$ 29,00
+        let valorFinal;
+        if (numeroPagamentos >= 11) {
+            valorFinal = 29.00;
+        } else {
+            const multiplicador = 11 - numeroPagamentos;
+            valorFinal = multiplicador * 29.00;
+        }
+        
+        console.log(`[calcular-valor-upgrade] Número de pagamentos: ${numeroPagamentos}`);
+        console.log(`[calcular-valor-upgrade] Cálculo: (11 - ${numeroPagamentos}) * 29,00 = ${11 - numeroPagamentos} * 29,00`);
+        console.log(`[calcular-valor-upgrade] Valor final: R$ ${valorFinal.toFixed(2)}`);
+        
+        res.json({
+            valor: valorFinal,
+            numeroPagamentos: numeroPagamentos,
+            multiplicador: numeroPagamentos >= 11 ? 1 : (11 - numeroPagamentos)
+        });
+    } catch (error) {
+        console.error('Erro ao calcular valor de upgrade:', error);
+        res.status(500).json({ error: 'Erro ao calcular valor de upgrade' });
+    }
+});
+
 // Validar cupom de desconto
 app.post('/api/stripe/validar-cupom', authenticateToken, async (req, res) => {
     try {

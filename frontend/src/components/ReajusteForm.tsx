@@ -14,6 +14,8 @@ interface ReajusteFormProps {
   temAcesso?: boolean;
   onAbrirModalPlanos?: () => void;
   temPlanoMasEmailNaoValidado?: boolean;
+  mostrarAvisoUpgrade?: boolean;
+  onAbrirModalUpgrade?: () => void;
 }
 
 const ReajusteForm = ({
@@ -28,6 +30,8 @@ const ReajusteForm = ({
   temAcesso = true,
   onAbrirModalPlanos,
   temPlanoMasEmailNaoValidado = false,
+  mostrarAvisoUpgrade = false,
+  onAbrirModalUpgrade,
 }: ReajusteFormProps) => {
   const handleAplicarReajuste = () => {
     if (!temAcesso) {
@@ -48,6 +52,50 @@ const ReajusteForm = ({
   return (
     <section className="reajuste-form">
       <h2>Configuração do Reajuste</h2>
+      {mostrarAvisoUpgrade && (
+        <div style={{
+          padding: '15px',
+          background: 'linear-gradient(135deg, #FF6B35 0%, #e55a2b 100%)',
+          border: '2px solid #FF6B35',
+          borderRadius: '8px',
+          marginBottom: '20px',
+          textAlign: 'center',
+          color: 'white',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+        }}>
+          <p style={{ margin: '0 0 10px 0', fontWeight: '600', fontSize: '1.05em', display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
+            ⭐ Faça Upgrade para Plano Anual Completo
+          </p>
+          <p style={{ margin: '0 0 15px 0', fontSize: '0.9em', opacity: 0.95 }}>
+            Tenha acesso completo e ilimitado a todas as funcionalidades do sistema!
+          </p>
+          <button
+            onClick={() => onAbrirModalUpgrade?.()}
+            style={{
+              background: '#000000',
+              color: 'white',
+              border: 'none',
+              padding: '12px 24px',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '1em',
+              fontWeight: 'bold',
+              transition: 'all 0.3s',
+              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = '#333333';
+              e.currentTarget.style.transform = 'scale(1.05)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = '#000000';
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+          >
+            Ver Planos de Upgrade
+          </button>
+        </div>
+      )}
       {!temAcesso && !temPlanoMasEmailNaoValidado && (
         <div style={{
           padding: '15px',

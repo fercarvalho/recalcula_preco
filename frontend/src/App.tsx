@@ -106,6 +106,7 @@ function App() {
   const [showLogin, setShowLogin] = useState(false);
   const [showValidarEmail, setShowValidarEmail] = useState(false);
   const [showAlterarDados, setShowAlterarDados] = useState(false);
+  const [mostrarAvisoUpgrade, setMostrarAvisoUpgrade] = useState(false);
 
   useEffect(() => {
     // Verificar autenticação
@@ -460,6 +461,35 @@ function App() {
       // Verificar se deve mostrar modal de feedback beta (anual ou vitalício)
       if (status.temAcesso && (status.tipo === 'anual' || status.tipo === 'vitalicio')) {
         await verificarFeedbackBeta();
+      }
+      
+      // Verificar se deve mostrar modal de upgrade no login
+      // Mostrar para TODOS os usuários com assinatura ativa (plano recorrente/parcelado)
+      // Usar localStorage para não mostrar toda vez que a página recarregar na mesma sessão
+      const upgradeModalKey = `upgrade_modal_${user?.id}_${new Date().toDateString()}`;
+      const upgradeModalJaMostrado = localStorage.getItem(upgradeModalKey) === 'true';
+      
+      console.log('[App] Verificando se deve mostrar modal de upgrade:', {
+        tipo: status.tipo,
+        temAssinatura: !!status.assinatura,
+        upgradeModalJaMostrado,
+        userId: user?.id
+      });
+      
+      // Mostrar modal para usuários com assinatura ativa (plano recorrente/parcelado)
+      if (status.tipo === 'anual' && status.assinatura && !upgradeModalJaMostrado) {
+        console.log('[App] Mostrando modal de upgrade no login (usuário com assinatura ativa)');
+        setTimeout(() => {
+          setShowModalUpgrade(true);
+          localStorage.setItem(upgradeModalKey, 'true');
+        }, 2000); // Aguardar 2 segundos após login para não sobrecarregar
+      }
+      
+      // Verificar se deve mostrar aviso de upgrade no início do sistema
+      // Mostrar para TODOS os usuários com assinatura ativa (plano recorrente/parcelado)
+      if (status.tipo === 'anual' && status.assinatura) {
+        console.log('[App] Mostrando aviso de upgrade no início do sistema (usuário com assinatura ativa)');
+        setMostrarAvisoUpgrade(true);
       }
       // Carregar plataformas após autenticação
       if (user?.id) {
@@ -843,6 +873,8 @@ function App() {
               }
             }}
             temPlanoMasEmailNaoValidado={temPlanoMasEmailNaoValidado}
+            mostrarAvisoUpgrade={mostrarAvisoUpgrade}
+            onAbrirModalUpgrade={() => setShowModalUpgrade(true)}
           />
 
           <AdicionarProdutoSection

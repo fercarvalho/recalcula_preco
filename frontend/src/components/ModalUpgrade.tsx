@@ -23,6 +23,8 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
   const [planoSelecionado, setPlanoSelecionado] = useState<Plano | null>(null);
   const [userId, setUserId] = useState<number | null>(null);
   const [temAcessoUnico, setTemAcessoUnico] = useState<boolean>(false);
+  const [valorDinamico, setValorDinamico] = useState<number | null>(null);
+  const [temAssinaturaAtiva, setTemAssinaturaAtiva] = useState<boolean>(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -36,6 +38,8 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
       // Resetar estado ao fechar
       setPlanoSelecionado(null);
       setTemAcessoUnico(false);
+      setTemAssinaturaAtiva(false);
+      setValorDinamico(null);
     }
   }, [isOpen]);
 
@@ -44,15 +48,22 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
       const status = await apiService.verificarStatusPagamento();
       if (status.tipo === 'unico') {
         setTemAcessoUnico(true);
-      } else {
-        // Se não tem mais acesso único, fechar o modal
+        setTemAssinaturaAtiva(false);
+      } else if (status.tipo === 'anual' && status.assinatura) {
+        // Usuário tem assinatura ativa (plano parcelado/recorrente)
         setTemAcessoUnico(false);
-        await mostrarAlert('Atenção', 'Você não possui mais acesso único. Este modal é apenas para usuários com plano de acesso único.');
+        setTemAssinaturaAtiva(true);
+      } else {
+        // Se não tem mais acesso único nem assinatura, fechar o modal
+        setTemAcessoUnico(false);
+        setTemAssinaturaAtiva(false);
+        await mostrarAlert('Atenção', 'Este modal é apenas para usuários com plano de acesso único ou assinatura ativa.');
         onClose();
       }
     } catch (error) {
       console.error('Erro ao verificar acesso:', error);
       setTemAcessoUnico(false);
+      setTemAssinaturaAtiva(false);
       onClose();
     }
   };
@@ -152,14 +163,25 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
       return;
     }
     
-    // Calcular valor com desconto
-    const temDescontoPercentual = !!(plano.desconto_percentual && plano.desconto_percentual > 0);
-    const temDescontoValor = !!(plano.desconto_valor && plano.desconto_valor > 0);
-    const valorComDesconto = temDescontoPercentual
-      ? plano.valor * (1 - (plano.desconto_percentual || 0) / 100)
-      : temDescontoValor
-      ? plano.valor - (plano.desconto_valor || 0)
-      : plano.valor;
+    // Se o usuário tem assinatura ativa, calcular valor dinâmico
+    if (temAssinaturaAtiva) {
+      try {
+        setCarregando('calculando');
+        const resultado = await apiService.calcularValorUpgrade();
+        setValorDinamico(resultado.valor);
+        console.log(`Valor dinâmico calculado: R$ ${resultado.valor} (${resultado.numeroPagamentos} pagamentos realizados)`);
+      } catch (error) {
+        console.error('Erro ao calcular valor dinâmico:', error);
+        await mostrarAlert('Erro', 'Erro ao calcular valor de upgrade. Tente novamente.');
+        setCarregando(null);
+        return;
+      } finally {
+        setCarregando(null);
+      }
+    } else {
+      // Para acesso único, usar valor do plano
+      setValorDinamico(null);
+    }
     
     setPlanoSelecionado(plano);
   };
@@ -185,22 +207,28 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
     setPlanoSelecionado(null);
   };
 
-  // Se não tem acesso único, não mostrar o modal
-  if (isOpen && !temAcessoUnico && !carregando) {
+  // Se não tem acesso único nem assinatura ativa, não mostrar o modal
+  if (isOpen && !temAcessoUnico && !temAssinaturaAtiva && !carregando) {
     return null;
   }
 
   // Se um plano foi selecionado, mostrar checkout transparente
   if (planoSelecionado && userId) {
-    const temDescontoPercentual = !!(planoSelecionado.desconto_percentual && planoSelecionado.desconto_percentual > 0);
-    const temDescontoValor = !!(planoSelecionado.desconto_valor && planoSelecionado.desconto_valor > 0);
-    const valorComDesconto = temDescontoPercentual
-      ? planoSelecionado.valor * (1 - (planoSelecionado.desconto_percentual || 0) / 100)
-      : temDescontoValor
-      ? planoSelecionado.valor - (planoSelecionado.desconto_valor || 0)
-      : planoSelecionado.valor;
+    // Se tem valor dinâmico (upgrade de assinatura), usar ele; senão, usar valor do plano
+    let valorFinal: number;
+    if (valorDinamico !== null) {
+      valorFinal = valorDinamico;
+    } else {
+      const temDescontoPercentual = !!(planoSelecionado.desconto_percentual && planoSelecionado.desconto_percentual > 0);
+      const temDescontoValor = !!(planoSelecionado.desconto_valor && planoSelecionado.desconto_valor > 0);
+      valorFinal = temDescontoPercentual
+        ? planoSelecionado.valor * (1 - (planoSelecionado.desconto_percentual || 0) / 100)
+        : temDescontoValor
+        ? planoSelecionado.valor - (planoSelecionado.desconto_valor || 0)
+        : planoSelecionado.valor;
+    }
     
-    const valorEmCentavos = Math.round(valorComDesconto * 100);
+    const valorEmCentavos = Math.round(valorFinal * 100);
 
     return (
       <Modal
@@ -235,8 +263,13 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
               marginBottom: '1rem'
             }}>
               <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem' }}>{planoSelecionado.nome}</h3>
+              {valorDinamico !== null && (
+                <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.85rem', color: '#666' }}>
+                  Valor calculado dinamicamente baseado nos seus pagamentos
+                </p>
+              )}
               <p style={{ margin: 0, fontSize: '1.2rem', fontWeight: 600, color: '#FF6B35' }}>
-                R$ {formatarValor(valorComDesconto)}
+                R$ {formatarValor(valorFinal)}
               </p>
             </div>
           </div>
