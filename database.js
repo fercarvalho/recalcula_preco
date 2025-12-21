@@ -3435,9 +3435,17 @@ async function verificarAcessoAtivo(usuarioId) {
             };
             
             // Se o plano é anual (verificar por período ou nome), retornar tipo como 'anual' para compatibilidade com funções beta
+            // IMPORTANTE: Planos de upgrade (tipo 'unico' que estendem acesso de 24h para 1 ano) 
+            // devem ter "anual" no nome para serem tratados como anuais e terem acesso às funções beta
             if (pagamento.periodo === 'anual' || (pagamento.plano_nome && pagamento.plano_nome.toLowerCase().includes('anual'))) {
                 acessoUnico.tipo = 'anual';
                 console.log(`[verificarAcessoAtivo] Plano anual detectado - tipo alterado para 'anual'`);
+                console.log(`[verificarAcessoAtivo] Detalhes do plano:`, {
+                    plano_id: pagamento.plano_id,
+                    plano_nome: pagamento.plano_nome,
+                    periodo: pagamento.periodo,
+                    tipo_acesso: 'anual (1 ano)'
+                });
             }
             
             // Se o usuário tem acesso pago, verificar se email foi validado
@@ -3561,6 +3569,63 @@ async function obterAssinaturaPorStripeId(stripe_subscription_id) {
         return result.rows.length > 0 ? result.rows[0] : null;
     } catch (error) {
         console.error('Erro ao obter assinatura por Stripe ID:', error);
+        throw error;
+    }
+}
+
+// Listar usuários com plano de acesso único ativo
+async function listarUsuariosComAcessoUnicoAtivo() {
+    try {
+        const result = await pool.query(`
+            SELECT DISTINCT
+                u.id,
+                u.username,
+                u.email,
+                u.email_validado,
+                pu.id as pagamento_id,
+                pu.valor,
+                pu.created_at as pagamento_data,
+                pu.usado,
+                p.id as plano_id,
+                p.nome as plano_nome,
+                p.periodo as plano_periodo,
+                CASE 
+                    WHEN (p.periodo = 'anual' OR LOWER(p.nome) LIKE '%anual%') THEN 
+                        pu.created_at + INTERVAL '1 year'
+                    ELSE 
+                        pu.created_at + INTERVAL '24 hours'
+                END as expira_em
+            FROM usuarios u
+            INNER JOIN pagamentos_unicos pu ON u.id = pu.usuario_id
+            LEFT JOIN planos p ON pu.plano_id = p.id
+            WHERE pu.status = 'succeeded'
+            AND pu.usado = FALSE
+            AND (
+                -- Se for plano anual (periodo = 'anual' OU nome contém 'anual'), validade é 1 ano
+                ((p.periodo = 'anual' OR LOWER(p.nome) LIKE '%anual%') AND pu.created_at > NOW() - INTERVAL '1 year')
+                OR
+                -- Caso contrário, validade é 24 horas (plano sem período ou período diferente de 'anual')
+                ((p.periodo IS NULL OR (p.periodo != 'anual' AND LOWER(p.nome) NOT LIKE '%anual%')) AND pu.created_at > NOW() - INTERVAL '24 hours')
+            )
+            ORDER BY pu.created_at DESC
+        `);
+        
+        return result.rows.map(row => ({
+            usuario_id: row.id,
+            username: row.username,
+            email: row.email,
+            email_validado: row.email_validado,
+            pagamento_id: row.pagamento_id,
+            valor: parseFloat(row.valor),
+            pagamento_data: row.pagamento_data,
+            usado: row.usado,
+            plano_id: row.plano_id,
+            plano_nome: row.plano_nome,
+            plano_periodo: row.plano_periodo,
+            expira_em: row.expira_em
+        }));
+    } catch (error) {
+        console.error('Erro ao listar usuários com acesso único ativo:', error);
         throw error;
     }
 }
@@ -7263,6 +7328,7 @@ module.exports = {
     obterPermissoesFuncoesEspeciais,
     atualizarPermissoesFuncoesEspeciais,
     verificarAcessoFuncaoEspecial,
+    listarUsuariosComAcessoUnicoAtivo,
     fechar
 };
 

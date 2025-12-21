@@ -1,11 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { FaCheckCircle, FaExclamationTriangle, FaCheck, FaShieldAlt } from 'react-icons/fa';
 import Modal from './Modal';
 import { apiService } from '../services/api';
 import { mostrarAlert } from '../utils/modals';
 import type { Plano } from './GerenciamentoPlanos';
+import { getUser } from '../services/auth';
 import './ModalUpgrade.css';
 import './SelecaoPlanos.css';
+
+// Lazy load do CheckoutTransparente
+const CheckoutTransparente = lazy(() => import('./CheckoutTransparente'));
 
 interface ModalUpgradeProps {
   isOpen: boolean;
@@ -16,12 +20,42 @@ interface ModalUpgradeProps {
 const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps) => {
   const [planos, setPlanos] = useState<Plano[]>([]);
   const [carregando, setCarregando] = useState<string | null>(null);
+  const [planoSelecionado, setPlanoSelecionado] = useState<Plano | null>(null);
+  const [userId, setUserId] = useState<number | null>(null);
+  const [temAcessoUnico, setTemAcessoUnico] = useState<boolean>(false);
 
   useEffect(() => {
     if (isOpen) {
+      verificarAcessoUnico();
       carregarPlanos();
+      const user = getUser();
+      if (user?.id) {
+        setUserId(user.id);
+      }
+    } else {
+      // Resetar estado ao fechar
+      setPlanoSelecionado(null);
+      setTemAcessoUnico(false);
     }
   }, [isOpen]);
+
+  const verificarAcessoUnico = async () => {
+    try {
+      const status = await apiService.verificarStatusPagamento();
+      if (status.tipo === 'unico') {
+        setTemAcessoUnico(true);
+      } else {
+        // Se não tem mais acesso único, fechar o modal
+        setTemAcessoUnico(false);
+        await mostrarAlert('Atenção', 'Você não possui mais acesso único. Este modal é apenas para usuários com plano de acesso único.');
+        onClose();
+      }
+    } catch (error) {
+      console.error('Erro ao verificar acesso:', error);
+      setTemAcessoUnico(false);
+      onClose();
+    }
+  };
 
   const formatarValor = (valor: number | null | undefined): string => {
     if (!valor) return '0,00';
@@ -47,16 +81,37 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
   const carregarPlanos = async () => {
     try {
       setCarregando('carregando');
+      // Buscar todos os planos sem filtros para ter acesso aos campos de visibilidade
       const planosCarregados = await apiService.obterPlanos();
       
-      // Filtrar apenas planos anuais (recorrentes) ativos
-      const planosAnuais: Plano[] = planosCarregados
-        .filter(p => 
-          p.ativo && 
-          p.tipo === 'recorrente' && 
-          p.periodo === 'anual' &&
-          p.stripe_price_id
-        )
+      // Filtrar planos de upgrade:
+      // - tipo 'unico' com período 'anual' OU
+      // - tipo 'unico' que não aparece na LP nem no modal (planos de upgrade específicos) OU
+      // - tipo 'unico' cujo nome contém "upgrade"
+      const planosUpgrade: Plano[] = planosCarregados
+        .filter(p => {
+          if (!p.ativo || p.tipo !== 'unico' || !p.stripe_price_id) {
+            return false;
+          }
+          
+          const nomeLower = (p.nome || '').toLowerCase();
+          const temUpgradeNoNome = nomeLower.includes('upgrade');
+          const naoApareceEmLugarNenhum = p.mostrar_na_lp === false && p.mostrar_no_modal_assinatura === false;
+          const periodoAnual = p.periodo === 'anual';
+          
+          return periodoAnual || naoApareceEmLugarNenhum || temUpgradeNoNome;
+        });
+      
+      console.log('Planos de upgrade encontrados:', planosUpgrade.map(p => ({
+        id: p.id,
+        nome: p.nome,
+        tipo: p.tipo,
+        periodo: p.periodo,
+        mostrar_na_lp: p.mostrar_na_lp,
+        mostrar_no_modal_assinatura: p.mostrar_no_modal_assinatura
+      })));
+      
+      const planosMapeados = planosUpgrade
         .map(p => ({
           id: p.id,
           nome: p.nome,
@@ -82,7 +137,7 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
           return ordemA - ordemB;
         });
       
-      setPlanos(planosAnuais);
+      setPlanos(planosMapeados);
     } catch (error) {
       console.error('Erro ao carregar planos:', error);
       await mostrarAlert('Erro', 'Erro ao carregar planos disponíveis.');
@@ -92,13 +147,112 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
   };
 
   const handlePlanoClick = async (plano: Plano) => {
-    try {
-      // Para planos anuais (recorrentes), redirecionar para checkout de assinatura
-      window.location.href = `/checkout-assinatura?planoId=${plano.id}`;
-    } catch (error: any) {
-      await mostrarAlert('Erro', 'Erro ao iniciar processo de upgrade. Tente novamente.');
+    if (!userId) {
+      await mostrarAlert('Erro', 'Usuário não identificado. Faça login novamente.');
+      return;
     }
+    
+    // Calcular valor com desconto
+    const temDescontoPercentual = !!(plano.desconto_percentual && plano.desconto_percentual > 0);
+    const temDescontoValor = !!(plano.desconto_valor && plano.desconto_valor > 0);
+    const valorComDesconto = temDescontoPercentual
+      ? plano.valor * (1 - (plano.desconto_percentual || 0) / 100)
+      : temDescontoValor
+      ? plano.valor - (plano.desconto_valor || 0)
+      : plano.valor;
+    
+    setPlanoSelecionado(plano);
   };
+
+  const handleCheckoutSuccess = async () => {
+    await mostrarAlert('Sucesso', 'Upgrade realizado com sucesso! Você agora tem acesso completo ao sistema.');
+    setPlanoSelecionado(null);
+    if (onPagamentoSucesso) {
+      onPagamentoSucesso();
+    }
+    // Recarregar página após um tempo
+    setTimeout(() => {
+      window.location.reload();
+    }, 1500);
+  };
+
+  const handleCheckoutError = async (error: string) => {
+    await mostrarAlert('Erro', error);
+  };
+
+  const handleVoltar = () => {
+    setPlanoSelecionado(null);
+  };
+
+  // Se não tem acesso único, não mostrar o modal
+  if (isOpen && !temAcessoUnico && !carregando) {
+    return null;
+  }
+
+  // Se um plano foi selecionado, mostrar checkout transparente
+  if (planoSelecionado && userId) {
+    const temDescontoPercentual = !!(planoSelecionado.desconto_percentual && planoSelecionado.desconto_percentual > 0);
+    const temDescontoValor = !!(planoSelecionado.desconto_valor && planoSelecionado.desconto_valor > 0);
+    const valorComDesconto = temDescontoPercentual
+      ? planoSelecionado.valor * (1 - (planoSelecionado.desconto_percentual || 0) / 100)
+      : temDescontoValor
+      ? planoSelecionado.valor - (planoSelecionado.desconto_valor || 0)
+      : planoSelecionado.valor;
+    
+    const valorEmCentavos = Math.round(valorComDesconto * 100);
+
+    return (
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title={`Upgrade: ${planoSelecionado.nome}`}
+        size="medium"
+      >
+        <div className="modal-upgrade-content">
+          <div style={{ marginBottom: '1.5rem' }}>
+            <button
+              onClick={handleVoltar}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#666',
+                cursor: 'pointer',
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                marginBottom: '1rem'
+              }}
+            >
+              ← Voltar para planos
+            </button>
+            
+            <div style={{
+              padding: '1rem',
+              backgroundColor: '#f8f9fa',
+              borderRadius: '8px',
+              marginBottom: '1rem'
+            }}>
+              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem' }}>{planoSelecionado.nome}</h3>
+              <p style={{ margin: 0, fontSize: '1.2rem', fontWeight: 600, color: '#FF6B35' }}>
+                R$ {formatarValor(valorComDesconto)}
+              </p>
+            </div>
+          </div>
+
+          <Suspense fallback={<div style={{ textAlign: 'center', padding: '2rem' }}>Carregando formulário de pagamento...</div>}>
+            <CheckoutTransparente
+              amount={valorEmCentavos}
+              userId={userId}
+              planoId={planoSelecionado.id!}
+              onSuccess={handleCheckoutSuccess}
+              onError={handleCheckoutError}
+            />
+          </Suspense>
+        </div>
+      </Modal>
+    );
+  }
 
   return (
     <Modal
@@ -135,7 +289,7 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
             </div>
           ) : planos.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '2rem' }}>
-              <p>Nenhum plano anual disponível no momento.</p>
+              <p>Nenhum plano de upgrade disponível no momento.</p>
             </div>
           ) : (
             <div className="planos-grid">
@@ -245,8 +399,6 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
                       })}
                     </ul>
                     <div className="garantia-aviso-plano" style={{
-                      marginTop: '1rem',
-                      marginBottom: '1rem',
                       padding: '0.75rem',
                       backgroundColor: 'rgba(255, 107, 53, 0.1)',
                       border: '1px solid rgba(255, 107, 53, 0.3)',
@@ -265,9 +417,9 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
                     <button
                       className={`btn-plano ${plano.mais_popular ? 'btn-plano-anual' : 'btn-plano-unico'}`}
                       onClick={() => handlePlanoClick(plano)}
-                      disabled={carregando === 'anual'}
+                      disabled={!!carregando}
                     >
-                      {carregando === 'anual' ? 'Processando...' : 'Fazer Upgrade'}
+                      {carregando ? 'Processando...' : 'Fazer Upgrade'}
                     </button>
                   </div>
                 );

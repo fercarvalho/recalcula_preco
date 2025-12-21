@@ -2656,6 +2656,17 @@ app.get('/api/admin/usuarios', authenticateToken, requireAdmin, async (req, res)
     }
 });
 
+// Listar usuários com plano de acesso único ativo (apenas admin)
+app.get('/api/admin/usuarios/acesso-unico-ativo', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const usuarios = await db.listarUsuariosComAcessoUnicoAtivo();
+        res.json(usuarios);
+    } catch (error) {
+        console.error('Erro ao listar usuários com acesso único ativo:', error);
+        res.status(500).json({ error: error.message || 'Erro ao listar usuários com acesso único ativo' });
+    }
+});
+
 // Obter dados de um usuário específico (apenas admin)
 app.get('/api/admin/usuarios/:id', authenticateToken, requireAdmin, async (req, res) => {
     try {
