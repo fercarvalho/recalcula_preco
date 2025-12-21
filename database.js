@@ -3283,6 +3283,7 @@ async function obterAssinatura(usuarioId) {
 // Verificar se usuário tem acesso ativo
 async function verificarAcessoAtivo(usuarioId) {
     try {
+        console.log(`[verificarAcessoAtivo] Verificando acesso para usuário ${usuarioId}`);
         // Verificar acesso especial primeiro (vitalício ou temporário)
         const usuario = await pool.query(
             'SELECT acesso_especial, acesso_temporario_expira_em, acesso_temporario_nivel FROM usuarios WHERE id = $1',
@@ -3322,6 +3323,7 @@ async function verificarAcessoAtivo(usuarioId) {
         }
         
         // Verificar assinatura anual ativa
+        console.log(`[verificarAcessoAtivo] Verificando assinaturas para usuário ${usuarioId}`);
         const assinatura = await pool.query(`
             SELECT * FROM assinaturas 
             WHERE usuario_id = $1 
@@ -3330,7 +3332,14 @@ async function verificarAcessoAtivo(usuarioId) {
             AND (current_period_end IS NULL OR current_period_end > NOW())
         `, [usuarioId]);
 
+        console.log(`[verificarAcessoAtivo] Assinaturas encontradas: ${assinatura.rows.length}`);
         if (assinatura.rows.length > 0) {
+            console.log(`[verificarAcessoAtivo] Assinatura:`, {
+                id: assinatura.rows[0].id,
+                plano_id: assinatura.rows[0].plano_id,
+                status: assinatura.rows[0].status,
+                current_period_end: assinatura.rows[0].current_period_end
+            });
             const acessoAnual = {
                 temAcesso: true,
                 tipo: 'anual',
@@ -3351,21 +3360,75 @@ async function verificarAcessoAtivo(usuarioId) {
             return acessoAnual;
         }
 
-        // Verificar pagamento único não usado e não expirado (24 horas)
+        // Verificar pagamento único não usado e não expirado
+        // Para planos anuais pagos à vista, validade é de 1 ano; para outros, 24 horas
+        console.log(`[verificarAcessoAtivo] Verificando pagamentos únicos para usuário ${usuarioId}`);
         const pagamentoUnico = await pool.query(`
-            SELECT * FROM pagamentos_unicos 
-            WHERE usuario_id = $1 
-            AND status = 'succeeded'
-            AND usado = FALSE
-            AND created_at > NOW() - INTERVAL '24 hours'
+            SELECT pu.*, p.periodo, p.tipo as plano_tipo, p.nome as plano_nome
+            FROM pagamentos_unicos pu
+            LEFT JOIN planos p ON pu.plano_id = p.id
+            WHERE pu.usuario_id = $1 
+            AND pu.status = 'succeeded'
+            AND pu.usado = FALSE
+            AND (
+                -- Se for plano anual (periodo = 'anual' OU nome contém 'anual'), validade é 1 ano
+                ((p.periodo = 'anual' OR LOWER(p.nome) LIKE '%anual%') AND pu.created_at > NOW() - INTERVAL '1 year')
+                OR
+                -- Caso contrário, validade é 24 horas (plano sem período ou período diferente de 'anual')
+                ((p.periodo IS NULL OR (p.periodo != 'anual' AND LOWER(p.nome) NOT LIKE '%anual%')) AND pu.created_at > NOW() - INTERVAL '24 hours')
+            )
+            ORDER BY pu.created_at DESC
+            LIMIT 1
         `, [usuarioId]);
+        
+        console.log(`[verificarAcessoAtivo] Pagamentos únicos encontrados: ${pagamentoUnico.rows.length}`);
+        if (pagamentoUnico.rows.length > 0) {
+            console.log(`[verificarAcessoAtivo] Pagamento único:`, {
+                id: pagamentoUnico.rows[0].id,
+                plano_id: pagamentoUnico.rows[0].plano_id,
+                periodo: pagamentoUnico.rows[0].periodo,
+                plano_tipo: pagamentoUnico.rows[0].plano_tipo,
+                plano_nome: pagamentoUnico.rows[0].plano_nome,
+                status: pagamentoUnico.rows[0].status,
+                usado: pagamentoUnico.rows[0].usado,
+                created_at: pagamentoUnico.rows[0].created_at,
+                horas_desde_criacao: pagamentoUnico.rows[0].created_at ? 
+                    Math.round((Date.now() - new Date(pagamentoUnico.rows[0].created_at).getTime()) / (1000 * 60 * 60)) : null
+            });
+        } else {
+            // Verificar se há pagamentos únicos sem filtro de data para debug
+            const todosPagamentos = await pool.query(`
+                SELECT pu.*, p.periodo, p.tipo as plano_tipo, p.nome as plano_nome
+                FROM pagamentos_unicos pu
+                LEFT JOIN planos p ON pu.plano_id = p.id
+                WHERE pu.usuario_id = $1 
+                AND pu.status = 'succeeded'
+                ORDER BY pu.created_at DESC
+                LIMIT 5
+            `, [usuarioId]);
+            console.log(`[verificarAcessoAtivo] Todos os pagamentos únicos (últimos 5):`, todosPagamentos.rows.map(p => ({
+                id: p.id,
+                plano_id: p.plano_id,
+                usado: p.usado,
+                created_at: p.created_at,
+                periodo: p.periodo,
+                plano_nome: p.plano_nome
+            })));
+        }
 
         if (pagamentoUnico.rows.length > 0) {
+            const pagamento = pagamentoUnico.rows[0];
             const acessoUnico = {
                 temAcesso: true,
                 tipo: 'unico',
-                pagamento: pagamentoUnico.rows[0]
+                pagamento: pagamento
             };
+            
+            // Se o plano é anual (verificar por período ou nome), retornar tipo como 'anual' para compatibilidade com funções beta
+            if (pagamento.periodo === 'anual' || (pagamento.plano_nome && pagamento.plano_nome.toLowerCase().includes('anual'))) {
+                acessoUnico.tipo = 'anual';
+                console.log(`[verificarAcessoAtivo] Plano anual detectado - tipo alterado para 'anual'`);
+            }
             
             // Se o usuário tem acesso pago, verificar se email foi validado
             const emailValidado = await verificarEmailValidado(usuarioId);
@@ -6929,32 +6992,99 @@ async function verificarAcessoFuncaoEspecial(usuarioId, funcaoEspecial) {
         // Verificar acesso por plano específico
         const acesso = await verificarAcessoAtivo(usuarioId);
         
+        console.log(`[verificarAcessoFuncaoEspecial] UsuarioId: ${usuarioId}, Funcao: ${funcaoEspecial}`);
+        console.log(`[verificarAcessoFuncaoEspecial] Acesso:`, JSON.stringify({
+            temAcesso: acesso.temAcesso,
+            tipo: acesso.tipo,
+            temAssinatura: !!acesso.assinatura,
+            temPagamento: !!acesso.pagamento,
+            planoIdAssinatura: acesso.assinatura?.plano_id,
+            planoIdPagamento: acesso.pagamento?.plano_id,
+            emailNaoValidado: acesso.emailNaoValidado,
+            temAcessoComEmailNaoValidado: !!acesso.acesso
+        }, null, 2));
+        
+        // Se o email não foi validado mas há uma assinatura/pagamento, usar os dados do acesso para verificar permissões
+        if (!acesso.temAcesso && acesso.emailNaoValidado && acesso.acesso) {
+            console.log(`[verificarAcessoFuncaoEspecial] Email não validado, mas verificando permissões com dados do acesso`);
+            const acessoParaVerificacao = acesso.acesso;
+            
+            // Verificar se é assinatura com plano_id
+            if (acessoParaVerificacao.assinatura && acessoParaVerificacao.assinatura.plano_id) {
+                const planoIdStr = acessoParaVerificacao.assinatura.plano_id.toString();
+                console.log(`[verificarAcessoFuncaoEspecial] Verificando permissão para assinatura (email não validado) - plano_id: ${planoIdStr}`);
+                
+                const permissaoPlano = await pool.query(`
+                    SELECT habilitado FROM funcoes_especiais_acesso
+                    WHERE funcao_especial = $1 AND tipo_acesso = $2
+                `, [funcaoEspecial, planoIdStr]);
+                
+                console.log(`[verificarAcessoFuncaoEspecial] Resultado permissão assinatura (email não validado):`, permissaoPlano.rows);
+                
+                if (permissaoPlano.rows.length > 0 && permissaoPlano.rows[0].habilitado) {
+                    console.log(`[verificarAcessoFuncaoEspecial] ✅ Acesso permitido via assinatura (mesmo com email não validado)`);
+                    return true;
+                }
+            }
+            
+            // Verificar se é pagamento único com plano_id
+            if (acessoParaVerificacao.pagamento && acessoParaVerificacao.pagamento.plano_id) {
+                const planoIdStr = acessoParaVerificacao.pagamento.plano_id.toString();
+                console.log(`[verificarAcessoFuncaoEspecial] Verificando permissão para pagamento único (email não validado) - plano_id: ${planoIdStr}`);
+                
+                const permissaoPlano = await pool.query(`
+                    SELECT habilitado FROM funcoes_especiais_acesso
+                    WHERE funcao_especial = $1 AND tipo_acesso = $2
+                `, [funcaoEspecial, planoIdStr]);
+                
+                console.log(`[verificarAcessoFuncaoEspecial] Resultado permissão pagamento único (email não validado):`, permissaoPlano.rows);
+                
+                if (permissaoPlano.rows.length > 0 && permissaoPlano.rows[0].habilitado) {
+                    console.log(`[verificarAcessoFuncaoEspecial] ✅ Acesso permitido via pagamento único (mesmo com email não validado)`);
+                    return true;
+                }
+            }
+        }
+        
         // Verificar se é assinatura com plano_id
         if (acesso.temAcesso && acesso.assinatura && acesso.assinatura.plano_id) {
+            const planoIdStr = acesso.assinatura.plano_id.toString();
+            console.log(`[verificarAcessoFuncaoEspecial] Verificando permissão para assinatura - plano_id: ${planoIdStr}`);
+            
             // Verificar se o plano específico do usuário tem permissão
             const permissaoPlano = await pool.query(`
                 SELECT habilitado FROM funcoes_especiais_acesso
                 WHERE funcao_especial = $1 AND tipo_acesso = $2
-            `, [funcaoEspecial, acesso.assinatura.plano_id.toString()]);
+            `, [funcaoEspecial, planoIdStr]);
+            
+            console.log(`[verificarAcessoFuncaoEspecial] Resultado permissão assinatura:`, permissaoPlano.rows);
             
             if (permissaoPlano.rows.length > 0 && permissaoPlano.rows[0].habilitado) {
+                console.log(`[verificarAcessoFuncaoEspecial] ✅ Acesso permitido via assinatura`);
                 return true;
             }
         }
         
-        // Verificar se é pagamento único com plano_id
-        if (acesso.temAcesso && acesso.tipo === 'unico' && acesso.pagamento && acesso.pagamento.plano_id) {
+        // Verificar se é pagamento único com plano_id (inclui planos anuais pagos à vista)
+        if (acesso.temAcesso && acesso.pagamento && acesso.pagamento.plano_id) {
+            const planoIdStr = acesso.pagamento.plano_id.toString();
+            console.log(`[verificarAcessoFuncaoEspecial] Verificando permissão para pagamento único - plano_id: ${planoIdStr}`);
+            
             // Verificar se o plano específico do usuário tem permissão
             const permissaoPlano = await pool.query(`
                 SELECT habilitado FROM funcoes_especiais_acesso
                 WHERE funcao_especial = $1 AND tipo_acesso = $2
-            `, [funcaoEspecial, acesso.pagamento.plano_id.toString()]);
+            `, [funcaoEspecial, planoIdStr]);
+            
+            console.log(`[verificarAcessoFuncaoEspecial] Resultado permissão pagamento único:`, permissaoPlano.rows);
             
             if (permissaoPlano.rows.length > 0 && permissaoPlano.rows[0].habilitado) {
+                console.log(`[verificarAcessoFuncaoEspecial] ✅ Acesso permitido via pagamento único`);
                 return true;
             }
         }
         
+        console.log(`[verificarAcessoFuncaoEspecial] ❌ Acesso negado`);
         return false;
     } catch (error) {
         console.error('Erro ao verificar acesso a função especial:', error);

@@ -493,29 +493,35 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
                   return;
                 }
 
-                // Se está tentando ativar, verificar se tem plano anual (fallback para compatibilidade)
-                if (!cardapioPublico) {
-                  // Verificar status de pagamento
-                  const status = await apiService.verificarStatusPagamento();
+                // Se temAcessoModoCardapio é true, pode ativar/desativar diretamente
+                // O backend já verificou as permissões corretamente
+                // Se for null, verificar novamente antes de permitir
+                if (temAcessoModoCardapio === null) {
+                  // Re-verificar acesso antes de ativar
+                  const acessoModoCardapio = await apiService.verificarAcessoFuncaoEspecial('modo_cardapio');
+                  setTemAcessoModoCardapio(acessoModoCardapio.temAcesso);
                   
-                  if (!status.temAcesso) {
-                    // Usuário não tem plano ativo - abrir modal de planos
-                    if (onOpenModalPlanos) {
-                      onOpenModalPlanos();
+                  if (!acessoModoCardapio.temAcesso) {
+                    // Não tem acesso - verificar status de pagamento para mostrar modal apropriado
+                    const status = await apiService.verificarStatusPagamento();
+                    
+                    if (!status.temAcesso) {
+                      // Usuário não tem plano ativo - abrir modal de planos
+                      if (onOpenModalPlanos) {
+                        onOpenModalPlanos();
+                      }
+                      return;
                     }
-                    return;
-                  }
-                  
-                  if (status.tipo === 'unico') {
-                    // Usuário tem plano único - abrir modal de upgrade
-                    if (onOpenModalUpgrade) {
-                      onOpenModalUpgrade();
+                    
+                    if (status.tipo === 'unico') {
+                      // Usuário tem plano único - abrir modal de upgrade
+                      if (onOpenModalUpgrade) {
+                        onOpenModalUpgrade();
+                      }
+                      return;
                     }
-                    return;
-                  }
-                  
-                  if (status.tipo !== 'anual' && status.tipo !== 'vitalicio') {
-                    // Usuário não tem plano anual ou vitalício - abrir modal de planos
+                    
+                    // Se chegou aqui, não tem acesso mesmo com plano - abrir modal de planos
                     if (onOpenModalPlanos) {
                       onOpenModalPlanos();
                     }
@@ -523,7 +529,7 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
                   }
                 }
                 
-                // Se chegou aqui, pode ativar/desativar
+                // Se chegou aqui e temAcessoModoCardapio é true, pode ativar/desativar
                 const novoValor = !cardapioPublico;
                 setCardapioPublico(novoValor);
                 try {
