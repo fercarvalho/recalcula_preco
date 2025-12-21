@@ -3447,7 +3447,7 @@ async function verificarAcessoAtivo(usuarioId) {
             AND plano_tipo = 'anual'
             AND status IN ('active', 'trialing')
             AND (current_period_end IS NULL OR current_period_end > NOW())
-            AND canceled_at IS NULL
+            AND status != 'canceled'
         `, [usuarioId]);
 
         console.log(`[verificarAcessoAtivo] Assinaturas encontradas: ${assinatura.rows.length}`);
