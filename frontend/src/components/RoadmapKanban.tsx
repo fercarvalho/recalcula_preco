@@ -317,8 +317,25 @@ const RoadmapKanban = ({ isOpen, onClose }: RoadmapKanbanProps) => {
       
       // Se mudou de coluna, apenas atualiza o status
       if (mudouStatus) {
-        await apiService.atualizarStatusRoadmapItem(draggedItem.id, novoStatus);
-        await carregarRoadmap();
+        // Atualizar estado local imediatamente
+        setItens(prev => {
+          const novosItens = prev.map(item => 
+            item.id === draggedItem.id 
+              ? { ...item, status: novoStatus as RoadmapItem['status'] }
+              : item
+          );
+          return novosItens;
+        });
+        
+        // Atualizar no backend
+        try {
+          await apiService.atualizarStatusRoadmapItem(draggedItem.id, novoStatus);
+          // Não recarregar - o estado já foi atualizado localmente
+        } catch (error) {
+          // Se der erro, recarregar do servidor para reverter
+          await carregarRoadmap();
+          throw error;
+        }
       } else {
         // Se está na mesma coluna, precisa reordenar
         // Encontrar a posição atual do item arrastado
