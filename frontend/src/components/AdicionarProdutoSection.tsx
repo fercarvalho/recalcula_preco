@@ -493,8 +493,7 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
                   return;
                 }
 
-                // Se temAcessoModoCardapio é true, pode ativar/desativar diretamente
-                // O backend já verificou as permissões corretamente
+                // Se temAcessoModoCardapio é true, verificar se email foi validado antes de permitir
                 // Se for null, verificar novamente antes de permitir
                 if (temAcessoModoCardapio === null) {
                   // Re-verificar acesso antes de ativar
@@ -529,7 +528,28 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
                   }
                 }
                 
-                // Se chegou aqui e temAcessoModoCardapio é true, pode ativar/desativar
+                // Verificar se email foi validado antes de permitir ativar funções especiais
+                if (temAcessoModoCardapio === true && !cardapioPublico) {
+                  const status = await apiService.verificarStatusPagamento();
+                  
+                  if (status.emailNaoValidado) {
+                    await mostrarAlert(
+                      'Email não validado',
+                      'É necessário validar seu email antes de usar as funções especiais. Verifique sua caixa de entrada e clique no link de validação.'
+                    );
+                    return;
+                  }
+                  
+                  if (!status.temAcesso) {
+                    // Usuário não tem plano ativo - abrir modal de planos
+                    if (onOpenModalPlanos) {
+                      onOpenModalPlanos();
+                    }
+                    return;
+                  }
+                }
+                
+                // Se chegou aqui e temAcessoModoCardapio é true e email foi validado, pode ativar/desativar
                 const novoValor = !cardapioPublico;
                 setCardapioPublico(novoValor);
                 try {
@@ -646,6 +666,17 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
                   }
                   return;
                 }
+                
+                // Verificar se email foi validado antes de permitir usar funções especiais
+                const status = await apiService.verificarStatusPagamento();
+                if (status.emailNaoValidado) {
+                  await mostrarAlert(
+                    'Email não validado',
+                    'É necessário validar seu email antes de usar as funções especiais. Verifique sua caixa de entrada e clique no link de validação.'
+                  );
+                  return;
+                }
+                
                 if (!cardapioPublico || !username) {
                   await mostrarAlert('Atenção', 'Ative o modo cardápio primeiro.');
                   return;
@@ -689,6 +720,17 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
                   }
                   return;
                 }
+                
+                // Verificar se email foi validado antes de permitir usar funções especiais
+                const status = await apiService.verificarStatusPagamento();
+                if (status.emailNaoValidado) {
+                  await mostrarAlert(
+                    'Email não validado',
+                    'É necessário validar seu email antes de usar as funções especiais. Verifique sua caixa de entrada e clique no link de validação.'
+                  );
+                  return;
+                }
+                
                 if (!cardapioPublico || !username) {
                   await mostrarAlert('Atenção', 'Ative o modo cardápio primeiro.');
                   return;
