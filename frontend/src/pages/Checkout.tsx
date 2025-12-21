@@ -10,7 +10,7 @@ import {
 } from '@stripe/react-stripe-js';
 import { FaTicketAlt, FaCheckCircle, FaShieldAlt } from 'react-icons/fa';
 import { getUser, isAuthenticated } from '../services/auth';
-import { apiService } from '../services/api';
+import { apiService, buscarCEP } from '../services/api';
 import { mostrarAlert } from '../utils/modals';
 import { validarCPF, formatarCPF as formatarCPFUtil } from '../utils/validacao';
 import './Checkout.css';
@@ -138,33 +138,34 @@ const CheckoutForm = ({
   // Buscar CEP
   const buscarCep = async (cep: string) => {
     const cepLimpo = cep.replace(/\D/g, '');
-    if (cepLimpo.length !== 8) return;
+    if (cepLimpo.length !== 8) {
+      setErrors(prev => ({ ...prev, cep: 'CEP deve ter 8 dígitos' }));
+      return;
+    }
 
     setBuscandoCep(true);
     try {
-      const response = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
-      const data = await response.json();
-      
-      if (data.erro) {
-        setErrors(prev => ({ ...prev, cep: 'CEP não encontrado' }));
-        return;
-      }
+      const data = await buscarCEP(cepLimpo);
 
+      // Preencher endereço com os dados retornados
       setEndereco(prev => ({
         ...prev,
         logradouro: data.logradouro || '',
         bairro: data.bairro || '',
-        cidade: data.localidade || '',
+        cidade: data.cidade || '',
         uf: data.uf || '',
       }));
+
+      // Limpar erro de CEP se houver
       setErrors(prev => {
         const newErrors = { ...prev };
         delete newErrors.cep;
         return newErrors;
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao buscar CEP:', error);
-      setErrors(prev => ({ ...prev, cep: 'Erro ao buscar CEP' }));
+      const errorMessage = error.response?.data?.error || error.message || 'Erro ao buscar CEP. Verifique se o CEP está correto.';
+      setErrors(prev => ({ ...prev, cep: errorMessage }));
     } finally {
       setBuscandoCep(false);
     }

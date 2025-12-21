@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
+const https = require('https');
 const db = require('./database');
 const { authenticateToken, requireAdmin, requirePayment, generateToken } = require('./middleware/auth');
 const { enviarEmailRecuperacao, enviarEmailRecuperacaoMultiplos, enviarEmailValidacao } = require('./services/email');
@@ -3849,6 +3850,147 @@ app.put('/api/admin/faq/ordem', authenticateToken, requireAdmin, async (req, res
         console.error('Erro ao atualizar ordem das perguntas FAQ:', error);
         console.error('Stack trace:', error.stack);
         res.status(500).json({ error: 'Erro ao atualizar ordem das perguntas FAQ', details: error.message });
+    }
+});
+
+// ========== ROTAS DE CEP ==========
+
+// Buscar CEP (público - para evitar CORS)
+app.get('/api/cep/:cep', async (req, res) => {
+    try {
+        const { cep } = req.params;
+        const cepLimpo = cep.replace(/\D/g, '');
+        
+        if (cepLimpo.length !== 8) {
+            return res.status(400).json({ error: 'CEP deve ter 8 dígitos' });
+        }
+
+        // Tentar ViaCEP primeiro
+        const urlViaCEP = `https://viacep.com.br/ws/${cepLimpo}/json/`;
+        
+        try {
+            const cepData = await new Promise((resolve, reject) => {
+                const request = https.get(urlViaCEP, {
+                    timeout: 10000,
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (compatible; CEP API)'
+                    }
+                }, (response) => {
+                    let data = '';
+                    
+                    // Verificar status da resposta
+                    if (response.statusCode !== 200) {
+                        reject(new Error(`Erro HTTP: ${response.statusCode}`));
+                        return;
+                    }
+                    
+                    response.setEncoding('utf8');
+                    
+                    response.on('data', (chunk) => {
+                        data += chunk;
+                    });
+                    
+                    response.on('end', () => {
+                        try {
+                            const parsed = JSON.parse(data);
+                            // Verificar se é HTML (erro 502, etc)
+                            if (typeof parsed === 'object' && parsed.erro === undefined && !parsed.cep) {
+                                // Pode ser HTML de erro
+                                if (data.includes('<html>') || data.includes('Bad Gateway')) {
+                                    reject(new Error('Serviço de CEP temporariamente indisponível'));
+                                    return;
+                                }
+                            }
+                            resolve(parsed);
+                        } catch (error) {
+                            reject(new Error('Erro ao processar resposta do ViaCEP'));
+                        }
+                    });
+                });
+                
+                request.on('error', (error) => {
+                    reject(error);
+                });
+                
+                request.setTimeout(10000, () => {
+                    request.destroy();
+                    reject(new Error('Timeout ao buscar CEP'));
+                });
+            });
+            
+            // Verificar se a API retornou erro
+            if (cepData.erro || !cepData.cep) {
+                return res.status(404).json({ error: 'CEP não encontrado' });
+            }
+            
+            // Retornar dados formatados
+            res.json({
+                logradouro: cepData.logradouro || '',
+                bairro: cepData.bairro || '',
+                cidade: cepData.localidade || '',
+                uf: cepData.uf || '',
+            });
+        } catch (viaCepError) {
+            // Se ViaCEP falhar, tentar API alternativa (BrasilAPI)
+            console.log('⚠️ ViaCEP falhou, tentando BrasilAPI...');
+            try {
+                const urlBrasilAPI = `https://brasilapi.com.br/api/cep/v1/${cepLimpo}`;
+                const brasilApiData = await new Promise((resolve, reject) => {
+                    const request = https.get(urlBrasilAPI, {
+                        timeout: 10000,
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (compatible; CEP API)'
+                        }
+                    }, (response) => {
+                        let data = '';
+                        
+                        if (response.statusCode !== 200) {
+                            reject(new Error(`Erro HTTP: ${response.statusCode}`));
+                            return;
+                        }
+                        
+                        response.setEncoding('utf8');
+                        
+                        response.on('data', (chunk) => {
+                            data += chunk;
+                        });
+                        
+                        response.on('end', () => {
+                            try {
+                                resolve(JSON.parse(data));
+                            } catch (error) {
+                                reject(new Error('Erro ao processar resposta'));
+                            }
+                        });
+                    });
+                    
+                    request.on('error', reject);
+                    request.setTimeout(10000, () => {
+                        request.destroy();
+                        reject(new Error('Timeout'));
+                    });
+                });
+                
+                res.json({
+                    logradouro: brasilApiData.street || '',
+                    bairro: brasilApiData.neighborhood || '',
+                    cidade: brasilApiData.city || '',
+                    uf: brasilApiData.state || '',
+                });
+            } catch (brasilApiError) {
+                console.error('❌ Erro ao buscar CEP (ambas APIs falharam):', brasilApiError);
+                res.status(503).json({ 
+                    error: 'Serviço de busca de CEP temporariamente indisponível. Por favor, preencha o endereço manualmente.',
+                    details: 'Tente novamente em alguns instantes'
+                });
+            }
+        }
+    } catch (error) {
+        console.error('❌ Erro ao buscar CEP:', error);
+        res.status(500).json({ 
+            error: 'Erro ao buscar CEP',
+            details: error.message 
+        });
     }
 });
 

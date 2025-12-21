@@ -859,6 +859,11 @@
   font-size: 1.8rem;
   margin-bottom: 1rem;
   color: white;
+  min-height: 4.5rem; /* Altura mínima para acomodar 2 linhas */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.3;
 }
 
 .plano-preco-landing {

@@ -41,6 +41,22 @@ api.interceptors.response.use(
   }
 );
 
+// Buscar CEP
+export const buscarCEP = async (cep: string): Promise<{
+  logradouro: string;
+  bairro: string;
+  cidade: string;
+  uf: string;
+}> => {
+  const cepLimpo = cep.replace(/\D/g, '');
+  if (cepLimpo.length !== 8) {
+    throw new Error('CEP deve ter 8 dígitos');
+  }
+  
+  const response = await api.get(`/api/cep/${cepLimpo}`);
+  return response.data;
+};
+
 export const apiService = {
   // Itens
   async obterTodosItens(): Promise<ItensPorCategoria> {

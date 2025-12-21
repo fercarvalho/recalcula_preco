@@ -88,43 +88,74 @@
   color: white !important; /* Garantir que o texto seja branco no checkout */
 }
 
-/* Garantir que todo o texto dentro do checkout seja branco */
-.checkout-form * {
-  color: inherit;
+/* Preservar cores específicas do resumo de cupom - MÁXIMA ESPECIFICIDADE */
+/* Forçar cores verdes e laranjas no resumo de cupom */
+.cupom-resumo-box,
+.cupom-resumo-box * {
+  /* Reset para permitir cores específicas */
 }
 
-.checkout-form label,
-.checkout-form h2,
-.checkout-form h3,
-.checkout-form p,
-.checkout-form span:not(.required):not(.error-text),
-.checkout-form div {
-  color: white !important;
-}
-
-/* Preservar cores específicas do resumo de cupom - sobrescrever o color: white !important */
 .cupom-resumo-box .cupom-aplicado-mensagem,
+.cupom-resumo-box .cupom-aplicado-mensagem *,
 .cupom-resumo-box .cupom-aplicado-mensagem span,
-.cupom-resumo-box .cupom-aplicado-mensagem * {
+.cupom-resumo-box .cupom-aplicado-mensagem svg,
+.checkout-form .cupom-resumo-box .cupom-aplicado-mensagem,
+.checkout-form .cupom-resumo-box .cupom-aplicado-mensagem *,
+.checkout-form .cupom-resumo-box .cupom-aplicado-mensagem span,
+.checkout-form .cupom-resumo-box .cupom-aplicado-mensagem svg,
+body .checkout-form .cupom-resumo-box .cupom-aplicado-mensagem,
+body .checkout-form .cupom-resumo-box .cupom-aplicado-mensagem *,
+body .checkout-form .cupom-resumo-box .cupom-aplicado-mensagem span {
   color: #4CAF50 !important; /* Verde para cupom aplicado */
+  fill: #4CAF50 !important;
 }
 
 .cupom-resumo-box .desconto-linha,
+.cupom-resumo-box .desconto-linha *,
 .cupom-resumo-box .desconto-linha span,
-.cupom-resumo-box .desconto-linha * {
+.checkout-form .cupom-resumo-box .desconto-linha,
+.checkout-form .cupom-resumo-box .desconto-linha *,
+.checkout-form .cupom-resumo-box .desconto-linha span,
+body .checkout-form .cupom-resumo-box .desconto-linha,
+body .checkout-form .cupom-resumo-box .desconto-linha * {
   color: #4CAF50 !important; /* Verde para desconto */
 }
 
 .cupom-resumo-box .valor-total-laranja,
+.cupom-resumo-box .valor-total-laranja *,
 .cupom-resumo-box .valor-total-laranja span,
-.cupom-resumo-box .valor-total-laranja * {
-  color: var(--cor-primaria, #FF6B35) !important; /* Laranja para valor total */
+.checkout-form .cupom-resumo-box .valor-total-laranja,
+.checkout-form .cupom-resumo-box .valor-total-laranja *,
+.checkout-form .cupom-resumo-box .valor-total-laranja span,
+body .checkout-form .cupom-resumo-box .valor-total-laranja,
+body .checkout-form .cupom-resumo-box .valor-total-laranja * {
+  color: #FF6B35 !important; /* Laranja para valor total */
 }
 
 .cupom-resumo-box .total-linha,
+.cupom-resumo-box .total-linha *,
 .cupom-resumo-box .total-linha span,
-.cupom-resumo-box .total-linha * {
-  color: var(--cor-primaria, #FF6B35) !important; /* Laranja para total */
+.cupom-resumo-box .total-linha .valor-total-laranja,
+.cupom-resumo-box .total-linha .valor-total-laranja *,
+.checkout-form .cupom-resumo-box .total-linha,
+.checkout-form .cupom-resumo-box .total-linha *,
+.checkout-form .cupom-resumo-box .total-linha span,
+.checkout-form .cupom-resumo-box .total-linha .valor-total-laranja,
+.checkout-form .cupom-resumo-box .total-linha .valor-total-laranja *,
+body .checkout-form .cupom-resumo-box .total-linha,
+body .checkout-form .cupom-resumo-box .total-linha *,
+body .checkout-form .cupom-resumo-box .total-linha span {
+  color: #FF6B35 !important; /* Laranja para total */
+}
+
+/* Garantir que todo o texto dentro do checkout seja branco - EXCETO elementos do cupom */
+.checkout-form label,
+.checkout-form h2,
+.checkout-form h3,
+.checkout-form p,
+.checkout-form span:not(.required):not(.error-text):not(.cupom-aplicado-mensagem):not(.valor-total-laranja):not(.cupom-resumo-box *),
+.checkout-form div:not(.cupom-resumo-box):not(.cupom-aplicado-mensagem):not(.total-linha):not(.desconto-linha):not(.cupom-resumo-box *) {
+  color: white !important;
 }
 
 /* Preservar cor laranja para valores e textos destacados no checkout-resumo */
@@ -364,6 +395,37 @@
   .checkout-container {
     padding: 1.5rem;
   }
+}
+
+/* REGRAS FINAIS COM MÁXIMA PRIORIDADE PARA CORES DO CUPOM */
+/* Estas regras devem ter a maior especificidade possível */
+body .checkout-form .cupom-resumo-box .cupom-aplicado-mensagem,
+body .checkout-form .cupom-resumo-box .cupom-aplicado-mensagem *,
+body .checkout-form .cupom-resumo-box .cupom-aplicado-mensagem span,
+body .checkout-form .cupom-resumo-box .cupom-aplicado-mensagem svg {
+  color: #4CAF50 !important;
+  fill: #4CAF50 !important;
+}
+
+body .checkout-form .cupom-resumo-box .desconto-linha,
+body .checkout-form .cupom-resumo-box .desconto-linha *,
+body .checkout-form .cupom-resumo-box .desconto-linha span {
+  color: #4CAF50 !important;
+}
+
+body .checkout-form .cupom-resumo-box .total-linha,
+body .checkout-form .cupom-resumo-box .total-linha *,
+body .checkout-form .cupom-resumo-box .total-linha span,
+body .checkout-form .cupom-resumo-box .total-linha .valor-total-laranja,
+body .checkout-form .cupom-resumo-box .total-linha .valor-total-laranja * {
+  color: #FF6B35 !important;
+}
+
+body .checkout-form .cupom-resumo-box .valor-total-laranja,
+body .checkout-form .cupom-resumo-box .valor-total-laranja *,
+body .checkout-form .cupom-resumo-box .valor-total-laranja span {
+  color: #FF6B35 !important;
+}
   
   .checkout-header h1 {
     font-size: 1.5rem;

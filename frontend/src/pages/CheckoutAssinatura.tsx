@@ -12,6 +12,7 @@ import { FaTicketAlt, FaCheckCircle, FaShieldAlt } from 'react-icons/fa';
 import { getUser, isAuthenticated } from '../services/auth';
 import { mostrarAlert } from '../utils/modals';
 import { validarCPF, formatarCPF as formatarCPFUtil } from '../utils/validacao';
+import { buscarCEP } from '../services/api';
 import './Checkout.css';
 
 // Lista de países (mesma do Checkout.tsx)
@@ -64,13 +65,15 @@ const CheckoutAssinaturaForm = ({
   planoId,
   onCupomAplicado,
   valorAnualComDesconto,
-  valorMensalComDesconto
+  valorMensalComDesconto,
+  isPlanoMensal
 }: { 
   amount: number; 
   planoId: number;
   onCupomAplicado?: (cupom: any) => void;
   valorAnualComDesconto?: number;
   valorMensalComDesconto?: number;
+  isPlanoMensal?: boolean;
 }) => {
   const stripe = useStripe();
   const elements = useElements();
@@ -107,34 +110,34 @@ const CheckoutAssinaturaForm = ({
   // Buscar CEP
   const buscarCep = async (cep: string) => {
     const cepLimpo = cep.replace(/\D/g, '');
-    if (cepLimpo.length !== 8) return;
+    if (cepLimpo.length !== 8) {
+      setErrors(prev => ({ ...prev, cep: 'CEP deve ter 8 dígitos' }));
+      return;
+    }
 
     setBuscandoCep(true);
     try {
-      const response = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
-      const data = await response.json();
-      
-      if (data.erro) {
-        setErrors(prev => ({ ...prev, cep: 'CEP não encontrado' }));
-        return;
-      }
+      const data = await buscarCEP(cepLimpo);
 
+      // Preencher endereço com os dados retornados
       setEndereco(prev => ({
         ...prev,
         logradouro: data.logradouro || '',
         bairro: data.bairro || '',
-        cidade: data.localidade || '',
+        cidade: data.cidade || '',
         uf: data.uf || '',
       }));
 
+      // Limpar erro de CEP se houver
       setErrors(prev => {
         const newErrors = { ...prev };
         delete newErrors.cep;
         return newErrors;
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao buscar CEP:', error);
-      setErrors(prev => ({ ...prev, cep: 'Erro ao buscar CEP' }));
+      const errorMessage = error.response?.data?.error || error.message || 'Erro ao buscar CEP. Verifique se o CEP está correto.';
+      setErrors(prev => ({ ...prev, cep: errorMessage }));
     } finally {
       setBuscandoCep(false);
     }
@@ -431,15 +434,24 @@ const CheckoutAssinaturaForm = ({
     }
   };
 
-  // Calcular valor mensal formatado para o botão
-  // Se há cupom aplicado, calcular valor mensal com cupom, senão usar valorMensalComDesconto
-  let valorMensalParaBotao = valorMensalComDesconto || (valorBase / 12 / 100);
-  if (cupomAplicado) {
-    // Se há cupom, o valorFinal já está com o desconto do cupom aplicado (em centavos)
-    // Converter para mensal: valorFinal / 12 / 100
-    valorMensalParaBotao = valorFinal / 12 / 100;
+  // Calcular valor formatado para o botão baseado no período do plano
+  // Se o plano for mensal, mostrar valor mensal; se for anual, mostrar valor anual
+  let valorParaBotao = 0;
+  if (isPlanoMensal) {
+    // Plano mensal: usar valor mensal
+    valorParaBotao = valorMensalComDesconto || (valorBase / 12 / 100);
+    if (cupomAplicado && cupomAplicado.valorComDesconto) {
+      valorParaBotao = valorFinal / 12 / 100;
+    }
+  } else {
+    // Plano anual: usar valor anual
+    valorParaBotao = valorAnualComDesconto ? valorAnualComDesconto : (valorBase / 100);
+    if (cupomAplicado && cupomAplicado.valorComDesconto) {
+      valorParaBotao = valorFinal / 100;
+    }
   }
-  const valorFormatadoMensal = `R$ ${valorMensalParaBotao.toFixed(2).replace('.', ',')}`;
+  const valorFormatadoBotao = `R$ ${valorParaBotao.toFixed(2).replace('.', ',')}`;
+  const textoPeriodoBotao = isPlanoMensal ? '/mês' : '/ano';
   
   const valorFormatadoFinal = `R$ ${(valorFinal / 100).toFixed(2).replace('.', ',')}`;
   const valorFormatadoOriginal = `R$ ${(valorBase / 100).toFixed(2).replace('.', ',')}`;
@@ -549,17 +561,17 @@ const CheckoutAssinaturaForm = ({
               marginBottom: '0.75rem',
               color: '#4CAF50',
               fontSize: '0.9rem'
-            }}>
-              <FaCheckCircle />
-              <span style={{ fontWeight: 'bold' }}>Cupom aplicado! Desconto de {descontoFormatado}</span>
+            } as React.CSSProperties}>
+              <FaCheckCircle style={{ color: '#4CAF50', fill: '#4CAF50' }} />
+              <span style={{ fontWeight: 'bold', color: '#4CAF50' } as React.CSSProperties}>Cupom aplicado! Desconto de {descontoFormatado}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: 'rgba(255, 255, 255, 0.7)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: 'rgba(255, 255, 255, 1)' }}>
               <span>Valor original:</span>
               <span>{valorFormatadoOriginal}</span>
             </div>
-            <div className="desconto-linha" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: '#4CAF50' }}>
-              <span>Desconto:</span>
-              <span>
+            <div className="desconto-linha" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: '#4CAF50' } as React.CSSProperties}>
+              <span style={{ color: '#4CAF50' } as React.CSSProperties}>Desconto:</span>
+              <span style={{ color: '#4CAF50' } as React.CSSProperties}>
                 - R$ {(cupomAplicado.descontoAplicado / 100).toFixed(2).replace('.', ',')}
               </span>
             </div>
@@ -570,10 +582,10 @@ const CheckoutAssinaturaForm = ({
               fontSize: '1.1rem', 
               paddingTop: '0.5rem', 
               borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-              color: 'var(--cor-primaria, #FF6B35)'
-            }}>
-              <span>Total:</span>
-              <span className="valor-total-laranja">{valorFormatadoFinal}</span>
+              color: '#FF6B35'
+            } as React.CSSProperties}>
+              <span style={{ color: '#FF6B35' } as React.CSSProperties}>Total:</span>
+              <span className="valor-total-laranja" style={{ color: '#FF6B35' } as React.CSSProperties}>{valorFormatadoFinal}</span>
             </div>
           </div>
         )}
@@ -1065,7 +1077,7 @@ const CheckoutAssinaturaForm = ({
         disabled={!stripe || loading}
         className="btn-pagar"
       >
-        {loading ? 'Processando...' : `Assinar ${valorFormatadoMensal}/mês`}
+        {loading ? 'Processando...' : `Assinar ${valorFormatadoBotao}${textoPeriodoBotao}`}
       </button>
 
       <div className="stripe-powered-by" style={{
@@ -1242,26 +1254,36 @@ const CheckoutAssinatura = () => {
   console.log('desconto_percentual:', plano.desconto_percentual);
   console.log('periodo:', plano.periodo);
   
-  // Calcular valores corretos baseado em valor_total e desconto_percentual
-  const valorAnualOriginal = plano.valor_total || plano.valor; // R$ 478,80 (valor anual original)
+  // Verificar se o plano é mensal ou anual
+  const isPlanoMensal = plano.periodo === 'mensal';
   
-  // Se tem desconto_percentual e valor_total, calcular valor anual com desconto
-  let valorAnualComDesconto = plano.valor;
-  if (plano.valor_total && plano.desconto_percentual && plano.desconto_percentual > 0) {
-    // Calcular valor anual com desconto: valor_total * (1 - desconto_percentual / 100)
-    valorAnualComDesconto = valorAnualOriginal * (1 - (plano.desconto_percentual / 100));
-    console.log('Valor anual com desconto calculado:', valorAnualComDesconto, '(baseado em valor_total e desconto_percentual)');
-  }
+  // Calcular valores corretos baseado no período do plano
+  let valorAnualOriginal, valorAnualComDesconto, valorMensalOriginal, valorMensalComDesconto;
   
-  // Calcular valores mensais
-  const valorMensalOriginal = valorAnualOriginal / 12; // R$ 39,90 (valor mensal original)
-  
-  // Se tem desconto_percentual, calcular valor mensal com desconto
-  let valorMensalComDesconto = plano.valor_parcelado || (valorAnualComDesconto / 12);
-  if (plano.valor_total && plano.desconto_percentual && plano.desconto_percentual > 0) {
-    // Calcular valor mensal com desconto: valor anual com desconto / 12
-    valorMensalComDesconto = valorAnualComDesconto / 12;
-    console.log('Valor mensal com desconto calculado:', valorMensalComDesconto);
+  if (isPlanoMensal) {
+    // Plano mensal: valor é o valor mensal
+    valorMensalOriginal = plano.valor_total || plano.valor;
+    valorMensalComDesconto = plano.valor;
+    // Para planos mensais, calcular valor anual apenas para referência (não será exibido)
+    valorAnualOriginal = valorMensalOriginal * 12;
+    valorAnualComDesconto = valorMensalComDesconto * 12;
+  } else {
+    // Plano anual: valor é o valor anual
+    valorAnualOriginal = plano.valor_total || plano.valor;
+    valorAnualComDesconto = plano.valor;
+    
+    // Se tem desconto_percentual e valor_total, calcular valor anual com desconto
+    if (plano.valor_total && plano.desconto_percentual && plano.desconto_percentual > 0) {
+      valorAnualComDesconto = valorAnualOriginal * (1 - (plano.desconto_percentual / 100));
+      console.log('Valor anual com desconto calculado:', valorAnualComDesconto);
+    }
+    
+    // Calcular valores mensais (apenas para referência, não será exibido)
+    valorMensalOriginal = valorAnualOriginal / 12;
+    valorMensalComDesconto = plano.valor_parcelado || (valorAnualComDesconto / 12);
+    if (plano.valor_total && plano.desconto_percentual && plano.desconto_percentual > 0) {
+      valorMensalComDesconto = valorAnualComDesconto / 12;
+    }
   }
   
   console.log('=== VALORES CALCULADOS ===');
@@ -1270,25 +1292,30 @@ const CheckoutAssinatura = () => {
   console.log('valorMensalComDesconto:', valorMensalComDesconto, '→ Deveria ser 19,95');
   console.log('valorMensalOriginal:', valorMensalOriginal, '→ Deveria ser 39,90');
   
-  const temDescontoPlano = plano.valor_total && plano.valor_total > plano.valor;
+  // Verificar se há desconto no plano
+  const valorOriginal = isPlanoMensal ? valorMensalOriginal : valorAnualOriginal;
+  const valorComDesconto = isPlanoMensal ? valorMensalComDesconto : valorAnualComDesconto;
+  const temDescontoPlano = (isPlanoMensal ? (plano.valor_total && plano.valor_total > plano.valor) : (plano.valor_total && plano.valor_total > plano.valor));
   
   // Usar desconto_percentual do banco ou calcular
-  const percentualDesconto = plano.desconto_percentual || (temDescontoPlano && valorAnualOriginal > 0
-    ? Math.round(((valorAnualOriginal - valorAnualComDesconto) / valorAnualOriginal) * 100)
+  const percentualDesconto = plano.desconto_percentual || (temDescontoPlano && valorOriginal > 0
+    ? Math.round(((valorOriginal - valorComDesconto) / valorOriginal) * 100)
     : 0);
   
-  // Se houver cupom aplicado, calcular sobre o valor anual com desconto do plano
+  // Se houver cupom aplicado, calcular sobre o valor correto do plano (mensal ou anual)
+  const valorBaseParaCupom = isPlanoMensal ? valorMensalComDesconto : valorAnualComDesconto;
   const valorFinalComCupom = cupomAplicado && cupomAplicado.valorComDesconto 
     ? cupomAplicado.valorComDesconto / 100 
-    : valorAnualComDesconto;
+    : valorBaseParaCupom;
   
   const valorFormatadoAnualOriginal = `R$ ${valorAnualOriginal.toFixed(2).replace('.', ',')}`;
   const valorFormatadoAnualComDesconto = `R$ ${valorAnualComDesconto.toFixed(2).replace('.', ',')}`;
   const valorFormatadoMensalOriginal = `R$ ${valorMensalOriginal.toFixed(2).replace('.', ',')}`;
   const valorFormatadoMensalComDesconto = `R$ ${valorMensalComDesconto.toFixed(2).replace('.', ',')}`;
   const valorFormatadoFinal = `R$ ${valorFinalComCupom.toFixed(2).replace('.', ',')}`;
-  // Usar valorAnualComDesconto calculado (já com desconto aplicado) para o amount
-  const amount = Math.round(valorAnualComDesconto * 100); // Converter para centavos (usar valor anual com desconto)
+  // Usar o valor correto baseado no período do plano para o amount
+  const valorParaAmount = isPlanoMensal ? valorMensalComDesconto : valorAnualComDesconto;
+  const amount = Math.round(valorParaAmount * 100); // Converter para centavos
 
   const options = {
     mode: 'payment' as const,
@@ -1312,15 +1339,15 @@ const CheckoutAssinatura = () => {
                 {temDescontoPlano && (
                   <>
                     <p style={{ textDecoration: 'line-through', opacity: 0.7, marginBottom: '0.25rem', fontSize: '0.9rem' }}>
-                      <strong>Valor original:</strong> {valorFormatadoAnualOriginal} / ano ({valorFormatadoMensalOriginal}/mês)
+                      <strong>Valor original:</strong> {isPlanoMensal ? `${valorFormatadoMensalOriginal}/mês` : `${valorFormatadoAnualOriginal} / ano`}
                     </p>
                     <p style={{ textDecoration: 'line-through', opacity: 0.7, marginBottom: '0.25rem', fontSize: '0.9rem' }}>
-                      <strong>Valor com desconto do plano:</strong> {valorFormatadoAnualComDesconto} / ano ({valorFormatadoMensalComDesconto}/mês)
+                      <strong>Valor com desconto do plano:</strong> {isPlanoMensal ? `${valorFormatadoMensalComDesconto}/mês` : `${valorFormatadoAnualComDesconto} / ano`}
                     </p>
                   </>
                 )}
                 <p style={{ color: '#4CAF50', fontSize: '1.1rem', fontWeight: 'bold' }}>
-                  <strong>Valor final (com cupom):</strong> {valorFormatadoFinal} / ano
+                  <strong>Valor final (com cupom):</strong> {isPlanoMensal ? `R$ ${valorFinalComCupom.toFixed(2).replace('.', ',')}/mês` : `${valorFormatadoFinal} / ano`}
                 </p>
                 <p style={{ color: 'var(--cor-primaria, #FF6B35)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
                   <strong>Desconto do cupom:</strong> {cupomAplicado.tipo === 'percentual' ? `${cupomAplicado.desconto}%` : `R$ ${(cupomAplicado.desconto / 100).toFixed(2).replace('.', ',')}`}
@@ -1330,17 +1357,17 @@ const CheckoutAssinatura = () => {
               <>
                 {/* Sem cupom, mas com desconto do plano */}
                 <p style={{ textDecoration: 'line-through', opacity: 0.7, marginBottom: '0.25rem' }}>
-                  <strong>Valor original:</strong> {valorFormatadoAnualOriginal} / ano ({valorFormatadoMensalOriginal}/mês)
+                  <strong>Valor original:</strong> {isPlanoMensal ? `${valorFormatadoMensalOriginal}/mês` : `${valorFormatadoAnualOriginal} / ano`}
                 </p>
                 <p style={{ color: '#4CAF50', fontSize: '1.1rem', fontWeight: 'bold' }}>
-                  <strong>Valor com desconto:</strong> {valorFormatadoAnualComDesconto} / ano ({valorFormatadoMensalComDesconto}/mês)
+                  <strong>Valor com desconto:</strong> {isPlanoMensal ? `${valorFormatadoMensalComDesconto}/mês` : `${valorFormatadoAnualComDesconto} / ano`}
                 </p>
                 <p style={{ color: 'var(--cor-primaria, #FF6B35)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
                   <strong>Desconto:</strong> {percentualDesconto > 0 ? `${percentualDesconto}% OFF${plano.frase_reforco ? ` (${plano.frase_reforco})` : ''}` : `R$ ${(valorAnualOriginal - valorAnualComDesconto).toFixed(2).replace('.', ',')} OFF${plano.frase_reforco ? ` (${plano.frase_reforco})` : ''}`}
                 </p>
               </>
             ) : (
-              <p><strong>Valor:</strong> {valorFormatadoAnualComDesconto} / ano ({valorFormatadoMensalComDesconto}/mês)</p>
+              <p><strong>Valor:</strong> {isPlanoMensal ? `${valorFormatadoMensalComDesconto}/mês` : `${valorFormatadoAnualComDesconto} / ano`}</p>
             )}
           </div>
         </div>
@@ -1352,6 +1379,7 @@ const CheckoutAssinatura = () => {
             onCupomAplicado={setCupomAplicado}
             valorAnualComDesconto={valorAnualComDesconto}
             valorMensalComDesconto={valorMensalComDesconto}
+            isPlanoMensal={isPlanoMensal}
           />
         </Elements>
       </div>
