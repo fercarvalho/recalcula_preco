@@ -10,13 +10,13 @@
 }
 
 .rodape-coluna {
-  background: #fff;
-  border: 2px solid #e9ecef;
+  background: var(--cor-secundaria);
+  border: 2px solid var(--cor-borda);
   border-radius: 8px;
   padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px var(--cor-sombra);
   cursor: move;
-  transition: all 0.2s;
+  transition: all 0.2s, background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .rodape-coluna.dragging {
@@ -62,15 +62,16 @@
   align-items: center;
   margin-bottom: 15px;
   padding-bottom: 10px;
-  border-bottom: 2px solid #e9ecef;
+  border-bottom: 2px solid var(--cor-borda);
   gap: 10px;
+  transition: border-color 0.3s ease;
 }
 
 .rodape-coluna-drag-handle {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6c757d;
+  color: var(--cor-texto-secundario) !important;
   cursor: grab;
   padding: 4px;
   flex-shrink: 0;
@@ -120,10 +121,10 @@
   align-items: flex-start;
   gap: 12px;
   padding: 15px;
-  background: #f8f9fa;
+  background: var(--cor-card-fundo);
   border-radius: 6px;
-  border: 1px solid #e9ecef;
-  transition: all 0.2s;
+  border: 1px solid var(--cor-borda);
+  transition: all 0.2s, background-color 0.3s ease, border-color 0.3s ease;
   cursor: move;
   position: relative;
 }
@@ -182,7 +183,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6c757d;
+  color: var(--cor-texto-secundario) !important;
   cursor: grab;
   padding: 4px;
   flex-shrink: 0;
@@ -207,12 +208,12 @@
 }
 
 .rodape-link-texto strong {
-  color: #333;
+  color: var(--cor-texto) !important;
   font-size: 1rem;
 }
 
 .rodape-link-url {
-  color: #6c757d;
+  color: var(--cor-texto-secundario) !important;
   font-size: 0.85rem;
   word-break: break-all;
 }
@@ -226,11 +227,11 @@
 .btn-edit-link,
 .btn-delete-link {
   background: transparent;
-  border: 1px solid #ddd;
+  border: 1px solid var(--cor-borda);
   border-radius: 4px;
   padding: 6px 10px;
   cursor: pointer;
-  color: #6c757d;
+  color: var(--cor-texto-secundario);
   transition: all 0.2s;
   display: flex;
   align-items: center;
@@ -278,7 +279,7 @@
 .rodape-link-form label {
   display: block;
   margin-bottom: 8px;
-  color: #333;
+  color: var(--cor-texto) !important;
   font-weight: 500;
 }
 
@@ -289,10 +290,12 @@
 .rodape-link-form .form-input {
   width: 100%;
   padding: 10px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--cor-input-borda);
   border-radius: 4px;
   font-size: 1rem;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, background-color 0.3s ease, color 0.3s ease;
+  background: var(--cor-input-fundo);
+  color: var(--cor-input-texto);
 }
 
 .rodape-link-form .form-input:focus {
@@ -307,7 +310,7 @@
 .loading {
   text-align: center;
   padding: 40px;
-  color: #6c757d;
+  color: var(--cor-texto-secundario) !important;
 }
 
 .switch-group {
@@ -322,7 +325,7 @@
 }
 
 .switch-group label span {
-  color: #333;
+  color: var(--cor-texto) !important;
   font-weight: 500;
 }
 
@@ -331,7 +334,7 @@
   border: none;
   font-size: 2rem;
   cursor: pointer;
-  color: #ccc;
+  color: var(--cor-texto-secundario);
   transition: color 0.3s;
   padding: 0;
   display: flex;

@@ -198,6 +198,7 @@
 
 .plano-tipo {
   background: #f0f0f0;
+  color: #333 !important;
   padding: 4px 10px !important;
   border-radius: 4px;
   font-size: 12px !important;

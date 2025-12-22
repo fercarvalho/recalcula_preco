@@ -17,7 +17,7 @@
 .sem-feedbacks {
   text-align: center;
   padding: 2rem;
-  color: #666;
+  color: var(--cor-texto-secundario) !important;
 }
 
 .filtros-feedbacks {
@@ -36,27 +36,31 @@
 .filtro-group label {
   font-weight: 600;
   font-size: 0.9rem;
-  color: #333;
+  color: var(--cor-texto) !important;
 }
 
 .filtro-select {
   padding: 0.5rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--cor-input-borda);
   border-radius: 6px;
   font-size: 1rem;
   min-width: 200px;
+  background: var(--cor-input-fundo);
+  color: var(--cor-input-texto);
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
 .feedbacks-stats {
   margin-bottom: 1rem;
   padding: 0.75rem;
-  background: #f5f5f5;
+  background: var(--cor-secundaria);
   border-radius: 6px;
+  transition: background-color 0.3s ease;
 }
 
 .feedbacks-stats p {
   margin: 0;
-  color: #666;
+  color: var(--cor-texto-secundario) !important;
 }
 
 .feedbacks-list {
@@ -68,15 +72,15 @@
 }
 
 .feedback-card {
-  border: 1px solid #ddd;
+  border: 1px solid var(--cor-borda);
   border-radius: 8px;
   padding: 1.5rem;
-  background: white;
-  transition: box-shadow 0.2s;
+  background: var(--cor-secundaria);
+  transition: box-shadow 0.2s, background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .feedback-card:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px var(--cor-sombra);
 }
 
 .feedback-header {
@@ -95,20 +99,20 @@
 }
 
 .feedback-usuario svg {
-  color: #666;
+  color: var(--cor-texto-secundario) !important;
   font-size: 1.2rem;
 }
 
 .feedback-usuario strong {
   display: block;
-  color: #333;
+  color: var(--cor-texto) !important;
   font-size: 1rem;
 }
 
 .feedback-email {
   display: block;
   font-size: 0.85rem;
-  color: #666;
+  color: var(--cor-texto-secundario) !important;
   margin-top: 0.25rem;
 }
 
@@ -116,7 +120,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #666;
+  color: var(--cor-texto-secundario) !important;
   font-size: 0.9rem;
 }
 
@@ -127,9 +131,10 @@
 .feedback-funcao {
   margin-bottom: 1rem;
   padding: 0.5rem;
-  background: #f8f9fa;
+  background: var(--cor-card-fundo);
   border-radius: 6px;
   font-size: 0.9rem;
+  transition: background-color 0.3s ease;
 }
 
 .feedback-avaliacao {
@@ -158,16 +163,17 @@
 
 .avaliacao-texto {
   font-weight: 600;
-  color: #333;
+  color: var(--cor-texto) !important;
 }
 
 .feedback-comentario,
 .feedback-sugestoes {
   margin-top: 1rem;
   padding: 1rem;
-  background: #f8f9fa;
+  background: var(--cor-card-fundo);
   border-radius: 6px;
-  border-left: 3px solid var(--cor-primaria, #FF6B35);
+  border-left: 3px solid var(--cor-primaria);
+  transition: background-color 0.3s ease;
 }
 
 .feedback-comentario {
@@ -177,7 +183,7 @@
 }
 
 .feedback-comentario svg {
-  color: var(--cor-primaria, #FF6B35);
+  color: var(--cor-primaria);
   font-size: 1.2rem;
   margin-top: 0.25rem;
   flex-shrink: 0;
@@ -187,13 +193,13 @@
 .feedback-sugestoes strong {
   display: block;
   margin-bottom: 0.5rem;
-  color: #333;
+  color: var(--cor-texto) !important;
 }
 
 .feedback-comentario p,
 .feedback-sugestoes p {
   margin: 0;
-  color: #555;
+  color: var(--cor-texto-secundario) !important;
   line-height: 1.6;
   white-space: pre-wrap;
 }

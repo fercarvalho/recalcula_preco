@@ -28,7 +28,8 @@
 .funcao-especial-section {
   margin-bottom: 2.5rem;
   padding-bottom: 2rem;
-  border-bottom: 2px solid #eee;
+  border-bottom: 2px solid var(--cor-borda);
+  transition: border-color 0.3s ease;
 }
 
 .funcao-especial-section:last-of-type {
@@ -40,10 +41,11 @@
 .funcao-especial-title {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #333;
+  color: var(--cor-texto) !important;
   margin-bottom: 1.5rem;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--cor-borda);
+  transition: border-color 0.3s ease;
 }
 
 .permissoes-grid {
@@ -57,15 +59,15 @@
   align-items: center;
   justify-content: space-between;
   padding: 1rem;
-  background: #f8f9fa;
+  background: var(--cor-secundaria);
   border-radius: 8px;
-  border: 1px solid #e0e0e0;
-  transition: all 0.2s;
+  border: 1px solid var(--cor-borda);
+  transition: all 0.2s, background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .permissao-item:hover {
-  background: #f0f0f0;
-  border-color: #d0d0d0;
+  background: var(--cor-hover);
+  border-color: var(--cor-borda);
 }
 
 .permissao-item.master {
@@ -88,7 +90,7 @@
 
 .permissao-nome {
   font-weight: 600;
-  color: #333;
+  color: var(--cor-texto) !important;
   font-size: 0.95rem;
 }
 
@@ -99,7 +101,7 @@
 
 .permissao-descricao {
   font-size: 0.85rem;
-  color: #666;
+  color: var(--cor-texto-secundario) !important;
 }
 
 .switch-container {
@@ -159,7 +161,8 @@
   justify-content: flex-end;
   margin-top: 2rem;
   padding-top: 1.5rem;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--cor-borda);
+  transition: border-color 0.3s ease;
 }
 
 .btn-primary,
