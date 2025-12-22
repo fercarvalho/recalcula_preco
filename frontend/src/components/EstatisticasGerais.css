@@ -49,16 +49,16 @@
 }
 
 .estatistica-card {
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  background: var(--cor-secundaria);
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 8px var(--cor-sombra);
+  transition: transform 0.2s, box-shadow 0.2s, background-color 0.3s ease;
 }
 
 .estatistica-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px var(--cor-sombra);
 }
 
 .estatistica-card.principal {
@@ -118,17 +118,19 @@
 
 .estatisticas-section h3 {
   margin: 0 0 20px 0;
-  color: #333;
+  color: var(--cor-texto) !important;
   font-size: 1.3rem;
   font-weight: 600;
   padding-bottom: 10px;
-  border-bottom: 2px solid #e0e0e0;
+  border-bottom: 2px solid var(--cor-borda);
+  transition: border-color 0.3s ease;
 }
 
 .estatisticas-info {
-  background: #f8f9fa;
+  background: var(--cor-secundaria);
   border-radius: 8px;
   padding: 20px;
+  transition: background-color 0.3s ease;
 }
 
 .info-item {
@@ -136,7 +138,8 @@
   justify-content: space-between;
   align-items: center;
   padding: 12px 0;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--cor-borda);
+  transition: border-color 0.3s ease;
 }
 
 .info-item:last-child {
@@ -145,7 +148,7 @@
 
 .info-label {
   font-weight: 500;
-  color: #555;
+  color: var(--cor-texto-secundario) !important;
 }
 
 .info-value {
@@ -166,18 +169,20 @@
 /* Estatísticas de Cadastro */
 .estatisticas-cadastro {
   margin-bottom: 30px;
-  background: #f8f9fa;
+  background: var(--cor-secundaria);
   border-radius: 8px;
   padding: 20px;
+  transition: background-color 0.3s ease;
 }
 
 .estatisticas-cadastro h4 {
   margin: 0 0 15px 0;
-  color: #333;
+  color: var(--cor-texto) !important;
   font-size: 1.1rem;
   font-weight: 600;
   padding-bottom: 10px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--cor-borda);
+  transition: border-color 0.3s ease;
 }
 
 .estatisticas-lista {
@@ -191,20 +196,20 @@
   justify-content: space-between;
   align-items: center;
   padding: 10px 15px;
-  background: white;
+  background: var(--cor-card-fundo);
   border-radius: 6px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 3px var(--cor-sombra);
+  transition: transform 0.2s, box-shadow 0.2s, background-color 0.3s ease;
 }
 
 .estatistica-item:hover {
   transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 6px var(--cor-sombra);
 }
 
 .estatistica-item .estatistica-label {
   font-size: 0.95rem;
-  color: #555;
+  color: var(--cor-texto-secundario) !important;
   font-weight: 500;
   margin: 0;
 }
@@ -259,9 +264,10 @@
   width: 100%;
   margin-bottom: 20px;
   padding: 15px;
-  background: white;
+  background: var(--cor-secundaria);
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px var(--cor-sombra);
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 /* Ajustes para os gráficos Recharts */

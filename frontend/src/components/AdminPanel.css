@@ -41,14 +41,16 @@
 .admin-busca-usuario input {
   width: 100%;
   padding: 10px 16px 10px 40px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--cor-input-borda);
   border-radius: 6px;
   font-size: 0.9rem;
   outline: none;
-  transition: border-color 0.2s ease;
+  transition: border-color 0.2s ease, background-color 0.3s ease, color 0.3s ease;
   box-sizing: border-box;
   height: auto;
   line-height: 1.4;
+  background: var(--cor-input-fundo);
+  color: var(--cor-input-texto);
 }
 
 .admin-busca-usuario input:focus {
@@ -237,9 +239,10 @@
 }
 
 .detalhes-section {
-  background: #f9f9f9;
+  background: var(--cor-secundaria);
   padding: 15px;
   border-radius: 6px;
+  transition: background-color 0.3s ease;
 }
 
 .detalhes-section h4 {
@@ -448,8 +451,10 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid var(--cor-borda);
   font-size: 0.9rem;
+  color: var(--cor-texto) !important;
+  transition: border-color 0.3s ease, color 0.3s ease;
 }
 
 .item-row:last-child {

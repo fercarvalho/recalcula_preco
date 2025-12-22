@@ -17,16 +17,16 @@
 }
 
 .estatistica-card {
-  background: #f8f9fa;
-  border: 1px solid #e0e0e0;
+  background: var(--cor-secundaria);
+  border: 1px solid var(--cor-borda);
   border-radius: 8px;
   padding: 20px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .estatistica-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px var(--cor-sombra);
 }
 
 .estatistica-header {
@@ -35,24 +35,25 @@
   gap: 12px;
   margin-bottom: 20px;
   padding-bottom: 15px;
-  border-bottom: 2px solid #e0e0e0;
+  border-bottom: 2px solid var(--cor-borda);
+  transition: border-color 0.3s ease;
 }
 
 .estatistica-icon {
   font-size: 24px;
-  color: var(--cor-primaria, #FF6B35);
+  color: var(--cor-primaria);
 }
 
 .estatistica-header h4 {
   margin: 0;
   font-size: 1.1rem;
-  color: #333;
+  color: var(--cor-texto) !important;
 }
 
 .estatistica-email {
   margin: 4px 0 0 0;
   font-size: 0.85rem;
-  color: #666;
+  color: var(--cor-texto-secundario) !important;
 }
 
 .estatistica-body {
@@ -66,18 +67,20 @@
   align-items: flex-start;
   gap: 10px;
   padding: 8px;
-  background: white;
+  background: var(--cor-card-fundo);
   border-radius: 6px;
+  transition: background-color 0.3s ease;
 }
 
 .estatistica-item.active-session {
-  background: #e8f5e9;
-  border-left: 3px solid #4caf50;
+  background: rgba(27, 94, 32, 0.25);
+  border-left: 3px solid #2e7d32;
+  transition: background-color 0.3s ease;
 }
 
 .estatistica-item-icon {
   font-size: 16px;
-  color: #666;
+  color: var(--cor-texto-secundario) !important;
   margin-top: 2px;
   flex-shrink: 0;
 }
@@ -91,19 +94,19 @@
 
 .estatistica-label {
   font-size: 0.85rem;
-  color: #666;
+  color: var(--cor-texto-secundario) !important;
   font-weight: 500;
 }
 
 .estatistica-value {
   font-size: 1rem;
-  color: #333;
+  color: var(--cor-texto) !important;
   font-weight: 600;
 }
 
 .estatistica-subvalue {
   font-size: 0.75rem;
-  color: #999;
+  color: var(--cor-texto-secundario) !important;
   margin-top: 2px;
 }
 
@@ -123,13 +126,13 @@
 .loading {
   text-align: center;
   padding: 40px;
-  color: #666;
+  color: var(--cor-texto-secundario) !important;
 }
 
 .no-data {
   text-align: center;
   padding: 40px;
-  color: #999;
+  color: var(--cor-texto-secundario) !important;
 }
 
 @media (max-width: 768px) {
