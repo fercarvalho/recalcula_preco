@@ -560,7 +560,7 @@ const CheckoutForm = ({
             <input
               type="text"
               id="cupom"
-              className="form-input-dark"
+              className="form-input-dark cupom-input"
               value={cupom}
               onChange={(e) => setCupom(e.target.value.toUpperCase())}
               placeholder="Digite o código promocional"
@@ -568,10 +568,7 @@ const CheckoutForm = ({
               style={{
                 flex: 1,
                 padding: '0.75rem',
-                background: 'rgba(0, 0, 0, 0.4)',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
                 borderRadius: '6px',
-                color: 'white',
                 fontSize: '1rem',
               }}
             />
@@ -625,8 +622,8 @@ const CheckoutForm = ({
           <div className="cupom-resumo-box" style={{
             marginTop: '1rem',
             padding: '1rem',
-            background: 'rgba(0, 0, 0, 0.3)',
-            border: '1px solid rgba(255, 255, 255, 0.3)',
+            background: 'var(--cor-card-fundo)',
+            border: '1px solid var(--cor-borda)',
             borderRadius: '8px'
           }}>
             <div className="cupom-aplicado-mensagem" style={{ 
@@ -640,9 +637,9 @@ const CheckoutForm = ({
               <FaCheckCircle />
               <span style={{ fontWeight: 'bold' }}>Cupom aplicado! Desconto de {descontoFormatado}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: 'rgba(255, 255, 255, 0.7)' }}>
-              <span>Valor original:</span>
-              <span>{valorFormatadoOriginal}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: 'var(--cor-texto)' }}>
+              <span style={{ color: 'var(--cor-texto)' }}>Valor original:</span>
+              <span style={{ color: 'var(--cor-texto)' }}>{valorFormatadoOriginal}</span>
             </div>
             <div className="desconto-linha" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: '#4CAF50' }}>
               <span>Desconto:</span>
@@ -1051,14 +1048,14 @@ const CheckoutForm = ({
                 style: {
                   base: {
                     fontSize: '16px',
-                    color: '#ffffff',
+                    color: '#b0b0b0',
                     fontFamily: 'inherit',
                     '::placeholder': {
-                      color: 'rgba(255, 255, 255, 0.5)',
+                      color: '#b0b0b0',
                     },
                   },
                   invalid: {
-                    color: '#FF6B35',
+                    color: 'var(--cor-primaria)',
                   },
                 },
               }}
@@ -1077,14 +1074,14 @@ const CheckoutForm = ({
                   style: {
                     base: {
                       fontSize: '16px',
-                      color: '#ffffff',
+                      color: '#b0b0b0',
                       fontFamily: 'inherit',
                       '::placeholder': {
-                        color: 'rgba(255, 255, 255, 0.5)',
+                        color: '#b0b0b0',
                       },
                     },
                     invalid: {
-                      color: '#FF6B35',
+                      color: 'var(--cor-primaria)',
                     },
                   },
                 }}
@@ -1102,14 +1099,14 @@ const CheckoutForm = ({
                   style: {
                     base: {
                       fontSize: '16px',
-                      color: '#ffffff',
+                      color: '#b0b0b0',
                       fontFamily: 'inherit',
                       '::placeholder': {
-                        color: 'rgba(255, 255, 255, 0.5)',
+                        color: '#b0b0b0',
                       },
                     },
                     invalid: {
-                      color: '#FF6B35',
+                      color: 'var(--cor-primaria)',
                     },
                   },
                 }}
@@ -1163,12 +1160,12 @@ const CheckoutForm = ({
           marginTop: '1.5rem',
           textAlign: 'center',
           paddingTop: '1rem',
-          borderTop: '1px solid rgba(255, 255, 255, 0.1)'
+          borderTop: '1px solid var(--cor-borda)'
         }}>
           <p style={{
             margin: 0,
             fontSize: '0.85rem',
-            color: 'rgba(255, 255, 255, 0.6)',
+            color: 'var(--cor-texto-secundario)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1180,7 +1177,7 @@ const CheckoutForm = ({
               target="_blank" 
               rel="noopener noreferrer"
               style={{
-                color: 'rgba(255, 255, 255, 0.8)',
+                color: 'var(--cor-texto)',
                 textDecoration: 'none',
                 fontWeight: 600,
                 display: 'inline-flex',
@@ -1191,7 +1188,7 @@ const CheckoutForm = ({
                 e.currentTarget.style.color = 'var(--cor-primaria, #FF6B35)';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)';
+                e.currentTarget.style.color = 'var(--cor-texto)';
               }}
             >
               Stripe

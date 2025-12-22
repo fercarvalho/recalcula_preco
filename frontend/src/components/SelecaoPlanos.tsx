@@ -34,7 +34,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
           <p style={{ fontSize: '0.9rem', marginTop: '0.5rem' }}>
             {this.state.error?.message || 'Erro desconhecido'}
           </p>
-          <p style={{ fontSize: '0.8rem', marginTop: '0.5rem', color: '#666' }}>
+          <p style={{ fontSize: '0.8rem', marginTop: '0.5rem', color: 'var(--cor-texto-secundario)' }}>
             Verifique se VITE_STRIPE_PUBLIC_KEY está configurado no arquivo .env
           </p>
         </div>
@@ -272,7 +272,7 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
                       <div className="preco-original" style={{
                         marginBottom: '0.5rem',
                         fontSize: '0.9rem',
-                        color: '#999',
+                        color: 'var(--cor-texto-secundario)',
                         textDecoration: 'line-through'
                       }}>
                         De: R$ {formatarValor(plano.valor)}
@@ -355,12 +355,12 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
                   borderRadius: '6px',
                   textAlign: 'center',
                   fontSize: '0.85rem',
-                  color: '#333'
+                  color: 'var(--cor-texto)'
                 }}>
                   <strong style={{ color: 'var(--cor-primaria, #FF6B35)', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center', width: '100%' }}>
                     <FaShieldAlt /> Garantia de 7 dias
                   </strong>
-                  <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: '#333', fontWeight: 500 }}>
+                  <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: 'var(--cor-texto)', fontWeight: 500 }}>
                     Não gostou? Reembolso total em até 7 dias
                   </p>
                 </div>
@@ -423,7 +423,7 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
                 <FaCheckCircle /> Pagamento realizado com sucesso!
               </h3>
               <p>Você já tem acesso ao plano {planoSelecionado.nome}.</p>
-              <p style={{ marginTop: '1rem', fontSize: '0.9rem', color: '#666' }}>
+              <p style={{ marginTop: '1rem', fontSize: '0.9rem', color: 'var(--cor-texto-secundario)' }}>
                 A página será recarregada em instantes...
               </p>
             </div>
@@ -432,7 +432,7 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
               <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#f5f5f5', borderRadius: '8px' }}>
                 <p><strong>Plano:</strong> {planoSelecionado.nome}</p>
                 <p><strong>Valor:</strong> R$ {formatarValor(calcularValorComDesconto(planoSelecionado))}</p>
-                <p style={{ fontSize: '0.9rem', color: '#666', marginTop: '0.5rem' }}>
+                <p style={{ fontSize: '0.9rem', color: 'var(--cor-texto-secundario)', marginTop: '0.5rem' }}>
                   💡 <strong>Modo de teste:</strong> Use o cartão de teste <code>4242 4242 4242 4242</code> com qualquer data futura e CVC qualquer.
                 </p>
               </div>
@@ -460,7 +460,7 @@ export const SelecaoPlanos: React.FC<SelecaoPlanosProps> = ({ onPagamentoSucesso
                 <p style={{ 
                   margin: 0, 
                   fontSize: '0.85rem', 
-                  color: '#666',
+                  color: 'var(--cor-texto-secundario)',
                   lineHeight: '1.4'
                 }}>
                   Não gostou? Reembolso total em até 7 dias após a compra

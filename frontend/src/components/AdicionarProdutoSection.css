@@ -39,12 +39,14 @@
 
 .btn-adicionar-produto.btn-admin {
   background: var(--cor-fundo);
+  color: white !important;
   border: 1px solid var(--cor-borda);
   box-shadow: 0 2px 8px var(--cor-sombra);
 }
 
 .btn-adicionar-produto.btn-admin:hover {
-  background: color-mix(in srgb, var(--cor-fundo) 90%, var(--cor-texto)) !important;
+  background: color-mix(in srgb, var(--cor-fundo) 90%, white) !important;
+  color: white !important;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px var(--cor-sombra);
   border-color: color-mix(in srgb, var(--cor-borda) 80%, transparent);

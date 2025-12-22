@@ -94,9 +94,23 @@
 
 /* Preservar cores específicas do resumo de cupom - MÁXIMA ESPECIFICIDADE */
 /* Forçar cores verdes e laranjas no resumo de cupom */
-.cupom-resumo-box,
-.cupom-resumo-box * {
-  /* Reset para permitir cores específicas */
+.cupom-resumo-box {
+  background: var(--cor-card-fundo) !important;
+  border: 1px solid var(--cor-borda) !important;
+}
+
+
+/* No tema escuro: fundo mais escuro */
+:root[data-theme="dark"] .cupom-resumo-box,
+:root:not([data-theme]) .cupom-resumo-box {
+  background: rgba(0, 0, 0, 0.3) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* No tema claro: fundo branco semi-transparente */
+:root[data-theme="light"] .cupom-resumo-box {
+  background: rgba(255, 255, 255, 0.25) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
 }
 
 .cupom-resumo-box .cupom-aplicado-mensagem,
@@ -435,19 +449,125 @@ body .checkout-form .cupom-resumo-box .valor-total-laranja,
 body .checkout-form .cupom-resumo-box .valor-total-laranja *,
 body .checkout-form .cupom-resumo-box .valor-total-laranja span {
   color: #FF6B35 !important;
-  }
-  
-  .checkout-header h1 {
-    font-size: 1.5rem;
-  }
-  
-  .form-row {
-    grid-template-columns: 1fr;
-  }
-  
-  .form-group-large,
-  .form-group-small {
-    grid-column: span 1;
-  }
+}
+
+/* Garantir que "Valor original:" e seu valor se adaptem ao tema */
+body .checkout-form .cupom-resumo-box div[style*="Valor original"],
+body .checkout-form .cupom-resumo-box div[style*="Valor original"] span,
+body .checkout-form .cupom-resumo-box div[style*="Valor original"] *,
+.checkout-form .cupom-resumo-box div[style*="Valor original"],
+.checkout-form .cupom-resumo-box div[style*="Valor original"] span,
+.checkout-form .cupom-resumo-box div[style*="Valor original"] * {
+  color: var(--cor-texto) !important;
+}
+
+/* No tema escuro: texto branco */
+:root[data-theme="dark"] .cupom-resumo-box div[style*="Valor original"],
+:root:not([data-theme]) .cupom-resumo-box div[style*="Valor original"],
+:root[data-theme="dark"] .cupom-resumo-box div[style*="Valor original"] span,
+:root:not([data-theme]) .cupom-resumo-box div[style*="Valor original"] span,
+:root[data-theme="dark"] .cupom-resumo-box div[style*="color: var(--cor-texto)"],
+:root:not([data-theme]) .cupom-resumo-box div[style*="color: var(--cor-texto)"] {
+  color: white !important;
+}
+
+/* Garantir que o input do cupom sempre tenha texto branco APENAS quando estiver dentro da seção laranja */
+.checkout-section .cupom-input,
+.checkout-section[style*="var(--cor-primaria)"] .form-input-dark,
+.checkout-section[style*="var(--cor-primaria)"] input[type="text"][id="cupom"],
+.checkout-section[style*="var(--cor-primaria)"] input[type="text"][placeholder*="código promocional"],
+.checkout-section[style*="var(--cor-primaria)"] input[type="text"][placeholder*="Código promocional"],
+.checkout-section[style*="var(--cor-primaria)"] input.form-input-dark,
+.checkout-section[style*="background-color: var(--cor-primaria)"] .form-input-dark,
+.checkout-section[style*="background-color: var(--cor-primaria)"] input[type="text"][id="cupom"],
+.checkout-section[style*="background-color: var(--cor-primaria)"] input.form-input-dark,
+.checkout-section[style*="backgroundColor: var(--cor-primaria)"] .form-input-dark,
+.checkout-section[style*="backgroundColor: var(--cor-primaria)"] input[type="text"][id="cupom"],
+div.checkout-section[style*="var(--cor-primaria)"] .form-input-dark,
+div.checkout-section[style*="var(--cor-primaria)"] input[type="text"][id="cupom"],
+.checkout-section input#cupom,
+.checkout-section input.cupom-input {
+  color: white !important;
+}
+
+.checkout-section .cupom-input::placeholder,
+.checkout-section[style*="var(--cor-primaria)"] .form-input-dark::placeholder,
+.checkout-section[style*="var(--cor-primaria)"] input[type="text"][id="cupom"]::placeholder,
+.checkout-section[style*="var(--cor-primaria)"] input.form-input-dark::placeholder,
+.checkout-section[style*="background-color: var(--cor-primaria)"] .form-input-dark::placeholder,
+.checkout-section[style*="background-color: var(--cor-primaria)"] input[type="text"][id="cupom"]::placeholder,
+.checkout-section[style*="backgroundColor: var(--cor-primaria)"] .form-input-dark::placeholder,
+.checkout-section[style*="backgroundColor: var(--cor-primaria)"] input[type="text"][id="cupom"]::placeholder,
+div.checkout-section[style*="var(--cor-primaria)"] .form-input-dark::placeholder,
+div.checkout-section[style*="var(--cor-primaria)"] input[type="text"][id="cupom"]::placeholder,
+.checkout-section input#cupom::placeholder,
+.checkout-section input.cupom-input::placeholder {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Para outros inputs fora da seção laranja, usar cores do tema */
+.checkout-form .form-input-dark:not(.cupom-input):not(#cupom) {
+  color: var(--cor-input-texto) !important;
+  background: var(--cor-input-fundo) !important;
+  border-color: var(--cor-input-borda) !important;
+}
+
+.checkout-form .form-input-dark::placeholder {
+  color: var(--cor-input-placeholder) !important;
+}
+
+/* Garantir que o campo de cupom dentro da seção laranja se adapte ao tema */
+.checkout-section input#cupom.cupom-input,
+.checkout-section input#cupom.form-input-dark,
+.checkout-section .cupom-input.form-input-dark,
+.checkout-section[style*="var(--cor-primaria)"] input#cupom,
+.checkout-section[style*="background-color: var(--cor-primaria)"] input#cupom,
+.checkout-section[style*="backgroundColor: var(--cor-primaria)"] input#cupom,
+div.checkout-section input#cupom,
+div.checkout-section .cupom-input {
+  color: var(--cor-input-texto) !important;
+  background: var(--cor-input-fundo) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* No tema claro: texto preto e fundo branco */
+:root[data-theme="light"] .checkout-section input#cupom,
+:root[data-theme="light"] .checkout-section .cupom-input {
+  color: #000000 !important;
+  background: #ffffff !important;
+}
+
+/* No tema escuro: texto branco e fundo escuro */
+:root[data-theme="dark"] .checkout-section input#cupom,
+:root:not([data-theme]) .checkout-section input#cupom,
+:root[data-theme="dark"] .checkout-section .cupom-input,
+:root:not([data-theme]) .checkout-section .cupom-input {
+  color: #ffffff !important;
+  background: rgba(0, 0, 0, 0.4) !important;
+}
+
+.checkout-section input#cupom.cupom-input::placeholder,
+.checkout-section input#cupom.form-input-dark::placeholder,
+.checkout-section .cupom-input.form-input-dark::placeholder,
+.checkout-section[style*="var(--cor-primaria)"] input#cupom::placeholder,
+.checkout-section[style*="background-color: var(--cor-primaria)"] input#cupom::placeholder,
+.checkout-section[style*="backgroundColor: var(--cor-primaria)"] input#cupom::placeholder,
+div.checkout-section input#cupom::placeholder,
+div.checkout-section .cupom-input::placeholder {
+  color: var(--cor-input-placeholder) !important;
+}
+
+/* No tema claro: placeholder cinza escuro */
+:root[data-theme="light"] .checkout-section input#cupom::placeholder,
+:root[data-theme="light"] .checkout-section .cupom-input::placeholder {
+  color: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* No tema escuro: placeholder branco semi-transparente */
+:root[data-theme="dark"] .checkout-section input#cupom::placeholder,
+:root:not([data-theme]) .checkout-section input#cupom::placeholder,
+:root[data-theme="dark"] .checkout-section .cupom-input::placeholder,
+:root:not([data-theme]) .checkout-section .cupom-input::placeholder {
+  color: rgba(255, 255, 255, 0.7) !important;
 }
 
