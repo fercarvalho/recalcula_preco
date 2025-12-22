@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { FaPlus, FaEdit, FaTrash, FaSave, FaGripVertical, FaUndo } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaSave, FaGripVertical, FaUndo, FaToggleOn, FaToggleOff } from 'react-icons/fa';
 import Modal from './Modal';
 import { mostrarAlert, mostrarConfirm } from '../utils/modals';
 import { apiService } from '../services/api';
@@ -10,6 +10,7 @@ export interface FAQ {
   id: number | string;
   pergunta: string;
   resposta: string;
+  ativo?: boolean;
   ordem?: number;
 }
 
@@ -43,7 +44,7 @@ const GerenciamentoFAQ = ({ isOpen, onClose }: GerenciamentoFAQProps) => {
       setLoading(true);
       const faqCarregado = await apiService.obterFAQAdmin();
       setFAQ(faqCarregado);
-      
+
       // Salvar ordem padrão (ordem atual quando o modal é aberto)
       ordemPadraoRef.current.clear();
       faqCarregado.forEach(p => {
@@ -56,6 +57,30 @@ const GerenciamentoFAQ = ({ isOpen, onClose }: GerenciamentoFAQProps) => {
       await mostrarAlert('Erro', 'Erro ao carregar FAQ. Tente novamente.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleAtivo = async (pergunta: FAQ) => {
+    if (!pergunta.id || typeof pergunta.id === 'string') return;
+
+    try {
+      const novoAtivo = !(pergunta.ativo ?? true);
+      await apiService.atualizarFAQ(pergunta.id, pergunta.pergunta, pergunta.resposta, novoAtivo);
+
+      // Atualizar localmente sem recarregar toda a lista
+      setFAQ(prevFAQ =>
+        prevFAQ.map(p =>
+          p.id === pergunta.id ? { ...p, ativo: novoAtivo } : p
+        )
+      );
+
+      // Disparar evento para atualizar o FAQ na landing page
+      window.dispatchEvent(new CustomEvent('faq-updated'));
+    } catch (error) {
+      console.error('Erro ao atualizar status da pergunta:', error);
+      await mostrarAlert('Erro', 'Erro ao atualizar status da pergunta. Tente novamente.');
+      // Em caso de erro, recarregar para garantir sincronização
+      await carregarFAQ();
     }
   };
 
@@ -258,6 +283,24 @@ const GerenciamentoFAQ = ({ isOpen, onClose }: GerenciamentoFAQProps) => {
                     <div className="faq-resposta">
                       {pergunta.resposta}
                     </div>
+                    <div className="faq-switches">
+                      <div className="switch-group">
+                        <label>
+                          <span>Pergunta Ativa</span>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleToggleAtivo(pergunta);
+                            }}
+                            className={`switch-btn ${pergunta.ativo !== false ? 'active' : ''}`}
+                            title={pergunta.ativo !== false ? 'Desativar pergunta' : 'Ativar pergunta'}
+                          >
+                            {pergunta.ativo !== false ? <FaToggleOn /> : <FaToggleOff />}
+                          </button>
+                        </label>
+                      </div>
+                    </div>
                   </div>
                   <div className="faq-actions">
                     <button
@@ -328,7 +371,7 @@ const ModalFAQ = ({ faq, onClose, onSave }: ModalFAQProps) => {
     setLoading(true);
     try {
       if (faq?.id) {
-        await apiService.atualizarFAQ(Number(faq.id), pergunta.trim(), resposta.trim());
+        await apiService.atualizarFAQ(Number(faq.id), pergunta.trim(), resposta.trim(), faq.ativo);
         await mostrarAlert('Sucesso', 'Pergunta atualizada com sucesso!');
       } else {
         await apiService.criarFAQ(pergunta.trim(), resposta.trim());

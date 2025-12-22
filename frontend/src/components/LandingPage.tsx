@@ -251,7 +251,9 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
   const carregarFAQ = async () => {
     try {
       const faqCarregado = await apiService.obterFAQ();
-      setFaqs(faqCarregado);
+      // Filtrar apenas perguntas ativas
+      const faqAtivo = faqCarregado.filter(faq => faq.ativo === true);
+      setFaqs(faqAtivo);
     } catch (error) {
       console.error('Erro ao carregar FAQ:', error);
       setFaqs([]);

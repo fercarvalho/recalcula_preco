@@ -789,12 +789,29 @@ async function inicializar() {
                 id SERIAL PRIMARY KEY,
                 pergunta TEXT NOT NULL,
                 resposta TEXT NOT NULL,
+                ativo BOOLEAN DEFAULT true,
                 ordem INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
         
+        // Verificar e adicionar coluna 'ativo' na tabela FAQ se não existir
+        try {
+            const colunaAtivoExiste = await colunaExiste('faq', 'ativo');
+            if (!colunaAtivoExiste) {
+                console.log('Adicionando coluna ativo à tabela faq...');
+                await pool.query('ALTER TABLE faq ADD COLUMN ativo BOOLEAN DEFAULT true');
+                console.log('Coluna ativo adicionada com sucesso à tabela faq');
+
+                // Atualizar todas as perguntas existentes para ativo = true
+                await pool.query('UPDATE faq SET ativo = true WHERE ativo IS NULL');
+                console.log('Perguntas FAQ existentes marcadas como ativas');
+            }
+        } catch (error) {
+            console.error('Erro ao verificar/adicionar coluna ativo na tabela faq:', error);
+        }
+
         // Inicializar FAQ padrão se não existir
         await inicializarFAQPadrao();
         
@@ -4230,8 +4247,8 @@ async function inicializarFAQPadrao() {
         
         for (let i = 0; i < faqPadrao.length; i++) {
             await pool.query(
-                'INSERT INTO faq (pergunta, resposta, ordem) VALUES ($1, $2, $3)',
-                [faqPadrao[i].pergunta, faqPadrao[i].resposta, i + 1]
+                'INSERT INTO faq (pergunta, resposta, ativo, ordem) VALUES ($1, $2, $3, $4)',
+                [faqPadrao[i].pergunta, faqPadrao[i].resposta, true, i + 1]
             );
         }
         
@@ -4315,6 +4332,7 @@ async function obterFAQ() {
             id: row.id,
             pergunta: row.pergunta,
             resposta: row.resposta,
+            ativo: row.ativo,
             ordem: row.ordem
         }));
     } catch (error) {
@@ -4335,6 +4353,7 @@ async function obterFAQPorId(id) {
             id: row.id,
             pergunta: row.pergunta,
             resposta: row.resposta,
+            ativo: row.ativo,
             ordem: row.ordem
         };
     } catch (error) {
@@ -4353,15 +4372,16 @@ async function criarFAQ(pergunta, resposta, ordem = null) {
         }
         
         const result = await pool.query(
-            'INSERT INTO faq (pergunta, resposta, ordem) VALUES ($1, $2, $3) RETURNING *',
-            [pergunta.trim(), resposta.trim(), ordem]
+            'INSERT INTO faq (pergunta, resposta, ativo, ordem) VALUES ($1, $2, $3, $4) RETURNING *',
+            [pergunta.trim(), resposta.trim(), true, ordem]
         );
-        
+
         const row = result.rows[0];
         return {
             id: row.id,
             pergunta: row.pergunta,
             resposta: row.resposta,
+            ativo: row.ativo,
             ordem: row.ordem
         };
     } catch (error) {
@@ -4371,22 +4391,31 @@ async function criarFAQ(pergunta, resposta, ordem = null) {
 }
 
 // Atualizar pergunta FAQ
-async function atualizarFAQ(id, pergunta, resposta) {
+async function atualizarFAQ(id, pergunta, resposta, ativo) {
     try {
-        const result = await pool.query(
-            'UPDATE faq SET pergunta = $1, resposta = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 RETURNING *',
-            [pergunta.trim(), resposta.trim(), id]
-        );
-        
+        let query = 'UPDATE faq SET pergunta = $1, resposta = $2, updated_at = CURRENT_TIMESTAMP';
+        let params = [pergunta.trim(), resposta.trim()];
+
+        if (ativo !== undefined) {
+            query += ', ativo = $' + (params.length + 1);
+            params.push(ativo);
+        }
+
+        query += ' WHERE id = $' + (params.length + 1) + ' RETURNING *';
+        params.push(id);
+
+        const result = await pool.query(query, params);
+
         if (result.rows.length === 0) {
             return null;
         }
-        
+
         const row = result.rows[0];
         return {
             id: row.id,
             pergunta: row.pergunta,
             resposta: row.resposta,
+            ativo: row.ativo,
             ordem: row.ordem
         };
     } catch (error) {

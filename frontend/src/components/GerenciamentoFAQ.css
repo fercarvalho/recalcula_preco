@@ -241,6 +241,56 @@
   font-size: 1.1rem;
 }
 
+.faq-switches {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid var(--cor-borda);
+}
+
+.switch-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.switch-group label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: default;
+  font-weight: 500;
+  color: var(--cor-texto) !important;
+  user-select: none;
+  width: 100%;
+}
+
+.switch-btn {
+  background: none;
+  border: none;
+  font-size: 1.8rem;
+  cursor: pointer;
+  color: var(--cor-texto-secundario);
+  transition: color 0.3s;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.switch-btn:focus {
+  outline: none;
+}
+
+.switch-btn.active {
+  color: var(--cor-primaria, #FF6B35);
+}
+
+.switch-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Garantir que o modal apareça acima de outros modais */
 .modal-nested {
   z-index: 2000 !important;

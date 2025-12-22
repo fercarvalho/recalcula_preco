@@ -4138,7 +4138,9 @@ app.put('/api/admin/planos/:planoId/beneficios/ordem', authenticateToken, requir
 app.get('/api/faq', async (req, res) => {
     try {
         const faq = await db.obterFAQ();
-        res.json(faq);
+        // Filtrar apenas perguntas ativas
+        const faqAtivo = faq.filter(pergunta => pergunta.ativo !== false);
+        res.json(faqAtivo);
     } catch (error) {
         console.error('Erro ao obter FAQ:', error);
         res.status(500).json({ error: 'Erro ao obter FAQ' });
@@ -4551,17 +4553,17 @@ app.delete('/api/admin/rodape/:id', authenticateToken, requireAdmin, async (req,
 app.put('/api/admin/faq/:id', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
-        const { pergunta, resposta } = req.body;
-        
+        const { pergunta, resposta, ativo } = req.body;
+
         if (!pergunta || !pergunta.trim()) {
             return res.status(400).json({ error: 'A pergunta é obrigatória' });
         }
-        
+
         if (!resposta || !resposta.trim()) {
             return res.status(400).json({ error: 'A resposta é obrigatória' });
         }
-        
-        const perguntaAtualizada = await db.atualizarFAQ(parseInt(id), pergunta, resposta);
+
+        const perguntaAtualizada = await db.atualizarFAQ(parseInt(id), pergunta, resposta, ativo);
         if (!perguntaAtualizada) {
             return res.status(404).json({ error: 'Pergunta não encontrada' });
         }

@@ -449,13 +449,14 @@ export const apiService = {
     return response.data;
   },
 
-  async atualizarFAQ(id: number, pergunta: string, resposta: string): Promise<{
+  async atualizarFAQ(id: number, pergunta: string, resposta: string, ativo?: boolean): Promise<{
     id: number;
     pergunta: string;
     resposta: string;
+    ativo: boolean;
     ordem: number;
   }> {
-    const response = await api.put(`/api/admin/faq/${id}`, { pergunta, resposta });
+    const response = await api.put(`/api/admin/faq/${id}`, { pergunta, resposta, ativo });
     return response.data;
   },
 
