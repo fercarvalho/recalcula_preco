@@ -1803,6 +1803,12 @@ async function validarTokenEmail(token) {
 // Verificar se email foi validado
 async function verificarEmailValidado(usuarioId) {
     try {
+        // Admins sempre têm email considerado validado
+        const usuario = await obterUsuarioPorId(usuarioId);
+        if (usuario && usuario.is_admin) {
+            return true;
+        }
+        
         const result = await pool.query(
             'SELECT email_validado FROM usuarios WHERE id = $1',
             [usuarioId]
@@ -3294,16 +3300,27 @@ async function obterAssinatura(usuarioId) {
 async function verificarAcessoAtivo(usuarioId) {
     try {
         console.log(`[verificarAcessoAtivo] Verificando acesso para usuário ${usuarioId}`);
+        
+        // Admins sempre têm acesso completo
+        const usuario = await obterUsuarioPorId(usuarioId);
+        if (usuario && usuario.is_admin) {
+            return {
+                temAcesso: true,
+                tipo: 'vitalicio', // Tratar como vitalício para compatibilidade
+                assinatura: null
+            };
+        }
+        
         // Verificar acesso especial primeiro (vitalício ou temporário)
-        const usuario = await pool.query(
+        const usuarioQuery = await pool.query(
             'SELECT acesso_especial, acesso_temporario_expira_em, acesso_temporario_nivel FROM usuarios WHERE id = $1',
             [usuarioId]
         );
         
-        if (usuario.rows.length > 0) {
-            const acessoEspecial = usuario.rows[0].acesso_especial;
-            const expiraEm = usuario.rows[0].acesso_temporario_expira_em;
-            const nivelTemporario = usuario.rows[0].acesso_temporario_nivel || null;
+        if (usuarioQuery.rows.length > 0) {
+            const acessoEspecial = usuarioQuery.rows[0].acesso_especial;
+            const expiraEm = usuarioQuery.rows[0].acesso_temporario_expira_em;
+            const nivelTemporario = usuarioQuery.rows[0].acesso_temporario_nivel || null;
             
             if (acessoEspecial === 'vitalicio') {
                 // Acesso vitalício (permanente)
@@ -7108,6 +7125,12 @@ async function atualizarPermissoesFuncoesEspeciais(permissoes) {
 // Verificar se usuário tem acesso a uma função especial
 async function verificarAcessoFuncaoEspecial(usuarioId, funcaoEspecial) {
     try {
+        // Admins sempre têm acesso a todas as funções especiais
+        const usuario = await obterUsuarioPorId(usuarioId);
+        if (usuario && usuario.is_admin) {
+            return true;
+        }
+        
         // Verificar se "todos" está habilitado (tem prioridade)
         const permissaoTodos = await pool.query(`
             SELECT habilitado FROM funcoes_especiais_acesso
@@ -7127,7 +7150,6 @@ async function verificarAcessoFuncaoEspecial(usuarioId, funcaoEspecial) {
         const adminHabilitado = permissaoAdmin.rows.length > 0 && permissaoAdmin.rows[0].habilitado;
         
         // Verificar se o usuário é admin e se "Disponível para Admin" está habilitado
-        const usuario = await obterUsuarioPorId(usuarioId);
         if (adminHabilitado && usuario && usuario.is_admin) {
             return true;
         }

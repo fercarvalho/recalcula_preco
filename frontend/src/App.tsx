@@ -302,6 +302,12 @@ function App() {
   // Função para verificar se os dados do usuário estão vazios
   const verificarDadosVazios = async (): Promise<boolean> => {
     try {
+      // Admins não precisam preencher dados
+      const user = getUser();
+      if (user?.is_admin) {
+        return false;
+      }
+      
       console.log('verificarDadosVazios - Iniciando verificação...');
       const response = await apiService.obterDadosUsuario();
       console.log('verificarDadosVazios - Response completa:', response);
@@ -446,7 +452,8 @@ function App() {
       
       // Verificar se precisa validar email
       // Só abrir o modal se não foi fechado manualmente pelo usuário
-      if (status.emailNaoValidado && !modalEmailFechadoManualmente) {
+      // Admins não precisam validar email
+      if (!user?.is_admin && status.emailNaoValidado && !modalEmailFechadoManualmente) {
         setShowValidarEmail(true);
       } else {
         // Se email está validado, verificar se dados estão vazios

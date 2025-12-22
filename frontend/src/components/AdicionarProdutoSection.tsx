@@ -482,9 +482,12 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
                 
                 // PRIMEIRO: Verificar se tem plano anual mas email não validado
                 // Esta verificação deve ser feita ANTES de qualquer outra
+                // Admins não precisam validar email
                 if (temPlanoAnual) {
                   const status = await apiService.verificarStatusPagamento();
-                  if (status.emailNaoValidado) {
+                  // Admins não precisam validar email
+                  const user = getUser();
+                  if (!user?.is_admin && status.emailNaoValidado) {
                     await mostrarAlert(
                       'Email não validado',
                       'É necessário validar seu email antes de usar as funções especiais. Verifique sua caixa de entrada e clique no link de validação.'
@@ -492,7 +495,7 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
                     return;
                   }
                   
-                  // Se tem plano anual e email validado, permitir ativar/desativar diretamente
+                  // Se tem plano anual e email validado (ou é admin), permitir ativar/desativar diretamente
                   // Não precisa verificar temAcessoModoCardapio neste caso
                   const novoValor = !cardapioPublico;
                   setCardapioPublico(novoValor);
@@ -694,8 +697,10 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
                 }
                 
                 // Verificar se email foi validado antes de permitir usar funções especiais
+                // Admins não precisam validar email
+                const user = getUser();
                 const status = await apiService.verificarStatusPagamento();
-                if (status.emailNaoValidado) {
+                if (!user?.is_admin && status.emailNaoValidado) {
                   await mostrarAlert(
                     'Email não validado',
                     'É necessário validar seu email antes de usar as funções especiais. Verifique sua caixa de entrada e clique no link de validação.'
@@ -748,8 +753,10 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
                 }
                 
                 // Verificar se email foi validado antes de permitir usar funções especiais
+                // Admins não precisam validar email
+                const user = getUser();
                 const status = await apiService.verificarStatusPagamento();
-                if (status.emailNaoValidado) {
+                if (!user?.is_admin && status.emailNaoValidado) {
                   await mostrarAlert(
                     'Email não validado',
                     'É necessário validar seu email antes de usar as funções especiais. Verifique sua caixa de entrada e clique no link de validação.'

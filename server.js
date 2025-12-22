@@ -2574,6 +2574,22 @@ app.post('/api/stripe/confirmar-pagamento', authenticateToken, async (req, res) 
 // Verificar status de pagamento do usuário
 app.get('/api/stripe/status', authenticateToken, async (req, res) => {
     try {
+        // Admins sempre têm acesso completo
+        if (req.isAdmin) {
+            return res.json({
+                temAcesso: true,
+                tipo: 'vitalicio',
+                emailNaoValidado: false,
+                assinatura: {
+                    status: 'active',
+                    plano_tipo: 'vitalicio',
+                    current_period_end: null,
+                    cancel_at_period_end: false,
+                },
+                pagamento: null
+            });
+        }
+        
         const acesso = await db.verificarAcessoAtivo(req.userId);
         const assinatura = await db.obterAssinatura(req.userId);
 
