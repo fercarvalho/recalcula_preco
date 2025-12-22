@@ -11,7 +11,7 @@
 }
 
 .alterar-login-form label {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--cor-texto) !important;
   font-weight: 500;
   font-size: 0.9rem;
 }
@@ -23,10 +23,10 @@
 
 .alterar-login-form .form-input {
   padding: 12px 16px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid var(--cor-input-borda);
   border-radius: 6px;
-  background: rgba(0, 0, 0, 0.3);
-  color: white;
+  background: var(--cor-input-fundo);
+  color: var(--cor-input-texto);
   font-size: 1rem;
   transition: all 0.2s ease;
 }
@@ -40,11 +40,11 @@
 .alterar-login-form .form-input:disabled {
   opacity: 0.6;
   cursor: not-allowed;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--cor-hover);
 }
 
 .alterar-login-form .form-help {
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--cor-texto-secundario) !important;
   font-size: 0.85rem;
   margin-top: 4px;
 }
@@ -64,7 +64,7 @@
   right: 12px;
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--cor-texto-secundario);
   cursor: pointer;
   padding: 4px 8px;
   display: flex;
@@ -75,7 +75,7 @@
 }
 
 .password-toggle:hover {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--cor-texto);
 }
 
 .password-toggle:disabled {

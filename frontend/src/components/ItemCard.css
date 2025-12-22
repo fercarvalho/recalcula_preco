@@ -3,7 +3,7 @@
   align-items: center;
   padding: 15px;
   position: relative;
-  background: #f8f9fa;
+  background: var(--cor-card-fundo);
   border-radius: 8px;
   border: 2px solid transparent;
   transition: all 0.3s;
@@ -12,13 +12,13 @@
 }
 
 .item-card:hover {
-  background: #e9ecef;
+  background: var(--cor-hover);
   border-color: var(--cor-primaria);
 }
 
 .item-card.selected {
   border-color: var(--cor-primaria);
-  background: #fff3f0;
+  background: var(--cor-hover);
 }
 
 .item-checkbox input[type="checkbox"] {
@@ -35,7 +35,7 @@
 
 .item-info h4 {
   margin: 0 0 8px 0;
-  color: #333;
+  color: var(--cor-texto);
   font-size: 1.1em;
 }
 
@@ -149,7 +149,7 @@
 .btn-edit,
 .btn-delete {
   border: none;
-  color: white;
+  color: var(--cor-texto);
   padding: 6px 10px;
   border-radius: 5px;
   cursor: pointer;
@@ -177,7 +177,7 @@
 }
 
 .btn-edit:hover {
-  background: color-mix(in srgb, var(--cor-primaria) 90%, white);
+  background: color-mix(in srgb, var(--cor-primaria) 90%, var(--cor-texto));
   opacity: 1;
   transform: scale(1.1);
 }
@@ -276,9 +276,12 @@
 
 .edit-input {
   padding: 8px;
-  border: 2px solid #ddd;
+  border: 2px solid var(--cor-borda);
   border-radius: 6px;
   font-size: 1em;
+  background: var(--cor-input-fundo);
+  color: var(--cor-input-texto);
+  transition: border-color 0.3s, background-color 0.3s ease, color 0.3s ease;
 }
 
 .edit-input:focus {
@@ -302,7 +305,7 @@
 
 .btn-save {
   background: #28a745;
-  color: white;
+  color: var(--cor-texto);
 }
 
 .btn-save:hover {
@@ -311,7 +314,7 @@
 
 .btn-cancel {
   background: #6c757d;
-  color: white;
+  color: var(--cor-texto);
 }
 
 .btn-cancel:hover {

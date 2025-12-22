@@ -189,7 +189,12 @@
 .empty-state {
   text-align: center;
   padding: 40px;
-  color: #666;
+  color: var(--cor-texto-secundario) !important;
+}
+
+.empty-state p {
+  color: var(--cor-texto-secundario) !important;
+  margin: 0;
 }
 
 .icone-options {
@@ -312,8 +317,8 @@
   padding: 12px 24px;
   border: none;
   border-radius: 8px;
-  background: var(--cor-secundaria, #2a2a2a);
-  color: white;
+  background: var(--cor-secundaria);
+  color: var(--cor-texto);
   cursor: pointer;
   font-size: 1em;
   font-weight: 600;
@@ -324,7 +329,7 @@
 }
 
 .modal-adicionar-funcao .icone-options button.btn-secondary:hover {
-  background: color-mix(in srgb, var(--cor-secundaria, #2a2a2a) 90%, white);
+  background: color-mix(in srgb, var(--cor-secundaria) 90%, var(--cor-texto));
   transform: translateY(-2px);
 }
 

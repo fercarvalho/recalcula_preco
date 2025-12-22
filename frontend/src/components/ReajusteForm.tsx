@@ -55,13 +55,13 @@ const ReajusteForm = ({
       {mostrarAvisoUpgrade && (
         <div style={{
           padding: '15px',
-          background: 'linear-gradient(135deg, #FF6B35 0%, #e55a2b 100%)',
-          border: '2px solid #FF6B35',
+          background: 'linear-gradient(135deg, var(--cor-primaria) 0%, #e55a2b 100%)',
+          border: '2px solid var(--cor-primaria)',
           borderRadius: '8px',
           marginBottom: '20px',
           textAlign: 'center',
-          color: 'white',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+          color: 'var(--cor-texto)',
+          boxShadow: '0 4px 6px var(--cor-sombra)',
         }}>
           <p style={{ margin: '0 0 10px 0', fontWeight: '600', fontSize: '1.05em', display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
             ⭐ Faça Upgrade para Plano Anual Completo
@@ -73,7 +73,7 @@ const ReajusteForm = ({
             onClick={() => onAbrirModalUpgrade?.()}
             style={{
               background: '#000000',
-              color: 'white',
+              color: 'var(--cor-texto)',
               border: 'none',
               padding: '12px 24px',
               borderRadius: '6px',
@@ -81,7 +81,7 @@ const ReajusteForm = ({
               fontSize: '1em',
               fontWeight: 'bold',
               transition: 'all 0.3s',
-              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+              boxShadow: '0 2px 4px var(--cor-sombra)',
             }}
             onMouseOver={(e) => {
               e.currentTarget.style.background = '#333333';

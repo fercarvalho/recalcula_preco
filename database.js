@@ -3360,7 +3360,7 @@ async function verificarAcessoAtivo(usuarioId) {
             ORDER BY pu.created_at DESC
             LIMIT 1
         `, [usuarioId]);
-        
+
         console.log(`[verificarAcessoAtivo] Pagamentos únicos encontrados: ${pagamentoUnico.rows.length}`);
         if (pagamentoUnico.rows.length > 0) {
             console.log(`[verificarAcessoAtivo] Pagamento único:`, {
@@ -6686,17 +6686,17 @@ async function atualizarStatusRoadmapItem(id, novoStatus) {
 
 // Atualizar ordem dos itens do roadmap
 async function atualizarOrdemRoadmap(itens) {
-    const client = await pool.connect();
-    try {
+        const client = await pool.connect();
+        try {
         if (!Array.isArray(itens) || itens.length === 0) {
             throw new Error('Itens deve ser um array não vazio');
         }
         
         console.log('Iniciando atualização de ordem para', itens.length, 'itens');
         
-        await client.query('BEGIN');
-        
-        for (const item of itens) {
+            await client.query('BEGIN');
+            
+            for (const item of itens) {
             if (!item.id || item.ordem === undefined || item.ordem === null) {
                 throw new Error(`Item inválido: ${JSON.stringify(item)}`);
             }
@@ -6704,22 +6704,22 @@ async function atualizarOrdemRoadmap(itens) {
             console.log(`Atualizando item id=${item.id}, ordem=${item.ordem}`);
             
             const result = await client.query(`
-                UPDATE roadmap
-                SET ordem = $1, updated_at = CURRENT_TIMESTAMP
-                WHERE id = $2
+                    UPDATE roadmap
+                    SET ordem = $1, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = $2
                 RETURNING id
-            `, [item.ordem, item.id]);
+                `, [item.ordem, item.id]);
             
             if (result.rows.length === 0) {
                 throw new Error(`Item com id ${item.id} não encontrado no banco de dados`);
             }
             
             console.log(`Item id=${item.id} atualizado com sucesso`);
-        }
-        
-        await client.query('COMMIT');
+            }
+            
+            await client.query('COMMIT');
         console.log('Ordem atualizada com sucesso para todos os itens');
-    } catch (error) {
+        } catch (error) {
         await client.query('ROLLBACK').catch(rollbackError => {
             console.error('Erro ao fazer rollback:', rollbackError);
         });
@@ -6730,19 +6730,20 @@ async function atualizarOrdemRoadmap(itens) {
             detail: error.detail,
             constraint: error.constraint
         });
-        throw error;
-    } finally {
-        client.release();
+            throw error;
+        } finally {
+            client.release();
     }
 }
 
 // Iniciar contador de tempo de um item do roadmap
 async function iniciarTempoRoadmapItem(id) {
     try {
+        // COALESCE mantém ultimo_inicio se existir (estava pausado) ou cria novo timestamp
         const result = await pool.query(`
             UPDATE roadmap
             SET em_andamento = TRUE,
-                ultimo_inicio = CURRENT_TIMESTAMP,
+                ultimo_inicio = COALESCE(ultimo_inicio, CURRENT_TIMESTAMP),
                 data_inicio = COALESCE(data_inicio, CURRENT_TIMESTAMP),
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = $1
@@ -6752,6 +6753,24 @@ async function iniciarTempoRoadmapItem(id) {
         return result.rows[0] || null;
     } catch (error) {
         console.error('Erro ao iniciar tempo do item do roadmap:', error);
+        throw error;
+    }
+}
+
+// Pausar contador de tempo de um item do roadmap (mantém ultimo_inicio para continuar depois)
+async function pausarTempoRoadmapItem(id) {
+    try {
+        const result = await pool.query(`
+            UPDATE roadmap
+            SET em_andamento = FALSE,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+            RETURNING *
+        `, [id]);
+        
+        return result.rows[0] || null;
+    } catch (error) {
+        console.error('Erro ao pausar tempo do item do roadmap:', error);
         throw error;
     }
 }

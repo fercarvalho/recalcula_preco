@@ -86,14 +86,15 @@
 .tutorial-tooltip {
   position: absolute;
   z-index: 10002;
-  background: var(--cor-fundo, #1a1a1a);
-  border: 2px solid var(--cor-primaria, #FF6B35);
+  background: var(--cor-secundaria);
+  border: 2px solid var(--cor-primaria);
   border-radius: 12px;
   padding: 0;
   min-width: 400px;
   max-width: 500px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 10px 40px var(--cor-sombra);
   animation: tooltip-appear 0.3s ease-out;
+  transition: background-color 0.3s ease;
 }
 
 @keyframes tooltip-appear {
@@ -118,8 +119,8 @@
   justify-content: space-between;
   align-items: center;
   padding: 20px 24px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background: linear-gradient(135deg, var(--cor-primaria, #FF6B35), rgba(255, 107, 53, 0.8));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, var(--cor-primaria), rgba(255, 107, 53, 0.8));
   border-radius: 10px 10px 0 0;
 }
 
@@ -151,19 +152,23 @@
 
 .tutorial-content {
   padding: 24px;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--cor-texto) !important;
   line-height: 1.6;
+  background: var(--cor-secundaria);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .tutorial-content p {
   margin: 0 0 20px 0;
   font-size: 1rem;
+  color: var(--cor-texto) !important;
 }
 
 .tutorial-requirements {
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--cor-borda);
+  transition: border-color 0.3s ease;
 }
 
 .requirement {
@@ -173,14 +178,14 @@
   padding: 10px;
   margin-bottom: 8px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--cor-hover);
   transition: all 0.3s ease;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--cor-texto-secundario) !important;
 }
 
 .requirement.met {
   background: rgba(76, 175, 80, 0.2);
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--cor-texto) !important;
   border: 1px solid rgba(76, 175, 80, 0.5);
 }
 
@@ -208,9 +213,10 @@
 
 .tutorial-footer {
   padding: 20px 24px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(0, 0, 0, 0.2);
+  border-top: 1px solid var(--cor-borda);
+  background: var(--cor-card-fundo);
   border-radius: 0 0 10px 10px;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .tutorial-progress {
@@ -224,7 +230,7 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--cor-borda);
   transition: all 0.3s ease;
 }
 
@@ -258,8 +264,8 @@
 }
 
 .btn-tutorial-primary {
-  background: var(--cor-primaria, #FF6B35);
-  color: white;
+  background: var(--cor-primaria);
+  color: var(--cor-texto);
   margin-left: auto;
 }
 
@@ -275,14 +281,16 @@
 }
 
 .btn-tutorial-secondary {
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: var(--cor-secundaria);
+  color: var(--cor-texto);
+  border: 1px solid var(--cor-borda);
+  box-shadow: 0 2px 8px var(--cor-sombra);
 }
 
 .btn-tutorial-secondary:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--cor-hover);
   transform: translateY(-2px);
+  box-shadow: 0 4px 12px var(--cor-sombra);
 }
 
 .tutorial-action-button {

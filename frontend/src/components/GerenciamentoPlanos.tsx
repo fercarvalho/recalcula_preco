@@ -300,23 +300,23 @@ const GerenciamentoPlanos = ({ isOpen, onClose }: GerenciamentoPlanosProps) => {
                   <div className="plano-content">
                     <div className="plano-header">
                       <div className="plano-info">
-                        <h3>
-                          {plano.nome}
-                          {plano.mais_popular && (
-                            <span className="badge-popular" title="Mais Popular">
-                              <FaStar /> Mais Popular
-                            </span>
-                          )}
-                          {!plano.ativo && (
-                            <span className="badge-inativo">Inativo</span>
-                          )}
-                        </h3>
-                        <div className="plano-detalhes">
-                          <span className="plano-tipo">{plano.tipo}</span>
-                          <span className="plano-valor">R$ {plano.valor.toFixed(2)}</span>
-                          {plano.valor_total && plano.mostrar_valor_total && (
-                            <span className="plano-total">Total: R$ {plano.valor_total.toFixed(2)}</span>
-                          )}
+                      <h3>
+                        {plano.nome}
+                        {plano.mais_popular && (
+                          <span className="badge-popular" title="Mais Popular">
+                            <FaStar /> Mais Popular
+                          </span>
+                        )}
+                        {!plano.ativo && (
+                          <span className="badge-inativo">Inativo</span>
+                        )}
+                      </h3>
+                      <div className="plano-detalhes">
+                        <span className="plano-tipo">{plano.tipo}</span>
+                        <span className="plano-valor">R$ {plano.valor.toFixed(2)}</span>
+                        {plano.valor_total && plano.mostrar_valor_total && (
+                          <span className="plano-total">Total: R$ {plano.valor_total.toFixed(2)}</span>
+                        )}
                         </div>
                       </div>
                     </div>
@@ -1038,7 +1038,7 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
                   readOnly
                   style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
                 />
-                <small style={{ color: '#666', fontSize: '12px', display: 'block', marginTop: '4px' }}>
+                <small style={{ color: 'var(--cor-texto-secundario)', fontSize: '12px', display: 'block', marginTop: '4px' }}>
                   Calculado automaticamente baseado no valor e período
                 </small>
               </div>
@@ -1087,7 +1087,7 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
                   readOnly
                   style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
                 />
-                <small style={{ color: '#666', fontSize: '12px', display: 'block', marginTop: '4px' }}>
+                <small style={{ color: 'var(--cor-texto-secundario)', fontSize: '12px', display: 'block', marginTop: '4px' }}>
                   {periodo && (
                     <>
                       Calculado automaticamente: {valorTotal ? parseFloat(valorTotal).toFixed(2) : '0.00'} ÷ {
@@ -1484,27 +1484,27 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
           {/* Campo de busca de benefícios existentes */}
           <div style={{ marginTop: '12px', marginBottom: '0', position: 'relative' }}>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-              <input
-                type="text"
-                value={buscaBeneficio}
-                onChange={(e) => {
-                  setBuscaBeneficio(e.target.value);
-                  setMostrarResultadosBusca(e.target.value.trim().length > 0);
-                }}
-                onFocus={() => {
-                  if (buscaBeneficio.trim().length > 0) {
-                    setMostrarResultadosBusca(true);
-                  }
-                }}
-                onBlur={() => {
-                  // Delay para permitir clique nos resultados
-                  setTimeout(() => setMostrarResultadosBusca(false), 200);
-                }}
-                placeholder="Buscar benefícios existentes..."
-                className="form-input"
+            <input
+              type="text"
+              value={buscaBeneficio}
+              onChange={(e) => {
+                setBuscaBeneficio(e.target.value);
+                setMostrarResultadosBusca(e.target.value.trim().length > 0);
+              }}
+              onFocus={() => {
+                if (buscaBeneficio.trim().length > 0) {
+                  setMostrarResultadosBusca(true);
+                }
+              }}
+              onBlur={() => {
+                // Delay para permitir clique nos resultados
+                setTimeout(() => setMostrarResultadosBusca(false), 200);
+              }}
+              placeholder="Buscar benefícios existentes..."
+              className="form-input"
                 style={{ flex: 1 }}
-                disabled={loading}
-              />
+              disabled={loading}
+            />
               <button
                 type="button"
                 onClick={handlePreencherBeneficiosOutrosPlanos}
@@ -1588,7 +1588,7 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
           title="Selecionar Plano"
         >
           <div style={{ padding: '20px' }}>
-            <p style={{ marginBottom: '20px', color: '#666' }}>
+            <p style={{ marginBottom: '20px', color: 'var(--cor-texto-secundario)' }}>
               Selecione o plano do qual deseja copiar os benefícios:
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '400px', overflowY: 'auto' }}>
@@ -1616,7 +1616,7 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
                     >
                       <span>
                         <strong>{p.nome}</strong>
-                        <span style={{ marginLeft: '8px', color: '#666', fontSize: '0.9em' }}>
+                        <span style={{ marginLeft: '8px', color: 'var(--cor-texto-secundario)', fontSize: '0.9em' }}>
                           ({quantidadeBeneficios} benefício{quantidadeBeneficios !== 1 ? 's' : ''})
                         </span>
                       </span>
@@ -1633,8 +1633,8 @@ const ModalPlano = ({ plano, planos, onClose, onSave }: ModalPlanoProps) => {
               >
                 Cancelar
               </button>
-            </div>
-          </div>
+        </div>
+      </div>
         </Modal>
       )}
     </Modal>

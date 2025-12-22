@@ -11,7 +11,7 @@
 }
 
 .alterar-email-form label {
-  color: rgba(0, 0, 0, 0.9);
+  color: var(--cor-texto) !important;
   font-weight: 500;
   font-size: 0.9rem;
 }
@@ -23,10 +23,10 @@
 
 .alterar-email-form .form-input {
   padding: 12px 16px;
-  border: 1px solid rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--cor-input-borda);
   border-radius: 6px;
-  background: white;
-  color: #333;
+  background: var(--cor-input-fundo);
+  color: var(--cor-input-texto);
   font-size: 1rem;
   transition: all 0.2s ease;
 }
@@ -40,11 +40,11 @@
 .alterar-email-form .form-input:disabled {
   opacity: 0.6;
   cursor: not-allowed;
-  background: #f5f5f5;
+  background: var(--cor-hover);
 }
 
 .alterar-email-form .form-input::placeholder {
-  color: rgba(0, 0, 0, 0.4);
+  color: var(--cor-input-placeholder);
 }
 
 .password-input-wrapper {
@@ -83,7 +83,7 @@
 }
 
 .form-help {
-  color: rgba(0, 0, 0, 0.6);
+  color: var(--cor-texto-secundario) !important;
   font-size: 0.85rem;
   margin-top: 4px;
 }

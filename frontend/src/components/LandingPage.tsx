@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { FaCheck, FaChevronDown, FaChevronUp, FaCalculator, FaRocket, FaWhatsapp, FaExclamationTriangle, FaShieldAlt, FaHeart } from 'react-icons/fa';
 import * as FaIcons from 'react-icons/fa';
 import RegistroModal from './RegistroModal';
+import ThemeToggle from './ThemeToggle';
 import { apiService } from '../services/api';
 import type { Funcao } from './GerenciamentoFuncoes';
 import type { Plano } from './GerenciamentoPlanos';
@@ -1003,6 +1004,8 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
           onLoginClick();
         }}
       />
+      
+      <ThemeToggle variant="floating" />
     </div>
   );
 };

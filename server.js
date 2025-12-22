@@ -1586,7 +1586,7 @@ app.post('/api/stripe/create-payment-intent', authenticateToken, async (req, res
             
             // Se não é upgrade dinâmico e não tem price_id, retornar erro
             if (!plano.stripe_price_id) {
-                return res.status(400).json({ error: 'Plano não encontrado ou sem price_id configurado' });
+            return res.status(400).json({ error: 'Plano não encontrado ou sem price_id configurado' });
             }
         }
 
@@ -2340,7 +2340,7 @@ app.post('/api/stripe/confirmar-pagamento', authenticateToken, async (req, res) 
                 }
             }
         }
-        
+
         // Verificar se o pagamento já foi salvo
         let pagamento = await db.obterPagamentoUnicoPorStripeId(paymentIntentId);
         if (pagamento) {
@@ -2879,7 +2879,24 @@ app.post('/api/admin/roadmap/:id/iniciar-tempo', authenticateToken, requireAdmin
     }
 });
 
-// Parar contador de tempo de um item do roadmap
+// Pausar contador de tempo de um item do roadmap (mantém ultimo_inicio)
+app.post('/api/admin/roadmap/:id/pausar-tempo', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const itemAtualizado = await db.pausarTempoRoadmapItem(parseInt(id));
+        
+        if (!itemAtualizado) {
+            return res.status(404).json({ error: 'Item não encontrado' });
+        }
+        
+        res.json(itemAtualizado);
+    } catch (error) {
+        console.error('Erro ao pausar tempo do item do roadmap:', error);
+        res.status(500).json({ error: 'Erro ao pausar tempo do item do roadmap' });
+    }
+});
+
+// Parar contador de tempo de um item do roadmap (reinicia)
 app.post('/api/admin/roadmap/:id/parar-tempo', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;

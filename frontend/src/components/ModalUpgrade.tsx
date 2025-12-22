@@ -34,7 +34,7 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
       }
       verificarAcessoUnico().then(() => {
         // Carregar planos depois de verificar o tipo de acesso
-        carregarPlanos();
+      carregarPlanos();
       });
     } else {
       // Resetar estado ao fechar
@@ -317,7 +317,7 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
               style={{
                 background: 'none',
                 border: 'none',
-                color: '#666',
+                color: 'var(--cor-texto-secundario)',
                 cursor: 'pointer',
                 fontSize: '14px',
                 display: 'flex',
@@ -331,13 +331,14 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
             
             <div style={{
               padding: '1rem',
-              backgroundColor: '#f8f9fa',
+              backgroundColor: 'var(--cor-secundaria)',
               borderRadius: '8px',
-              marginBottom: '1rem'
+              marginBottom: '1rem',
+              border: '1px solid var(--cor-borda)'
             }}>
-              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem' }}>{planoSelecionado.nome}</h3>
+              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', color: 'var(--cor-texto)' }}>{planoSelecionado.nome}</h3>
               {valorDinamico !== null && (
-                <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.85rem', color: '#666' }}>
+                <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.85rem', color: 'var(--cor-texto-secundario)' }}>
                   Valor calculado dinamicamente baseado nos seus pagamentos
                 </p>
               )}
@@ -368,7 +369,7 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
       title="Faça Upgrade para Plano Anual"
       size="large"
     >
-        <div className="modal-upgrade-content">
+      <div className="modal-upgrade-content">
           <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
             <div style={{
               marginBottom: '1rem',
@@ -404,9 +405,9 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
           </div>
 
           {carregando === 'carregando' ? (
-            <div style={{ textAlign: 'center', padding: '2rem' }}>
-              <p>Carregando planos...</p>
-            </div>
+          <div style={{ textAlign: 'center', padding: '2rem' }}>
+            <p>Carregando planos...</p>
+          </div>
           ) : planos.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '2rem' }}>
               <p>Nenhum plano de upgrade disponível no momento.</p>
@@ -447,12 +448,12 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
                           <div className="preco-original" style={{
                             marginBottom: '0.5rem',
                             fontSize: '0.9rem',
-                            color: '#999',
+                            color: 'var(--cor-texto-secundario)',
                             textDecoration: 'line-through'
                           }}>
                             De: R$ {formatarValor(plano.valor_total || plano.valor)}
-                          </div>
-                        )}
+              </div>
+            )}
                         <span className="preco-valor">R$ {formatarValor(valorComDesconto)}</span>
                         <span className="preco-periodo">
                           {formatarPeriodo(plano.tipo, plano.periodo, plano.valor_parcelado)}
@@ -545,9 +546,9 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
                 );
               })}
             </div>
-          )}
-        </div>
-      </Modal>
+        )}
+      </div>
+    </Modal>
   );
 };
 

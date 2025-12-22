@@ -18,14 +18,19 @@
 }
 
 .estatisticas-gerais-loading p {
-  color: #666;
+  color: var(--cor-texto-secundario) !important;
   font-size: 1.1rem;
 }
 
 .estatisticas-gerais-empty {
   padding: 60px 20px;
   text-align: center;
-  color: #999;
+  color: var(--cor-texto-secundario) !important;
+}
+
+.estatisticas-gerais-empty p {
+  color: var(--cor-texto-secundario) !important;
+  margin: 0;
 }
 
 .estatisticas-grid {
@@ -102,7 +107,7 @@
 
 .estatistica-label {
   font-size: 0.9rem;
-  color: #666;
+  color: var(--cor-texto-secundario) !important;
   margin-bottom: 8px;
   font-weight: 500;
 }
@@ -239,13 +244,14 @@
 .estatisticas-vazio {
   padding: 20px;
   text-align: center;
-  color: #999;
+  color: var(--cor-texto-secundario) !important;
   font-style: italic;
 }
 
 .estatisticas-vazio p {
   margin: 0;
   font-size: 0.95rem;
+  color: var(--cor-texto-secundario) !important;
 }
 
 /* Container para gráficos */

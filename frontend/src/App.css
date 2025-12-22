@@ -1,19 +1,21 @@
 /* Estilos do App */
 .app {
   min-height: 100vh;
-  background: var(--cor-fundo, #1a1a1a);
+  background: var(--cor-fundo) !important;
   position: relative;
   padding: 0;
   margin: 0;
+  transition: background-color 0.3s ease;
 }
 
 .container {
   max-width: 1200px;
   margin: 20px auto;
   padding: 20px;
-  background: white;
+  background: var(--cor-secundaria);
   border-radius: 15px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 6px var(--cor-sombra);
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 @media (max-width: 1200px) {
@@ -80,8 +82,8 @@
   position: fixed;
   bottom: 30px;
   right: 30px;
-  background: var(--cor-primaria, #FF6B35);
-  color: white;
+  background: var(--cor-primaria);
+  color: var(--cor-texto);
   border: none;
   border-radius: 50px;
   padding: 12px 24px;
@@ -91,15 +93,15 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px var(--cor-sombra);
   transition: all 0.3s ease;
   z-index: 1001;
 }
 
 .btn-feedback-geral:hover {
-  background: var(--cor-primaria, #FF6B35);
+  background: var(--cor-primaria);
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 6px 16px var(--cor-sombra);
 }
 
 .btn-feedback-geral:active {

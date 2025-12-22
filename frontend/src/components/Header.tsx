@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import MenuUsuario from './MenuUsuario';
 import { clearAuth, getUser } from '../services/auth';
+import ThemeToggle from './ThemeToggle';
 import './Header.css';
 
 const getConfigKey = (userId?: number | null): string => {
@@ -39,6 +40,10 @@ const Header = ({ onReiniciarSistema, onReexibirTutorial, onOpenAdminPanel, isAd
     } finally {
       clearAuth();
       localStorage.removeItem('admin_viewing_user_id');
+      // Limpar preferência manual de tema ao fazer logout
+      if ((window as any).clearThemePreference) {
+        (window as any).clearThemePreference();
+      }
       window.location.href = '/';
     }
   };
@@ -142,13 +147,16 @@ const Header = ({ onReiniciarSistema, onReexibirTutorial, onOpenAdminPanel, isAd
               </button>
             </div>
           )}
-          <MenuUsuario
-            onLogout={handleLogout}
-            onReiniciarSistema={onReiniciarSistema}
-            onReexibirTutorial={onReexibirTutorial}
-            onOpenAdminPanel={onOpenAdminPanel}
-            isAdmin={isAdmin}
-          />
+          <div className="header-actions">
+            <ThemeToggle variant="header" />
+            <MenuUsuario
+              onLogout={handleLogout}
+              onReiniciarSistema={onReiniciarSistema}
+              onReexibirTutorial={onReexibirTutorial}
+              onOpenAdminPanel={onOpenAdminPanel}
+              isAdmin={isAdmin}
+            />
+          </div>
         </div>
       </div>
     </header>

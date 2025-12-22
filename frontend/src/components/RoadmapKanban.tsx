@@ -217,11 +217,105 @@ const RoadmapKanban = ({ isOpen, onClose }: RoadmapKanbanProps) => {
 
   const handleIniciarTempo = async (id: number) => {
     try {
-      await apiService.iniciarTempoRoadmapItem(id);
-      await carregarRoadmap();
+      const item = itens.find(i => i.id === id);
+      if (!item) return;
+      
+      const itemAtualizado = await apiService.iniciarTempoRoadmapItem(id);
+      
+      // Usar ultimo_inicio do backend (pode ser o existente se estava pausado, ou novo)
+      const ultimoInicio = itemAtualizado?.ultimo_inicio || item.ultimo_inicio || new Date().toISOString();
+      
+      // Atualizar estado local imediatamente para evitar glitches
+      setItens(prev => {
+        return prev.map(i => 
+          i.id === id 
+            ? { 
+                ...i, 
+                em_andamento: true,
+                ultimo_inicio: ultimoInicio,
+                data_inicio: itemAtualizado?.data_inicio || i.data_inicio
+              }
+            : i
+        );
+      });
+      
+      // Inicializar timer imediatamente
+      const agora = Date.now();
+      const inicio = new Date(ultimoInicio).getTime();
+      const tempoDecorrido = Math.floor((agora - inicio) / 1000);
+      
+      setTemposAtuais(prev => ({
+        ...prev,
+        [id]: tempoDecorrido
+      }));
+      
+      // Criar timer se não existir
+      if (!timersRef.current[id]) {
+        timersRef.current[id] = setInterval(() => {
+          const itemAtual = itensRef.current.find(i => i.id === id);
+          if (itemAtual && itemAtual.em_andamento && itemAtual.ultimo_inicio) {
+            const inicioAtual = new Date(itemAtual.ultimo_inicio).getTime();
+            const agoraAtual = Date.now();
+            const tempoDecorridoAtual = Math.floor((agoraAtual - inicioAtual) / 1000);
+            
+            setTemposAtuais(prev => {
+              if (prev[id] !== tempoDecorridoAtual) {
+                return {
+                  ...prev,
+                  [id]: tempoDecorridoAtual
+                };
+              }
+              return prev;
+            });
+          } else {
+            if (timersRef.current[id]) {
+              clearInterval(timersRef.current[id]);
+              delete timersRef.current[id];
+            }
+          }
+        }, 1000);
+      }
     } catch (error) {
       console.error('Erro ao iniciar tempo:', error);
       alert('Erro ao iniciar contador de tempo');
+      // Recarregar em caso de erro para garantir sincronização
+      await carregarRoadmap();
+    }
+  };
+
+  const handlePausarTempo = async (id: number) => {
+    try {
+      // Parar timer
+      if (timersRef.current[id]) {
+        clearInterval(timersRef.current[id]);
+        delete timersRef.current[id];
+      }
+      setTemposAtuais(prev => {
+        const novos = { ...prev };
+        delete novos[id];
+        return novos;
+      });
+      
+      const itemAtualizado = await apiService.pausarTempoRoadmapItem(id);
+      
+      // Atualizar estado local imediatamente para evitar glitches
+      // Mantém ultimo_inicio para continuar depois
+      setItens(prev => {
+        return prev.map(i => 
+          i.id === id 
+            ? { 
+                ...i, 
+                em_andamento: false
+                // ultimo_inicio é mantido no backend
+              }
+            : i
+        );
+      });
+    } catch (error) {
+      console.error('Erro ao pausar tempo:', error);
+      alert('Erro ao pausar contador de tempo');
+      // Recarregar em caso de erro para garantir sincronização
+      await carregarRoadmap();
     }
   };
 
@@ -249,11 +343,26 @@ const RoadmapKanban = ({ isOpen, onClose }: RoadmapKanbanProps) => {
         return novos;
       });
       
-      await apiService.pararTempoRoadmapItem(id, tempoDecorrido);
-      await carregarRoadmap();
+      const itemAtualizado = await apiService.pararTempoRoadmapItem(id, tempoDecorrido);
+      
+      // Atualizar estado local imediatamente para evitar glitches
+      setItens(prev => {
+        return prev.map(i => 
+          i.id === id 
+            ? { 
+                ...i, 
+                em_andamento: false,
+                ultimo_inicio: null,
+                tempo_acumulado: itemAtualizado?.tempo_acumulado || (i.tempo_acumulado + tempoDecorrido)
+              }
+            : i
+        );
+      });
     } catch (error) {
       console.error('Erro ao parar tempo:', error);
       alert('Erro ao parar contador de tempo');
+      // Recarregar em caso de erro para garantir sincronização
+      await carregarRoadmap();
     }
   };
 
@@ -328,12 +437,12 @@ const RoadmapKanban = ({ isOpen, onClose }: RoadmapKanbanProps) => {
         });
         
         // Atualizar no backend
-        try {
-          await apiService.atualizarStatusRoadmapItem(draggedItem.id, novoStatus);
+    try {
+      await apiService.atualizarStatusRoadmapItem(draggedItem.id, novoStatus);
           // Não recarregar - o estado já foi atualizado localmente
         } catch (error) {
           // Se der erro, recarregar do servidor para reverter
-          await carregarRoadmap();
+      await carregarRoadmap();
           throw error;
         }
       } else {
@@ -404,7 +513,7 @@ const RoadmapKanban = ({ isOpen, onClose }: RoadmapKanbanProps) => {
         try {
           await apiService.atualizarOrdemRoadmap(itensAtualizados);
           // Não recarregar - o estado já foi atualizado localmente
-        } catch (error) {
+    } catch (error) {
           // Se der erro, recarregar do servidor para reverter
           await carregarRoadmap();
           throw error;
@@ -722,6 +831,7 @@ const RoadmapKanban = ({ isOpen, onClose }: RoadmapKanbanProps) => {
                         onDragEnd={handleDragEnd}
                         isDragging={draggedItem?.id === item.id}
                         onIniciarTempo={handleIniciarTempo}
+                        onPausarTempo={handlePausarTempo}
                         onPararTempo={handlePararTempo}
                         tempoAtual={temposAtuais[item.id]}
                         formatarTempo={formatarTempo}
@@ -754,6 +864,7 @@ interface RoadmapCardProps {
   onDragEnd: () => void;
   isDragging: boolean;
   onIniciarTempo: (id: number) => void;
+  onPausarTempo: (id: number) => void;
   onPararTempo: (id: number) => void;
   tempoAtual?: number;
   formatarTempo: (segundos: number) => string;
@@ -764,7 +875,7 @@ interface RoadmapCardProps {
   onConcluir: (itemId: number) => void;
 }
 
-const RoadmapCard = ({ item, onEdit, onDelete, onDragStart, onDragEnd, isDragging, onIniciarTempo, onPararTempo, tempoAtual, formatarTempo, prioridade, totalItensColuna, onAtualizarPrioridade, onAvançar, onConcluir }: RoadmapCardProps) => {
+const RoadmapCard = ({ item, onEdit, onDelete, onDragStart, onDragEnd, isDragging, onIniciarTempo, onPausarTempo, onPararTempo, tempoAtual, formatarTempo, prioridade, totalItensColuna, onAtualizarPrioridade, onAvançar, onConcluir }: RoadmapCardProps) => {
   const prioridadeTipo = PRIORIDADE_CONFIG[item.prioridade];
   const [prioridadeEditando, setPrioridadeEditando] = useState<string>(prioridade.toString());
   
@@ -862,12 +973,29 @@ const RoadmapCard = ({ item, onEdit, onDelete, onDragStart, onDragEnd, isDraggin
         <div className="roadmap-card-tempo">
           <strong>Tempo:</strong> {tempoTotalFormatado}
         </div>
-        <button
-          onClick={() => item.em_andamento ? onPararTempo(item.id) : onIniciarTempo(item.id)}
-          className={`roadmap-card-btn-timer ${item.em_andamento ? 'stop' : 'start'}`}
-        >
-          {item.em_andamento ? '⏹ Stop' : '▶ Start'}
-        </button>
+        {item.em_andamento ? (
+          <>
+            <button
+              onClick={() => onPausarTempo(item.id)}
+              className="roadmap-card-btn-timer pause"
+            >
+              ⏸ Pause
+            </button>
+            <button
+              onClick={() => onPararTempo(item.id)}
+              className="roadmap-card-btn-timer stop"
+            >
+              ⏹ Stop
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={() => onIniciarTempo(item.id)}
+            className="roadmap-card-btn-timer start"
+          >
+            ▶ Start
+          </button>
+        )}
         <button
           onClick={() => onAvançar(item.id)}
           className="roadmap-card-btn-avancar"

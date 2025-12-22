@@ -215,7 +215,7 @@
 }
 
 .preview-empty {
-  color: #999;
+  color: var(--cor-texto-secundario) !important;
   font-style: italic;
   margin: 0;
 }
@@ -223,7 +223,12 @@
 .empty-state {
   text-align: center;
   padding: 2rem;
-  color: #999;
+  color: var(--cor-texto-secundario) !important;
+}
+
+.empty-state p {
+  color: var(--cor-texto-secundario) !important;
+  margin: 0;
 }
 
 .loading {

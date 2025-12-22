@@ -1,0 +1,71 @@
+/* Botão de tema no header */
+.theme-toggle-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: var(--cor-texto);
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: all 0.2s ease;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+}
+
+.theme-toggle-header:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+.theme-toggle-header:active {
+  transform: translateY(0);
+}
+
+/* Botão flutuante (para Landing Page) */
+.theme-toggle-floating {
+  position: fixed;
+  bottom: 30px;
+  left: 30px;
+  background: var(--cor-primaria, #FF6B35);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  padding: 12px 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  z-index: 1001;
+}
+
+.theme-toggle-floating:hover {
+  background: var(--cor-primaria, #FF6B35);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.theme-toggle-floating:active {
+  transform: translateY(0);
+}
+
+.theme-toggle-floating svg {
+  font-size: 1.1rem;
+}
+
+@media (max-width: 768px) {
+  .theme-toggle-floating {
+    bottom: 20px;
+    left: 20px;
+    padding: 10px 20px;
+    font-size: 0.9rem;
+  }
+}
+

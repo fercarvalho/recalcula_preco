@@ -468,11 +468,11 @@ const CheckoutAssinaturaForm = ({
     <form onSubmit={handleSubmit} className="checkout-form">
       {/* Seção: Código Promocional - Mesma do Checkout.tsx */}
       <div className="checkout-section" style={{
-        backgroundColor: 'var(--cor-primaria, #FF6B35)',
-        border: '2px solid var(--cor-primaria, #FF6B35)',
+        backgroundColor: 'var(--cor-primaria)',
+        border: '2px solid var(--cor-primaria)',
       }}>
         <h2 className="checkout-section-title" style={{ 
-          color: 'white',
+          color: 'var(--cor-texto)',
           borderBottomColor: 'rgba(255, 255, 255, 0.5)',
           display: 'flex',
           alignItems: 'center',
@@ -482,7 +482,7 @@ const CheckoutAssinaturaForm = ({
         </h2>
         
         <div className="form-group">
-          <label htmlFor="cupom" style={{ color: 'white' }}>
+          <label htmlFor="cupom" style={{ color: 'var(--cor-texto)' }}>
             Código de desconto
           </label>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -505,9 +505,9 @@ const CheckoutAssinaturaForm = ({
                 disabled={validandoCupom || !cupom.trim()}
                 style={{
                   padding: '0.75rem 1.5rem',
-                  background: validandoCupom || !cupom.trim() ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.5)',
-                  color: 'white',
-                  border: '1px solid rgba(255, 255, 255, 0.4)',
+                  background: validandoCupom || !cupom.trim() ? 'var(--cor-hover)' : 'var(--cor-hover)',
+                  color: 'var(--cor-texto)',
+                  border: '1px solid var(--cor-borda)',
                   borderRadius: '6px',
                   cursor: validandoCupom || !cupom.trim() ? 'not-allowed' : 'pointer',
                   fontSize: '1rem',
@@ -530,9 +530,9 @@ const CheckoutAssinaturaForm = ({
                 }}
                 style={{
                   padding: '0.75rem 1.5rem',
-                  background: 'rgba(0, 0, 0, 0.5)',
-                  color: 'white',
-                  border: '1px solid rgba(255, 255, 255, 0.4)',
+                  background: 'var(--cor-hover)',
+                  color: 'var(--cor-texto)',
+                  border: '1px solid var(--cor-borda)',
                   borderRadius: '6px',
                   cursor: 'pointer',
                   fontSize: '1rem',
@@ -550,8 +550,8 @@ const CheckoutAssinaturaForm = ({
           <div className="cupom-resumo-box" style={{
             marginTop: '1rem',
             padding: '1rem',
-            background: 'rgba(0, 0, 0, 0.3)',
-            border: '1px solid rgba(255, 255, 255, 0.3)',
+            background: 'var(--cor-hover)',
+            border: '1px solid var(--cor-borda)',
             borderRadius: '8px'
           }}>
             <div className="cupom-aplicado-mensagem" style={{ 
@@ -565,7 +565,7 @@ const CheckoutAssinaturaForm = ({
               <FaCheckCircle style={{ color: '#4CAF50', fill: '#4CAF50' }} />
               <span style={{ fontWeight: 'bold', color: '#4CAF50' } as React.CSSProperties}>Cupom aplicado! Desconto de {descontoFormatado}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: 'rgba(255, 255, 255, 1)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: 'var(--cor-texto)' }}>
               <span>Valor original:</span>
               <span>{valorFormatadoOriginal}</span>
             </div>
@@ -649,7 +649,7 @@ const CheckoutAssinaturaForm = ({
           {errors.cpf && <span className="error-text">{errors.cpf}</span>}
           {!naoPossuiCpf && <small className="form-hint">Necessário para emissão da nota fiscal</small>}
           <div className="checkbox-group" style={{ marginTop: '10px' }}>
-            <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'rgba(255, 255, 255, 0.9)', fontSize: '0.9rem' }}>
+            <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'var(--cor-texto)', fontSize: '0.9rem', opacity: 0.9 }}>
               <input
                 type="checkbox"
                 checked={naoPossuiCpf}
@@ -883,7 +883,7 @@ const CheckoutAssinaturaForm = ({
               }}
             >
               {PAISES.map(p => (
-                <option key={p} value={p} style={{ background: '#2a2a2a', color: 'white' }}>{p}</option>
+                <option key={p} value={p} style={{ background: 'var(--cor-secundaria)', color: 'var(--cor-texto)' }}>{p}</option>
               ))}
             </select>
             {errors.pais && <span className="error-text">{errors.pais}</span>}
@@ -997,14 +997,14 @@ const CheckoutAssinaturaForm = ({
                   style: {
                     base: {
                       fontSize: '16px',
-                      color: '#ffffff',
+                      color: 'var(--cor-texto)',
                       fontFamily: 'inherit',
                       '::placeholder': {
-                        color: 'rgba(255, 255, 255, 0.5)',
+                        color: 'var(--cor-input-placeholder)',
                       },
                     },
                     invalid: {
-                      color: '#FF6B35',
+                      color: 'var(--cor-primaria)',
                     },
                   },
                 }}
@@ -1022,14 +1022,14 @@ const CheckoutAssinaturaForm = ({
                   style: {
                     base: {
                       fontSize: '16px',
-                      color: '#ffffff',
+                      color: 'var(--cor-texto)',
                       fontFamily: 'inherit',
                       '::placeholder': {
-                        color: 'rgba(255, 255, 255, 0.5)',
+                        color: 'var(--cor-input-placeholder)',
                       },
                     },
                     invalid: {
-                      color: '#FF6B35',
+                      color: 'var(--cor-primaria)',
                     },
                   },
                 }}
@@ -1271,18 +1271,18 @@ const CheckoutAssinatura = () => {
     // Plano anual: valor é o valor anual
     valorAnualOriginal = plano.valor_total || plano.valor;
     valorAnualComDesconto = plano.valor;
-    
-    // Se tem desconto_percentual e valor_total, calcular valor anual com desconto
-    if (plano.valor_total && plano.desconto_percentual && plano.desconto_percentual > 0) {
-      valorAnualComDesconto = valorAnualOriginal * (1 - (plano.desconto_percentual / 100));
+  
+  // Se tem desconto_percentual e valor_total, calcular valor anual com desconto
+  if (plano.valor_total && plano.desconto_percentual && plano.desconto_percentual > 0) {
+    valorAnualComDesconto = valorAnualOriginal * (1 - (plano.desconto_percentual / 100));
       console.log('Valor anual com desconto calculado:', valorAnualComDesconto);
-    }
-    
+  }
+  
     // Calcular valores mensais (apenas para referência, não será exibido)
     valorMensalOriginal = valorAnualOriginal / 12;
     valorMensalComDesconto = plano.valor_parcelado || (valorAnualComDesconto / 12);
-    if (plano.valor_total && plano.desconto_percentual && plano.desconto_percentual > 0) {
-      valorMensalComDesconto = valorAnualComDesconto / 12;
+  if (plano.valor_total && plano.desconto_percentual && plano.desconto_percentual > 0) {
+    valorMensalComDesconto = valorAnualComDesconto / 12;
     }
   }
   

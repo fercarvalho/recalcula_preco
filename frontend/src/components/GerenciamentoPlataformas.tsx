@@ -369,7 +369,7 @@ const GerenciamentoPlataformas = ({ isOpen, onClose }: GerenciamentoPlataformasP
           </div>
           <div className="plataformas-container">
             {plataformas.length === 0 ? (
-              <p style={{ color: '#666', fontStyle: 'italic' }}>
+              <p className="empty-state-text">
                 Nenhuma plataforma cadastrada. Clique em "Adicionar Plataforma" para começar.
               </p>
             ) : (

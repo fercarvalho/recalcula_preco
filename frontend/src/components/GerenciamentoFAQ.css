@@ -219,11 +219,13 @@
 .empty-state {
   text-align: center;
   padding: 40px 20px;
-  color: #666;
+  color: var(--cor-texto-secundario) !important;
 }
 
 .empty-state p {
   font-size: 1.1rem;
+  color: var(--cor-texto-secundario) !important;
+  margin: 0;
 }
 
 .loading {

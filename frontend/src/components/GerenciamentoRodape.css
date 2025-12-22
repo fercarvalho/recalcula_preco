@@ -250,7 +250,7 @@
 }
 
 .empty-coluna {
-  color: #6c757d;
+  color: var(--cor-texto-secundario) !important;
   font-style: italic;
   text-align: center;
   padding: 20px;
@@ -259,7 +259,12 @@
 .empty-state {
   text-align: center;
   padding: 40px;
-  color: #6c757d;
+  color: var(--cor-texto-secundario) !important;
+}
+
+.empty-state p {
+  color: var(--cor-texto-secundario) !important;
+  margin: 0;
 }
 
 .rodape-link-form {

@@ -1,17 +1,16 @@
-/* Modal de dados do usuário - fundo branco, texto preto */
+/* Modal de dados do usuário - adapta-se ao tema */
 .alterar-dados-form {
   padding: 20px 0;
-  color: #333 !important; /* Garantir que o texto seja escuro */
+  color: var(--cor-texto) !important;
 }
 
-/* Garantir que todo o texto dentro do modal seja escuro (apenas no modal de dados) */
-/* IMPORTANTE: Não usar * genérico para evitar conflitos com checkout */
+/* Garantir que todo o texto dentro do modal use variáveis do tema */
 .alterar-dados-form label,
 .alterar-dados-form h3,
 .alterar-dados-form p,
 .alterar-dados-form span:not(.required):not(.error-text),
 .alterar-dados-form div {
-  color: #333 !important;
+  color: var(--cor-texto) !important;
 }
 
 /* Garantir que asteriscos de campos obrigatórios sejam vermelhos */
@@ -25,7 +24,8 @@
 .form-section {
   margin-bottom: 30px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--cor-borda);
+  transition: border-color 0.3s ease;
 }
 
 .form-section:last-child {
@@ -34,7 +34,7 @@
 
 .form-section h3 {
   margin: 0 0 20px 0;
-  color: #333 !important; /* Garantir que títulos sejam escuros */
+  color: var(--cor-texto) !important;
   font-size: 1.1rem;
   font-weight: 600;
 }
@@ -53,7 +53,7 @@
 .form-group label {
   display: block;
   margin-bottom: 5px;
-  color: #333 !important; /* Garantir que labels sejam escuras */
+  color: var(--cor-texto) !important;
   font-weight: 500;
   font-size: 0.9rem;
 }
@@ -61,15 +61,17 @@
 .form-input {
   width: 100%;
   padding: 10px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--cor-borda);
   border-radius: 4px;
   font-size: 0.95rem;
-  transition: border-color 0.3s;
+  transition: border-color 0.3s, background-color 0.3s ease, color 0.3s ease;
+  background: var(--cor-input-fundo);
+  color: var(--cor-input-texto);
 }
 
 .form-input:focus {
   outline: none;
-  border-color: #ff6b35;
+  border-color: var(--cor-primaria);
 }
 
 .form-input.required-field:invalid,
@@ -143,7 +145,7 @@
 }
 
 .form-input:disabled {
-  background-color: #f5f5f5;
+  background-color: var(--cor-hover);
   cursor: not-allowed;
 }
 
@@ -178,7 +180,7 @@ input[type="date"].date-input:focus {
 
 /* Tentar estilizar o calendário popup usando shadow DOM (Chrome/Safari) */
 .date-input::-webkit-datetime-edit {
-  color: #333;
+  color: var(--cor-input-texto);
 }
 
 .date-input::-webkit-datetime-edit-fields-wrapper {
@@ -186,13 +188,13 @@ input[type="date"].date-input:focus {
 }
 
 .date-input::-webkit-datetime-edit-text {
-  color: #333;
+  color: var(--cor-input-texto);
 }
 
 .date-input::-webkit-datetime-edit-month-field,
 .date-input::-webkit-datetime-edit-day-field,
 .date-input::-webkit-datetime-edit-year-field {
-  color: #333;
+  color: var(--cor-input-texto);
 }
 
 .date-input::-webkit-datetime-edit-month-field:focus,
@@ -234,7 +236,7 @@ input[type="date"].date-input:focus {
   gap: 0;
   cursor: pointer;
   font-weight: 500;
-  color: #333 !important; /* Garantir que checkbox labels sejam escuras */
+  color: var(--cor-texto) !important;
   vertical-align: middle;
 }
 
@@ -274,11 +276,12 @@ input[type="date"].date-input:focus {
   height: 120px;
   border-radius: 50%;
   overflow: hidden;
-  border: 3px solid #e0e0e0;
+  border: 3px solid var(--cor-borda);
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f5f5f5;
+  background-color: var(--cor-secundaria);
+  transition: border-color 0.3s ease, background-color 0.3s ease;
 }
 
 .foto-preview img {
@@ -293,7 +296,7 @@ input[type="date"].date-input:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #999;
+  color: var(--cor-texto-secundario);
   font-size: 2rem;
 }
 

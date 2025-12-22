@@ -9,8 +9,8 @@
 
 .btn-adicionar-produto {
   background: var(--cor-primaria);
-  color: white;
-  border: none;
+  color: var(--cor-texto);
+  border: 1px solid color-mix(in srgb, var(--cor-primaria) 80%, transparent);
   padding: 14px 27px;
   border-radius: 10px;
   font-size: 1.07em;
@@ -20,34 +20,41 @@
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px var(--cor-sombra), 0 0 0 1px color-mix(in srgb, var(--cor-primaria) 20%, transparent);
   white-space: nowrap;
 }
 
 .btn-adicionar-produto.btn-plataformas {
   background: var(--cor-secundaria);
+  border: 1px solid var(--cor-borda);
+  box-shadow: 0 2px 8px var(--cor-sombra);
 }
 
 .btn-adicionar-produto.btn-plataformas:hover {
-  background: color-mix(in srgb, var(--cor-secundaria) 90%, white) !important;
+  background: color-mix(in srgb, var(--cor-secundaria) 90%, var(--cor-texto)) !important;
   transform: translateY(-2px);
-  box-shadow: 0 6px 12px color-mix(in srgb, var(--cor-secundaria) 30%, transparent);
+  box-shadow: 0 4px 12px var(--cor-sombra);
+  border-color: color-mix(in srgb, var(--cor-borda) 80%, transparent);
 }
 
 .btn-adicionar-produto.btn-admin {
   background: var(--cor-fundo);
+  border: 1px solid var(--cor-borda);
+  box-shadow: 0 2px 8px var(--cor-sombra);
 }
 
 .btn-adicionar-produto.btn-admin:hover {
-  background: color-mix(in srgb, var(--cor-fundo) 90%, white) !important;
+  background: color-mix(in srgb, var(--cor-fundo) 90%, var(--cor-texto)) !important;
   transform: translateY(-2px);
-  box-shadow: 0 6px 12px color-mix(in srgb, var(--cor-fundo) 30%, transparent);
+  box-shadow: 0 4px 12px var(--cor-sombra);
+  border-color: color-mix(in srgb, var(--cor-borda) 80%, transparent);
 }
 
 .btn-adicionar-produto:hover {
-  background: color-mix(in srgb, var(--cor-primaria) 90%, white);
+  background: color-mix(in srgb, var(--cor-primaria) 90%, var(--cor-texto));
   transform: translateY(-2px);
-  box-shadow: 0 6px 12px color-mix(in srgb, var(--cor-primaria) 30%, transparent);
+  box-shadow: 0 6px 12px color-mix(in srgb, var(--cor-primaria) 30%, transparent), 0 0 0 1px color-mix(in srgb, var(--cor-primaria) 30%, transparent);
+  border-color: color-mix(in srgb, var(--cor-primaria) 90%, transparent);
 }
 
 .btn-adicionar-produto:active {
@@ -63,9 +70,10 @@
   margin-top: 20px;
   margin-bottom: 30px;
   padding: 20px;
-  background: white;
+  background: var(--cor-secundaria);
   border-radius: 15px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 15px var(--cor-sombra);
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .cardapio-switch-container {
@@ -84,7 +92,7 @@
 .cardapio-switch-text {
   font-size: 1.1rem;
   font-weight: 600;
-  color: #333;
+  color: var(--cor-texto);
 }
 
 .cardapio-switch-btn {
@@ -110,7 +118,7 @@
 .cardapio-switch-description {
   display: block;
   margin-top: 8px;
-  color: #666;
+  color: var(--cor-texto-secundario);
   font-size: 0.9rem;
   line-height: 1.4;
 }
@@ -126,9 +134,9 @@
 }
 
 .btn-compartilhar-cardapio {
-  background: var(--cor-primaria, #FF6B35);
-  color: white;
-  border: none;
+  background: var(--cor-primaria);
+  color: var(--cor-texto);
+  border: 1px solid color-mix(in srgb, var(--cor-primaria) 80%, transparent);
   padding: 12px 20px;
   border-radius: 8px;
   font-size: 1rem;
@@ -138,13 +146,14 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px var(--cor-sombra), 0 0 0 1px color-mix(in srgb, var(--cor-primaria) 20%, transparent);
 }
 
 .btn-compartilhar-cardapio:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--cor-primaria, #FF6B35) 90%, white);
+  background: color-mix(in srgb, var(--cor-primaria) 90%, var(--cor-texto));
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px var(--cor-sombra), 0 0 0 1px color-mix(in srgb, var(--cor-primaria) 30%, transparent);
+  border-color: color-mix(in srgb, var(--cor-primaria) 90%, transparent);
 }
 
 .btn-compartilhar-cardapio:active:not(:disabled) {
@@ -161,9 +170,9 @@
 }
 
 .btn-feedback-beta {
-  background: var(--cor-primaria, #FF6B35);
-  color: white;
-  border: none;
+  background: var(--cor-primaria);
+  color: var(--cor-texto);
+  border: 1px solid color-mix(in srgb, var(--cor-primaria) 80%, transparent);
   padding: 0.4rem 0.8rem;
   border-radius: 6px;
   font-size: 0.85rem;
@@ -174,12 +183,14 @@
   align-items: center;
   gap: 0.4rem;
   white-space: nowrap;
+  box-shadow: 0 1px 4px var(--cor-sombra), 0 0 0 1px color-mix(in srgb, var(--cor-primaria) 20%, transparent);
 }
 
 .btn-feedback-beta:hover {
   background: #e55a2b;
   transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 6px var(--cor-sombra), 0 0 0 1px color-mix(in srgb, var(--cor-primaria) 30%, transparent);
+  border-color: color-mix(in srgb, var(--cor-primaria) 90%, transparent);
 }
 
 

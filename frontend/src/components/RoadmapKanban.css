@@ -23,13 +23,13 @@
 
 .roadmap-kanban-header h2 {
   margin: 0;
-  color: #333 !important;
+  color: var(--cor-texto) !important;
 }
 
 .roadmap-loading {
   text-align: center;
   padding: 40px;
-  color: #666 !important;
+  color: var(--cor-texto-secundario) !important;
 }
 
 .roadmap-kanban-board {
@@ -41,25 +41,25 @@
 }
 
 .roadmap-column {
-  background: #f8f9fa;
+  background: var(--cor-card-fundo);
   border-radius: 8px;
   min-height: 500px;
   display: flex;
   flex-direction: column;
-  transition: all 0.2s;
+  transition: all 0.2s, background-color 0.3s ease;
   width: 250px;
   min-width: 250px;
   max-width: 250px;
 }
 
 .roadmap-column.drag-over-column {
-  background: #e3f2fd;
-  border: 2px dashed #2196f3;
+  background: var(--cor-hover);
+  border: 2px dashed var(--cor-primaria);
 }
 
 .roadmap-column-header {
   padding: 15px;
-  background: white;
+  background: var(--cor-secundaria);
   border-top: 4px solid;
   border-radius: 8px 8px 0 0;
   display: flex;
@@ -67,10 +67,11 @@
   gap: 10px;
   font-weight: 600;
   font-size: 14px;
-  color: #333 !important;
+  color: var(--cor-texto) !important;
   position: sticky;
   top: 0;
   z-index: 10;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .roadmap-column-header svg {
@@ -79,7 +80,7 @@
 
 .roadmap-column-count {
   margin-left: auto;
-  color: #666 !important;
+  color: var(--cor-texto-secundario) !important;
   font-weight: normal;
 }
 
@@ -93,18 +94,18 @@
 .roadmap-empty-column {
   text-align: center;
   padding: 40px 20px;
-  color: #999 !important;
+  color: var(--cor-texto-secundario) !important;
   font-style: italic;
 }
 
 .roadmap-card {
-  background: white;
+  background: var(--cor-secundaria);
   border-radius: 6px;
   padding: 15px;
   margin-bottom: 10px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px var(--cor-sombra);
   cursor: move;
-  transition: all 0.2s;
+  transition: all 0.2s, background-color 0.3s ease;
   position: relative;
 }
 
@@ -126,9 +127,10 @@
 }
 
 .roadmap-card-drag-handle {
-  color: #ccc;
+  color: var(--cor-texto-secundario);
   cursor: grab;
   font-size: 14px;
+  opacity: 0.5;
 }
 
 .roadmap-card-drag-handle:active {
@@ -152,19 +154,19 @@
   border: none;
   padding: 5px 8px;
   cursor: pointer;
-  color: #666 !important;
+  color: var(--cor-texto-secundario) !important;
   border-radius: 4px;
   transition: all 0.2s;
   font-size: 12px;
 }
 
 .roadmap-card-btn-edit:hover {
-  background: #e3f2fd;
-  color: #1976d2;
+  background: var(--cor-hover);
+  color: var(--cor-primaria);
 }
 
 .roadmap-card-btn-delete:hover {
-  background: #ffebee;
+  background: var(--cor-hover);
   color: #d32f2f;
 }
 
@@ -176,14 +178,14 @@
   margin: 0 0 8px 0;
   font-size: 14px;
   font-weight: 600;
-  color: #333 !important;
+  color: var(--cor-texto) !important;
   line-height: 1.4;
 }
 
 .roadmap-card-description {
   margin: 0;
   font-size: 12px;
-  color: #666 !important;
+  color: var(--cor-texto-secundario) !important;
   line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -193,7 +195,7 @@
 
 .roadmap-card-prioridade-section {
   padding: 8px 0;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--cor-borda);
   margin: 8px 0 0 0;
   font-size: 11px;
 }
@@ -202,7 +204,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #333 !important;
+  color: var(--cor-texto) !important;
   font-weight: 600;
   font-size: 11px;
 }
@@ -210,13 +212,14 @@
 .roadmap-card-prioridade-input {
   width: 50px;
   padding: 4px 6px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--cor-borda);
   border-radius: 4px;
   font-size: 11px;
   font-weight: 600;
   text-align: center;
-  color: #333 !important;
-  background: white !important;
+  color: var(--cor-texto) !important;
+  background: var(--cor-input-fundo) !important;
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
 .roadmap-card-prioridade-input:focus {
@@ -226,14 +229,14 @@
 }
 
 .roadmap-card-prioridade-total {
-  color: #666 !important;
+  color: var(--cor-texto-secundario) !important;
   font-weight: normal;
 }
 
 .roadmap-card-time-section {
   padding: 10px 0;
-  border-top: 1px solid #eee;
-  border-bottom: 1px solid #eee;
+  border-top: 1px solid var(--cor-borda);
+  border-bottom: 1px solid var(--cor-borda);
   margin: 10px 0;
   font-size: 11px;
 }
@@ -241,12 +244,12 @@
 .roadmap-card-data-inicio,
 .roadmap-card-tempo {
   margin-bottom: 8px;
-  color: #666 !important;
+  color: var(--cor-texto-secundario) !important;
 }
 
 .roadmap-card-data-inicio strong,
 .roadmap-card-tempo strong {
-  color: #333 !important;
+  color: var(--cor-texto) !important;
   margin-right: 5px;
 }
 
@@ -264,7 +267,7 @@
 
 .roadmap-card-btn-timer.start {
   background: #28a745;
-  color: white;
+  color: var(--cor-texto);
 }
 
 .roadmap-card-btn-timer.start:hover {
@@ -273,7 +276,7 @@
 
 .roadmap-card-btn-timer.stop {
   background: #dc3545;
-  color: white;
+  color: var(--cor-texto);
 }
 
 .roadmap-card-btn-timer.stop:hover {
@@ -295,7 +298,7 @@
 
 .roadmap-card-btn-avancar {
   background: #007bff;
-  color: white;
+  color: var(--cor-texto);
 }
 
 .roadmap-card-btn-avancar:hover:not(:disabled) {
@@ -310,7 +313,7 @@
 
 .roadmap-card-btn-concluir {
   background: #28a745;
-  color: white;
+  color: var(--cor-texto);
 }
 
 .roadmap-card-btn-concluir:hover:not(:disabled) {
@@ -340,7 +343,7 @@
 }
 
 .roadmap-card-author {
-  color: #999 !important;
+  color: var(--cor-texto-secundario) !important;
   font-size: 10px;
 }
 
@@ -358,7 +361,7 @@
 
 .roadmap-form .form-group label {
   font-weight: 600;
-  color: #333 !important;
+  color: var(--cor-texto) !important;
   font-size: 14px;
 }
 
@@ -366,10 +369,13 @@
 .roadmap-form .form-group textarea,
 .roadmap-form .form-group select {
   padding: 10px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--cor-borda);
   border-radius: 4px;
   font-size: 14px;
   font-family: inherit;
+  background: var(--cor-input-fundo);
+  color: var(--cor-input-texto);
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
 .roadmap-form .form-group textarea {

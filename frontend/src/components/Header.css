@@ -1,6 +1,6 @@
 header {
-  background: var(--cor-primaria, #FF6B35);
-  color: white;
+  background: var(--cor-primaria);
+  color: var(--cor-texto);
   padding: 30px;
   margin: -20px -20px 20px -20px;
   width: calc(100% + 40px);
@@ -34,6 +34,13 @@ header {
   z-index: 1;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-direction: row;
+}
+
 .admin-viewing-banner {
   display: flex;
   align-items: center;
@@ -51,8 +58,8 @@ header {
 }
 
 .btn-voltar-usuario {
-  background: var(--cor-primaria, #FF6B35);
-  color: white;
+  background: var(--cor-primaria);
+  color: var(--cor-texto);
   border: none;
   padding: 4px 12px;
   border-radius: 4px;

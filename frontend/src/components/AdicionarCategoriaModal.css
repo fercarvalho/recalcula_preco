@@ -4,25 +4,50 @@
   gap: 20px;
 }
 
+.adicionar-categoria-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.adicionar-categoria-form .form-group label {
+  color: var(--cor-texto) !important;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* Garantir que o input use as variáveis do tema */
+.adicionar-categoria-form .form-input {
+  background: var(--cor-input-fundo) !important;
+  color: var(--cor-input-texto) !important;
+  border: 1px solid var(--cor-input-borda) !important;
+}
+
+.adicionar-categoria-form .form-input::placeholder {
+  color: var(--cor-input-placeholder) !important;
+}
+
 .btn-selecionar-icone {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 12px 20px;
-  border: 2px solid #ddd;
+  border: 2px solid var(--cor-borda);
   border-radius: 8px;
-  background: white;
+  background: var(--cor-input-fundo);
+  color: var(--cor-input-texto);
   cursor: pointer;
   transition: all 0.3s;
   width: 100%;
   justify-content: flex-start;
+  box-shadow: 0 2px 8px var(--cor-sombra);
 }
 
 .btn-selecionar-icone:hover {
   border-color: var(--cor-primaria);
-  background: #fff3f0;
+  background: var(--cor-hover);
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px var(--cor-sombra);
 }
 
 .icone-preview {
@@ -40,7 +65,7 @@
 
 .icone-texto {
   font-size: 1em;
-  color: #333;
+  color: var(--cor-texto);
   font-weight: 500;
 }
 

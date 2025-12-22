@@ -718,6 +718,11 @@ export const apiService = {
     return response.data;
   },
 
+  async pausarTempoRoadmapItem(id: number): Promise<any> {
+    const response = await api.post(`/api/admin/roadmap/${id}/pausar-tempo`);
+    return response.data;
+  },
+
   async pararTempoRoadmapItem(id: number, tempoDecorrido: number): Promise<any> {
     const response = await api.post(`/api/admin/roadmap/${id}/parar-tempo`, { tempoDecorrido });
     return response.data;

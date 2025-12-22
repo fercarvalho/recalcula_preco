@@ -612,7 +612,7 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
                     onDragLeave={handleDragLeaveBotao}
                     style={{ position: 'relative' }}
                   >
-                    <div className="admin-botao-drag-handle" style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', cursor: 'grab', color: '#999', zIndex: 1 }}>
+                    <div className="admin-botao-drag-handle" style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', cursor: 'grab', color: 'var(--cor-texto-secundario)', zIndex: 1 }}>
                       <FaGripVertical />
                     </div>
                     <div style={{ paddingLeft: '30px' }}>
@@ -620,7 +620,7 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
                         {botao.icone} {botao.titulo}
                       </h4>
                       <div style={{ borderBottom: '1px solid #e9ecef', marginBottom: '12px' }}></div>
-                      <p style={{ marginBottom: '12px', color: '#666', fontSize: '14px' }}>
+                      <p style={{ marginBottom: '12px', color: 'var(--cor-texto-secundario)', fontSize: '14px' }}>
                         {botao.descricao}
                       </p>
                       <button
@@ -669,7 +669,7 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
             </div>
             <div className="admin-busca-usuario" style={{ marginBottom: '15px' }}>
               <div style={{ position: 'relative' }}>
-                <FaSearch style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#999' }} />
+                <FaSearch style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--cor-texto-secundario)' }} />
                 <input
                   type="text"
                   placeholder="Buscar por nome ou email..."
@@ -1243,7 +1243,7 @@ const EditarUsuarioModal = ({ isOpen, onClose, usuario, onUsuarioAtualizado }: E
                 <option value={30}>30 dias</option>
               </select>
               {usuario.acesso_temporario_expira_em && new Date(usuario.acesso_temporario_expira_em) > new Date() && (
-                <p style={{ fontSize: '0.85em', color: '#666', marginTop: '0.5rem' }}>
+                <p style={{ fontSize: '0.85em', color: 'var(--cor-texto-secundario)', marginTop: '0.5rem' }}>
                   Expira em: {new Date(usuario.acesso_temporario_expira_em).toLocaleString('pt-BR')}
                 </p>
               )}
@@ -1262,7 +1262,7 @@ const EditarUsuarioModal = ({ isOpen, onClose, usuario, onUsuarioAtualizado }: E
                 <option value="beta">Funções Beta (Modo Cardápio, Modo Compartilhar Cardápio)</option>
                 <option value="especiais">Funções Especiais (Modo Estúdio)</option>
               </select>
-              <p style={{ fontSize: '0.85em', color: '#666', marginTop: '0.5rem' }}>
+              <p style={{ fontSize: '0.85em', color: 'var(--cor-texto-secundario)', marginTop: '0.5rem' }}>
                 Esse nível é individual por usuário temporário. Por padrão é <strong>Acesso ao sistema principal</strong>.
               </p>
             </div>

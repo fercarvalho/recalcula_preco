@@ -40,16 +40,17 @@
 }
 
 .modal-content {
-  background: white;
+  background: var(--cor-secundaria);
   border-radius: 15px;
   width: 90%;
   max-width: 600px;
   max-height: 80vh;
   overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 20px 60px var(--cor-sombra);
   animation: slideUp 0.3s;
   display: flex;
   flex-direction: column;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .modal-small {
@@ -77,8 +78,8 @@
 }
 
 .modal-header {
-  background: var(--cor-primaria, #FF6B35);
-  color: white;
+  background: var(--cor-primaria);
+  color: var(--cor-texto);
   padding: 20px;
   display: flex;
   justify-content: space-between;
@@ -87,12 +88,12 @@
 
 .modal-header h2 {
   margin: 0;
-  color: white !important;
+  color: var(--cor-texto) !important;
   font-weight: 600;
 }
 
 .modal-header * {
-  color: white !important;
+  color: var(--cor-texto) !important;
 }
 
 .close-modal {
@@ -111,11 +112,24 @@
   padding: 15px 25px;
   overflow-y: auto;
   flex: 1;
+  background: var(--cor-secundaria);
+  color: var(--cor-texto);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Garantir que labels e textos dentro do modal usem as variáveis do tema */
+.modal-body label {
+  color: var(--cor-texto) !important;
+}
+
+.modal-body .form-help,
+.modal-body small {
+  color: var(--cor-texto-secundario) !important;
 }
 
 .modal-footer {
   padding: 25px 20px;
-  background: #f8f9fa;
+  background: var(--cor-card-fundo);
   display: flex;
   gap: 15px;
   justify-content: flex-end;
@@ -124,8 +138,9 @@
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+  scrollbar-color: var(--cor-sombra) transparent;
   min-height: 80px;
+  transition: background-color 0.3s ease;
 }
 
 @media (max-width: 600px) {

@@ -177,13 +177,17 @@
 }
 
 .btn-primary {
-  background: var(--cor-primaria, #FF6B35);
-  color: white;
+  background: var(--cor-primaria);
+  color: var(--cor-texto);
+  border: 1px solid color-mix(in srgb, var(--cor-primaria) 80%, transparent);
+  box-shadow: 0 2px 8px var(--cor-sombra), 0 0 0 1px color-mix(in srgb, var(--cor-primaria) 20%, transparent);
 }
 
 .btn-primary:hover:not(:disabled) {
   background: #e55a2b;
   transform: translateY(-2px);
+  box-shadow: 0 4px 12px var(--cor-sombra), 0 0 0 1px color-mix(in srgb, var(--cor-primaria) 30%, transparent);
+  border-color: color-mix(in srgb, var(--cor-primaria) 90%, transparent);
 }
 
 .btn-primary:disabled {
@@ -192,13 +196,17 @@
 }
 
 .btn-secondary {
-  background: var(--cor-secundaria, #2a2a2a);
-  color: white;
+  background: var(--cor-secundaria);
+  color: var(--cor-texto);
+  border: 1px solid var(--cor-borda);
+  box-shadow: 0 2px 8px var(--cor-sombra);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--cor-secundaria, #2a2a2a) 90%, white);
+  background: color-mix(in srgb, var(--cor-secundaria) 90%, var(--cor-texto));
   transform: translateY(-2px);
+  box-shadow: 0 4px 12px var(--cor-sombra);
+  border-color: color-mix(in srgb, var(--cor-borda) 80%, transparent);
 }
 
 .btn-primary .spinner {

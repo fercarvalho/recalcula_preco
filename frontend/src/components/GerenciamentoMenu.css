@@ -162,7 +162,7 @@
 }
 
 .preview-empty {
-  color: #999;
+  color: var(--cor-texto-secundario) !important;
   font-style: italic;
   margin: 0;
 }

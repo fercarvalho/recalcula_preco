@@ -5,15 +5,24 @@
   margin-top: 15px;
 }
 
+/* Classe genérica para textos de legenda/vazio */
+.empty-state-text {
+  color: var(--cor-texto-secundario) !important;
+  font-style: italic;
+  text-align: center;
+  padding: 20px;
+  font-size: 0.95rem;
+}
+
 .plataforma-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 15px;
-  background: #f8f9fa;
-  border: 2px solid #e9ecef;
+  background: var(--cor-secundaria);
+  border: 2px solid var(--cor-borda);
   border-radius: 8px;
-  transition: all 0.3s;
+  transition: all 0.3s, background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .plataforma-item:hover {
@@ -28,12 +37,12 @@
 .plataforma-nome {
   font-weight: 600;
   font-size: 1.1em;
-  color: #333;
+  color: var(--cor-texto);
   margin-bottom: 5px;
 }
 
 .plataforma-taxa {
-  color: #666;
+  color: var(--cor-texto-secundario);
   font-size: 0.9em;
 }
 
@@ -93,9 +102,10 @@
   flex-direction: column;
   gap: 10px;
   padding: 15px;
-  background: #f9f9f9;
+  background: var(--cor-secundaria);
   border-radius: 8px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--cor-borda);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .item-linha {
@@ -110,7 +120,7 @@
   flex-direction: column;
   gap: 15px;
   padding-top: 15px;
-  border-top: 2px solid #e0e0e0;
+  border-top: 2px solid var(--cor-borda);
   margin-top: 10px;
 }
 
@@ -125,9 +135,10 @@
   flex-direction: column;
   gap: 10px;
   padding: 12px;
-  background: #ffffff;
+  background: var(--cor-secundaria);
   border-radius: 6px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--cor-borda);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .mes-header {
@@ -137,7 +148,7 @@
   margin-bottom: 5px;
   text-align: center;
   padding-bottom: 8px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--cor-borda);
 }
 
 .mes-item .form-group {
@@ -152,9 +163,12 @@
 .mes-item .form-group input {
   width: 100%;
   padding: 8px;
-  border: 2px solid #ddd;
+  border: 2px solid var(--cor-borda);
   border-radius: 6px;
   font-size: 0.9em;
+  background: var(--cor-input-fundo);
+  color: var(--cor-input-texto);
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
 .mes-item .form-group input:focus {
@@ -189,7 +203,7 @@
   display: block;
   margin-bottom: 5px;
   font-size: 0.9em;
-  color: #666;
+  color: var(--cor-texto) !important;
   font-weight: normal;
 }
 
@@ -197,10 +211,12 @@
 .item-linha .form-group select {
   width: 100%;
   padding: 10px;
-  border: 2px solid #ddd;
+  border: 2px solid var(--cor-borda);
   border-radius: 6px;
   font-size: 0.95em;
-  transition: border-color 0.3s;
+  transition: border-color 0.3s, background-color 0.3s ease, color 0.3s ease;
+  background: var(--cor-input-fundo);
+  color: var(--cor-input-texto);
 }
 
 .item-linha .form-group input:focus,
@@ -327,16 +343,18 @@
   display: block;
   margin-bottom: 8px;
   font-weight: 600;
-  color: #555;
+  color: var(--cor-texto) !important;
 }
 
 .modal-editar-item-form-simples .form-input {
   width: 100%;
   padding: 12px;
-  border: 2px solid #ddd;
+  border: 2px solid var(--cor-borda);
   border-radius: 8px;
   font-size: 1em;
-  transition: border-color 0.3s;
+  transition: border-color 0.3s, background-color 0.3s ease, color 0.3s ease;
+  background: var(--cor-input-fundo);
+  color: var(--cor-input-texto);
 }
 
 .modal-editar-item-form-simples .form-input:focus {

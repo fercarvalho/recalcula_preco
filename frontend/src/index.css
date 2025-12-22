@@ -1,12 +1,49 @@
 
 :root {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  
+  /* Cor primária (mantém laranja em ambos os temas) */
+  --cor-primaria: #FF6B35;
+}
+
+/* Tema Escuro (padrão) */
+:root[data-theme="dark"],
+:root:not([data-theme]) {
+  --cor-fundo: #1a1a1a;
+  --cor-secundaria: #2a2a2a;
+  --cor-texto: #ffffff;
+  --cor-texto-secundario: rgba(255, 255, 255, 0.7);
+  --cor-borda: rgba(255, 255, 255, 0.1);
+  --cor-sombra: rgba(0, 0, 0, 0.5);
+  --cor-input-fundo: rgba(0, 0, 0, 0.3);
+  --cor-input-borda: rgba(255, 255, 255, 0.2);
+  --cor-input-texto: #ffffff;
+  --cor-input-placeholder: rgba(255, 255, 255, 0.4);
+  --cor-card-fundo: #2a2a2a;
+  --cor-hover: rgba(255, 255, 255, 0.1);
+}
+
+/* Tema Claro */
+:root[data-theme="light"] {
+  --cor-fundo: #f5f5f5;
+  --cor-secundaria: #ffffff;
+  --cor-texto: #333333;
+  --cor-texto-secundario: #666666;
+  --cor-borda: #e0e0e0;
+  --cor-sombra: rgba(0, 0, 0, 0.1);
+  --cor-input-fundo: #ffffff;
+  --cor-input-borda: #ced4da;
+  --cor-input-texto: #333333;
+  --cor-input-placeholder: #6c757d;
+  --cor-card-fundo: #ffffff;
+  --cor-hover: rgba(0, 0, 0, 0.05);
 }
 
 html {
   margin: 0;
   padding: 0;
-  background: var(--cor-fundo, #1a1a1a);
+  background: var(--cor-fundo) !important;
+  transition: background-color 0.3s ease;
 }
 
 body {
@@ -14,10 +51,12 @@ body {
   padding: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: var(--cor-fundo, #1a1a1a);
+  background: var(--cor-fundo) !important;
+  color: var(--cor-texto) !important;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Garantir que inputs e selects tenham fundo branco por padrão e contorno cinza uniforme */
+/* Garantir que inputs e selects usem variáveis de tema */
 /* EXCETO para campos em áreas escuras que usam a classe .form-input-dark */
 input[type="text"]:not(.form-input-dark),
 input[type="number"]:not(.form-input-dark),
@@ -27,13 +66,14 @@ input[type="date"]:not(.form-input-dark),
 input[type="tel"]:not(.form-input-dark),
 textarea:not(.form-input-dark),
 select:not(.form-input-dark) {
-  background: white !important;
-  color: #333 !important;
-  border: 1px solid #ced4da !important;
+  background: var(--cor-input-fundo) !important;
+  color: var(--cor-input-texto) !important;
+  border: 1px solid var(--cor-input-borda) !important;
   border-radius: 4px;
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
-/* Placeholders em cinza para campos brancos */
+/* Placeholders para campos normais */
 input[type="text"]:not(.form-input-dark)::placeholder,
 input[type="number"]:not(.form-input-dark)::placeholder,
 input[type="email"]:not(.form-input-dark)::placeholder,
@@ -41,7 +81,7 @@ input[type="password"]:not(.form-input-dark)::placeholder,
 input[type="date"]:not(.form-input-dark)::placeholder,
 input[type="tel"]:not(.form-input-dark)::placeholder,
 textarea:not(.form-input-dark)::placeholder {
-  color: #6c757d !important;
+  color: var(--cor-input-placeholder) !important;
   opacity: 1;
 }
 
@@ -53,11 +93,13 @@ input[type="date"]:not(.form-input-dark):disabled,
 input[type="tel"]:not(.form-input-dark):disabled,
 textarea:not(.form-input-dark):disabled,
 select:not(.form-input-dark):disabled {
-  background: #f5f5f5 !important;
-  color: #666 !important;
+  background: var(--cor-hover) !important;
+  color: var(--cor-texto-secundario) !important;
+  opacity: 0.6;
 }
 
 /* Classe para campos em áreas escuras (login, modais escuros, checkout) */
+/* Agora adapta-se ao tema */
 .form-input-dark,
 .form-input-dark[type="text"],
 .form-input-dark[type="number"],
@@ -68,20 +110,38 @@ select:not(.form-input-dark):disabled {
 .form-input-dark[type="tel"],
 textarea.form-input-dark,
 select.form-input-dark {
-  background: rgba(0, 0, 0, 0.3) !important;
-  color: white !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  background: var(--cor-input-fundo) !important;
+  color: var(--cor-input-texto) !important;
+  border: 1px solid var(--cor-input-borda) !important;
   border-radius: 6px;
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
 .form-input-dark::placeholder {
-  color: rgba(255, 255, 255, 0.4) !important;
+  color: var(--cor-input-placeholder) !important;
   opacity: 1;
 }
 
 .form-input-dark:disabled {
-  background: rgba(0, 0, 0, 0.5) !important;
-  color: rgba(255, 255, 255, 0.6) !important;
+  background: var(--cor-hover) !important;
+  color: var(--cor-texto-secundario) !important;
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Classe genérica para textos de legenda/vazio em todo o sistema */
+.empty-state,
+.empty-state-text,
+.texto-legenda {
+  color: var(--cor-texto-secundario) !important;
+  font-style: italic;
+  text-align: center;
+  padding: 20px;
+  font-size: 0.95rem;
+}
+
+.empty-state p,
+.empty-state-text p {
+  color: var(--cor-texto-secundario) !important;
+  margin: 0;
 }

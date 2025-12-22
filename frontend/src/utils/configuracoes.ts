@@ -46,9 +46,16 @@ export const carregarConfiguracoes = (userId?: number | null): ConfiguracoesAdmi
 
 export const aplicarConfiguracoes = (config: ConfiguracoesAdmin, userId?: number | null) => {
   const root = document.documentElement;
+  
+  // Aplicar cor primária customizada (sempre)
   root.style.setProperty('--cor-primaria', config.corPrimaria);
-  root.style.setProperty('--cor-secundaria', config.corSecundaria);
+  
+  // Aplicar cor de fundo customizada (o usuário escolhe essa cor)
   root.style.setProperty('--cor-fundo', config.corFundo);
+  
+  // NÃO sobrescrever --cor-secundaria com valor fixo
+  // Deixar que o tema (claro/escuro) defina essa cor
+  // A cor secundária deve seguir o tema para que cards/containers mudem corretamente
   
   const logoImg = document.querySelector('.logo') as HTMLImageElement;
   if (logoImg) {
