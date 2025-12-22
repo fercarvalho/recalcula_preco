@@ -28,6 +28,7 @@ const CookieBanner = ({ showManageModalExternal, onManageModalClose }: CookieBan
   const [showManageModal, setShowManageModal] = useState(showManageModalExternal || false);
   const [showTermosModal, setShowTermosModal] = useState(false);
   const [showPoliticaModal, setShowPoliticaModal] = useState(false);
+  const [isSmallScreen, setIsSmallScreen] = useState(false);
   const [cookiePreferences, setCookiePreferences] = useState<Record<string, boolean>>({
     necessary: true, // Sempre true, não pode ser desabilitado
   });
@@ -40,6 +41,18 @@ const CookieBanner = ({ showManageModalExternal, onManageModalClose }: CookieBan
     texto_descricao_gerenciamento: 'Escolha quais tipos de cookies você deseja aceitar.'
   });
   const [cookieCategorias, setCookieCategorias] = useState<Array<{chave: string, nome: string, descricao: string, obrigatorio: boolean}>>([]);
+
+  useEffect(() => {
+    // Verificar se é tela pequena (menor que 8 polegadas, aproximadamente 640px)
+    const checkScreenSize = () => {
+      setIsSmallScreen(window.innerWidth <= 640);
+    };
+    
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
 
   useEffect(() => {
     // Carregar configuração do banner e categorias do backend
@@ -222,6 +235,55 @@ const CookieBanner = ({ showManageModalExternal, onManageModalClose }: CookieBan
     }
   };
 
+  // Função para processar o texto e mostrar apenas a partir de "Ao continuar" em telas pequenas
+  const processarTexto = () => {
+    let texto = cookieConfig.texto;
+    
+    // Em telas pequenas, mostrar apenas a partir de "Ao continuar navegando"
+    if (isSmallScreen) {
+      const indiceInicio = texto.toLowerCase().indexOf('ao continuar');
+      if (indiceInicio !== -1) {
+        texto = texto.substring(indiceInicio);
+      }
+    }
+    
+    if (texto.includes('Política de Privacidade') || texto.includes('Termos de Uso')) {
+      return texto.split(/(Política de Privacidade|Termos de Uso)/).map((part, index) => {
+        if (part === 'Política de Privacidade') {
+          return (
+            <a 
+              key={index}
+              href="#" 
+              onClick={(e) => {
+                e.preventDefault();
+                setShowPoliticaModal(true);
+              }}
+            >
+              Política de Privacidade
+            </a>
+          );
+        }
+        if (part === 'Termos de Uso') {
+          return (
+            <a 
+              key={index}
+              href="#" 
+              onClick={(e) => {
+                e.preventDefault();
+                setShowTermosModal(true);
+              }}
+            >
+              Termos de Uso
+            </a>
+          );
+        }
+        return <span key={index}>{part}</span>;
+      });
+    }
+    
+    return texto;
+  };
+
   return (
     <>
       {showBanner && (
@@ -233,41 +295,7 @@ const CookieBanner = ({ showManageModalExternal, onManageModalClose }: CookieBan
             <div className="cookie-banner-text">
               <h3>{cookieConfig.titulo}</h3>
               <p>
-                {cookieConfig.texto.includes('Política de Privacidade') || cookieConfig.texto.includes('Termos de Uso') ? (
-                  cookieConfig.texto.split(/(Política de Privacidade|Termos de Uso)/).map((part, index) => {
-                    if (part === 'Política de Privacidade') {
-                      return (
-                        <a 
-                          key={index}
-                          href="#" 
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setShowPoliticaModal(true);
-                          }}
-                        >
-                          Política de Privacidade
-                        </a>
-                      );
-                    }
-                    if (part === 'Termos de Uso') {
-                      return (
-                        <a 
-                          key={index}
-                          href="#" 
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setShowTermosModal(true);
-                          }}
-                        >
-                          Termos de Uso
-                        </a>
-                      );
-                    }
-                    return <span key={index}>{part}</span>;
-                  })
-                ) : (
-                  cookieConfig.texto
-                )}
+                {processarTexto()}
               </p>
             </div>
             <div className="cookie-banner-actions">
