@@ -334,11 +334,12 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
               backgroundColor: 'var(--cor-secundaria)',
               borderRadius: '8px',
               marginBottom: '1rem',
-              border: '1px solid var(--cor-borda)'
+              border: '1px solid var(--cor-borda)',
+              textAlign: 'center'
             }}>
               <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', color: 'var(--cor-texto)' }}>{planoSelecionado.nome}</h3>
               {valorDinamico !== null && (
-                <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.85rem', color: 'var(--cor-texto-secundario)' }}>
+                <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.85rem', color: 'var(--cor-texto-secundario, #999)' }}>
                   Valor calculado dinamicamente baseado nos seus pagamentos
                 </p>
               )}
@@ -374,29 +375,29 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
             <div style={{
               marginBottom: '1rem',
               padding: '1.5rem',
-              backgroundColor: '#fff3cd',
-              border: '1px solid #ffc107',
+              backgroundColor: 'var(--cor-alerta-fundo, #fff3cd)',
+              border: '1px solid var(--cor-alerta-borda, #ffc107)',
               borderRadius: '8px',
-              color: '#856404'
+              color: 'var(--cor-alerta-texto, #856404)'
             }}>
-              <strong style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center', marginBottom: '0.5rem' }}>
+              <strong style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center', marginBottom: '0.5rem', color: 'var(--cor-alerta-texto, #856404)' }}>
                 <FaExclamationTriangle /> {temAssinaturaAtiva ? 'Upgrade Disponível' : 'Upgrade Necessário'}
               </strong>
               {temAssinaturaAtiva ? (
                 <>
-                  <p style={{ margin: 0, fontSize: '0.95rem' }}>
+                  <p style={{ margin: 0, fontSize: '0.95rem', color: 'var(--cor-alerta-texto, #856404)' }}>
                     Faça upgrade do seu <strong>Plano Anual Parcelado</strong> para o <strong>Plano Anual Completo</strong>.
                   </p>
-                  <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.9rem' }}>
+                  <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.9rem', color: 'var(--cor-alerta-texto, #856404)' }}>
                     Tenha acesso completo e ilimitado a todas as funcionalidades do sistema com um valor especial feito especialmente para você!
                   </p>
                 </>
               ) : (
                 <>
-                  <p style={{ margin: 0, fontSize: '0.95rem' }}>
+                  <p style={{ margin: 0, fontSize: '0.95rem', color: 'var(--cor-alerta-texto, #856404)' }}>
                     O <strong>Modo Cardápio</strong> e outras funcionalidades Beta estão disponíveis apenas para usuários do <strong>Plano Anual</strong>.
                   </p>
-                  <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.9rem' }}>
+                  <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.9rem', color: 'var(--cor-alerta-texto, #856404)' }}>
                     Faça upgrade agora e tenha acesso completo a todas as funcionalidades!
                   </p>
                 </>
@@ -526,12 +527,12 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
                       borderRadius: '6px',
                       textAlign: 'center',
                       fontSize: '0.85rem',
-                      color: '#333'
+                      color: 'var(--cor-texto, #333)'
                     }}>
                       <strong style={{ color: 'var(--cor-primaria, #FF6B35)', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center', width: '100%' }}>
                         <FaShieldAlt /> Garantia de 7 dias
                       </strong>
-                      <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: '#333', fontWeight: 500 }}>
+                      <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: 'var(--cor-texto-secundario, #666)', fontWeight: 500 }}>
                         Não gostou? Reembolso total em até 7 dias
                       </p>
                     </div>

@@ -21,6 +21,9 @@
   --cor-input-placeholder: rgba(255, 255, 255, 0.4);
   --cor-card-fundo: #2a2a2a;
   --cor-hover: rgba(255, 255, 255, 0.1);
+  --cor-alerta-fundo: rgba(255, 193, 7, 0.15);
+  --cor-alerta-borda: rgba(255, 193, 7, 0.4);
+  --cor-alerta-texto: #ffd966;
 }
 
 /* Tema Claro */
@@ -37,6 +40,9 @@
   --cor-input-placeholder: #6c757d;
   --cor-card-fundo: #ffffff;
   --cor-hover: rgba(0, 0, 0, 0.05);
+  --cor-alerta-fundo: #fff3cd;
+  --cor-alerta-borda: #ffc107;
+  --cor-alerta-texto: #856404;
 }
 
 html {

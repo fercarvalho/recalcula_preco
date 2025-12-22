@@ -25,6 +25,26 @@ const CheckoutForm = ({ amount, userId, planoId, onSuccess, onError }: CheckoutT
   const elements = useElements();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [theme, setTheme] = useState<string>('dark');
+
+  // Detectar tema atual e escutar mudanças
+  useEffect(() => {
+    const updateTheme = () => {
+      const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+      setTheme(currentTheme);
+    };
+
+    updateTheme();
+
+    // Observar mudanças no atributo data-theme
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme']
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,6 +138,8 @@ const CheckoutForm = ({ amount, userId, planoId, onSuccess, onError }: CheckoutT
     }
   };
 
+  const isDarkTheme = theme === 'dark';
+
   return (
     <form onSubmit={handleSubmit} className="checkout-form">
       <div className="form-group">
@@ -125,17 +147,18 @@ const CheckoutForm = ({ amount, userId, planoId, onSuccess, onError }: CheckoutT
         <div className="card-element-wrapper">
           <CardElement
             options={{
-              hidePostalCode: true, // Não pedir CEP
+              hidePostalCode: true,
               style: {
                 base: {
                   fontSize: '16px',
-                  color: '#424770',
+                  color: isDarkTheme ? '#ffffff' : '#424770',
+                  backgroundColor: 'transparent',
                   '::placeholder': {
-                    color: '#aab7c4',
+                    color: isDarkTheme ? 'rgba(255, 255, 255, 0.4)' : '#aab7c4',
                   },
                 },
                 invalid: {
-                  color: '#9e2146',
+                  color: '#ff6b6b',
                 },
               },
             }}

@@ -127,20 +127,20 @@
 
 .aviso-obrigatorio strong {
   display: block;
-  color: #856404;
+  color: #856404 !important;
   margin-bottom: 5px;
   font-size: 1rem;
 }
 
 .aviso-obrigatorio p {
   margin: 0;
-  color: #856404;
+  color: #856404 !important;
   font-size: 0.9rem;
   line-height: 1.5;
 }
 
 .aviso-obrigatorio .required {
-  color: #e74c3c;
+  color: #e74c3c !important;
   font-weight: bold;
 }
 
