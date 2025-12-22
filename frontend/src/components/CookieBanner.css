@@ -379,8 +379,9 @@
   }
 
   .cookie-banner-close {
-    position: static;
-    align-self: flex-end;
+    position: absolute;
+    top: -0.5rem;
+    right: -0.5rem;
   }
 
   .cookie-category-header {
