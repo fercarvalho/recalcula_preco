@@ -35,6 +35,28 @@
   color: var(--cor-texto) !important;
 }
 
+/* Botão fixo do banner de upgrade: sempre preto com texto branco */
+.reajuste-form .upgrade-btn {
+  background: #000000 !important;
+  color: #ffffff !important;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1em;
+  font-weight: bold;
+  transition: transform 0.2s ease;
+  box-shadow: 0 2px 4px var(--cor-sombra);
+}
+
+.reajuste-form .upgrade-btn:hover,
+.reajuste-form .upgrade-btn:focus,
+.reajuste-form .upgrade-btn:active {
+  background: #000000 !important;
+  color: #ffffff !important;
+  transform: scale(1.05);
+}
+
 /* Manter texto do aviso de bloqueio com cor original */
 .reajuste-form > div[style*="background: #fff3cd"] p {
   color: #856404 !important;

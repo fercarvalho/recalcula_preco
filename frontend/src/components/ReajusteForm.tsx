@@ -70,27 +70,8 @@ const ReajusteForm = ({
             Tenha acesso completo e ilimitado a todas as funcionalidades do sistema!
           </p>
           <button
+            className="upgrade-btn"
             onClick={() => onAbrirModalUpgrade?.()}
-            style={{
-              background: '#000000',
-              color: 'var(--cor-texto)',
-              border: 'none',
-              padding: '12px 24px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '1em',
-              fontWeight: 'bold',
-              transition: 'all 0.3s',
-              boxShadow: '0 2px 4px var(--cor-sombra)',
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.background = '#333333';
-              e.currentTarget.style.transform = 'scale(1.05)';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.background = '#000000';
-              e.currentTarget.style.transform = 'scale(1)';
-            }}
           >
             Ver Planos de Upgrade
           </button>
