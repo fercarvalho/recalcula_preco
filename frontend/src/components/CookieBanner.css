@@ -4,9 +4,9 @@
   bottom: 1.5rem;
   left: 50%;
   transform: translateX(-50%);
-  max-width: 90%;
-  width: 100%;
-  max-width: 1200px;
+  width: 80%;
+  max-width: min(80%, 1200px);
+  max-height: calc(100vh - 3rem);
   background: transparent;
   backdrop-filter: blur(10px) saturate(180%);
   -webkit-backdrop-filter: blur(10px) saturate(180%);
@@ -17,6 +17,8 @@
   padding: 1.5rem 2rem;
   animation: slideUpFloat 0.3s ease-out;
   transition: background-color 0.3s ease, border-color 0.3s ease;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* Adicionar camada de transparência */
@@ -294,25 +296,58 @@
   font-weight: 500;
 }
 
+/* Responsive - Telas menores que 13 polegadas (aproximadamente 1366px) */
+@media (max-width: 1366px) {
+  .cookie-banner {
+    width: 80%;
+    max-width: 80%;
+    padding: 1.25rem 1.5rem;
+    max-height: calc(100vh - 2.5rem);
+  }
+
+  .cookie-banner-content {
+    gap: 1.25rem;
+  }
+
+  .cookie-banner-text {
+    min-width: 200px;
+  }
+
+  .cookie-banner-text h3 {
+    font-size: 1.1rem;
+  }
+
+  .cookie-banner-text p {
+    font-size: 0.9rem;
+  }
+
+  .cookie-btn {
+    padding: 0.7rem 1.25rem;
+    font-size: 0.875rem;
+  }
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .cookie-banner {
     bottom: 1rem;
-    left: 1rem;
-    right: 1rem;
-    max-width: calc(100% - 2rem);
-    transform: translateX(0);
+    left: 50%;
+    right: auto;
+    width: 80%;
+    max-width: 80%;
+    max-height: calc(100vh - 2rem);
+    transform: translateX(-50%);
     padding: 1rem;
     animation: slideUpFloatMobile 0.3s ease-out;
   }
 
   @keyframes slideUpFloatMobile {
     from {
-      transform: translateY(100%);
+      transform: translateX(-50%) translateY(100%);
       opacity: 0;
     }
     to {
-      transform: translateY(0);
+      transform: translateX(-50%) translateY(0);
       opacity: 1;
     }
   }
@@ -321,6 +356,11 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 1rem;
+  }
+
+  .cookie-banner-text {
+    min-width: unset;
+    width: 100%;
   }
 
   .cookie-banner-actions {
@@ -351,10 +391,22 @@
 @media (max-width: 480px) {
   .cookie-banner {
     bottom: 0.75rem;
-    left: 0.75rem;
-    right: 0.75rem;
-    max-width: calc(100% - 1.5rem);
+    left: 50%;
+    right: auto;
+    width: 80%;
+    max-width: 80%;
     padding: 0.875rem;
+    max-height: calc(100vh - 1.5rem);
+    transform: translateX(-50%);
+    overflow-y: auto;
+  }
+
+  .cookie-banner-content {
+    gap: 0.875rem;
+  }
+
+  .cookie-banner-text {
+    min-width: unset;
   }
 
   .cookie-banner-text h3 {

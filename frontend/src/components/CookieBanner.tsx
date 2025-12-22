@@ -44,6 +44,9 @@ const CookieBanner = ({ showManageModalExternal, onManageModalClose }: CookieBan
   useEffect(() => {
     // Carregar configuração do banner e categorias do backend
     const carregarConfig = async () => {
+      // Verificar se o usuário já aceitou/rejeitou cookies (dentro da função async para garantir timing correto)
+      const cookieConsent = localStorage.getItem('cookieConsent');
+      
       try {
         const [configResponse, categoriasResponse] = await Promise.all([
           fetch('/api/cookie-banner-config'),
@@ -55,42 +58,72 @@ const CookieBanner = ({ showManageModalExternal, onManageModalClose }: CookieBan
           setCookieConfig(config);
         }
 
+        let preferenciasIniciais: Record<string, boolean> = {
+          necessary: true, // Sempre incluir necessário
+        };
+
         if (categoriasResponse.ok) {
           const categorias = await categoriasResponse.json();
-          setCookieCategorias(categorias.filter((c: any) => c.ativo));
+          const categoriasAtivas = categorias.filter((c: any) => c.ativo);
+          setCookieCategorias(categoriasAtivas);
           
           // Inicializar preferências com todas as categorias ativas
-          const preferenciasIniciais: Record<string, boolean> = {};
           categorias.forEach((cat: any) => {
             if (cat.ativo) {
               preferenciasIniciais[cat.chave] = cat.obrigatorio ? true : true; // Por padrão, todos ativados
             }
           });
-          
-          // Verificar se o usuário já aceitou/rejeitou cookies
-          const cookieConsent = localStorage.getItem('cookieConsent');
-          if (cookieConsent) {
-            try {
-              const savedPreferences = JSON.parse(cookieConsent);
-              setCookiePreferences(savedPreferences);
-            } catch (error) {
-              console.error('Erro ao carregar preferências de cookies:', error);
-              setCookiePreferences(preferenciasIniciais);
-            }
-          } else {
+        } else {
+          // Se a API falhar, usar categorias padrão
+          setCookieCategorias([
+            { chave: 'necessary', nome: 'Necessários', descricao: 'Cookies essenciais para o funcionamento do site', obrigatorio: true },
+            { chave: 'analytics', nome: 'Analíticos', descricao: 'Cookies para análise de uso do site', obrigatorio: false },
+            { chave: 'marketing', nome: 'Marketing', descricao: 'Cookies para personalização e marketing', obrigatorio: false }
+          ]);
+          preferenciasIniciais = {
+            necessary: true,
+            analytics: true,
+            marketing: true,
+          };
+        }
+        
+        // Verificar se o usuário já aceitou/rejeitou cookies
+        if (cookieConsent) {
+          try {
+            const savedPreferences = JSON.parse(cookieConsent);
+            setCookiePreferences(savedPreferences);
+            // Não mostrar banner se já houver consentimento válido
+            setShowBanner(false);
+          } catch (error) {
             setCookiePreferences(preferenciasIniciais);
+            // Se houver erro ao ler, mostrar banner novamente
             setShowBanner(true);
           }
+        } else {
+          // Se não houver consentimento, mostrar banner
+          setCookiePreferences(preferenciasIniciais);
+          setShowBanner(true);
         }
       } catch (error) {
-        console.error('Erro ao carregar configuração de cookies:', error);
         // Usar valores padrão em caso de erro
+        setCookieCategorias([
+          { chave: 'necessary', nome: 'Necessários', descricao: 'Cookies essenciais para o funcionamento do site', obrigatorio: true },
+          { chave: 'analytics', nome: 'Analíticos', descricao: 'Cookies para análise de uso do site', obrigatorio: false },
+          { chave: 'marketing', nome: 'Marketing', descricao: 'Cookies para personalização e marketing', obrigatorio: false }
+        ]);
         setCookiePreferences({
           necessary: true,
           analytics: true,
           marketing: true,
         });
-        setShowBanner(true);
+        // Verificar novamente o consentimento em caso de erro
+        const cookieConsent = localStorage.getItem('cookieConsent');
+        // Mostrar banner mesmo em caso de erro, a menos que já tenha consentimento
+        if (!cookieConsent) {
+          setShowBanner(true);
+        } else {
+          setShowBanner(false);
+        }
       }
     };
 
@@ -108,7 +141,6 @@ const CookieBanner = ({ showManageModalExternal, onManageModalClose }: CookieBan
             const savedPreferences = JSON.parse(cookieConsent);
             setCookiePreferences(savedPreferences);
           } catch (error) {
-            console.error('Erro ao carregar preferências de cookies:', error);
             // Se houver erro, usar preferências padrão (todos ativados)
             setCookiePreferences({
               necessary: true,
@@ -164,9 +196,8 @@ const CookieBanner = ({ showManageModalExternal, onManageModalClose }: CookieBan
       try {
         const savedPreferences = JSON.parse(cookieConsent);
         setCookiePreferences(savedPreferences);
-      } catch (error) {
-        console.error('Erro ao carregar preferências de cookies:', error);
-        // Se houver erro, usar preferências padrão (todos ativados)
+          } catch (error) {
+            // Se houver erro, usar preferências padrão (todos ativados)
         setCookiePreferences({
           necessary: true,
           analytics: true,
