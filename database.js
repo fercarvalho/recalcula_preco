@@ -811,7 +811,7 @@ async function inicializar() {
         } catch (error) {
             console.error('Erro ao verificar/adicionar coluna ativo na tabela faq:', error);
         }
-
+        
         // Inicializar FAQ padrão se não existir
         await inicializarFAQPadrao();
         
@@ -4375,7 +4375,7 @@ async function criarFAQ(pergunta, resposta, ordem = null) {
             'INSERT INTO faq (pergunta, resposta, ativo, ordem) VALUES ($1, $2, $3, $4) RETURNING *',
             [pergunta.trim(), resposta.trim(), true, ordem]
         );
-
+        
         const row = result.rows[0];
         return {
             id: row.id,
@@ -4405,11 +4405,11 @@ async function atualizarFAQ(id, pergunta, resposta, ativo) {
         params.push(id);
 
         const result = await pool.query(query, params);
-
+        
         if (result.rows.length === 0) {
             return null;
         }
-
+        
         const row = result.rows[0];
         return {
             id: row.id,

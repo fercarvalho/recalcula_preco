@@ -3,6 +3,7 @@ import { FaCheck, FaChevronDown, FaChevronUp, FaCalculator, FaRocket, FaWhatsapp
 import * as FaIcons from 'react-icons/fa';
 import RegistroModal from './RegistroModal';
 import ThemeToggle from './ThemeToggle';
+import CookieBanner, { CookieManageLink } from './CookieBanner';
 import { apiService } from '../services/api';
 import type { Funcao } from './GerenciamentoFuncoes';
 import type { Plano } from './GerenciamentoPlanos';
@@ -11,6 +12,7 @@ import './LandingPage.css';
 const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
   const [showRegistro, setShowRegistro] = useState(false);
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
+  const [showCookieManageModal, setShowCookieManageModal] = useState(false);
   const [funcoes, setFuncoes] = useState<Funcao[]>([]);
   const [secoesMenuAtivas, setSecoesMenuAtivas] = useState<string[]>([]);
   const [sessoesAtivas, setSessoesAtivas] = useState<string[]>([]);
@@ -994,6 +996,17 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
           </div>
           <div className="footer-bottom">
             <p>&copy; 2026 Recalcula Preço. Todos os direitos reservados.</p>
+            <div className="footer-links-bottom">
+              <a href="#politica-privacidade" onClick={(e) => {
+                e.preventDefault();
+                const element = document.getElementById('politica-privacidade');
+                if (element) {
+                  element.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}>Política de Privacidade</a>
+              <span className="footer-separator">|</span>
+              <CookieManageLink onManageClick={() => setShowCookieManageModal(true)} />
+            </div>
           </div>
         </div>
       </footer>
@@ -1008,6 +1021,10 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
       />
       
       <ThemeToggle variant="floating" />
+      <CookieBanner 
+        showManageModalExternal={showCookieManageModal}
+        onManageModalClose={() => setShowCookieManageModal(false)}
+      />
     </div>
   );
 };

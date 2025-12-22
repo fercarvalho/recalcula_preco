@@ -44,7 +44,7 @@ const GerenciamentoFAQ = ({ isOpen, onClose }: GerenciamentoFAQProps) => {
       setLoading(true);
       const faqCarregado = await apiService.obterFAQAdmin();
       setFAQ(faqCarregado);
-
+      
       // Salvar ordem padrão (ordem atual quando o modal é aberto)
       ordemPadraoRef.current.clear();
       faqCarregado.forEach(p => {

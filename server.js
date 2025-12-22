@@ -4554,15 +4554,15 @@ app.put('/api/admin/faq/:id', authenticateToken, requireAdmin, async (req, res) 
     try {
         const { id } = req.params;
         const { pergunta, resposta, ativo } = req.body;
-
+        
         if (!pergunta || !pergunta.trim()) {
             return res.status(400).json({ error: 'A pergunta é obrigatória' });
         }
-
+        
         if (!resposta || !resposta.trim()) {
             return res.status(400).json({ error: 'A resposta é obrigatória' });
         }
-
+        
         const perguntaAtualizada = await db.atualizarFAQ(parseInt(id), pergunta, resposta, ativo);
         if (!perguntaAtualizada) {
             return res.status(404).json({ error: 'Pergunta não encontrada' });
