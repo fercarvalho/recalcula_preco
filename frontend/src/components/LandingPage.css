@@ -1063,7 +1063,7 @@
 
 .garantia-texto {
   text-align: center;
-  color: var(--cor-texto-secundario);
+  color: var(--cor-texto);
   font-size: 0.9rem;
   margin-top: 0 !important;
   margin-bottom: 2rem;
@@ -1076,6 +1076,10 @@
   margin-left: auto;
   margin-right: auto;
   z-index: 1;
+}
+
+.garantia-texto p {
+  color: var(--cor-texto) !important;
 }
 
 /* Garantir que o wrapper da garantia sempre fique abaixo dos cards */

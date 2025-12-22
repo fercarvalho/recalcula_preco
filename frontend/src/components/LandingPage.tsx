@@ -732,7 +732,7 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
                 <p style={{ 
                   margin: 0, 
                   fontSize: '0.9rem', 
-                  color: 'rgba(255, 255, 255, 0.8)',
+                  color: 'var(--cor-texto)',
                   lineHeight: '1.4'
                 }}>
                   Não gostou? Reembolso total em até 7 dias após a compra
