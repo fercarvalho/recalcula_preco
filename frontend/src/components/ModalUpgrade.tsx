@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
-import { FaCheckCircle, FaExclamationTriangle, FaCheck, FaShieldAlt } from 'react-icons/fa';
+import { FaExclamationTriangle, FaCheck, FaShieldAlt } from 'react-icons/fa';
 import Modal from './Modal';
 import { apiService } from '../services/api';
 import { mostrarAlert } from '../utils/modals';
@@ -129,15 +129,15 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
         
         // Criar um plano "virtual" para upgrade de recorrente para anual
         const planoUpgradeRecorrente: Plano = {
-          id: planoAnualAvistaId || status.assinatura.plano_id || 999, // Usar plano anual à vista se encontrado
+          id: planoAnualAvistaId || status.assinatura?.plano_id || 999, // Usar plano anual à vista se encontrado
           nome: 'Upgrade para Plano Anual Completo',
           tipo: 'unico',
           valor: valorDinamicoCalculado, // Valor dinâmico calculado
           valor_parcelado: null,
           valor_total: null,
           periodo: 'anual',
-          desconto_percentual: null,
-          desconto_valor: null,
+          desconto_percentual: undefined,
+          desconto_valor: undefined,
           mais_popular: false,
           mostrar_valor_total: false,
           mostrar_valor_parcelado: false,
@@ -162,7 +162,11 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
       // - tipo 'unico' cujo nome contém "upgrade"
       const planosUpgrade: Plano[] = planosCarregados
         .filter(p => {
-          if (!p.ativo || p.tipo !== 'unico' || !p.stripe_price_id) {
+          if (!p.ativo || !p.stripe_price_id) {
+            return false;
+          }
+          // Garantir que o tipo seja 'unico'
+          if (p.tipo !== 'unico') {
             return false;
           }
           
@@ -172,7 +176,13 @@ const ModalUpgrade = ({ isOpen, onClose, onPagamentoSucesso }: ModalUpgradeProps
           const periodoAnual = p.periodo === 'anual';
           
           return periodoAnual || naoApareceEmLugarNenhum || temUpgradeNoNome;
-        });
+        })
+        .map(p => ({
+          ...p,
+          tipo: p.tipo as 'unico' | 'parcelado' | 'recorrente',
+          desconto_percentual: p.desconto_percentual ?? undefined,
+          desconto_valor: p.desconto_valor ?? undefined,
+        })) as Plano[];
       
       console.log('Planos de upgrade encontrados:', planosUpgrade.map(p => ({
         id: p.id,

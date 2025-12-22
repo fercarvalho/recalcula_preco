@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import Modal from './Modal';
 import { getToken } from '../services/auth';
-import { FaTicketAlt, FaUser, FaCreditCard, FaCalendar, FaDollarSign, FaChevronDown, FaChevronUp, FaSpinner } from 'react-icons/fa';
+import { FaTicketAlt, FaUser, FaDollarSign, FaChevronDown, FaChevronUp, FaSpinner } from 'react-icons/fa';
 import './DashboardCupons.css';
 
 interface DashboardCuponsProps {
@@ -23,6 +23,8 @@ interface UsoCupom {
     id: number;
     nome: string;
   } | null;
+  valorOriginal?: number;
+  descontoAplicado?: number;
 }
 
 interface PromotionCode {

@@ -459,8 +459,8 @@ function App() {
       // Verificar se tem plano pago mas email não validado
       // Se tem tipo de plano (anual, unico, vitalicio) mas email não validado, significa que pagou mas não validou email
       const temPlanoPago = status.tipo !== null && (status.tipo === 'anual' || status.tipo === 'unico' || status.tipo === 'vitalicio');
-      const temPlanoMasNaoValidouEmail = temPlanoPago && status.emailNaoValidado;
-      setTemPlanoMasEmailNaoValidado(temPlanoMasNaoValidouEmail);
+      const temPlanoMasNaoValidouEmail = temPlanoPago && (status.emailNaoValidado === true);
+      setTemPlanoMasEmailNaoValidado(temPlanoMasNaoValidouEmail || false);
       
       // Verificar se precisa validar email
       // Só abrir o modal se não foi fechado manualmente pelo usuário
@@ -498,7 +498,8 @@ function App() {
       // Verificar se deve mostrar modal/banner de upgrade
       // Mostrar APENAS para usuários com assinatura ativa (plano recorrente/parcelado)
       // NÃO mostrar se o usuário já tem pagamento único anual (upgrade já feito)
-      const temPagamentoUnico = !!status.pagamento;
+      // Se o tipo é 'anual' ou 'unico', significa que já tem pagamento único
+      const temPagamentoUnico = status.tipo === 'anual' || status.tipo === 'unico' || status.tipo === 'vitalicio';
       const temAssinaturaAtiva = !!status.assinatura && status.assinatura.status === 'active';
       
       // Mostrar modal APENAS para usuários com assinatura ativa (plano recorrente/parcelado)
@@ -1209,8 +1210,8 @@ function App() {
             setTemAcesso(status.temAcesso);
             // Atualizar flag de plano mas email não validado
             const temPlanoPago = status.tipo !== null && (status.tipo === 'anual' || status.tipo === 'unico' || status.tipo === 'vitalicio');
-            const temPlanoMasNaoValidouEmail = temPlanoPago && status.emailNaoValidado;
-            setTemPlanoMasEmailNaoValidado(temPlanoMasNaoValidouEmail);
+            const temPlanoMasNaoValidouEmail = temPlanoPago && (status.emailNaoValidado === true);
+            setTemPlanoMasEmailNaoValidado(temPlanoMasNaoValidouEmail || false);
           } catch (error) {
             console.error('Erro ao verificar status de pagamento:', error);
           }

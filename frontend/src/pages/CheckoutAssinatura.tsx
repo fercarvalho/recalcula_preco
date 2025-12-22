@@ -1261,7 +1261,7 @@ const CheckoutAssinatura = () => {
 
   // Heurística: se há valor_parcelado ou o período/nome menciona mensal, consideramos plano mensal.
   const isPlanoMensal = temValorParcelado || periodoPlano.includes('mensal') || nomePlano.includes('mensal');
-  const isPlanoAnual = !isPlanoMensal && (periodoPlano.includes('anual') || nomePlano.includes('anual'));
+  // const isPlanoAnual = !isPlanoMensal && (periodoPlano.includes('anual') || nomePlano.includes('anual'));
   
   // Calcular valores corretos baseado no período do plano
   let valorAnualOriginal, valorAnualComDesconto, valorMensalOriginal, valorMensalComDesconto;

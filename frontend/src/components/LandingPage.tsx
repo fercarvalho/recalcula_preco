@@ -253,8 +253,8 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
   const carregarFAQ = async () => {
     try {
       const faqCarregado = await apiService.obterFAQ();
-      // Filtrar apenas perguntas ativas
-      const faqAtivo = faqCarregado.filter(faq => faq.ativo === true);
+      // Filtrar apenas perguntas ativas (se a propriedade existir)
+      const faqAtivo = faqCarregado.filter(faq => faq.ativo !== false);
       setFaqs(faqAtivo);
     } catch (error) {
       console.error('Erro ao carregar FAQ:', error);

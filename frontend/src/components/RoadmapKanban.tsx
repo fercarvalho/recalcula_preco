@@ -296,7 +296,7 @@ const RoadmapKanban = ({ isOpen, onClose }: RoadmapKanbanProps) => {
         return novos;
       });
       
-      const itemAtualizado = await apiService.pausarTempoRoadmapItem(id);
+      await apiService.pausarTempoRoadmapItem(id);
       
       // Atualizar estado local imediatamente para evitar glitches
       // Mantém ultimo_inicio para continuar depois

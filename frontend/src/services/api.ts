@@ -153,6 +153,7 @@ export const apiService = {
       plano_tipo: string;
       current_period_end: string | null;
       cancel_at_period_end: boolean;
+      plano_id?: number;
     } | null;
   }> {
     const response = await api.get<{
@@ -164,6 +165,7 @@ export const apiService = {
         plano_tipo: string;
         current_period_end: string | null;
         cancel_at_period_end: boolean;
+        plano_id?: number;
       } | null;
     }>('/api/stripe/status');
     return response.data;
@@ -414,6 +416,7 @@ export const apiService = {
     pergunta: string;
     resposta: string;
     ordem: number;
+    ativo?: boolean;
   }>> {
     const response = await api.get('/api/faq');
     return response.data;

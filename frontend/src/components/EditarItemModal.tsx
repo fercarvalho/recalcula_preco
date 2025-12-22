@@ -16,6 +16,7 @@ interface EditarItemModalProps {
   onSave: () => void;
   temAcesso?: boolean;
   onAbrirModalPlanos?: () => void;
+  temPlanoMasEmailNaoValidado?: boolean;
 }
 
 interface ItemLinha {
