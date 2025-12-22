@@ -323,13 +323,6 @@ const TutorialOnboarding = ({
     }
   };
 
-  const handleSkip = async () => {
-    await markTutorialCompleted(userId);
-    setCurrentStep(0);
-    setTutorialStep(0, userId);
-    onSkip();
-  };
-
   // Função para fechar o tutorial sem marcar como completo
   // Isso permite que o tutorial seja exibido novamente na próxima vez que o usuário logar
   const handleClose = () => {
