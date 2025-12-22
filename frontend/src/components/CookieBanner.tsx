@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { FaCookie, FaTimes, FaCog } from 'react-icons/fa';
 import Modal from './Modal';
+import ModalTermosUso from './ModalTermosUso';
+import ModalPoliticaPrivacidade from './ModalPoliticaPrivacidade';
 import './CookieBanner.css';
 
 // Componente para o link de gerenciar cookies no rodapé
@@ -24,34 +26,75 @@ interface CookieBannerProps {
 const CookieBanner = ({ showManageModalExternal, onManageModalClose }: CookieBannerProps = {}) => {
   const [showBanner, setShowBanner] = useState(false);
   const [showManageModal, setShowManageModal] = useState(showManageModalExternal || false);
-  const [cookiePreferences, setCookiePreferences] = useState({
+  const [showTermosModal, setShowTermosModal] = useState(false);
+  const [showPoliticaModal, setShowPoliticaModal] = useState(false);
+  const [cookiePreferences, setCookiePreferences] = useState<Record<string, boolean>>({
     necessary: true, // Sempre true, não pode ser desabilitado
-    analytics: true, // Ativado por padrão
-    marketing: true, // Ativado por padrão
   });
+  const [cookieConfig, setCookieConfig] = useState({
+    titulo: 'Política de Cookies',
+    texto: 'Utilizamos cookies para melhorar sua experiência, analisar o uso do site e personalizar conteúdo.',
+    texto_botao_aceitar: 'Aceitar Todos',
+    texto_botao_rejeitar: 'Rejeitar Todos',
+    texto_botao_personalizar: 'Personalizar',
+    texto_descricao_gerenciamento: 'Escolha quais tipos de cookies você deseja aceitar.'
+  });
+  const [cookieCategorias, setCookieCategorias] = useState<Array<{chave: string, nome: string, descricao: string, obrigatorio: boolean}>>([]);
 
   useEffect(() => {
-    // Verificar se o usuário já aceitou/rejeitou cookies
-    const cookieConsent = localStorage.getItem('cookieConsent');
-    if (!cookieConsent) {
-      // Mostrar banner apenas se não houver consentimento salvo
-      setShowBanner(true);
-      // Manter preferências padrão (todos ativados)
-    } else {
-      // Carregar preferências salvas
+    // Carregar configuração do banner e categorias do backend
+    const carregarConfig = async () => {
       try {
-        const savedPreferences = JSON.parse(cookieConsent);
-        setCookiePreferences(savedPreferences);
+        const [configResponse, categoriasResponse] = await Promise.all([
+          fetch('/api/cookie-banner-config'),
+          fetch('/api/cookie-categorias')
+        ]);
+
+        if (configResponse.ok) {
+          const config = await configResponse.json();
+          setCookieConfig(config);
+        }
+
+        if (categoriasResponse.ok) {
+          const categorias = await categoriasResponse.json();
+          setCookieCategorias(categorias.filter((c: any) => c.ativo));
+          
+          // Inicializar preferências com todas as categorias ativas
+          const preferenciasIniciais: Record<string, boolean> = {};
+          categorias.forEach((cat: any) => {
+            if (cat.ativo) {
+              preferenciasIniciais[cat.chave] = cat.obrigatorio ? true : true; // Por padrão, todos ativados
+            }
+          });
+          
+          // Verificar se o usuário já aceitou/rejeitou cookies
+          const cookieConsent = localStorage.getItem('cookieConsent');
+          if (cookieConsent) {
+            try {
+              const savedPreferences = JSON.parse(cookieConsent);
+              setCookiePreferences(savedPreferences);
+            } catch (error) {
+              console.error('Erro ao carregar preferências de cookies:', error);
+              setCookiePreferences(preferenciasIniciais);
+            }
+          } else {
+            setCookiePreferences(preferenciasIniciais);
+            setShowBanner(true);
+          }
+        }
       } catch (error) {
-        console.error('Erro ao carregar preferências de cookies:', error);
-        // Se houver erro, usar preferências padrão (todos ativados)
+        console.error('Erro ao carregar configuração de cookies:', error);
+        // Usar valores padrão em caso de erro
         setCookiePreferences({
           necessary: true,
           analytics: true,
           marketing: true,
         });
+        setShowBanner(true);
       }
-    }
+    };
+
+    carregarConfig();
   }, []);
 
   useEffect(() => {
@@ -86,22 +129,20 @@ const CookieBanner = ({ showManageModalExternal, onManageModalClose }: CookieBan
   }, [showManageModalExternal]);
 
   const handleAcceptAll = () => {
-    const allAccepted = {
-      necessary: true,
-      analytics: true,
-      marketing: true,
-    };
+    const allAccepted: Record<string, boolean> = {};
+    cookieCategorias.forEach(cat => {
+      allAccepted[cat.chave] = true;
+    });
     setCookiePreferences(allAccepted);
     localStorage.setItem('cookieConsent', JSON.stringify(allAccepted));
     setShowBanner(false);
   };
 
   const handleRejectAll = () => {
-    const onlyNecessary = {
-      necessary: true,
-      analytics: false,
-      marketing: false,
-    };
+    const onlyNecessary: Record<string, boolean> = {};
+    cookieCategorias.forEach(cat => {
+      onlyNecessary[cat.chave] = cat.obrigatorio; // Apenas obrigatórios ficam ativos
+    });
     setCookiePreferences(onlyNecessary);
     localStorage.setItem('cookieConsent', JSON.stringify(onlyNecessary));
     setShowBanner(false);
@@ -159,20 +200,43 @@ const CookieBanner = ({ showManageModalExternal, onManageModalClose }: CookieBan
               <FaCookie />
             </div>
             <div className="cookie-banner-text">
-              <h3>Política de Cookies</h3>
+              <h3>{cookieConfig.titulo}</h3>
               <p>
-                Utilizamos cookies para melhorar sua experiência, analisar o uso do site e personalizar conteúdo.
-                Ao continuar navegando, você concorda com nossa{' '}
-                <a href="#politica-privacidade" onClick={(e) => {
-                  e.preventDefault();
-                  // Scroll para política de privacidade se existir
-                  const element = document.getElementById('politica-privacidade');
-                  if (element) {
-                    element.scrollIntoView({ behavior: 'smooth' });
-                  }
-                }}>
-                  Política de Privacidade
-                </a>.
+                {cookieConfig.texto.includes('Política de Privacidade') || cookieConfig.texto.includes('Termos de Uso') ? (
+                  cookieConfig.texto.split(/(Política de Privacidade|Termos de Uso)/).map((part, index) => {
+                    if (part === 'Política de Privacidade') {
+                      return (
+                        <a 
+                          key={index}
+                          href="#" 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setShowPoliticaModal(true);
+                          }}
+                        >
+                          Política de Privacidade
+                        </a>
+                      );
+                    }
+                    if (part === 'Termos de Uso') {
+                      return (
+                        <a 
+                          key={index}
+                          href="#" 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setShowTermosModal(true);
+                          }}
+                        >
+                          Termos de Uso
+                        </a>
+                      );
+                    }
+                    return <span key={index}>{part}</span>;
+                  })
+                ) : (
+                  cookieConfig.texto
+                )}
               </p>
             </div>
             <div className="cookie-banner-actions">
@@ -180,19 +244,19 @@ const CookieBanner = ({ showManageModalExternal, onManageModalClose }: CookieBan
                 onClick={handleRejectAll}
                 className="cookie-btn cookie-btn-secondary"
               >
-                Rejeitar Todos
+                {cookieConfig.texto_botao_rejeitar}
               </button>
               <button
                 onClick={handleManageCookies}
                 className="cookie-btn cookie-btn-secondary"
               >
-                <FaCog /> Personalizar
+                <FaCog /> {cookieConfig.texto_botao_personalizar}
               </button>
               <button
                 onClick={handleAcceptAll}
                 className="cookie-btn cookie-btn-primary"
               >
-                Aceitar Todos
+                {cookieConfig.texto_botao_aceitar}
               </button>
             </div>
             <button
@@ -231,67 +295,51 @@ const CookieBanner = ({ showManageModalExternal, onManageModalClose }: CookieBan
         >
           <div className="cookie-manage-content">
             <p className="cookie-manage-description">
-              Escolha quais tipos de cookies você deseja aceitar. Os cookies necessários são sempre ativados, pois são essenciais para o funcionamento do site.
+              {cookieConfig.texto_descricao_gerenciamento || 'Escolha quais tipos de cookies você deseja aceitar. Os cookies necessários são sempre ativados, pois são essenciais para o funcionamento do site.'}
             </p>
 
-            <div className="cookie-category">
-              <div className="cookie-category-header">
-                <div className="cookie-category-info">
-                  <h4>Cookies Necessários</h4>
-                  <p>Essenciais para o funcionamento do site. Não podem ser desativados.</p>
-                </div>
-                <div className="cookie-toggle disabled">
-                  <span>Ativado</span>
+            {cookieCategorias.map((categoria) => (
+              <div key={categoria.chave} className="cookie-category">
+                <div className="cookie-category-header">
+                  <div className="cookie-category-info">
+                    <h4>{categoria.nome}</h4>
+                    <p>{categoria.descricao}</p>
+                  </div>
+                  {categoria.obrigatorio ? (
+                    <div className="cookie-toggle disabled">
+                      <span>Ativado</span>
+                    </div>
+                  ) : (
+                    <label className="cookie-toggle">
+                      <input
+                        type="checkbox"
+                        checked={cookiePreferences[categoria.chave] || false}
+                        onChange={(e) =>
+                          setCookiePreferences({
+                            ...cookiePreferences,
+                            [categoria.chave]: e.target.checked,
+                          })
+                        }
+                      />
+                      <span className="cookie-toggle-slider"></span>
+                    </label>
+                  )}
                 </div>
               </div>
-            </div>
-
-            <div className="cookie-category">
-              <div className="cookie-category-header">
-                <div className="cookie-category-info">
-                  <h4>Cookies de Análise</h4>
-                  <p>Nos ajudam a entender como os visitantes interagem com o site, coletando informações de forma anônima.</p>
-                </div>
-                <label className="cookie-toggle">
-                  <input
-                    type="checkbox"
-                    checked={cookiePreferences.analytics}
-                    onChange={(e) =>
-                      setCookiePreferences({
-                        ...cookiePreferences,
-                        analytics: e.target.checked,
-                      })
-                    }
-                  />
-                  <span className="cookie-toggle-slider"></span>
-                </label>
-              </div>
-            </div>
-
-            <div className="cookie-category">
-              <div className="cookie-category-header">
-                <div className="cookie-category-info">
-                  <h4>Cookies de Marketing</h4>
-                  <p>Usados para personalizar anúncios e medir a eficácia de campanhas publicitárias.</p>
-                </div>
-                <label className="cookie-toggle">
-                  <input
-                    type="checkbox"
-                    checked={cookiePreferences.marketing}
-                    onChange={(e) =>
-                      setCookiePreferences({
-                        ...cookiePreferences,
-                        marketing: e.target.checked,
-                      })
-                    }
-                  />
-                  <span className="cookie-toggle-slider"></span>
-                </label>
-              </div>
-            </div>
+            ))}
           </div>
         </Modal>
       )}
+
+      <ModalTermosUso 
+        isOpen={showTermosModal}
+        onClose={() => setShowTermosModal(false)}
+      />
+
+      <ModalPoliticaPrivacidade 
+        isOpen={showPoliticaModal}
+        onClose={() => setShowPoliticaModal(false)}
+      />
     </>
   );
 };

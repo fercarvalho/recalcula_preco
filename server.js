@@ -4594,6 +4594,232 @@ const frontendPath = path.join(__dirname, 'frontend', 'dist');
 app.use(express.static(frontendPath));
 
 // Servir o arquivo HTML do React para todas as rotas não-API
+// ========== ROTAS DE TERMOS DE USO E POLÍTICA DE PRIVACIDADE ==========
+
+// Rotas públicas para buscar conteúdos
+app.get('/api/termos-uso', async (req, res) => {
+    try {
+        const termos = await db.obterTermosUso();
+        res.json(termos || { conteudo: '', versao: 1, updated_at: null });
+    } catch (error) {
+        console.error('Erro ao obter termos de uso:', error);
+        res.status(500).json({ error: 'Erro ao obter termos de uso' });
+    }
+});
+
+app.get('/api/politica-privacidade', async (req, res) => {
+    try {
+        const politica = await db.obterPoliticaPrivacidade();
+        res.json(politica || { conteudo: '', versao: 1, updated_at: null });
+    } catch (error) {
+        console.error('Erro ao obter política de privacidade:', error);
+        res.status(500).json({ error: 'Erro ao obter política de privacidade' });
+    }
+});
+
+// Rotas administrativas para gerenciar termos de uso
+app.get('/api/admin/termos-uso', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const termos = await db.obterTermosUso();
+        res.json(termos || { conteudo: '', versao: 1, updated_at: null });
+    } catch (error) {
+        console.error('Erro ao obter termos de uso:', error);
+        res.status(500).json({ error: 'Erro ao obter termos de uso' });
+    }
+});
+
+app.put('/api/admin/termos-uso', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { conteudo } = req.body;
+        
+        if (!conteudo || typeof conteudo !== 'string') {
+            return res.status(400).json({ error: 'Conteúdo é obrigatório' });
+        }
+        
+        const termos = await db.atualizarTermosUso(conteudo);
+        res.json(termos);
+    } catch (error) {
+        console.error('Erro ao atualizar termos de uso:', error);
+        res.status(500).json({ error: 'Erro ao atualizar termos de uso' });
+    }
+});
+
+// Rotas administrativas para gerenciar política de privacidade
+app.get('/api/admin/politica-privacidade', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const politica = await db.obterPoliticaPrivacidade();
+        res.json(politica || { conteudo: '', versao: 1, updated_at: null });
+    } catch (error) {
+        console.error('Erro ao obter política de privacidade:', error);
+        res.status(500).json({ error: 'Erro ao obter política de privacidade' });
+    }
+});
+
+app.put('/api/admin/politica-privacidade', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { conteudo } = req.body;
+        
+        if (!conteudo || typeof conteudo !== 'string') {
+            return res.status(400).json({ error: 'Conteúdo é obrigatório' });
+        }
+        
+        const politica = await db.atualizarPoliticaPrivacidade(conteudo);
+        res.json(politica);
+    } catch (error) {
+        console.error('Erro ao atualizar política de privacidade:', error);
+        res.status(500).json({ error: 'Erro ao atualizar política de privacidade' });
+    }
+});
+
+// ========== ROTAS DE CONFIGURAÇÕES DE COOKIES ==========
+
+// Rota pública para buscar configuração do banner de cookies
+app.get('/api/cookie-banner-config', async (req, res) => {
+    try {
+        const config = await db.obterCookieBannerConfig();
+        res.json(config || {
+            titulo: 'Política de Cookies',
+            texto: 'Utilizamos cookies para melhorar sua experiência, analisar o uso do site e personalizar conteúdo.',
+            texto_botao_aceitar: 'Aceitar Todos',
+            texto_botao_rejeitar: 'Rejeitar Todos',
+            texto_botao_personalizar: 'Personalizar',
+            texto_descricao_gerenciamento: 'Escolha quais tipos de cookies você deseja aceitar.'
+        });
+    } catch (error) {
+        console.error('Erro ao obter configuração do banner de cookies:', error);
+        res.status(500).json({ error: 'Erro ao obter configuração do banner de cookies' });
+    }
+});
+
+// Rota pública para buscar categorias de cookies
+app.get('/api/cookie-categorias', async (req, res) => {
+    try {
+        const categorias = await db.obterCookieCategorias();
+        res.json(categorias || []);
+    } catch (error) {
+        console.error('Erro ao obter categorias de cookies:', error);
+        res.status(500).json({ error: 'Erro ao obter categorias de cookies' });
+    }
+});
+
+// Rotas administrativas para gerenciar configurações de cookies
+app.get('/api/admin/cookie-banner-config', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const config = await db.obterCookieBannerConfig();
+        res.json(config);
+    } catch (error) {
+        console.error('Erro ao obter configuração do banner de cookies:', error);
+        res.status(500).json({ error: 'Erro ao obter configuração do banner de cookies' });
+    }
+});
+
+app.put('/api/admin/cookie-banner-config', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { titulo, texto, texto_botao_aceitar, texto_botao_rejeitar, texto_botao_personalizar, texto_descricao_gerenciamento } = req.body;
+        
+        if (!titulo || !texto) {
+            return res.status(400).json({ error: 'Título e texto são obrigatórios' });
+        }
+        
+        const config = await db.atualizarCookieBannerConfig({
+            titulo,
+            texto,
+            texto_botao_aceitar: texto_botao_aceitar || 'Aceitar Todos',
+            texto_botao_rejeitar: texto_botao_rejeitar || 'Rejeitar Todos',
+            texto_botao_personalizar: texto_botao_personalizar || 'Personalizar',
+            texto_descricao_gerenciamento: texto_descricao_gerenciamento || ''
+        });
+        res.json(config);
+    } catch (error) {
+        console.error('Erro ao atualizar configuração do banner de cookies:', error);
+        res.status(500).json({ error: 'Erro ao atualizar configuração do banner de cookies' });
+    }
+});
+
+// Rotas administrativas para gerenciar categorias de cookies
+app.get('/api/admin/cookie-categorias', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const categorias = await db.obterCookieCategorias();
+        res.json(categorias);
+    } catch (error) {
+        console.error('Erro ao obter categorias de cookies:', error);
+        res.status(500).json({ error: 'Erro ao obter categorias de cookies' });
+    }
+});
+
+app.post('/api/admin/cookie-categorias', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { chave, nome, descricao, ativo, obrigatorio, ordem } = req.body;
+        
+        if (!chave || !nome || !descricao) {
+            return res.status(400).json({ error: 'Chave, nome e descrição são obrigatórios' });
+        }
+        
+        // Verificar se já existe categoria com a mesma chave
+        const existente = await db.obterCookieCategoriaPorChave(chave);
+        if (existente) {
+            return res.status(400).json({ error: 'Já existe uma categoria com esta chave' });
+        }
+        
+        const categoria = await db.criarCookieCategoria({
+            chave,
+            nome,
+            descricao,
+            ativo: ativo !== undefined ? ativo : true,
+            obrigatorio: obrigatorio !== undefined ? obrigatorio : false,
+            ordem: ordem || 0
+        });
+        res.json(categoria);
+    } catch (error) {
+        console.error('Erro ao criar categoria de cookie:', error);
+        res.status(500).json({ error: 'Erro ao criar categoria de cookie' });
+    }
+});
+
+app.put('/api/admin/cookie-categorias/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { nome, descricao, ativo, obrigatorio, ordem } = req.body;
+        
+        if (!nome || !descricao) {
+            return res.status(400).json({ error: 'Nome e descrição são obrigatórios' });
+        }
+        
+        const categoria = await db.atualizarCookieCategoria(parseInt(id), {
+            nome,
+            descricao,
+            ativo: ativo !== undefined ? ativo : true,
+            obrigatorio: obrigatorio !== undefined ? obrigatorio : false,
+            ordem: ordem !== undefined ? ordem : 0
+        });
+        
+        if (!categoria) {
+            return res.status(404).json({ error: 'Categoria não encontrada' });
+        }
+        
+        res.json(categoria);
+    } catch (error) {
+        console.error('Erro ao atualizar categoria de cookie:', error);
+        res.status(500).json({ error: 'Erro ao atualizar categoria de cookie' });
+    }
+});
+
+app.delete('/api/admin/cookie-categorias/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const categoria = await db.deletarCookieCategoria(parseInt(id));
+        
+        if (!categoria) {
+            return res.status(404).json({ error: 'Categoria não encontrada ou não pode ser removida (é obrigatória)' });
+        }
+        
+        res.json({ message: 'Categoria removida com sucesso', categoria });
+    } catch (error) {
+        console.error('Erro ao deletar categoria de cookie:', error);
+        res.status(500).json({ error: 'Erro ao deletar categoria de cookie' });
+    }
+});
+
 app.get('*', (req, res) => {
     // Não servir index.html para rotas de API
     if (req.path.startsWith('/api/')) {

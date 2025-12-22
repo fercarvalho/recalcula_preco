@@ -1,0 +1,166 @@
+.termos-uso-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--cor-fundo) 0%, var(--cor-secundaria) 100%);
+  padding: 40px 20px;
+  transition: background 0.3s ease;
+}
+
+.termos-uso-container {
+  max-width: 900px;
+  margin: 0 auto;
+  background: var(--cor-secundaria);
+  border-radius: 15px;
+  padding: 40px;
+  box-shadow: 0 20px 60px var(--cor-sombra);
+  border: 1px solid var(--cor-borda);
+  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.termos-uso-header {
+  text-align: center;
+  margin-bottom: 40px;
+  padding-bottom: 30px;
+  border-bottom: 2px solid var(--cor-borda);
+}
+
+.termos-uso-header h1 {
+  color: var(--cor-texto);
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+  transition: color 0.3s ease;
+}
+
+.termos-uso-data {
+  color: var(--cor-texto-secundario);
+  font-size: 0.95rem;
+  margin-top: 10px;
+}
+
+.termos-uso-content {
+  line-height: 1.8;
+  color: var(--cor-texto);
+}
+
+.termos-uso-section {
+  margin-bottom: 35px;
+}
+
+.termos-uso-section h2 {
+  color: var(--cor-primaria, #FF6B35);
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 15px;
+  margin-top: 30px;
+  transition: color 0.3s ease;
+}
+
+.termos-uso-section h2:first-child {
+  margin-top: 0;
+}
+
+.termos-uso-section h3 {
+  color: var(--cor-texto);
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-top: 20px;
+  margin-bottom: 12px;
+  transition: color 0.3s ease;
+}
+
+.termos-uso-section p {
+  color: var(--cor-texto);
+  margin-bottom: 15px;
+  text-align: justify;
+  transition: color 0.3s ease;
+}
+
+.termos-uso-section ul {
+  margin: 15px 0;
+  padding-left: 25px;
+  color: var(--cor-texto);
+}
+
+.termos-uso-section li {
+  margin-bottom: 10px;
+  line-height: 1.7;
+  transition: color 0.3s ease;
+}
+
+.termos-uso-section li strong {
+  color: var(--cor-texto);
+  font-weight: 600;
+}
+
+.termos-uso-footer {
+  margin-top: 50px;
+  padding-top: 30px;
+  border-top: 2px solid var(--cor-borda);
+  text-align: center;
+}
+
+.termos-uso-btn-voltar {
+  background: var(--cor-primaria, #FF6B35);
+  color: white;
+  border: none;
+  padding: 14px 32px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3);
+}
+
+.termos-uso-btn-voltar:hover {
+  background: rgba(255, 107, 53, 0.9);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 107, 53, 0.4);
+}
+
+.termos-uso-btn-voltar:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 10px rgba(255, 107, 53, 0.3);
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .termos-uso-container {
+    padding: 25px 20px;
+  }
+
+  .termos-uso-header h1 {
+    font-size: 2rem;
+  }
+
+  .termos-uso-section h2 {
+    font-size: 1.3rem;
+  }
+
+  .termos-uso-section h3 {
+    font-size: 1.1rem;
+  }
+
+  .termos-uso-section p {
+    text-align: left;
+  }
+}
+
+@media (max-width: 480px) {
+  .termos-uso-page {
+    padding: 20px 10px;
+  }
+
+  .termos-uso-container {
+    padding: 20px 15px;
+  }
+
+  .termos-uso-header h1 {
+    font-size: 1.75rem;
+  }
+
+  .termos-uso-section {
+    margin-bottom: 25px;
+  }
+}
+

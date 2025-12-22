@@ -19,6 +19,8 @@ import ValidarEmail from './pages/ValidarEmail';
 import Cardapio from './pages/Cardapio';
 import Checkout from './pages/Checkout';
 import CheckoutAssinatura from './pages/CheckoutAssinatura';
+import TermosUso from './pages/TermosUso';
+import PoliticaPrivacidade from './pages/PoliticaPrivacidade';
 import AlterarDadosModal from './components/AlterarDadosModal';
 import { isAuthenticated, getToken, getUser, saveAuth } from './services/auth';
 import { carregarPlataformasSync, carregarPlataformas } from './utils/plataformas';
@@ -73,6 +75,16 @@ function App() {
   // Verificar se está na rota de checkout de assinatura
   if (pathname === '/checkout-assinatura') {
     return <CheckoutAssinatura />;
+  }
+
+  // Verificar se está na rota de termos de uso
+  if (pathname === '/termos-uso' || pathname === '/termos') {
+    return <TermosUso />;
+  }
+
+  // Verificar se está na rota de política de privacidade
+  if (pathname === '/politica-privacidade' || pathname === '/privacidade') {
+    return <PoliticaPrivacidade />;
   }
 
   const [itensPorCategoria, setItensPorCategoria] = useState<ItensPorCategoria>({});

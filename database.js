@@ -87,6 +87,557 @@ async function colunaExiste(tabela, coluna) {
     return result.rows.length > 0;
 }
 
+// Gerar HTML padrão para termos de uso
+function gerarTermosUsoPadrao() {
+    return `<section class="termos-uso-section">
+  <h2>1. Introdução</h2>
+  <p>
+    Bem-vindo aos Termos de Uso da Calculadora de Reajuste. Estes termos regem o uso de nosso serviço 
+    e plataforma. Ao acessar ou usar nosso serviço, você concorda em cumprir e estar vinculado a estes 
+    Termos de Uso. Se você não concorda com qualquer parte destes termos, não deve usar nosso serviço.
+  </p>
+</section>
+
+<section class="termos-uso-section">
+  <h2>2. Definições</h2>
+  <ul>
+    <li><strong>Serviço:</strong> Refere-se à plataforma de calculadora de reajuste de preços, incluindo todos os recursos, funcionalidades e serviços oferecidos.</li>
+    <li><strong>Usuário:</strong> Qualquer pessoa que acessa ou utiliza o Serviço.</li>
+    <li><strong>Conta:</strong> O registro criado pelo Usuário para acessar o Serviço.</li>
+    <li><strong>Conteúdo:</strong> Todas as informações, dados, textos, gráficos, imagens e outros materiais disponibilizados através do Serviço.</li>
+    <li><strong>Dados do Usuário:</strong> Informações fornecidas pelo Usuário, incluindo itens de cardápio, preços, categorias e outras informações relacionadas.</li>
+  </ul>
+</section>
+
+<section class="termos-uso-section">
+  <h2>3. Elegibilidade e Registro</h2>
+  <p>
+    Para usar nosso Serviço, você deve:
+  </p>
+  <ul>
+    <li>Ter pelo menos 18 anos de idade ou ter o consentimento de um responsável legal;</li>
+    <li>Fornecer informações precisas, completas e atualizadas durante o registro;</li>
+    <li>Manter a segurança de sua conta e senha;</li>
+    <li>Ser responsável por todas as atividades que ocorrem sob sua conta;</li>
+    <li>Notificar-nos imediatamente sobre qualquer uso não autorizado de sua conta.</li>
+  </ul>
+</section>
+
+<section class="termos-uso-section">
+  <h2>4. Uso do Serviço</h2>
+  <h3>4.1. Uso Permitido</h3>
+  <p>Você pode usar nosso Serviço para:</p>
+  <ul>
+    <li>Calcular reajustes de preços de produtos e serviços;</li>
+    <li>Gerenciar cardápios e listas de produtos;</li>
+    <li>Organizar itens por categorias;</li>
+    <li>Gerar visualizações e relatórios de reajustes;</li>
+    <li>Compartilhar cardápios públicos através de links personalizados.</li>
+  </ul>
+
+  <h3>4.2. Restrições de Uso</h3>
+  <p>Você concorda em NÃO:</p>
+  <ul>
+    <li>Usar o Serviço para qualquer propósito ilegal ou não autorizado;</li>
+    <li>Violar qualquer lei local, estadual, nacional ou internacional;</li>
+    <li>Transmitir qualquer vírus, malware ou código malicioso;</li>
+    <li>Tentar obter acesso não autorizado ao Serviço ou a sistemas relacionados;</li>
+    <li>Interferir ou interromper o funcionamento do Serviço;</li>
+    <li>Usar robôs, scripts automatizados ou métodos similares para acessar o Serviço sem autorização;</li>
+    <li>Copiar, modificar, distribuir, vender ou alugar qualquer parte do Serviço;</li>
+    <li>Remover ou alterar qualquer aviso de direitos autorais ou marca registrada;</li>
+    <li>Usar o Serviço de forma que possa danificar, desabilitar, sobrecarregar ou comprometer nossos servidores ou redes.</li>
+  </ul>
+</section>
+
+<section class="termos-uso-section">
+  <h2>5. Conteúdo do Usuário</h2>
+  <h3>5.1. Propriedade do Conteúdo</h3>
+  <p>
+    Você mantém todos os direitos sobre o Conteúdo que você cria, envia, publica ou exibe através do Serviço. 
+    Você é o único responsável por seu Conteúdo e pelas consequências de sua publicação.
+  </p>
+
+  <h3>5.2. Licença de Uso</h3>
+  <p>
+    Ao enviar, publicar ou exibir Conteúdo através do Serviço, você nos concede uma licença mundial, 
+    não exclusiva, livre de royalties, transferível e sublicenciável para usar, reproduzir, modificar, 
+    adaptar, publicar, traduzir, criar trabalhos derivados, distribuir e exibir tal Conteúdo em conexão 
+    com a operação e promoção do Serviço.
+  </p>
+
+  <h3>5.3. Responsabilidade pelo Conteúdo</h3>
+  <p>
+    Você declara e garante que:
+  </p>
+  <ul>
+    <li>Você possui ou tem os direitos necessários para usar e licenciar o Conteúdo;</li>
+    <li>O Conteúdo não viola direitos de terceiros, incluindo direitos autorais, marcas registradas, privacidade ou outros direitos pessoais ou de propriedade;</li>
+    <li>O Conteúdo não contém material difamatório, calunioso, obsceno, ofensivo ou ilegal;</li>
+    <li>O Conteúdo não contém vírus ou outros componentes prejudiciais.</li>
+  </ul>
+
+  <h3>5.4. Moderação</h3>
+  <p>
+    Reservamo-nos o direito de revisar, editar, recusar ou remover qualquer Conteúdo que, a nosso exclusivo 
+    critério, viole estes Termos de Uso ou seja de outra forma inaceitável, sem aviso prévio.
+  </p>
+</section>
+
+<section class="termos-uso-section">
+  <h2>6. Propriedade Intelectual</h2>
+  <p>
+    O Serviço e seu conteúdo original, funcionalidades e recursos são e permanecerão propriedade exclusiva 
+    da Calculadora de Reajuste e seus licenciadores. O Serviço é protegido por direitos autorais, marcas 
+    registradas e outras leis. Nossas marcas e logotipos não podem ser usados sem nosso consentimento prévio 
+    por escrito.
+  </p>
+</section>
+
+<section class="termos-uso-section">
+  <h2>7. Planos e Pagamentos</h2>
+  <h3>7.1. Planos de Assinatura</h3>
+  <p>
+    Oferecemos diferentes planos de assinatura com funcionalidades variadas. Os detalhes dos planos, 
+    incluindo preços e funcionalidades, estão disponíveis em nossa página de planos.
+  </p>
+
+  <h3>7.2. Pagamentos</h3>
+  <p>
+    Os pagamentos são processados através de provedores de pagamento terceirizados seguros. Você concorda 
+    em fornecer informações de pagamento precisas e autoriza o processamento de pagamentos de acordo com 
+    o plano selecionado.
+  </p>
+
+  <h3>7.3. Renovação e Cancelamento</h3>
+  <p>
+    As assinaturas são renovadas automaticamente, a menos que você cancele antes do final do período de 
+    cobrança. Você pode cancelar sua assinatura a qualquer momento através das configurações da sua conta. 
+    O cancelamento entrará em vigor no final do período de cobrança atual.
+  </p>
+
+  <h3>7.4. Reembolsos</h3>
+  <p>
+    Políticas de reembolso estão sujeitas aos termos específicos de cada plano e podem variar. Entre em 
+    contato conosco para mais informações sobre reembolsos.
+  </p>
+</section>
+
+<section class="termos-so-section">
+  <h2>8. Privacidade</h2>
+  <p>
+    Sua privacidade é importante para nós. Nossa coleta e uso de informações pessoais é regida por nossa 
+    Política de Privacidade, que faz parte integrante destes Termos de Uso. Ao usar o Serviço, você concorda 
+    com a coleta e uso de informações de acordo com nossa Política de Privacidade.
+  </p>
+</section>
+
+<section class="termos-uso-section">
+  <h2>9. Limitação de Responsabilidade</h2>
+  <p>
+    NA MÁXIMA EXTENSÃO PERMITIDA POR LEI, O SERVIÇO É FORNECIDO "COMO ESTÁ" E "CONFORME DISPONÍVEL", SEM 
+    GARANTIAS DE QUALQUER TIPO, EXPRESSAS OU IMPLÍCITAS, INCLUINDO, MAS NÃO SE LIMITANDO A, GARANTIAS DE 
+    COMERCIALIZAÇÃO, ADEQUAÇÃO A UM PROPÓSITO ESPECÍFICO E NÃO VIOLAÇÃO.
+  </p>
+  <p>
+    NÃO SEREMOS RESPONSÁVEIS POR QUAISQUER DANOS DIRETOS, INDIRETOS, INCIDENTAIS, ESPECIAIS, CONSEQUENCIAIS 
+    OU PUNITIVOS RESULTANTES DO USO OU INCAPACIDADE DE USAR O SERVIÇO, MESMO QUE TENHAMOS SIDO ADVERTIDOS 
+    DA POSSIBILIDADE DE TAIS DANOS.
+  </p>
+  <p>
+    Nossa responsabilidade total para com você por todas as reivindicações relacionadas ao Serviço não 
+    excederá o valor pago por você nos últimos 12 meses.
+  </p>
+</section>
+
+<section class="termos-uso-section">
+  <h2>10. Indenização</h2>
+  <p>
+    Você concorda em indenizar, defender e isentar a Calculadora de Reajuste, seus afiliados, diretores, 
+    funcionários, agentes e licenciadores de e contra todas e quaisquer reivindicações, obrigações, danos, 
+    perdas, custos e despesas (incluindo honorários advocatícios) decorrentes de ou relacionados ao seu uso 
+    do Serviço, violação destes Termos de Uso, ou violação de qualquer direito de terceiros.
+  </p>
+</section>
+
+<section class="termos-uso-section">
+  <h2>11. Modificações nos Termos</h2>
+  <p>
+    Reservamo-nos o direito de modificar ou substituir estes Termos de Uso a qualquer momento, a nosso 
+    exclusivo critério. Se fizermos alterações materiais, notificaremos você por e-mail ou através de um 
+    aviso em nosso Serviço. O uso continuado do Serviço após tais modificações constitui sua aceitação 
+    dos novos Termos de Uso.
+  </p>
+  <p>
+    É sua responsabilidade revisar periodicamente estes Termos de Uso para estar ciente de quaisquer 
+    alterações.
+  </p>
+</section>
+
+<section class="termos-uso-section">
+  <h2>12. Rescisão</h2>
+  <p>
+    Podemos encerrar ou suspender sua conta e acesso ao Serviço imediatamente, sem aviso prévio ou 
+    responsabilidade, por qualquer motivo, incluindo, mas não se limitando a, violação destes Termos de Uso.
+  </p>
+  <p>
+    Se você deseja encerrar sua conta, pode fazê-lo através das configurações da sua conta ou entrando 
+    em contato conosco.
+  </p>
+  <p>
+    Após a rescisão, seu direito de usar o Serviço cessará imediatamente. Todas as disposições destes 
+    Termos de Uso que por sua natureza devem sobreviver à rescisão sobreviverão, incluindo, mas não se 
+    limitando a, disposições de propriedade, renúncias de garantia, indenização e limitações de 
+    responsabilidade.
+  </p>
+</section>
+
+<section class="termos-uso-section">
+  <h2>13. Lei Aplicável e Jurisdição</h2>
+  <p>
+    Estes Termos de Uso serão regidos e interpretados de acordo com as leis do Brasil, sem dar efeito a 
+    quaisquer princípios de conflitos de leis. Qualquer disputa decorrente ou relacionada a estes Termos 
+    de Uso será submetida à jurisdição exclusiva dos tribunais competentes do Brasil.
+  </p>
+</section>
+
+<section class="termos-uso-section">
+  <h2>14. Disposições Gerais</h2>
+  <h3>14.1. Acordo Completo</h3>
+  <p>
+    Estes Termos de Uso constituem o acordo completo entre você e a Calculadora de Reajuste em relação 
+    ao uso do Serviço e substituem todos os acordos anteriores e contemporâneos.
+  </p>
+
+  <h3>14.2. Divisibilidade</h3>
+  <p>
+    Se qualquer disposição destes Termos de Uso for considerada inválida ou inexequível, as disposições 
+    restantes permanecerão em pleno vigor e efeito.
+  </p>
+
+  <h3>14.3. Renúncia</h3>
+  <p>
+    A falha em fazer cumprir qualquer direito ou disposição destes Termos de Uso não constituirá uma 
+    renúncia a tal direito ou disposição.
+  </p>
+
+  <h3>14.4. Cessão</h3>
+  <p>
+    Você não pode ceder ou transferir estes Termos de Uso, por operação de lei ou de outra forma, sem 
+    nosso consentimento prévio por escrito. Podemos ceder estes Termos de Uso a qualquer momento sem 
+    restrições.
+  </p>
+</section>
+
+<section class="termos-uso-section">
+  <h2>15. Contato</h2>
+  <p>
+    Se você tiver alguma dúvida sobre estes Termos de Uso, entre em contato conosco através dos canais 
+    de suporte disponíveis em nosso Serviço.
+  </p>
+</section>`;
+}
+
+// Gerar HTML padrão para política de privacidade
+function gerarPoliticaPrivacidadePadrao() {
+    return `<section class="politica-privacidade-section">
+  <h2>1. Introdução</h2>
+  <p>
+    A Calculadora de Reajuste está comprometida em proteger a privacidade e os dados pessoais de nossos 
+    usuários. Esta Política de Privacidade descreve como coletamos, usamos, armazenamos e protegemos suas 
+    informações pessoais quando você utiliza nosso serviço.
+  </p>
+  <p>
+    Ao utilizar nosso serviço, você concorda com a coleta e uso de informações de acordo com esta política. 
+    Esta Política de Privacidade está em conformidade com a Lei Geral de Proteção de Dados (LGPD - Lei nº 
+    13.709/2018) e outras legislações aplicáveis.
+  </p>
+</section>
+
+<section class="politica-privacidade-section">
+  <h2>2. Informações que Coletamos</h2>
+  <h3>2.1. Informações Fornecidas por Você</h3>
+  <p>Coletamos informações que você nos fornece diretamente, incluindo:</p>
+  <ul>
+    <li><strong>Dados de Registro:</strong> Nome, endereço de e-mail, nome de usuário e senha;</li>
+    <li><strong>Dados de Perfil:</strong> Informações adicionais que você escolhe fornecer, como nome do estabelecimento, logo personalizado e configurações de tema;</li>
+    <li><strong>Dados de Conteúdo:</strong> Itens de cardápio, preços, categorias, descrições e outras informações relacionadas aos seus produtos ou serviços;</li>
+    <li><strong>Dados de Pagamento:</strong> Informações necessárias para processar pagamentos, incluindo dados de cartão de crédito (processados por provedores terceirizados seguros);</li>
+    <li><strong>Dados de Comunicação:</strong> Informações fornecidas quando você entra em contato conosco para suporte ou feedback.</li>
+  </ul>
+
+  <h3>2.2. Informações Coletadas Automaticamente</h3>
+  <p>Quando você utiliza nosso serviço, coletamos automaticamente certas informações, incluindo:</p>
+  <ul>
+    <li><strong>Dados de Uso:</strong> Informações sobre como você interage com nosso serviço, incluindo páginas visitadas, tempo de permanência, cliques e ações realizadas;</li>
+    <li><strong>Dados de Dispositivo:</strong> Tipo de dispositivo, sistema operacional, navegador, endereço IP, identificadores únicos de dispositivo e informações de conexão;</li>
+    <li><strong>Dados de Localização:</strong> Informações de localização aproximada baseadas em seu endereço IP;</li>
+    <li><strong>Cookies e Tecnologias Similares:</strong> Informações coletadas através de cookies, pixels, tags e outras tecnologias de rastreamento.</li>
+  </ul>
+
+  <h3>2.3. Informações de Terceiros</h3>
+  <p>
+    Podemos receber informações sobre você de terceiros, como provedores de serviços de autenticação, 
+    processadores de pagamento e serviços de análise, quando você utiliza seus serviços em conexão com 
+    nosso serviço.
+  </p>
+</section>
+
+<section class="politica-privacidade-section">
+  <h2>3. Como Utilizamos Suas Informações</h2>
+  <p>Utilizamos as informações coletadas para os seguintes propósitos:</p>
+  <ul>
+    <li><strong>Fornecimento do Serviço:</strong> Processar e gerenciar sua conta, fornecer funcionalidades do serviço, processar pagamentos e permitir que você use todas as funcionalidades disponíveis;</li>
+    <li><strong>Melhoria do Serviço:</strong> Analisar o uso do serviço para entender como melhorar a experiência do usuário, desenvolver novos recursos e otimizar a funcionalidade;</li>
+    <li><strong>Comunicação:</strong> Enviar notificações sobre sua conta, atualizações do serviço, informações sobre pagamentos e responder a suas solicitações de suporte;</li>
+    <li><strong>Personalização:</strong> Personalizar sua experiência, incluindo recomendações, conteúdo e funcionalidades adaptadas às suas preferências;</li>
+    <li><strong>Segurança:</strong> Detectar, prevenir e responder a fraudes, abusos, riscos de segurança e atividades técnicas que possam comprometer nosso serviço ou usuários;</li>
+    <li><strong>Conformidade Legal:</strong> Cumprir obrigações legais, responder a solicitações legais e proteger nossos direitos e os de nossos usuários;</li>
+    <li><strong>Marketing:</strong> Com seu consentimento, enviar comunicações de marketing sobre produtos, serviços e ofertas que possam ser do seu interesse.</li>
+  </ul>
+</section>
+
+<section class="politica-privacidade-section">
+  <h2>4. Compartilhamento de Informações</h2>
+  <p>Não vendemos suas informações pessoais. Podemos compartilhar suas informações nas seguintes circunstâncias:</p>
+
+  <h3>4.1. Prestadores de Serviços</h3>
+  <p>
+    Compartilhamos informações com prestadores de serviços terceirizados que nos auxiliam na operação do 
+    serviço, incluindo:
+  </p>
+  <ul>
+    <li>Processadores de pagamento para processar transações;</li>
+    <li>Provedores de hospedagem e infraestrutura de nuvem;</li>
+    <li>Serviços de análise e monitoramento;</li>
+    <li>Provedores de serviços de e-mail e comunicação;</li>
+    <li>Serviços de autenticação e segurança.</li>
+  </ul>
+  <p>
+    Esses prestadores de serviços são contratualmente obrigados a proteger suas informações e utilizá-las 
+    apenas para os fins especificados.
+  </p>
+
+  <h3>4.2. Requisitos Legais</h3>
+  <p>
+    Podemos divulgar suas informações se acreditarmos de boa fé que tal divulgação é necessária para:
+  </p>
+  <ul>
+    <li>Cumprir uma obrigação legal, processo judicial ou ordem governamental;</li>
+    <li>Proteger e defender nossos direitos ou propriedade;</li>
+    <li>Prevenir ou investigar possíveis violações relacionadas ao serviço;</li>
+    <li>Proteger a segurança pessoal dos usuários do serviço ou do público;</li>
+    <li>Proteger contra responsabilidade legal.</li>
+  </ul>
+
+  <h3>4.3. Transferências de Negócio</h3>
+  <p>
+    Em caso de fusão, aquisição, reestruturação ou venda de ativos, suas informações podem ser transferidas 
+    como parte dessa transação. Notificaremos você sobre qualquer mudança na propriedade ou uso de suas 
+    informações pessoais.
+  </p>
+
+  <h3>4.4. Com Seu Consentimento</h3>
+  <p>
+    Podemos compartilhar suas informações com terceiros quando você nos der consentimento explícito para 
+    fazê-lo.
+  </p>
+</section>
+
+<section class="politica-privacidade-section">
+  <h2>5. Cookies e Tecnologias de Rastreamento</h2>
+  <p>
+    Utilizamos cookies e tecnologias similares para coletar e armazenar informações sobre suas preferências 
+    e atividades no serviço.
+  </p>
+
+  <h3>5.1. Tipos de Cookies</h3>
+  <ul>
+    <li><strong>Cookies Necessários:</strong> Essenciais para o funcionamento do serviço. Sem esses cookies, 
+    algumas funcionalidades podem não estar disponíveis;</li>
+    <li><strong>Cookies de Análise:</strong> Nos ajudam a entender como os visitantes interagem com o serviço, 
+    coletando informações de forma anônima;</li>
+    <li><strong>Cookies de Marketing:</strong> Usados para personalizar anúncios e medir a eficácia de 
+    campanhas publicitárias.</li>
+  </ul>
+
+  <h3>5.2. Gerenciamento de Cookies</h3>
+  <p>
+    Você pode gerenciar suas preferências de cookies através das configurações do seu navegador ou através 
+    do nosso banner de cookies. Note que desabilitar certos cookies pode afetar a funcionalidade do serviço.
+  </p>
+</section>
+
+<section class="politica-privacidade-section">
+  <h2>6. Segurança das Informações</h2>
+  <p>
+    Implementamos medidas de segurança técnicas, administrativas e físicas apropriadas para proteger suas 
+    informações pessoais contra acesso não autorizado, alteração, divulgação ou destruição. Essas medidas 
+    incluem:
+  </p>
+  <ul>
+    <li>Criptografia de dados em trânsito e em repouso;</li>
+    <li>Controles de acesso rigorosos e autenticação;</li>
+    <li>Monitoramento regular de segurança e testes de vulnerabilidade;</li>
+    <li>Backups regulares e planos de recuperação de desastres;</li>
+    <li>Treinamento de pessoal sobre práticas de segurança de dados;</li>
+    <li>Revisões regulares de nossas práticas de segurança.</li>
+  </ul>
+  <p>
+    Embora nos esforcemos para proteger suas informações, nenhum método de transmissão pela internet ou 
+    armazenamento eletrônico é 100% seguro. Não podemos garantir segurança absoluta, mas nos comprometemos 
+    a notificá-lo sobre qualquer violação de dados que possa afetar suas informações pessoais.
+  </p>
+</section>
+
+<section class="politica-privacidade-section">
+  <h2>7. Retenção de Dados</h2>
+  <p>
+    Mantemos suas informações pessoais apenas pelo tempo necessário para cumprir os propósitos descritos 
+    nesta Política de Privacidade, a menos que um período de retenção mais longo seja exigido ou permitido 
+    por lei. Fatores que determinam o período de retenção incluem:
+  </p>
+  <ul>
+    <li>A duração necessária para fornecer o serviço;</li>
+    <li>Obrigações legais e regulatórias;</li>
+    <li>Resolução de disputas e aplicação de acordos;</li>
+    <li>Prevenção de fraudes e abusos.</li>
+  </ul>
+  <p>
+    Quando suas informações não forem mais necessárias, as excluiremos ou anonimizaremos de forma segura.
+  </p>
+</section>
+
+<section class="politica-privacidade-section">
+  <h2>8. Seus Direitos (LGPD)</h2>
+  <p>
+    De acordo com a Lei Geral de Proteção de Dados (LGPD), você tem os seguintes direitos em relação às 
+    suas informações pessoais:
+  </p>
+
+  <h3>8.1. Direito de Acesso</h3>
+  <p>
+    Você tem o direito de solicitar uma cópia das informações pessoais que mantemos sobre você e informações 
+    sobre como as utilizamos.
+  </p>
+
+  <h3>8.2. Direito de Correção</h3>
+  <p>
+    Você pode solicitar a correção de informações pessoais imprecisas ou incompletas. Você também pode atualizar 
+    suas informações diretamente através das configurações da sua conta.
+  </p>
+
+  <h3>8.3. Direito de Exclusão</h3>
+  <p>
+    Você pode solicitar a exclusão de suas informações pessoais quando não forem mais necessárias para os 
+    propósitos para os quais foram coletadas, ou quando você retirar seu consentimento.
+  </p>
+
+  <h3>8.4. Direito de Portabilidade</h3>
+  <p>
+    Você pode solicitar que forneçamos suas informações pessoais em um formato estruturado, de uso comum e 
+    legível por máquina, ou que as transmitamos diretamente a outro controlador.
+  </p>
+
+  <h3>8.5. Direito de Oposição</h3>
+  <p>
+    Você pode se opor ao processamento de suas informações pessoais para certos fins, como marketing direto.
+  </p>
+
+  <h3>8.6. Direito de Revogação do Consentimento</h3>
+  <p>
+    Quando o processamento for baseado em consentimento, você tem o direito de retirar seu consentimento 
+    a qualquer momento, sem afetar a legalidade do processamento baseado em consentimento antes da retirada.
+  </p>
+
+  <h3>8.7. Como Exercer Seus Direitos</h3>
+  <p>
+    Para exercer qualquer um desses direitos, entre em contato conosco através dos canais de suporte disponíveis 
+    em nosso serviço. Responderemos à sua solicitação dentro de um prazo razoável e de acordo com a legislação 
+    aplicável.
+  </p>
+</section>
+
+<section class="politica-privacidade-section">
+  <h2>9. Privacidade de Menores</h2>
+  <p>
+    Nosso serviço não é direcionado a menores de 18 anos. Não coletamos intencionalmente informações pessoais 
+    de menores. Se tomarmos conhecimento de que coletamos informações pessoais de um menor sem o consentimento 
+    adequado do responsável legal, tomaremos medidas para excluir essas informações de nossos servidores.
+  </p>
+  <p>
+    Se você é um responsável legal e acredita que seu filho nos forneceu informações pessoais, entre em contato 
+    conosco imediatamente.
+  </p>
+</section>
+
+<section class="politica-privacidade-section">
+  <h2>10. Transferências Internacionais de Dados</h2>
+  <p>
+    Suas informações podem ser transferidas e mantidas em servidores localizados fora do Brasil. Ao utilizar 
+    nosso serviço, você consente com a transferência de suas informações para esses servidores. Garantimos que 
+    tais transferências sejam realizadas de acordo com esta Política de Privacidade e as leis aplicáveis de 
+    proteção de dados.
+  </p>
+</section>
+
+<section class="politica-privacidade-section">
+  <h2>11. Links para Sites de Terceiros</h2>
+  <p>
+    Nosso serviço pode conter links para sites de terceiros. Não somos responsáveis pelas práticas de privacidade 
+    ou pelo conteúdo desses sites. Recomendamos que você revise as políticas de privacidade de qualquer site de 
+    terceiros que visite.
+  </p>
+</section>
+
+<section class="politica-privacidade-section">
+  <h2>12. Alterações nesta Política de Privacidade</h2>
+  <p>
+    Podemos atualizar esta Política de Privacidade periodicamente para refletir mudanças em nossas práticas, 
+    tecnologias, requisitos legais ou outros fatores. Notificaremos você sobre alterações materiais através de:
+  </p>
+  <ul>
+    <li>E-mail para o endereço associado à sua conta;</li>
+    <li>Aviso em nosso serviço;</li>
+    <li>Atualização da data de "Última atualização" no topo desta política.</li>
+  </ul>
+  <p>
+    Recomendamos que você revise esta Política de Privacidade periodicamente para se manter informado sobre 
+    como protegemos suas informações. O uso continuado de nosso serviço após a publicação de alterações constitui 
+    sua aceitação da Política de Privacidade revisada.
+  </p>
+</section>
+
+<section class="politica-privacidade-section">
+  <h2>13. Encarregado de Proteção de Dados (DPO)</h2>
+  <p>
+    Em conformidade com a LGPD, designamos um Encarregado de Proteção de Dados (DPO) responsável por receber 
+    comunicações dos titulares de dados e da Autoridade Nacional de Proteção de Dados (ANPD). Para entrar em 
+    contato com nosso DPO, utilize os canais de suporte disponíveis em nosso serviço.
+  </p>
+</section>
+
+<section class="politica-privacidade-section">
+  <h2>14. Consentimento</h2>
+  <p>
+    Ao utilizar nosso serviço, você declara ter lido, compreendido e concordado com esta Política de Privacidade. 
+    Se você não concordar com esta política, não utilize nosso serviço.
+  </p>
+</section>
+
+<section class="politica-privacidade-section">
+  <h2>15. Contato</h2>
+  <p>
+    Se você tiver dúvidas, preocupações ou solicitações relacionadas a esta Política de Privacidade ou ao 
+    tratamento de suas informações pessoais, entre em contato conosco através dos canais de suporte disponíveis 
+    em nosso serviço.
+  </p>
+  <p>
+    Comprometemo-nos a responder suas solicitações de forma oportuna e de acordo com a legislação aplicável.
+  </p>
+</section>`;
+}
+
 // Inicializar banco de dados
 async function inicializar() {
     try {
@@ -956,6 +1507,105 @@ async function inicializar() {
                 UNIQUE(funcao_especial, tipo_acesso)
             )
         `);
+        
+        // Criar tabela para termos de uso
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS termos_uso (
+                id SERIAL PRIMARY KEY,
+                conteudo TEXT NOT NULL,
+                versao INTEGER DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        // Criar tabela para política de privacidade
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS politica_privacidade (
+                id SERIAL PRIMARY KEY,
+                conteudo TEXT NOT NULL,
+                versao INTEGER DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        // Criar tabela para configurações do banner de cookies
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS cookie_banner_config (
+                id SERIAL PRIMARY KEY,
+                titulo VARCHAR(255) NOT NULL DEFAULT 'Política de Cookies',
+                texto TEXT NOT NULL,
+                texto_botao_aceitar VARCHAR(100) DEFAULT 'Aceitar Todos',
+                texto_botao_rejeitar VARCHAR(100) DEFAULT 'Rejeitar Todos',
+                texto_botao_personalizar VARCHAR(100) DEFAULT 'Personalizar',
+                texto_descricao_gerenciamento TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        // Criar tabela para categorias de cookies
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS cookie_categorias (
+                id SERIAL PRIMARY KEY,
+                chave VARCHAR(100) UNIQUE NOT NULL,
+                nome VARCHAR(255) NOT NULL,
+                descricao TEXT NOT NULL,
+                ativo BOOLEAN DEFAULT TRUE,
+                obrigatorio BOOLEAN DEFAULT FALSE,
+                ordem INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        // Inicializar dados padrão para cookie banner se não existirem
+        const bannerExists = await pool.query('SELECT COUNT(*) as count FROM cookie_banner_config');
+        if (parseInt(bannerExists.rows[0].count) === 0) {
+            await pool.query(`
+                INSERT INTO cookie_banner_config (titulo, texto, texto_botao_aceitar, texto_botao_rejeitar, texto_botao_personalizar, texto_descricao_gerenciamento)
+                VALUES (
+                    'Política de Cookies',
+                    'Utilizamos cookies para melhorar sua experiência, analisar o uso do site e personalizar conteúdo. Ao continuar navegando, você concorda com nossa Política de Privacidade e Termos de Uso.',
+                    'Aceitar Todos',
+                    'Rejeitar Todos',
+                    'Personalizar',
+                    'Escolha quais tipos de cookies você deseja aceitar. Os cookies necessários são sempre ativados, pois são essenciais para o funcionamento do site.'
+                )
+            `);
+        }
+        
+        // Inicializar categorias padrão de cookies se não existirem
+        const categoriasExists = await pool.query('SELECT COUNT(*) as count FROM cookie_categorias');
+        if (parseInt(categoriasExists.rows[0].count) === 0) {
+            await pool.query(`
+                INSERT INTO cookie_categorias (chave, nome, descricao, ativo, obrigatorio, ordem) VALUES
+                ('necessary', 'Cookies Necessários', 'Essenciais para o funcionamento do site. Não podem ser desativados.', true, true, 1),
+                ('analytics', 'Cookies de Análise', 'Nos ajudam a entender como os visitantes interagem com o site, coletando informações de forma anônima.', true, false, 2),
+                ('marketing', 'Cookies de Marketing', 'Usados para personalizar anúncios e medir a eficácia de campanhas publicitárias.', true, false, 3)
+            `);
+        }
+        
+        // Inicializar termos de uso padrão se não existirem
+        const termosExists = await pool.query('SELECT COUNT(*) as count FROM termos_uso');
+        if (parseInt(termosExists.rows[0].count) === 0) {
+            const termosPadrao = gerarTermosUsoPadrao();
+            await pool.query(
+                'INSERT INTO termos_uso (conteudo, versao) VALUES ($1, 1)',
+                [termosPadrao]
+            );
+        }
+        
+        // Inicializar política de privacidade padrão se não existirem
+        const politicaExists = await pool.query('SELECT COUNT(*) as count FROM politica_privacidade');
+        if (parseInt(politicaExists.rows[0].count) === 0) {
+            const politicaPadrao = gerarPoliticaPrivacidadePadrao();
+            await pool.query(
+                'INSERT INTO politica_privacidade (conteudo, versao) VALUES ($1, 1)',
+                [politicaPadrao]
+            );
+        }
         
         // Inicializar planos padrão se não existirem
         await inicializarPlanosPadrao();
@@ -7336,6 +7986,214 @@ async function fechar() {
                 }
 }
 
+// ========== FUNÇÕES DE TERMOS DE USO E POLÍTICA DE PRIVACIDADE ==========
+
+// Obter termos de uso
+async function obterTermosUso() {
+    const result = await pool.query(
+        'SELECT conteudo, versao, updated_at FROM termos_uso ORDER BY id DESC LIMIT 1'
+    );
+    return result.rows[0] || null;
+}
+
+// Atualizar termos de uso
+async function atualizarTermosUso(conteudo) {
+    // Verificar se já existe um registro
+    const existente = await pool.query('SELECT id, versao FROM termos_uso ORDER BY id DESC LIMIT 1');
+    
+    if (existente.rows.length === 0) {
+        // Se não existe, criar novo
+        const result = await pool.query(
+            'INSERT INTO termos_uso (conteudo, versao) VALUES ($1, 1) RETURNING *',
+            [conteudo]
+        );
+        return result.rows[0];
+    } else {
+        // Se já existe, atualizar
+        const novaVersao = existente.rows[0].versao + 1;
+        await pool.query(
+            'UPDATE termos_uso SET conteudo = $1, versao = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
+            [conteudo, novaVersao, existente.rows[0].id]
+        );
+        return await obterTermosUso();
+    }
+}
+
+// Obter política de privacidade
+async function obterPoliticaPrivacidade() {
+    const result = await pool.query(
+        'SELECT conteudo, versao, updated_at FROM politica_privacidade ORDER BY id DESC LIMIT 1'
+    );
+    return result.rows[0] || null;
+}
+
+// Atualizar política de privacidade
+async function atualizarPoliticaPrivacidade(conteudo) {
+    // Verificar se já existe um registro
+    const existente = await pool.query('SELECT id, versao FROM politica_privacidade ORDER BY id DESC LIMIT 1');
+    
+    if (existente.rows.length === 0) {
+        // Se não existe, criar novo
+        const result = await pool.query(
+            'INSERT INTO politica_privacidade (conteudo, versao) VALUES ($1, 1) RETURNING *',
+            [conteudo]
+        );
+        return result.rows[0];
+    } else {
+        // Se já existe, atualizar
+        const novaVersao = existente.rows[0].versao + 1;
+        await pool.query(
+            'UPDATE politica_privacidade SET conteudo = $1, versao = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
+            [conteudo, novaVersao, existente.rows[0].id]
+        );
+        return await obterPoliticaPrivacidade();
+    }
+}
+
+// ========== FUNÇÕES DE CONFIGURAÇÕES DE COOKIES ==========
+
+// Obter configuração do banner de cookies
+async function obterCookieBannerConfig() {
+    const result = await pool.query(
+        'SELECT * FROM cookie_banner_config ORDER BY id DESC LIMIT 1'
+    );
+    return result.rows[0] || null;
+}
+
+// Atualizar configuração do banner de cookies
+async function atualizarCookieBannerConfig(config) {
+    
+    if (existente.rows.length === 0) {
+        // Se não existe, criar novo
+        const result = await pool.query(
+            'INSERT INTO termos_uso (conteudo, versao) VALUES ($1, 1) RETURNING *',
+            [conteudo]
+        );
+        return result.rows[0];
+    } else {
+        // Se já existe, atualizar
+        const novaVersao = existente.rows[0].versao + 1;
+        await pool.query(
+            'UPDATE termos_uso SET conteudo = $1, versao = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
+            [conteudo, novaVersao, existente.rows[0].id]
+        );
+        return await obterTermosUso();
+    }
+}
+
+// Obter política de privacidade
+async function obterPoliticaPrivacidade() {
+    const result = await pool.query(
+        'SELECT conteudo, versao, updated_at FROM politica_privacidade ORDER BY id DESC LIMIT 1'
+    );
+    return result.rows[0] || null;
+}
+
+// Atualizar política de privacidade
+async function atualizarPoliticaPrivacidade(conteudo) {
+    // Verificar se já existe um registro
+    const existente = await pool.query('SELECT id, versao FROM politica_privacidade ORDER BY id DESC LIMIT 1');
+    
+    if (existente.rows.length === 0) {
+        // Se não existe, criar novo
+        const result = await pool.query(
+            'INSERT INTO politica_privacidade (conteudo, versao) VALUES ($1, 1) RETURNING *',
+            [conteudo]
+        );
+        return result.rows[0];
+    } else {
+        // Se já existe, atualizar
+        const novaVersao = existente.rows[0].versao + 1;
+        await pool.query(
+            'UPDATE politica_privacidade SET conteudo = $1, versao = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
+            [conteudo, novaVersao, existente.rows[0].id]
+        );
+        return await obterPoliticaPrivacidade();
+    }
+}
+
+// ========== FUNÇÕES DE CONFIGURAÇÕES DE COOKIES ==========
+
+// Obter configuração do banner de cookies
+async function obterCookieBannerConfig() {
+    const result = await pool.query(
+        'SELECT * FROM cookie_banner_config ORDER BY id DESC LIMIT 1'
+    );
+    return result.rows[0] || null;
+}
+
+// Atualizar configuração do banner de cookies
+async function atualizarCookieBannerConfig(config) {
+    const { titulo, texto, texto_botao_aceitar, texto_botao_rejeitar, texto_botao_personalizar, texto_descricao_gerenciamento } = config;
+    const result = await pool.query(
+        `UPDATE cookie_banner_config 
+         SET titulo = $1, texto = $2, texto_botao_aceitar = $3, texto_botao_rejeitar = $4, 
+             texto_botao_personalizar = $5, texto_descricao_gerenciamento = $6, updated_at = CURRENT_TIMESTAMP
+         WHERE id = (SELECT id FROM cookie_banner_config ORDER BY id DESC LIMIT 1)
+         RETURNING *`,
+        [titulo, texto, texto_botao_aceitar, texto_botao_rejeitar, texto_botao_personalizar, texto_descricao_gerenciamento]
+    );
+    if (result.rows.length === 0) {
+        // Se não existe, criar
+        const insert = await pool.query(
+            `INSERT INTO cookie_banner_config (titulo, texto, texto_botao_aceitar, texto_botao_rejeitar, texto_botao_personalizar, texto_descricao_gerenciamento)
+             VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+            [titulo, texto, texto_botao_aceitar, texto_botao_rejeitar, texto_botao_personalizar, texto_descricao_gerenciamento]
+        );
+        return insert.rows[0];
+    }
+    return result.rows[0];
+}
+
+// Obter todas as categorias de cookies
+async function obterCookieCategorias() {
+    const result = await pool.query(
+        'SELECT * FROM cookie_categorias ORDER BY ordem ASC, id ASC'
+    );
+    return result.rows;
+}
+
+// Obter categoria de cookie por chave
+async function obterCookieCategoriaPorChave(chave) {
+    const result = await pool.query(
+        'SELECT * FROM cookie_categorias WHERE chave = $1',
+        [chave]
+    );
+    return result.rows[0] || null;
+}
+
+// Criar categoria de cookie
+async function criarCookieCategoria(categoria) {
+    const { chave, nome, descricao, ativo, obrigatorio, ordem } = categoria;
+    const result = await pool.query(
+        `INSERT INTO cookie_categorias (chave, nome, descricao, ativo, obrigatorio, ordem)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        [chave, nome, descricao, ativo !== undefined ? ativo : true, obrigatorio !== undefined ? obrigatorio : false, ordem || 0]
+    );
+    return result.rows[0];
+}
+
+// Atualizar categoria de cookie
+async function atualizarCookieCategoria(id, categoria) {
+    const { nome, descricao, ativo, obrigatorio, ordem } = categoria;
+    const result = await pool.query(
+        `UPDATE cookie_categorias 
+         SET nome = $1, descricao = $2, ativo = $3, obrigatorio = $4, ordem = $5, updated_at = CURRENT_TIMESTAMP
+         WHERE id = $6 RETURNING *`,
+        [nome, descricao, ativo, obrigatorio, ordem, id]
+    );
+    return result.rows[0] || null;
+}
+
+// Deletar categoria de cookie
+async function deletarCookieCategoria(id) {
+    const result = await pool.query(
+        'DELETE FROM cookie_categorias WHERE id = $1 AND obrigatorio = FALSE RETURNING *',
+        [id]
+    );
+    return result.rows[0] || null;
+}
+
 module.exports = {
     inicializar,
     verificarCredenciais,
@@ -7476,6 +8334,19 @@ module.exports = {
     atualizarPermissoesFuncoesEspeciais,
     verificarAcessoFuncaoEspecial,
     listarUsuariosComAcessoUnicoAtivo,
+    // Funções de termos de uso e política de privacidade
+    obterTermosUso,
+    atualizarTermosUso,
+    obterPoliticaPrivacidade,
+    atualizarPoliticaPrivacidade,
+    // Funções de configurações de cookies
+    obterCookieBannerConfig,
+    atualizarCookieBannerConfig,
+    obterCookieCategorias,
+    obterCookieCategoriaPorChave,
+    criarCookieCategoria,
+    atualizarCookieCategoria,
+    deletarCookieCategoria,
     fechar
 };
 
