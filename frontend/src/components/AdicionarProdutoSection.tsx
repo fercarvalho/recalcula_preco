@@ -491,9 +491,23 @@ const AdicionarProdutoSection = ({ onItemAdded, categorias, onOpenPlataformas, o
                     );
                     return;
                   }
+                  
+                  // Se tem plano anual e email validado, permitir ativar/desativar diretamente
+                  // Não precisa verificar temAcessoModoCardapio neste caso
+                  const novoValor = !cardapioPublico;
+                  setCardapioPublico(novoValor);
+                  try {
+                    await apiService.atualizarCardapioPublico(novoValor);
+                    await mostrarAlert('Sucesso', `Cardápio ${novoValor ? 'tornado público' : 'tornado privado'} com sucesso!`);
+                  } catch (error: any) {
+                    console.error('Erro ao atualizar cardápio público:', error);
+                    setCardapioPublico(!novoValor); // Reverter em caso de erro
+                    await mostrarAlert('Erro', 'Erro ao atualizar visibilidade do cardápio.');
+                  }
+                  return;
                 }
                 
-                // Verificar acesso à função especial primeiro
+                // Verificar acesso à função especial primeiro (apenas se não tem plano anual)
                 if (temAcessoModoCardapio === false) {
                   // Não tem acesso - verificar status de pagamento para mostrar modal apropriado
                   const status = await apiService.verificarStatusPagamento();
