@@ -80,6 +80,7 @@ const CheckoutAssinaturaForm = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [buscandoCep, setBuscandoCep] = useState(false);
+  const ehPlanoMensal = !!isPlanoMensal;
 
   // Dados do formulário (mesmos do Checkout.tsx)
   const [faturamento, setFaturamento] = useState<FaturamentoData>({
@@ -99,8 +100,12 @@ const CheckoutAssinaturaForm = ({
   const [cupom, setCupom] = useState('');
   const [cupomAplicado, setCupomAplicado] = useState<any>(null);
   const [validandoCupom, setValidandoCupom] = useState(false);
-  // Usar valorAnualComDesconto se fornecido, senão usar amount
-  const valorBase = valorAnualComDesconto ? Math.round(valorAnualComDesconto * 100) : amount;
+  // Definir base em centavos: mensal para planos mensais, anual para planos anuais
+  const valorBase = ehPlanoMensal
+    ? Math.round((valorMensalComDesconto ?? amount / 100) * 100)
+    : valorAnualComDesconto
+      ? Math.round(valorAnualComDesconto * 100)
+      : amount;
   const [valorFinal, setValorFinal] = useState(valorBase);
   const [naoPossuiCpf, setNaoPossuiCpf] = useState(false);
   const [naoResidoBrasil, setNaoResidoBrasil] = useState(false);
@@ -434,24 +439,16 @@ const CheckoutAssinaturaForm = ({
     }
   };
 
-  // Calcular valor formatado para o botão baseado no período do plano
-  // Se o plano for mensal, mostrar valor mensal; se for anual, mostrar valor anual
-  let valorParaBotao = 0;
-  if (isPlanoMensal) {
-    // Plano mensal: usar valor mensal
-    valorParaBotao = valorMensalComDesconto || (valorBase / 12 / 100);
-    if (cupomAplicado && cupomAplicado.valorComDesconto) {
-      valorParaBotao = valorFinal / 12 / 100;
-    }
-  } else {
-    // Plano anual: usar valor anual
-    valorParaBotao = valorAnualComDesconto ? valorAnualComDesconto : (valorBase / 100);
-    if (cupomAplicado && cupomAplicado.valorComDesconto) {
-      valorParaBotao = valorFinal / 100;
-    }
-  }
+  // Calcular valor do botão usando o período correto
+  const valorParaBotaoBase = ehPlanoMensal
+    ? (valorMensalComDesconto ?? valorBase / 100)
+    : (valorAnualComDesconto ?? valorBase / 100);
+
+  const valorParaBotao = cupomAplicado && cupomAplicado.valorComDesconto
+    ? valorFinal / 100
+    : valorParaBotaoBase;
   const valorFormatadoBotao = `R$ ${valorParaBotao.toFixed(2).replace('.', ',')}`;
-  const textoPeriodoBotao = isPlanoMensal ? '/mês' : '/ano';
+  const textoPeriodoBotao = ehPlanoMensal ? '/mês' : '/ano';
   
   const valorFormatadoFinal = `R$ ${(valorFinal / 100).toFixed(2).replace('.', ',')}`;
   const valorFormatadoOriginal = `R$ ${(valorBase / 100).toFixed(2).replace('.', ',')}`;
@@ -1258,36 +1255,60 @@ const CheckoutAssinatura = () => {
   console.log('periodo:', plano.periodo);
   
   // Verificar se o plano é mensal ou anual
-  const isPlanoMensal = plano.periodo === 'mensal';
+  const periodoPlano = (plano.periodo || '').toLowerCase();
+  const nomePlano = (plano.nome || '').toLowerCase();
+  const temValorParcelado = !!plano.valor_parcelado && plano.valor_parcelado > 0;
+
+  // Heurística: se há valor_parcelado ou o período/nome menciona mensal, consideramos plano mensal.
+  const isPlanoMensal = temValorParcelado || periodoPlano.includes('mensal') || nomePlano.includes('mensal');
+  const isPlanoAnual = !isPlanoMensal && (periodoPlano.includes('anual') || nomePlano.includes('anual'));
   
   // Calcular valores corretos baseado no período do plano
   let valorAnualOriginal, valorAnualComDesconto, valorMensalOriginal, valorMensalComDesconto;
+  const arredondarParaBaixo2 = (valor: number) => Math.floor(valor * 100) / 100;
   
+  const percentualDescontoPlano = plano.desconto_percentual && plano.desconto_percentual > 0
+    ? plano.desconto_percentual / 100
+    : 0;
+
   if (isPlanoMensal) {
-    // Plano mensal: valor é o valor mensal
-    valorMensalOriginal = plano.valor_total || plano.valor;
-    valorMensalComDesconto = plano.valor;
-    // Para planos mensais, calcular valor anual apenas para referência (não será exibido)
-    valorAnualOriginal = valorMensalOriginal * 12;
-    valorAnualComDesconto = valorMensalComDesconto * 12;
-  } else {
-    // Plano anual: valor é o valor anual
-    valorAnualOriginal = plano.valor_total || plano.valor;
-    valorAnualComDesconto = plano.valor;
-  
-  // Se tem desconto_percentual e valor_total, calcular valor anual com desconto
-  if (plano.valor_total && plano.desconto_percentual && plano.desconto_percentual > 0) {
-    valorAnualComDesconto = valorAnualOriginal * (1 - (plano.desconto_percentual / 100));
-      console.log('Valor anual com desconto calculado:', valorAnualComDesconto);
-  }
-  
-    // Calcular valores mensais (apenas para referência, não será exibido)
-    valorMensalOriginal = valorAnualOriginal / 12;
-    valorMensalComDesconto = plano.valor_parcelado || (valorAnualComDesconto / 12);
-  if (plano.valor_total && plano.desconto_percentual && plano.desconto_percentual > 0) {
-    valorMensalComDesconto = valorAnualComDesconto / 12;
+    // Para planos mensais, se houver valor_total (geralmente anual original), convertemos para mensal
+    if (plano.valor_total && plano.valor_total > 0) {
+      const valorAnualOriginalPlano = plano.valor_total;
+      const valorAnualComDescontoPlano = percentualDescontoPlano > 0
+        ? valorAnualOriginalPlano * (1 - percentualDescontoPlano)
+        : (plano.valor || valorAnualOriginalPlano);
+
+      valorMensalOriginal = valorAnualOriginalPlano / 12;
+      valorMensalComDesconto = valorAnualComDescontoPlano / 12;
+      valorAnualOriginal = valorAnualOriginalPlano;
+      valorAnualComDesconto = valorAnualComDescontoPlano;
+    } else {
+      // Sem valor_total: usar base mensal informada e, se houver desconto_percentual, estimar original
+      const valorMensalBase = plano.valor_parcelado || plano.valor;
+      valorMensalComDesconto = valorMensalBase;
+      valorMensalOriginal = percentualDescontoPlano > 0
+        ? valorMensalBase / (1 - percentualDescontoPlano)
+        : valorMensalBase;
+      valorAnualOriginal = valorMensalOriginal * 12;
+      valorAnualComDesconto = valorMensalComDesconto * 12;
     }
+  } else {
+    // Plano anual
+    valorAnualOriginal = plano.valor_total || plano.valor;
+    valorAnualComDesconto = percentualDescontoPlano > 0 && valorAnualOriginal
+      ? valorAnualOriginal * (1 - percentualDescontoPlano)
+      : plano.valor;
+
+    valorMensalOriginal = valorAnualOriginal / 12;
+    valorMensalComDesconto = valorAnualComDesconto / 12;
   }
+
+  // Arredondar para baixo em 2 casas para evitar 29,93 → 29,92
+  valorMensalOriginal = arredondarParaBaixo2(valorMensalOriginal);
+  valorMensalComDesconto = arredondarParaBaixo2(valorMensalComDesconto);
+  valorAnualOriginal = arredondarParaBaixo2(valorAnualOriginal);
+  valorAnualComDesconto = arredondarParaBaixo2(valorAnualComDesconto);
   
   console.log('=== VALORES CALCULADOS ===');
   console.log('valorAnualComDesconto:', valorAnualComDesconto, '→ Deveria ser 239,40');
@@ -1298,7 +1319,7 @@ const CheckoutAssinatura = () => {
   // Verificar se há desconto no plano
   const valorOriginal = isPlanoMensal ? valorMensalOriginal : valorAnualOriginal;
   const valorComDesconto = isPlanoMensal ? valorMensalComDesconto : valorAnualComDesconto;
-  const temDescontoPlano = (isPlanoMensal ? (plano.valor_total && plano.valor_total > plano.valor) : (plano.valor_total && plano.valor_total > plano.valor));
+  const temDescontoPlano = percentualDescontoPlano > 0 || (plano.valor_total && plano.valor_total > plano.valor);
   
   // Usar desconto_percentual do banco ou calcular
   const percentualDesconto = plano.desconto_percentual || (temDescontoPlano && valorOriginal > 0
