@@ -330,6 +330,14 @@ const TutorialOnboarding = ({
     onSkip();
   };
 
+  // Função para fechar o tutorial sem marcar como completo
+  // Isso permite que o tutorial seja exibido novamente na próxima vez que o usuário logar
+  const handleClose = () => {
+    // Apenas fecha o tutorial, não marca como completo
+    // O tutorial continuará aparecendo até que o usuário finalize na última tela
+    onSkip();
+  };
+
   if (!isOpen) return null;
 
   const isFirstStep = currentStep === 0;
@@ -394,7 +402,7 @@ const TutorialOnboarding = ({
         >
         <div className="tutorial-header">
           <h3>{step.title}</h3>
-          <button className="tutorial-close" onClick={handleSkip} title="Pular tutorial">
+          <button className="tutorial-close" onClick={handleClose} title="Fechar tutorial (será exibido novamente na próxima vez)">
             <FaTimes />
           </button>
         </div>
