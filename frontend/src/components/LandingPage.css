@@ -739,6 +739,12 @@
   overflow: visible;
 }
 
+@media (max-width: 767px) {
+  .planos-section .container {
+    overflow: visible;
+  }
+}
+
 .planos-grid-landing {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -779,12 +785,20 @@
     grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
     max-width: 1000px;
     justify-content: center;
+    gap: 2rem;
+    row-gap: 8rem;
   }
   
   /* Quando há apenas 1 plano, limitar largura para centralizar */
   .planos-grid-landing.planos-1 {
     grid-template-columns: 1fr;
     max-width: 450px;
+    row-gap: 2rem;
+  }
+
+  .plano-card-landing {
+    position: relative;
+    overflow: visible;
   }
 }
 
@@ -1487,6 +1501,22 @@
   .planos-grid-landing {
     grid-template-columns: 1fr;
     max-width: 100%;
+    gap: 0;
+    row-gap: 7rem;
+    padding-top: 2.5rem;
+    padding-bottom: 2.5rem;
+  }
+
+  .plano-card-landing {
+    position: relative;
+    overflow: visible;
+    margin: 0;
+  }
+
+  /* Ajustar posicionamento dos badges em telas verticais para evitar sobreposição */
+  .plano-badge-landing,
+  .plano-badge-desconto-landing {
+    top: -12px;
   }
 
   .beneficios-grid {
