@@ -71,6 +71,34 @@
   .landing-logo {
     font-size: clamp(1.1rem, 4vw, 1.8rem);
   }
+
+  /* Ajustar badges em telas muito pequenas para evitar sobreposição */
+  .plano-badge-landing {
+    top: -10px;
+    right: 5px;
+    padding: 0.35rem 0.6rem;
+    font-size: 0.75rem;
+    max-width: calc(50% - 10px);
+  }
+
+  .plano-badge-desconto-landing {
+    top: -10px;
+    left: 5px;
+    padding: 0.35rem 0.6rem;
+    font-size: 0.75rem;
+    max-width: calc(50% - 10px);
+  }
+
+  /* Quando há ambos os badges, garantir que não se sobreponham */
+  .plano-card-landing:has(.plano-badge-landing):has(.plano-badge-desconto-landing) .plano-badge-landing {
+    right: 5px;
+    max-width: calc(50% - 10px);
+  }
+
+  .plano-card-landing:has(.plano-badge-landing):has(.plano-badge-desconto-landing) .plano-badge-desconto-landing {
+    left: 5px;
+    max-width: calc(50% - 10px);
+  }
 }
 
 .landing-logo img {
@@ -1514,9 +1542,27 @@
   }
 
   /* Ajustar posicionamento dos badges em telas verticais para evitar sobreposição */
-  .plano-badge-landing,
+  .plano-badge-landing {
+    top: -12px;
+    right: 10px;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
   .plano-badge-desconto-landing {
     top: -12px;
+    left: 10px;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  /* Quando há ambos os badges, ajustar posição para evitar sobreposição */
+  .plano-card-landing:has(.plano-badge-landing):has(.plano-badge-desconto-landing) .plano-badge-landing {
+    right: 10px;
+  }
+
+  .plano-card-landing:has(.plano-badge-landing):has(.plano-badge-desconto-landing) .plano-badge-desconto-landing {
+    left: 10px;
   }
 
   .beneficios-grid {
