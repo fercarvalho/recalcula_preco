@@ -3,7 +3,7 @@ import { FaCheck, FaChevronDown, FaChevronUp, FaCalculator, FaRocket, FaWhatsapp
 import * as FaIcons from 'react-icons/fa';
 import RegistroModal from './RegistroModal';
 import ThemeToggle from './ThemeToggle';
-import CookieBanner, { CookieManageLink } from './CookieBanner';
+import CookieBanner from './CookieBanner';
 import ModalPoliticaPrivacidade from './ModalPoliticaPrivacidade';
 import ModalTermosUso from './ModalTermosUso';
 import { apiService } from '../services/api';

@@ -59,10 +59,9 @@ interface GerenciamentoButton {
 }
 
 // Componente de formulário para criar usuário
-const FormularioCriarUsuario = ({ onCancel, onSubmit, isGerenteOuSuper, isSuperAdmin }: {
+const FormularioCriarUsuario = ({ onCancel, onSubmit, isSuperAdmin }: {
   onCancel: () => void;
   onSubmit: (dados: { username: string; email: string; senha?: string; isAdmin: boolean; adminLevel?: 'super_admin' | 'gerente' | 'supervisor' | null; enviarEmailAtivacao: boolean }) => Promise<void>;
-  isGerenteOuSuper: boolean;
   isSuperAdmin: boolean;
 }) => {
   const [username, setUsername] = useState('');
@@ -201,8 +200,7 @@ const FormularioCriarUsuario = ({ onCancel, onSubmit, isGerenteOuSuper, isSuperA
 };
 
 // Componente de formulário para criar plano
-const FormularioCriarPlano = ({ usuarioId, onCancel, onSubmit }: {
-  usuarioId: number;
+const FormularioCriarPlano = ({ onCancel, onSubmit }: {
   onCancel: () => void;
   onSubmit: (dados: { nome: string; tipo: 'unico' | 'parcelado' | 'recorrente'; valor: number; periodo?: string; stripePriceId?: string }) => Promise<void>;
 }) => {
@@ -457,7 +455,7 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
     buscarTexto: ''
   });
   const [historicoPagina, setHistoricoPagina] = useState(1);
-  const [historicoRegistroSelecionado, setHistoricoRegistroSelecionado] = useState<any>(null);
+  const [, setHistoricoRegistroSelecionado] = useState<any>(null);
 
   const [botoesGerenciamento, setBotoesGerenciamento] = useState<GerenciamentoButton[]>([
     { id: 'funcoes', titulo: 'Gerenciar Funções da Landing Page', descricao: 'Gerencie as funções exibidas na landing page. Configure quais funções estão ativas e quais são de IA.', icone: <FaCog />, onClick: () => setShowGerenciamentoFuncoes(true), ordem: 1 },
@@ -534,7 +532,6 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
   const handleExportarHistorico = async (usuarioId: number) => {
     try {
       const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
-      const token = getToken();
 
       const params = new URLSearchParams({
         usuarioId: usuarioId.toString()
@@ -1906,7 +1903,6 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
               <FormularioCriarUsuario
                 onCancel={() => setShowCriarUsuario(false)}
                 onSubmit={handleCriarUsuario}
-                isGerenteOuSuper={isGerenteOuSuper()}
                 isSuperAdmin={isSuperAdmin()}
               />
             </div>
@@ -1994,6 +1990,23 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
           }}
           onSave={handleSalvarCategoria}
         />
+      )}
+
+      {showCriarPlano && usuarioSelecionado && (
+        <Modal
+          isOpen={showCriarPlano}
+          onClose={() => setShowCriarPlano(false)}
+          title="Criar Novo Plano"
+        >
+          <FormularioCriarPlano
+            onCancel={() => setShowCriarPlano(false)}
+            onSubmit={async (dados) => {
+              if (usuarioSelecionado) {
+                await handleCriarPlano(usuarioSelecionado, dados);
+              }
+            }}
+          />
+        </Modal>
       )}
     </>
   );
@@ -2565,22 +2578,6 @@ const EditarCategoriaModal = ({ isOpen, categoriaNome, onClose, onSave }: Editar
             setShowIconeModal(false);
           }}
         />
-      )}
-
-      {showCriarPlano && usuarioSelecionado && (
-        <Modal
-          isOpen={showCriarPlano}
-          onClose={() => setShowCriarPlano(false)}
-          title="Criar Novo Plano"
-        >
-          <FormularioCriarPlano
-            usuarioId={usuarioSelecionado}
-            onCancel={() => setShowCriarPlano(false)}
-            onSubmit={async (dados) => {
-              await handleCriarPlano(usuarioSelecionado, dados);
-            }}
-          />
-        </Modal>
       )}
     </>
   );
