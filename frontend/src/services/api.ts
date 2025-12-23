@@ -556,6 +556,83 @@ export const apiService = {
     await api.put('/api/admin/rodape/ordem', { linkIds });
   },
 
+  // ========== Configurações do Rodapé ==========
+  async obterRodapeConfiguracao(chave: string): Promise<string | null> {
+    try {
+      const response = await api.get<{ chave: string; valor: string | null }>(`/api/rodape/configuracao/${chave}`);
+      return response.data.valor;
+    } catch (error: any) {
+      // Se for 404 ou outro erro, retornar null em vez de lançar erro
+      if (error?.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  },
+
+  async atualizarRodapeConfiguracao(chave: string, valor: string): Promise<{ id: number; chave: string; valor: string }> {
+    const response = await api.put<{ id: number; chave: string; valor: string }>(`/api/admin/rodape/configuracao/${chave}`, { valor });
+    return response.data;
+  },
+
+  // ========== Links do Footer-Bottom ==========
+  async obterRodapeFooterLinks(): Promise<Array<{
+    id: number;
+    texto: string;
+    link: string;
+    ordem: number;
+  }>> {
+    const response = await api.get('/api/rodape/footer-links');
+    return response.data;
+  },
+
+  async obterRodapeFooterLinksAdmin(): Promise<Array<{
+    id: number;
+    texto: string;
+    link: string;
+    ordem: number;
+  }>> {
+    try {
+      const response = await api.get('/api/admin/rodape/footer-links');
+      return response.data || [];
+    } catch (error: any) {
+      console.error('Erro ao obter footer links admin:', error);
+      // Se der erro 404 ou 500, retornar array vazio em vez de lançar erro
+      if (error?.response?.status === 404 || error?.response?.status === 500) {
+        return [];
+      }
+      throw error;
+    }
+  },
+
+  async criarRodapeFooterLink(texto: string, link: string, ordem?: number): Promise<{
+    id: number;
+    texto: string;
+    link: string;
+    ordem: number;
+  }> {
+    const response = await api.post('/api/admin/rodape/footer-links', { texto, link, ordem });
+    return response.data;
+  },
+
+  async atualizarRodapeFooterLink(id: number, texto: string, link: string): Promise<{
+    id: number;
+    texto: string;
+    link: string;
+    ordem: number;
+  }> {
+    const response = await api.put(`/api/admin/rodape/footer-links/${id}`, { texto, link });
+    return response.data;
+  },
+
+  async deletarRodapeFooterLink(id: number): Promise<void> {
+    await api.delete(`/api/admin/rodape/footer-links/${id}`);
+  },
+
+  async atualizarOrdemRodapeFooterLinks(linkIds: number[]): Promise<void> {
+    await api.put('/api/admin/rodape/footer-links/ordem', { linkIds });
+  },
+
   // ========== Configurações de Sessões da Landing Page ==========
   async obterConfiguracoesSessoes(): Promise<Array<{ id: string; nome: string; ativa: boolean; ordem: number }>> {
     const response = await api.get<Array<{ id: string; nome: string; ativa: boolean; ordem: number }>>('/api/configuracoes-sessoes');

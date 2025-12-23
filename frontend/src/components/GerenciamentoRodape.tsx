@@ -21,6 +21,7 @@ interface GerenciamentoRodapeProps {
 }
 
 const GerenciamentoRodape = ({ isOpen, onClose }: GerenciamentoRodapeProps) => {
+  const [abaAtiva, setAbaAtiva] = useState<'colunas' | 'legal' | 'footer'>('colunas');
   const [links, setLinks] = useState<RodapeLink[]>([]);
   const [colunas, setColunas] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -29,6 +30,17 @@ const GerenciamentoRodape = ({ isOpen, onClose }: GerenciamentoRodapeProps) => {
   const [colunaSelecionada, setColunaSelecionada] = useState<string>('');
   // Guardar ordem padrão quando o modal é aberto (por link ID)
   const ordemPadraoRef = useRef<Map<number, number>>(new Map());
+  
+  // Estados para Informações Legais
+  const [informacoesLegais, setInformacoesLegais] = useState<string>('');
+  const [salvandoLegal, setSalvandoLegal] = useState(false);
+  
+  // Estados para Rodapé Inferior
+  const [copyrightTexto, setCopyrightTexto] = useState<string>('');
+  const [footerLinks, setFooterLinks] = useState<Array<{ id: number; texto: string; link: string; ordem: number }>>([]);
+  const [showModalFooterLink, setShowModalFooterLink] = useState(false);
+  const [footerLinkEditando, setFooterLinkEditando] = useState<{ id: number; texto: string; link: string; ordem: number } | null>(null);
+  const ordemPadraoFooterLinksRef = useRef<Map<number, number>>(new Map());
 
   useEffect(() => {
     if (isOpen) {
@@ -36,13 +48,54 @@ const GerenciamentoRodape = ({ isOpen, onClose }: GerenciamentoRodapeProps) => {
     }
   }, [isOpen]);
 
+  // Debug: verificar quando footerLinks muda
+  useEffect(() => {
+    if (isOpen && abaAtiva === 'footer') {
+      console.log('Footer links no estado:', footerLinks);
+      console.log('Quantidade de footer links:', footerLinks.length);
+    }
+  }, [footerLinks, isOpen, abaAtiva]);
+
   const carregarDados = async () => {
     try {
       setLoading(true);
+      
+      // Carregar dados principais primeiro
       const [linksCarregados, colunasCarregadas] = await Promise.all([
         apiService.obterRodapeLinksAdmin(),
         apiService.obterColunasRodape()
       ]);
+      
+      // Carregar configurações e footer links separadamente para melhor tratamento de erro
+      let infoLegais = null;
+      let copyright = null;
+      let footerLinksCarregados: Array<{ id: number; texto: string; link: string; ordem: number }> = [];
+      
+      try {
+        infoLegais = await apiService.obterRodapeConfiguracao('informacoes_legais');
+      } catch (err) {
+        console.error('Erro ao carregar informações legais:', err);
+      }
+      
+      try {
+        copyright = await apiService.obterRodapeConfiguracao('copyright_texto');
+      } catch (err) {
+        console.error('Erro ao carregar copyright:', err);
+      }
+      
+      try {
+        footerLinksCarregados = await apiService.obterRodapeFooterLinksAdmin();
+        console.log('Footer links carregados com sucesso:', footerLinksCarregados);
+      } catch (err) {
+        console.error('Erro ao carregar footer links:', err);
+        // Tentar carregar da rota pública como fallback
+        try {
+          footerLinksCarregados = await apiService.obterRodapeFooterLinks();
+          console.log('Footer links carregados da rota pública:', footerLinksCarregados);
+        } catch (err2) {
+          console.error('Erro ao carregar footer links da rota pública:', err2);
+        }
+      }
       
       // Garantir que todas as links tenham ID
       const linksComIds = linksCarregados.map((p, index) => ({
@@ -52,6 +105,25 @@ const GerenciamentoRodape = ({ isOpen, onClose }: GerenciamentoRodapeProps) => {
       
       setLinks(linksComIds);
       setColunas(colunasCarregadas);
+      setInformacoesLegais(infoLegais || '');
+      setCopyrightTexto(copyright || 'Recalcula Preço. Todos os direitos reservados.');
+      
+      // Ordenar footer links por ordem antes de definir no estado
+      const footerLinksOrdenados = Array.isArray(footerLinksCarregados) 
+        ? [...footerLinksCarregados].sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
+        : [];
+      console.log('Footer links ordenados para definir no estado:', footerLinksOrdenados);
+      console.log('Definindo footerLinks no estado com', footerLinksOrdenados.length, 'links');
+      console.log('Tipo de footerLinksOrdenados:', typeof footerLinksOrdenados, Array.isArray(footerLinksOrdenados));
+      
+      // Garantir que todos os links tenham ID válido
+      const footerLinksComIdsValidos = footerLinksOrdenados.map((link, index) => ({
+        ...link,
+        id: link.id && !isNaN(Number(link.id)) ? Number(link.id) : index + 1000 // IDs temporários se inválidos
+      }));
+      
+      console.log('Footer links com IDs válidos:', footerLinksComIdsValidos);
+      setFooterLinks(footerLinksComIdsValidos);
       
       // Salvar ordem padrão (ordem atual quando o modal é aberto)
       ordemPadraoRef.current.clear();
@@ -60,6 +132,14 @@ const GerenciamentoRodape = ({ isOpen, onClose }: GerenciamentoRodapeProps) => {
           ordemPadraoRef.current.set(link.id, link.ordem || 0);
         }
       });
+      
+      // Salvar ordem padrão dos footer links
+      ordemPadraoFooterLinksRef.current.clear();
+      if (Array.isArray(footerLinksCarregados)) {
+        footerLinksCarregados.forEach(link => {
+          ordemPadraoFooterLinksRef.current.set(link.id, link.ordem || 0);
+        });
+      }
     } catch (error) {
       console.error('Erro ao carregar dados do rodapé:', error);
       await mostrarAlert('Erro', 'Erro ao carregar dados do rodapé. Tente novamente.');
@@ -485,6 +565,101 @@ const GerenciamentoRodape = ({ isOpen, onClose }: GerenciamentoRodapeProps) => {
     return acc;
   }, {} as Record<string, RodapeLink[]>);
 
+  // Função para salvar informações legais
+  const handleSalvarInformacoesLegais = async () => {
+    try {
+      setSalvandoLegal(true);
+      await apiService.atualizarRodapeConfiguracao('informacoes_legais', informacoesLegais);
+      await mostrarAlert('Sucesso', 'Informações legais salvas com sucesso!');
+      window.dispatchEvent(new CustomEvent('rodape-updated'));
+    } catch (error) {
+      console.error('Erro ao salvar informações legais:', error);
+      await mostrarAlert('Erro', 'Erro ao salvar informações legais. Tente novamente.');
+    } finally {
+      setSalvandoLegal(false);
+    }
+  };
+
+  // Função para salvar copyright
+  const handleSalvarCopyright = async () => {
+    try {
+      setLoading(true);
+      await apiService.atualizarRodapeConfiguracao('copyright_texto', copyrightTexto);
+      await mostrarAlert('Sucesso', 'Texto do copyright salvo com sucesso!');
+      window.dispatchEvent(new CustomEvent('rodape-updated'));
+    } catch (error) {
+      console.error('Erro ao salvar copyright:', error);
+      await mostrarAlert('Erro', 'Erro ao salvar texto do copyright. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Funções para gerenciar links do footer-bottom
+  const handleAdicionarFooterLink = () => {
+    setFooterLinkEditando(null);
+    setShowModalFooterLink(true);
+  };
+
+  const handleEditarFooterLink = (link: { id: number; texto: string; link: string; ordem: number }) => {
+    setFooterLinkEditando(link);
+    setShowModalFooterLink(true);
+  };
+
+  const handleDeletarFooterLink = async (link: { id: number; texto: string; link: string; ordem: number }) => {
+    const confirmado = await mostrarConfirm(
+      'Confirmar Exclusão',
+      `Tem certeza que deseja deletar o link "${link.texto}"?`
+    );
+
+    if (!confirmado) return;
+
+    try {
+      await apiService.deletarRodapeFooterLink(link.id);
+      await carregarDados();
+      window.dispatchEvent(new CustomEvent('rodape-updated'));
+      await mostrarAlert('Sucesso', 'Link deletado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao deletar link do footer:', error);
+      await mostrarAlert('Erro', 'Erro ao deletar link. Tente novamente.');
+    }
+  };
+
+  // Drag and drop para footer links
+  const footerLinksComIds = footerLinks.map((link, index) => ({
+    ...link,
+    id: link.id || index
+  }));
+
+  const handleReorderFooterLinks = async (novosLinks: Array<{ id: number; texto: string; link: string; ordem: number }>) => {
+    setFooterLinks(novosLinks);
+    
+    try {
+      const linkIds = novosLinks
+        .map(link => link.id)
+        .filter((id): id is number => typeof id === 'number' && !isNaN(id));
+      
+      if (linkIds.length === 0) {
+        throw new Error('Nenhum ID de link válido encontrado');
+      }
+      
+      await apiService.atualizarOrdemRodapeFooterLinks(linkIds);
+      window.dispatchEvent(new CustomEvent('rodape-updated'));
+    } catch (error) {
+      console.error('Erro ao atualizar ordem dos links do footer:', error);
+      await mostrarAlert('Erro', 'Erro ao atualizar ordem dos links. Tente novamente.');
+      await carregarDados();
+    }
+  };
+
+  const {
+    handleDragStart: handleDragStartFooterLinkBase,
+    handleDragEnd: handleDragEndFooterLinkBase,
+    handleDragOver: handleDragOverFooterLinkBase,
+    handleDrop: handleDropFooterLinkBase,
+    handleDragLeave: handleDragLeaveFooterLink,
+  } = useDragAndDrop(footerLinksComIds, handleReorderFooterLinks);
+
   if (!isOpen) return null;
 
   return (
@@ -497,133 +672,282 @@ const GerenciamentoRodape = ({ isOpen, onClose }: GerenciamentoRodapeProps) => {
         className="modal-nested"
         footer={
           <>
-            <button onClick={handleRestaurarPadraoTodas} className="btn-secondary" disabled={loading || links.length === 0} style={{ fontSize: '0.75rem', lineHeight: '1.2' }}>
-              <FaUndo /> Restaurar Padrões (Todos)
-            </button>
+            {abaAtiva === 'colunas' && (
+              <>
+                <button onClick={handleRestaurarPadraoTodas} className="btn-secondary" disabled={loading || links.length === 0} style={{ fontSize: '0.75rem', lineHeight: '1.2' }}>
+                  <FaUndo /> Restaurar Padrões (Todos)
+                </button>
+                <button onClick={handleAdicionarColuna} className="btn-secondary" style={{ fontSize: '0.75rem', lineHeight: '1.2' }}>
+                  <FaPlus /> Adicionar Coluna
+                </button>
+                <button onClick={() => handleAdicionar()} className="btn-primary" style={{ fontSize: '0.75rem', lineHeight: '1.2' }}>
+                  <FaPlus /> Adicionar Link
+                </button>
+              </>
+            )}
+            {abaAtiva === 'legal' && (
+              <button onClick={handleSalvarInformacoesLegais} className="btn-primary" disabled={salvandoLegal}>
+                <FaSave /> {salvandoLegal ? 'Salvando...' : 'Salvar Informações Legais'}
+              </button>
+            )}
+            {abaAtiva === 'footer' && (
+              <button onClick={handleAdicionarFooterLink} className="btn-primary" style={{ fontSize: '0.75rem', lineHeight: '1.2' }}>
+                <FaPlus /> Adicionar Link
+              </button>
+            )}
             <button onClick={onClose} className="btn-secondary" style={{ fontSize: '0.75rem', lineHeight: '1.2' }}>
               Fechar
-            </button>
-            <button onClick={handleAdicionarColuna} className="btn-secondary" style={{ fontSize: '0.75rem', lineHeight: '1.2' }}>
-              <FaPlus /> Adicionar Coluna
-            </button>
-            <button onClick={() => handleAdicionar()} className="btn-primary" style={{ fontSize: '0.75rem', lineHeight: '1.2' }}>
-              <FaPlus /> Adicionar Link
             </button>
           </>
         }
       >
         <div className="gerenciamento-rodape-container">
-          {loading && links.length === 0 ? (
-            <div className="loading">Carregando...</div>
-          ) : (
-            <>
-              {colunas.length === 0 ? (
-                <div className="empty-state">
-                  <p>Nenhuma coluna encontrada. Adicione uma coluna para começar.</p>
-                </div>
+          {/* Abas */}
+          <div className="rodape-tabs">
+            <button
+              className={`rodape-tab ${abaAtiva === 'colunas' ? 'active' : ''}`}
+              onClick={() => setAbaAtiva('colunas')}
+            >
+              Colunas
+            </button>
+            <button
+              className={`rodape-tab ${abaAtiva === 'legal' ? 'active' : ''}`}
+              onClick={() => setAbaAtiva('legal')}
+            >
+              Informações Legais
+            </button>
+            <button
+              className={`rodape-tab ${abaAtiva === 'footer' ? 'active' : ''}`}
+              onClick={() => setAbaAtiva('footer')}
+            >
+              Rodapé Inferior
+            </button>
+          </div>
+
+          {/* Conteúdo das Abas */}
+          {abaAtiva === 'colunas' && (
+            <div className="rodape-tab-content">
+              {loading && links.length === 0 ? (
+                <div className="loading">Carregando...</div>
               ) : (
-                <div className="rodape-colunas">
-                  {colunas.map((coluna) => (
-                    <div
-                      key={coluna}
-                      className="rodape-coluna"
-                      draggable
-                      onDragStart={(e) => handleDragStartColuna(e, coluna)}
-                      onDragEnd={handleDragEndColuna}
-                      onDragOver={(e) => handleDragOverColuna(e, coluna)}
-                      onDrop={(e) => handleDropColuna(e, coluna)}
-                      onDragLeave={handleDragLeaveColuna}
-                    >
-                      <div className="rodape-coluna-header">
-                        <div className="rodape-coluna-drag-handle">
-                          <FaGripVertical />
-                        </div>
-                        <h3>{coluna}</h3>
-                        <button
-                          onClick={() => handleAdicionar(coluna)}
-                          className="btn-add-link-coluna"
-                          title="Adicionar link nesta coluna"
-                        >
-                          <FaPlus />
-                        </button>
-                      </div>
-                      <div className="rodape-links-list">
-                        {linksPorColuna[coluna]?.length === 0 ? (
-                          <p className="empty-coluna">Nenhum link nesta coluna</p>
-                        ) : (
-                          <>
-                            {linksPorColuna[coluna]?.map((link) => {
-                              const linkId = link.id;
-                              return (
-                                <div
-                                  key={linkId}
-                                  className="rodape-link-item"
-                                  draggable
-                                  onDragStart={(e) => handleDragStartLink(e, linkId, 'item')}
-                                  onDragEnd={handleDragEndLink}
-                                  onDragOver={(e) => handleDragOverLink(e, linkId)}
-                                  onDrop={(e) => handleDropLink(e, linkId)}
-                                  onDragLeave={handleDragLeaveLink}
-                                >
-                                  <div className="rodape-link-drag-handle">
-                                    <FaGripVertical />
-                                  </div>
-                                  <div className="rodape-link-content">
-                                    <div className="rodape-link-texto">
-                                      <strong>{link.texto}</strong>
-                                    </div>
-                                    {link.eh_link && link.link && (
-                                      <div className="rodape-link-url">
-                                        {link.link}
-                                      </div>
-                                    )}
-                                    {!link.eh_link && (
-                                      <div className="rodape-link-tipo" style={{ color: '#6c757d', fontSize: '0.85rem', fontStyle: 'italic' }}>
-                                        Texto
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div className="rodape-link-actions">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleEditar(link)}
-                                      className="btn-edit-link"
-                                      title="Editar"
-                                    >
-                                      <FaEdit />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeletar(link)}
-                                      className="btn-delete-link"
-                                      title="Excluir"
-                                    >
-                                      <FaTrash />
-                                    </button>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                            {/* Botão de restaurar padrão - só aparece se houver 2 ou mais itens */}
-                            {linksPorColuna[coluna] && linksPorColuna[coluna].length >= 2 && (
-                              <button
-                                onClick={() => handleRestaurarPadraoColuna(coluna)}
-                                className="btn-secondary"
-                                disabled={loading}
-                                title={`Restaurar ordem padrão da coluna "${coluna}"`}
-                                style={{ width: '100%', marginTop: '12px', fontSize: '0.75rem', lineHeight: '1.2' }}
-                              >
-                                <FaUndo /> Restaurar Padrão
-                              </button>
-                            )}
-                          </>
-                        )}
-                      </div>
+                <>
+                  {colunas.length === 0 ? (
+                    <div className="empty-state">
+                      <p>Nenhuma coluna encontrada. Adicione uma coluna para começar.</p>
                     </div>
-                  ))}
-                </div>
+                  ) : (
+                    <div className="rodape-colunas">
+                      {colunas.map((coluna) => (
+                        <div
+                          key={coluna}
+                          className="rodape-coluna"
+                          draggable
+                          onDragStart={(e) => handleDragStartColuna(e, coluna)}
+                          onDragEnd={handleDragEndColuna}
+                          onDragOver={(e) => handleDragOverColuna(e, coluna)}
+                          onDrop={(e) => handleDropColuna(e, coluna)}
+                          onDragLeave={handleDragLeaveColuna}
+                        >
+                          <div className="rodape-coluna-header">
+                            <div className="rodape-coluna-drag-handle">
+                              <FaGripVertical />
+                            </div>
+                            <h3>{coluna}</h3>
+                            <button
+                              onClick={() => handleAdicionar(coluna)}
+                              className="btn-add-link-coluna"
+                              title="Adicionar link nesta coluna"
+                            >
+                              <FaPlus />
+                            </button>
+                          </div>
+                          <div className="rodape-links-list">
+                            {linksPorColuna[coluna]?.length === 0 ? (
+                              <p className="empty-coluna">Nenhum link nesta coluna</p>
+                            ) : (
+                              <>
+                                {linksPorColuna[coluna]?.map((link) => {
+                                  const linkId = link.id;
+                                  return (
+                                    <div
+                                      key={linkId}
+                                      className="rodape-link-item"
+                                      draggable
+                                      onDragStart={(e) => handleDragStartLink(e, linkId, 'item')}
+                                      onDragEnd={handleDragEndLink}
+                                      onDragOver={(e) => handleDragOverLink(e, linkId)}
+                                      onDrop={(e) => handleDropLink(e, linkId)}
+                                      onDragLeave={handleDragLeaveLink}
+                                    >
+                                      <div className="rodape-link-drag-handle">
+                                        <FaGripVertical />
+                                      </div>
+                                      <div className="rodape-link-content">
+                                        <div className="rodape-link-texto">
+                                          <strong>{link.texto}</strong>
+                                        </div>
+                                        {link.eh_link && link.link && (
+                                          <div className="rodape-link-url">
+                                            {link.link}
+                                          </div>
+                                        )}
+                                        {!link.eh_link && (
+                                          <div className="rodape-link-tipo" style={{ color: '#6c757d', fontSize: '0.85rem', fontStyle: 'italic' }}>
+                                            Texto
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="rodape-link-actions">
+                                        <button
+                                          type="button"
+                                          onClick={() => handleEditar(link)}
+                                          className="btn-edit-link"
+                                          title="Editar"
+                                        >
+                                          <FaEdit />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDeletar(link)}
+                                          className="btn-delete-link"
+                                          title="Excluir"
+                                        >
+                                          <FaTrash />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                                {linksPorColuna[coluna] && linksPorColuna[coluna].length >= 2 && (
+                                  <button
+                                    onClick={() => handleRestaurarPadraoColuna(coluna)}
+                                    className="btn-secondary"
+                                    disabled={loading}
+                                    title={`Restaurar ordem padrão da coluna "${coluna}"`}
+                                    style={{ width: '100%', marginTop: '12px', fontSize: '0.75rem', lineHeight: '1.2' }}
+                                  >
+                                    <FaUndo /> Restaurar Padrão
+                                  </button>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
-            </>
+            </div>
+          )}
+
+          {abaAtiva === 'legal' && (
+            <div className="rodape-tab-content">
+              <div className="rodape-legal-editor">
+                <label htmlFor="informacoes-legais">Informações Legais:</label>
+                <textarea
+                  id="informacoes-legais"
+                  value={informacoesLegais}
+                  onChange={(e) => setInformacoesLegais(e.target.value)}
+                  rows={15}
+                  className="form-textarea"
+                  placeholder="Digite as informações legais aqui..."
+                />
+                <div className="rodape-legal-preview">
+                  <h4>Preview:</h4>
+                  <div className="rodape-legal-preview-content">
+                    {informacoesLegais.split('\n').map((linha, i) => (
+                      <p key={i}>{linha || '\u00A0'}</p>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {abaAtiva === 'footer' && (
+            <div className="rodape-tab-content">
+              <div className="rodape-footer-editor">
+                <div className="rodape-copyright-editor">
+                  <label htmlFor="copyright-texto">Texto do Copyright (sem o ano):</label>
+                  <input
+                    id="copyright-texto"
+                    type="text"
+                    value={copyrightTexto}
+                    onChange={(e) => setCopyrightTexto(e.target.value)}
+                    className="form-input"
+                    placeholder="Ex: Recalcula Preço. Todos os direitos reservados."
+                  />
+                  <button onClick={handleSalvarCopyright} className="btn-secondary" disabled={loading} style={{ marginTop: '0.5rem' }}>
+                    <FaSave /> {loading ? 'Salvando...' : 'Salvar Copyright'}
+                  </button>
+                  <div className="rodape-copyright-preview" style={{ marginTop: '1rem', padding: '0.5rem', background: 'var(--cor-fundo-secundario)', borderRadius: '4px' }}>
+                    <p>© {new Date().getFullYear()} {copyrightTexto || 'Recalcula Preço. Todos os direitos reservados.'}</p>
+                  </div>
+                </div>
+
+                <div className="rodape-footer-links-editor" style={{ marginTop: '2rem' }}>
+                  <h4>Links do Rodapé Inferior:</h4>
+                  {loading ? (
+                    <p className="empty-state">Carregando links...</p>
+                  ) : !Array.isArray(footerLinks) || footerLinks.length === 0 ? (
+                    <p className="empty-state">Nenhum link adicionado. Clique em "Adicionar Link" para começar.</p>
+                  ) : (
+                    <div className="rodape-footer-links-list">
+                      {footerLinks.map((link, idx) => (
+                        <div
+                          key={link.id || `footer-link-${idx}`}
+                          className="rodape-footer-link-item"
+                          draggable
+                          onDragStart={(e) => handleDragStartFooterLinkBase(e, link.id, 'item')}
+                          onDragEnd={handleDragEndFooterLinkBase}
+                          onDragOver={(e) => handleDragOverFooterLinkBase(e, link.id)}
+                          onDrop={(e) => handleDropFooterLinkBase(e, link.id)}
+                          onDragLeave={handleDragLeaveFooterLink}
+                        >
+                          <div className="rodape-link-drag-handle">
+                            <FaGripVertical />
+                          </div>
+                          <div className="rodape-link-content">
+                            <div className="rodape-link-texto">
+                              <strong>{link.texto}</strong>
+                            </div>
+                            {link.link && (
+                              <div className="rodape-link-url">
+                                {link.link}
+                              </div>
+                            )}
+                            {!link.link && (
+                              <div className="rodape-link-tipo" style={{ color: '#6c757d', fontSize: '0.85rem', fontStyle: 'italic' }}>
+                                Sem link
+                              </div>
+                            )}
+                          </div>
+                          <div className="rodape-link-actions">
+                            <button
+                              type="button"
+                              onClick={() => handleEditarFooterLink(link)}
+                              className="btn-edit-link"
+                              title="Editar"
+                            >
+                              <FaEdit />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeletarFooterLink(link)}
+                              className="btn-delete-link"
+                              title="Excluir"
+                            >
+                              <FaTrash />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </Modal>
@@ -644,6 +968,28 @@ const GerenciamentoRodape = ({ isOpen, onClose }: GerenciamentoRodapeProps) => {
             setLinkEditando(null);
             setColunaSelecionada('');
             // Disparar evento para atualizar o rodapé na landing page
+            window.dispatchEvent(new CustomEvent('rodape-updated'));
+          }}
+        />
+      )}
+
+      {showModalFooterLink && (
+        <ModalFooterLink
+          link={footerLinkEditando}
+          footerLinksExistentes={footerLinks}
+          onClose={() => {
+            setShowModalFooterLink(false);
+            setFooterLinkEditando(null);
+          }}
+          onSave={async () => {
+            // Fechar o modal primeiro
+            setShowModalFooterLink(false);
+            setFooterLinkEditando(null);
+            
+            // Recarregar os dados
+            await carregarDados();
+            
+            // Disparar evento para atualizar a landing page
             window.dispatchEvent(new CustomEvent('rodape-updated'));
           }}
         />
@@ -851,6 +1197,129 @@ const ModalLink = ({ link, colunas, colunaSelecionada: colunaInicial, onClose, o
               ))
             )}
           </select>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
+interface ModalFooterLinkProps {
+  link: { id: number; texto: string; link: string; ordem: number } | null;
+  footerLinksExistentes?: Array<{ id: number; texto: string; link: string; ordem: number }>;
+  onClose: () => void;
+  onSave: () => Promise<void>;
+}
+
+const ModalFooterLink = ({ link, footerLinksExistentes = [], onClose, onSave }: ModalFooterLinkProps) => {
+  const [texto, setTexto] = useState(() => link?.texto || '');
+  const [linkUrl, setLinkUrl] = useState(() => link?.link || '');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (link) {
+      setTexto(link.texto);
+      setLinkUrl(link.link || '');
+    } else {
+      setTexto('');
+      setLinkUrl('');
+    }
+  }, [link]);
+
+  const handleSalvar = async () => {
+    if (!texto.trim()) {
+      await mostrarAlert('Erro', 'O texto é obrigatório.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (link?.id) {
+        await apiService.atualizarRodapeFooterLink(link.id, texto.trim(), linkUrl.trim());
+        await mostrarAlert('Sucesso', 'Link atualizado com sucesso!');
+      } else {
+        // Calcular ordem baseada nos links existentes passados como prop
+        let ordemMaxima = 0;
+        if (Array.isArray(footerLinksExistentes) && footerLinksExistentes.length > 0) {
+          ordemMaxima = Math.max(...footerLinksExistentes.map(l => l.ordem || 0));
+        } else {
+          // Se não tiver links no estado, tentar obter do servidor (mas não falhar se der erro)
+          try {
+            const linksAtuais = await apiService.obterRodapeFooterLinksAdmin();
+            if (Array.isArray(linksAtuais) && linksAtuais.length > 0) {
+              ordemMaxima = Math.max(...linksAtuais.map(l => l.ordem || 0));
+            }
+          } catch (err) {
+            console.warn('Erro ao obter links atuais para calcular ordem, usando ordem 0:', err);
+            // Continuar com ordem 0 se der erro
+          }
+        }
+        
+        await apiService.criarRodapeFooterLink(texto.trim(), linkUrl.trim(), ordemMaxima + 1);
+        await mostrarAlert('Sucesso', 'Link criado com sucesso!');
+      }
+
+      window.dispatchEvent(new CustomEvent('rodape-updated'));
+      
+      // Aguardar um pouco para garantir que o servidor processou
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      await onSave();
+    } catch (error: any) {
+      console.error('Erro ao salvar link do footer:', error);
+      const errorMessage = error?.response?.data?.error || error?.message || 'Erro ao salvar link. Tente novamente.';
+      await mostrarAlert('Erro', errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title={link ? 'Editar Link do Footer' : 'Adicionar Link do Footer'}
+      size="medium"
+      className="modal-nested"
+      footer={
+        <>
+          <button onClick={onClose} className="btn-secondary" disabled={loading}>
+            Cancelar
+          </button>
+          <button onClick={handleSalvar} className="btn-primary" disabled={loading}>
+            <FaSave /> {loading ? 'Salvando...' : 'Salvar'}
+          </button>
+        </>
+      }
+    >
+      <div className="rodape-link-form">
+        <div className="form-group">
+          <label htmlFor="footer-link-texto">Texto <span className="required">*</span>:</label>
+          <input
+            type="text"
+            id="footer-link-texto"
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            className="form-input"
+            placeholder="Ex: Política de Privacidade"
+            disabled={loading}
+            autoFocus
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="footer-link-url">Link (opcional):</label>
+          <input
+            type="text"
+            id="footer-link-url"
+            value={linkUrl}
+            onChange={(e) => setLinkUrl(e.target.value)}
+            className="form-input"
+            placeholder="Ex: #politica-privacidade ou https://exemplo.com"
+            disabled={loading}
+          />
+          <small style={{ color: '#6c757d', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
+            Deixe vazio se for apenas texto sem link
+          </small>
         </div>
       </div>
     </Modal>

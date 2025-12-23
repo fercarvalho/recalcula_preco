@@ -1307,6 +1307,31 @@
   opacity: 0.5;
 }
 
+/* Seção Legal do Rodapé */
+.footer-legal {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 2rem 1rem;
+  border-top: 1px solid var(--cor-borda);
+  border-bottom: 1px solid var(--cor-borda);
+  transition: border-color 0.3s ease;
+}
+
+.footer-legal-content {
+  text-align: center;
+}
+
+.footer-legal-info {
+  color: var(--cor-texto-secundario);
+  font-size: 0.9rem;
+  line-height: 1.8;
+}
+
+.footer-legal-info p {
+  margin: 0.5rem 0;
+  color: var(--cor-texto-secundario);
+}
+
 /* Telas de 8 a 12 polegadas (768px - 1279px) - duas linhas: logo+botões / menu */
 @media (min-width: 768px) and (max-width: 1279px) {
   .landing-header-first-line {

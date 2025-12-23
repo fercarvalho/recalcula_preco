@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Modal from './Modal';
 import { mostrarAlert, mostrarConfirm } from '../utils/modals';
-import { getToken } from '../services/auth';
+import { getToken, getUser } from '../services/auth';
 import AdicionarCategoriaModal from './AdicionarCategoriaModal';
 import SelecionarIconeModal from './SelecionarIconeModal';
 import GerenciamentoFuncoes from './GerenciamentoFuncoes';
@@ -19,7 +19,7 @@ import DashboardCupons from './DashboardCupons';
 import RoadmapKanban from './RoadmapKanban';
 import GerenciamentoTermosPoliticaCookies from './GerenciamentoTermosPoliticaCookies';
 import { useDragAndDrop } from '../hooks/useDragAndDrop';
-import { FaUser, FaEdit, FaTrash, FaShieldAlt, FaChevronRight, FaChevronDown, FaFolder, FaEye, FaEyeSlash, FaPlus, FaTimes, FaCog, FaBars, FaCreditCard, FaQuestionCircle, FaLink, FaLayerGroup, FaGripVertical, FaSearch, FaSortAlphaDown, FaSortAlphaUp, FaSort, FaChartLine, FaComments, FaStar, FaTicketAlt, FaRoute, FaFileContract } from 'react-icons/fa';
+import { FaUser, FaEdit, FaTrash, FaShieldAlt, FaChevronRight, FaChevronDown, FaFolder, FaEye, FaEyeSlash, FaPlus, FaTimes, FaCog, FaBars, FaCreditCard, FaQuestionCircle, FaLink, FaLayerGroup, FaGripVertical, FaSearch, FaSortAlphaDown, FaSortAlphaUp, FaSort, FaChartLine, FaComments, FaStar, FaTicketAlt, FaRoute, FaFileContract, FaCrown, FaUserTie, FaUserShield, FaHistory, FaDownload } from 'react-icons/fa';
 import * as FaIcons from 'react-icons/fa';
 import './AdminPanel.css';
 
@@ -28,6 +28,7 @@ interface Usuario {
   username: string;
   email?: string;
   is_admin: boolean;
+  admin_level?: 'super_admin' | 'gerente' | 'supervisor' | null;
   created_at: string;
   acesso_especial?: 'vitalicio' | 'temporario' | null;
   acesso_temporario_duracao?: number | null;
@@ -56,6 +57,356 @@ interface GerenciamentoButton {
   onClick: () => void;
   ordem: number;
 }
+
+// Componente de formulário para criar usuário
+const FormularioCriarUsuario = ({ onCancel, onSubmit, isGerenteOuSuper, isSuperAdmin }: {
+  onCancel: () => void;
+  onSubmit: (dados: { username: string; email: string; senha?: string; isAdmin: boolean; adminLevel?: 'super_admin' | 'gerente' | 'supervisor' | null; enviarEmailAtivacao: boolean }) => Promise<void>;
+  isGerenteOuSuper: boolean;
+  isSuperAdmin: boolean;
+}) => {
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminLevel, setAdminLevel] = useState<'super_admin' | 'gerente' | 'supervisor' | null>(null);
+  const [enviarEmailAtivacao, setEnviarEmailAtivacao] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!username.trim() || !email.trim()) {
+      await mostrarAlert('Erro', 'Username e email são obrigatórios');
+      return;
+    }
+    if (!enviarEmailAtivacao && !senha.trim()) {
+      await mostrarAlert('Erro', 'Senha é obrigatória ou marque "Enviar email de ativação"');
+      return;
+    }
+    if (isAdmin && !adminLevel) {
+      await mostrarAlert('Erro', 'Selecione o nível de acesso do administrador');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await onSubmit({
+        username: username.trim(),
+        email: email.trim(),
+        senha: senha.trim() || undefined,
+        isAdmin,
+        adminLevel: isAdmin ? adminLevel : null,
+        enviarEmailAtivacao
+      });
+      setUsername('');
+      setEmail('');
+      setSenha('');
+      setIsAdmin(false);
+      setAdminLevel(null);
+      setEnviarEmailAtivacao(false);
+    } catch (error) {
+      // Erro já tratado no onSubmit
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} style={{ padding: '20px' }}>
+      <div style={{ marginBottom: '15px' }}>
+        <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Username *</label>
+        <input
+          type="text"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          required
+          style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--cor-borda)' }}
+        />
+      </div>
+      <div style={{ marginBottom: '15px' }}>
+        <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Email *</label>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--cor-borda)' }}
+        />
+      </div>
+      <div style={{ marginBottom: '15px' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={enviarEmailAtivacao}
+            onChange={(e) => setEnviarEmailAtivacao(e.target.checked)}
+          />
+          <span>Enviar email de ativação (usuário define senha no primeiro acesso)</span>
+        </label>
+      </div>
+      {!enviarEmailAtivacao && (
+        <div style={{ marginBottom: '15px' }}>
+          <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Senha *</label>
+          <input
+            type="password"
+            value={senha}
+            onChange={(e) => setSenha(e.target.value)}
+            required={!enviarEmailAtivacao}
+            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--cor-borda)' }}
+          />
+        </div>
+      )}
+      {isSuperAdmin && (
+        <div style={{ marginBottom: '15px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={isAdmin}
+              onChange={(e) => {
+                setIsAdmin(e.target.checked);
+                if (!e.target.checked) {
+                  setAdminLevel(null);
+                }
+              }}
+            />
+            <span>Tornar administrador</span>
+          </label>
+        </div>
+      )}
+      {isAdmin && isSuperAdmin && (
+        <div style={{ marginBottom: '15px' }}>
+          <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Nível de Acesso *</label>
+          <select
+            value={adminLevel || ''}
+            onChange={(e) => setAdminLevel(e.target.value as 'super_admin' | 'gerente' | 'supervisor' | null)}
+            required={isAdmin}
+            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--cor-borda)' }}
+          >
+            <option value="">Selecione...</option>
+            <option value="super_admin">Super Admin</option>
+            <option value="gerente">Gerente</option>
+            <option value="supervisor">Supervisor</option>
+          </select>
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+        <button type="submit" className="btn-primary" disabled={loading}>
+          {loading ? 'Criando...' : 'Criar Usuário'}
+        </button>
+        <button type="button" className="btn-secondary" onClick={onCancel} disabled={loading}>
+          Cancelar
+        </button>
+      </div>
+    </form>
+  );
+};
+
+// Componente de formulário para criar plano
+const FormularioCriarPlano = ({ usuarioId, onCancel, onSubmit }: {
+  usuarioId: number;
+  onCancel: () => void;
+  onSubmit: (dados: { nome: string; tipo: 'unico' | 'parcelado' | 'recorrente'; valor: number; periodo?: string; stripePriceId?: string }) => Promise<void>;
+}) => {
+  const [nome, setNome] = useState('');
+  const [tipo, setTipo] = useState<'unico' | 'parcelado' | 'recorrente'>('recorrente');
+  const [valor, setValor] = useState('');
+  const [periodo, setPeriodo] = useState('');
+  const [stripePriceId, setStripePriceId] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nome.trim() || !valor) {
+      await mostrarAlert('Erro', 'Nome e valor são obrigatórios');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await onSubmit({
+        nome: nome.trim(),
+        tipo,
+        valor: parseFloat(valor),
+        periodo: periodo || undefined,
+        stripePriceId: stripePriceId.trim() || undefined
+      });
+      setNome('');
+      setTipo('recorrente');
+      setValor('');
+      setPeriodo('');
+      setStripePriceId('');
+    } catch (error) {
+      // Erro já tratado no onSubmit
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} style={{ padding: '20px' }}>
+      <div style={{ marginBottom: '15px' }}>
+        <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Nome do Plano *</label>
+        <input
+          type="text"
+          value={nome}
+          onChange={(e) => setNome(e.target.value)}
+          required
+          style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--cor-borda)' }}
+        />
+      </div>
+      <div style={{ marginBottom: '15px' }}>
+        <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Tipo *</label>
+        <select
+          value={tipo}
+          onChange={(e) => setTipo(e.target.value as 'unico' | 'parcelado' | 'recorrente')}
+          required
+          style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--cor-borda)' }}
+        >
+          <option value="recorrente">Recorrente</option>
+          <option value="unico">Único</option>
+          <option value="parcelado">Parcelado</option>
+        </select>
+      </div>
+      <div style={{ marginBottom: '15px' }}>
+        <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Valor (R$) *</label>
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          value={valor}
+          onChange={(e) => setValor(e.target.value)}
+          required
+          style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--cor-borda)' }}
+        />
+      </div>
+      {tipo === 'recorrente' && (
+        <div style={{ marginBottom: '15px' }}>
+          <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Período</label>
+          <select
+            value={periodo}
+            onChange={(e) => setPeriodo(e.target.value)}
+            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--cor-borda)' }}
+          >
+            <option value="">Selecione...</option>
+            <option value="mensal">Mensal</option>
+            <option value="anual">Anual</option>
+          </select>
+        </div>
+      )}
+      <div style={{ marginBottom: '15px' }}>
+        <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Stripe Price ID (opcional)</label>
+        <input
+          type="text"
+          value={stripePriceId}
+          onChange={(e) => setStripePriceId(e.target.value)}
+          placeholder="Deixe em branco para criar automaticamente"
+          style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--cor-borda)' }}
+        />
+      </div>
+      <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+        <button type="submit" className="btn-primary" disabled={loading}>
+          {loading ? 'Criando...' : 'Criar Plano'}
+        </button>
+        <button type="button" className="btn-secondary" onClick={onCancel} disabled={loading}>
+          Cancelar
+        </button>
+      </div>
+    </form>
+  );
+};
+
+// Componente de formulário para criar administrador
+const FormularioCriarAdmin = ({ onCancel, onSubmit }: {
+  onCancel: () => void;
+  onSubmit: (dados: { username: string; email: string; senha: string; adminLevel: 'super_admin' | 'gerente' | 'supervisor' }) => Promise<void>;
+}) => {
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
+  const [adminLevel, setAdminLevel] = useState<'super_admin' | 'gerente' | 'supervisor'>('gerente');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!username.trim() || !email.trim() || !senha.trim()) {
+      await mostrarAlert('Erro', 'Todos os campos são obrigatórios');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await onSubmit({
+        username: username.trim(),
+        email: email.trim(),
+        senha: senha.trim(),
+        adminLevel
+      });
+      setUsername('');
+      setEmail('');
+      setSenha('');
+      setAdminLevel('gerente');
+    } catch (error) {
+      // Erro já tratado no onSubmit
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} style={{ padding: '20px' }}>
+      <div style={{ marginBottom: '15px' }}>
+        <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Username *</label>
+        <input
+          type="text"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          required
+          style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--cor-borda)' }}
+        />
+      </div>
+      <div style={{ marginBottom: '15px' }}>
+        <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Email *</label>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--cor-borda)' }}
+        />
+      </div>
+      <div style={{ marginBottom: '15px' }}>
+        <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Senha *</label>
+        <input
+          type="password"
+          value={senha}
+          onChange={(e) => setSenha(e.target.value)}
+          required
+          style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--cor-borda)' }}
+        />
+      </div>
+      <div style={{ marginBottom: '15px' }}>
+        <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Nível de Acesso *</label>
+        <select
+          value={adminLevel}
+          onChange={(e) => setAdminLevel(e.target.value as 'super_admin' | 'gerente' | 'supervisor')}
+          required
+          style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--cor-borda)' }}
+        >
+          <option value="super_admin">Super Admin</option>
+          <option value="gerente">Gerente</option>
+          <option value="supervisor">Supervisor</option>
+        </select>
+      </div>
+      <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+        <button type="submit" className="btn-primary" disabled={loading}>
+          {loading ? 'Criando...' : 'Criar Administrador'}
+        </button>
+        <button type="button" className="btn-secondary" onClick={onCancel} disabled={loading}>
+          Cancelar
+        </button>
+      </div>
+    </form>
+  );
+};
 
 const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelProps) => {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -90,6 +441,23 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
   const [showDashboardCupons, setShowDashboardCupons] = useState(false);
   const [showRoadmapKanban, setShowRoadmapKanban] = useState(false);
   const [showGerenciamentoTermosPoliticaCookies, setShowGerenciamentoTermosPoliticaCookies] = useState(false);
+  const [showCriarUsuario, setShowCriarUsuario] = useState(false);
+  const [showCriarAdmin, setShowCriarAdmin] = useState(false);
+  const [planosDisponiveis, setPlanosDisponiveis] = useState<any[]>([]);
+  const [planoUsuario, setPlanoUsuario] = useState<any>(null);
+  const [showCriarPlano, setShowCriarPlano] = useState(false);
+  const [historicoUsuario, setHistoricoUsuario] = useState<any[]>([]);
+  const [historicoTotal, setHistoricoTotal] = useState(0);
+  const [historicoLoading, setHistoricoLoading] = useState(false);
+  const [historicoFiltros, setHistoricoFiltros] = useState({
+    acao: '',
+    entidade: '',
+    dataInicio: '',
+    dataFim: '',
+    buscarTexto: ''
+  });
+  const [historicoPagina, setHistoricoPagina] = useState(1);
+  const [historicoRegistroSelecionado, setHistoricoRegistroSelecionado] = useState<any>(null);
 
   const [botoesGerenciamento, setBotoesGerenciamento] = useState<GerenciamentoButton[]>([
     { id: 'funcoes', titulo: 'Gerenciar Funções da Landing Page', descricao: 'Gerencie as funções exibidas na landing page. Configure quais funções estão ativas e quais são de IA.', icone: <FaCog />, onClick: () => setShowGerenciamentoFuncoes(true), ordem: 1 },
@@ -119,8 +487,79 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
     if (isOpen) {
       carregarUsuarios();
       carregarOrdemBotoesGerenciamento();
+      carregarPlanos();
     }
   }, [isOpen]);
+
+  // Carregar histórico do usuário
+  const carregarHistoricoUsuario = async (usuarioId: number, pagina: number = 1) => {
+    setHistoricoLoading(true);
+    try {
+      const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
+      const token = getToken();
+      const limite = 50;
+      const offset = (pagina - 1) * limite;
+
+      const params = new URLSearchParams({
+        usuarioId: usuarioId.toString(),
+        limite: limite.toString(),
+        offset: offset.toString()
+      });
+
+      if (historicoFiltros.acao) params.append('acao', historicoFiltros.acao);
+      if (historicoFiltros.entidade) params.append('entidade', historicoFiltros.entidade);
+      if (historicoFiltros.dataInicio) params.append('dataInicio', historicoFiltros.dataInicio);
+      if (historicoFiltros.dataFim) params.append('dataFim', historicoFiltros.dataFim);
+      if (historicoFiltros.buscarTexto) params.append('buscarTexto', historicoFiltros.buscarTexto);
+
+      const response = await fetch(`${API_BASE}/api/admin/historico/usuario/${usuarioId}?${params.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setHistoricoUsuario(data.historico);
+        setHistoricoTotal(data.total);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar histórico:', error);
+    } finally {
+      setHistoricoLoading(false);
+    }
+  };
+
+  // Exportar histórico
+  const handleExportarHistorico = async (usuarioId: number) => {
+    try {
+      const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
+      const token = getToken();
+
+      const params = new URLSearchParams({
+        usuarioId: usuarioId.toString()
+      });
+
+      if (historicoFiltros.acao) params.append('acao', historicoFiltros.acao);
+      if (historicoFiltros.entidade) params.append('entidade', historicoFiltros.entidade);
+      if (historicoFiltros.dataInicio) params.append('dataInicio', historicoFiltros.dataInicio);
+      if (historicoFiltros.dataFim) params.append('dataFim', historicoFiltros.dataFim);
+      if (historicoFiltros.buscarTexto) params.append('buscarTexto', historicoFiltros.buscarTexto);
+
+      const url = `${API_BASE}/api/admin/historico/exportar?${params.toString()}`;
+      window.open(url, '_blank');
+    } catch (error) {
+      console.error('Erro ao exportar histórico:', error);
+      await mostrarAlert('Erro', 'Erro ao exportar histórico.');
+    }
+  };
+
+  useEffect(() => {
+    if (usuarioSelecionado) {
+      carregarPlanoUsuario(usuarioSelecionado);
+      carregarHistoricoUsuario(usuarioSelecionado, historicoPagina);
+    }
+  }, [usuarioSelecionado, historicoPagina, historicoFiltros]);
 
   const carregarOrdemBotoesGerenciamento = async () => {
     try {
@@ -175,6 +614,228 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
       console.error('Erro ao carregar usuários:', error);
       await mostrarAlert('Erro', 'Erro ao carregar lista de usuários.');
     }
+  };
+
+  // Obter nível de admin do usuário atual
+  const getCurrentUserAdminLevel = (): 'super_admin' | 'gerente' | 'supervisor' | null => {
+    const user = getUser();
+    // Por enquanto, verificar apenas is_admin. Depois pode ser atualizado para incluir admin_level
+    return user?.is_admin ? 'super_admin' : null; // Assumir super_admin se is_admin for true por enquanto
+  };
+
+  const isSuperAdmin = (): boolean => {
+    return getCurrentUserAdminLevel() === 'super_admin';
+  };
+
+  const isGerenteOuSuper = (): boolean => {
+    const level = getCurrentUserAdminLevel();
+    return level === 'super_admin' || level === 'gerente';
+  };
+
+  // Função para criar usuário
+  const handleCriarUsuario = async (dados: {
+    username: string;
+    email: string;
+    senha?: string;
+    isAdmin: boolean;
+    adminLevel?: 'super_admin' | 'gerente' | 'supervisor' | null;
+    enviarEmailAtivacao: boolean;
+  }) => {
+    try {
+      const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
+      const token = getToken();
+      const response = await fetch(`${API_BASE}/api/admin/usuarios/criar`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(dados),
+      });
+
+      if (response.ok) {
+        await mostrarAlert('Sucesso', 'Usuário criado com sucesso!');
+        await carregarUsuarios();
+        setShowCriarUsuario(false);
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Erro ao criar usuário' }));
+        throw new Error(errorData.error || 'Erro ao criar usuário');
+      }
+    } catch (error: any) {
+      console.error('Erro ao criar usuário:', error);
+      await mostrarAlert('Erro', error.message || 'Erro ao criar usuário.');
+    }
+  };
+
+  // Função para criar administrador
+  const handleCriarAdmin = async (dados: {
+    username: string;
+    email: string;
+    senha: string;
+    adminLevel: 'super_admin' | 'gerente' | 'supervisor';
+  }) => {
+    try {
+      const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
+      const token = getToken();
+      const response = await fetch(`${API_BASE}/api/admin/usuarios/criar-admin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(dados),
+      });
+
+      if (response.ok) {
+        await mostrarAlert('Sucesso', 'Administrador criado com sucesso!');
+        await carregarUsuarios();
+        setShowCriarAdmin(false);
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Erro ao criar administrador' }));
+        throw new Error(errorData.error || 'Erro ao criar administrador');
+      }
+    } catch (error: any) {
+      console.error('Erro ao criar administrador:', error);
+      await mostrarAlert('Erro', error.message || 'Erro ao criar administrador.');
+    }
+  };
+
+  // Carregar planos disponíveis
+  const carregarPlanos = async () => {
+    try {
+      const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
+      const token = getToken();
+      const response = await fetch(`${API_BASE}/api/admin/planos`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPlanosDisponiveis(data);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar planos:', error);
+    }
+  };
+
+  // Carregar plano do usuário
+  const carregarPlanoUsuario = async (usuarioId: number) => {
+    try {
+      const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
+      const token = getToken();
+      const response = await fetch(`${API_BASE}/api/admin/usuarios/${usuarioId}/plano`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPlanoUsuario(data);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar plano do usuário:', error);
+    }
+  };
+
+  // Alterar plano do usuário
+  const handleAlterarPlano = async (usuarioId: number, planoId: number) => {
+    try {
+      const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
+      const token = getToken();
+      const response = await fetch(`${API_BASE}/api/admin/usuarios/${usuarioId}/plano/alterar`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ planoId }),
+      });
+
+      if (response.ok) {
+        await mostrarAlert('Sucesso', 'Plano alterado com sucesso!');
+        await carregarPlanoUsuario(usuarioId);
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Erro ao alterar plano' }));
+        throw new Error(errorData.error || 'Erro ao alterar plano');
+      }
+    } catch (error: any) {
+      console.error('Erro ao alterar plano:', error);
+      await mostrarAlert('Erro', error.message || 'Erro ao alterar plano.');
+    }
+  };
+
+  // Criar novo plano e atribuir ao usuário
+  const handleCriarPlano = async (usuarioId: number, dadosPlano: {
+    nome: string;
+    tipo: 'unico' | 'parcelado' | 'recorrente';
+    valor: number;
+    periodo?: string;
+    stripePriceId?: string;
+  }) => {
+    try {
+      const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
+      const token = getToken();
+      const response = await fetch(`${API_BASE}/api/admin/usuarios/${usuarioId}/plano/criar`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(dadosPlano),
+      });
+
+      if (response.ok) {
+        await mostrarAlert('Sucesso', 'Plano criado e atribuído com sucesso!');
+        await carregarPlanoUsuario(usuarioId);
+        await carregarPlanos();
+        setShowCriarPlano(false);
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Erro ao criar plano' }));
+        throw new Error(errorData.error || 'Erro ao criar plano');
+      }
+    } catch (error: any) {
+      console.error('Erro ao criar plano:', error);
+      await mostrarAlert('Erro', error.message || 'Erro ao criar plano.');
+    }
+  };
+
+  // Função para obter badge de nível de admin
+  const getAdminBadge = (usuario: Usuario) => {
+    if (!usuario.is_admin && !usuario.admin_level) return null;
+    
+    const level = usuario.admin_level || (usuario.is_admin ? 'super_admin' : null);
+    if (!level) return null;
+
+    const badges = {
+      super_admin: { icon: <FaCrown />, label: 'Super Admin', color: '#dc3545' },
+      gerente: { icon: <FaUserTie />, label: 'Gerente', color: '#fd7e14' },
+      supervisor: { icon: <FaUserShield />, label: 'Supervisor', color: '#0d6efd' }
+    };
+
+    const badge = badges[level];
+    if (!badge) return null;
+
+    return (
+      <span
+        className="badge-admin"
+        style={{
+          backgroundColor: badge.color,
+          color: 'white',
+          padding: '4px 8px',
+          borderRadius: '4px',
+          fontSize: '0.75rem',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '4px',
+          marginLeft: '8px'
+        }}
+      >
+        {badge.icon} {badge.label}
+      </span>
+    );
   };
 
   const carregarDetalhesUsuario = async (usuarioId: number) => {
@@ -650,6 +1311,49 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
 
           <div className="admin-usuarios-list">
             <h3 style={{ marginBottom: '15px' }}>Usuários do Sistema</h3>
+            {isGerenteOuSuper() && (
+              <div style={{ marginBottom: '15px', display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={() => {
+                    setShowCriarUsuario(true);
+                    setUsuarioSelecionado(null);
+                    setUsuarioDetalhes(null);
+                  }}
+                  className="btn-primary"
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    fontSize: '0.9rem',
+                    padding: '10px 16px'
+                  }}
+                >
+                  <FaPlus /> Criar Usuário
+                </button>
+                {isSuperAdmin() && (
+                  <button
+                    onClick={() => {
+                      setShowCriarAdmin(true);
+                      setUsuarioSelecionado(null);
+                      setUsuarioDetalhes(null);
+                    }}
+                    className="btn-secondary"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      fontSize: '0.9rem',
+                      padding: '10px 16px'
+                    }}
+                  >
+                    <FaShieldAlt /> Criar Admin
+                  </button>
+                )}
+              </div>
+            )}
             <div style={{ marginBottom: '15px' }}>
               <button
                 onClick={(e) => {
@@ -772,11 +1476,7 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
                     <div className="usuario-info">
                       <FaUser />
                       <span className="usuario-nome">{usuario.username}</span>
-                      {usuario.is_admin && (
-                        <span className="badge-admin">
-                          <FaShieldAlt /> Admin
-                        </span>
-                      )}
+                      {getAdminBadge(usuario)}
                     </div>
                     <div className="usuario-actions" onClick={(e) => e.stopPropagation()}>
                       <button
@@ -930,8 +1630,295 @@ const AdminPanel = ({ isOpen, onClose, onCarregarUsuarioNoSistema }: AdminPanelP
                       })}
                     </div>
                   </div>
+                  {isGerenteOuSuper() && (
+                    <div className="detalhes-section" style={{ marginTop: '20px' }}>
+                      <div className="detalhes-section-header">
+                        <h4>
+                          <FaCreditCard /> Plano e Assinatura
+                        </h4>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                          <button
+                            className="btn-icon btn-add"
+                            onClick={() => setShowCriarPlano(true)}
+                            title="Criar novo plano"
+                          >
+                            <FaPlus /> Criar Plano
+                          </button>
+                        </div>
+                      </div>
+                      <div style={{ padding: '15px', backgroundColor: 'var(--cor-secundaria)', borderRadius: '6px' }}>
+                        {planoUsuario?.plano ? (
+                          <div>
+                            <p><strong>Plano Atual:</strong> {planoUsuario.plano.nome}</p>
+                            <p><strong>Valor:</strong> R$ {planoUsuario.plano.valor.toFixed(2)}</p>
+                            {planoUsuario.plano.periodo && <p><strong>Período:</strong> {planoUsuario.plano.periodo}</p>}
+                            {planoUsuario.assinatura && (
+                              <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--cor-borda)' }}>
+                                <p><strong>Status:</strong> {planoUsuario.assinatura.status}</p>
+                                {planoUsuario.assinatura.current_period_end && (
+                                  <p><strong>Próxima cobrança:</strong> {new Date(planoUsuario.assinatura.current_period_end).toLocaleDateString('pt-BR')}</p>
+                                )}
+                              </div>
+                            )}
+                            <div style={{ marginTop: '15px' }}>
+                              <label style={{ display: 'block', marginBottom: '8px' }}>Alterar Plano:</label>
+                              <select
+                                onChange={(e) => {
+                                  if (e.target.value) {
+                                    handleAlterarPlano(usuarioSelecionado!, parseInt(e.target.value));
+                                  }
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '8px',
+                                  borderRadius: '4px',
+                                  border: '1px solid var(--cor-borda)',
+                                  fontSize: '14px'
+                                }}
+                              >
+                                <option value="">Selecione um plano...</option>
+                                {planosDisponiveis.map(plano => (
+                                  <option key={plano.id} value={plano.id}>
+                                    {plano.nome} - R$ {plano.valor.toFixed(2)} {plano.periodo ? `(${plano.periodo})` : ''}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        ) : (
+                          <div>
+                            <p>Usuário não possui plano ativo.</p>
+                            <div style={{ marginTop: '15px' }}>
+                              <label style={{ display: 'block', marginBottom: '8px' }}>Atribuir Plano:</label>
+                              <select
+                                onChange={(e) => {
+                                  if (e.target.value) {
+                                    handleAlterarPlano(usuarioSelecionado!, parseInt(e.target.value));
+                                  }
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '8px',
+                                  borderRadius: '4px',
+                                  border: '1px solid var(--cor-borda)',
+                                  fontSize: '14px'
+                                }}
+                              >
+                                <option value="">Selecione um plano...</option>
+                                {planosDisponiveis.map(plano => (
+                                  <option key={plano.id} value={plano.id}>
+                                    {plano.nome} - R$ {plano.valor.toFixed(2)} {plano.periodo ? `(${plano.periodo})` : ''}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {isGerenteOuSuper() && (
+                    <div className="detalhes-section" style={{ marginTop: '20px' }}>
+                      <div className="detalhes-section-header">
+                        <h4>
+                          <FaHistory /> Histórico de Uso
+                        </h4>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                          <button
+                            className="btn-icon btn-add"
+                            onClick={() => handleExportarHistorico(usuarioSelecionado!)}
+                            title="Exportar histórico"
+                          >
+                            <FaDownload /> Exportar
+                          </button>
+                        </div>
+                      </div>
+                      <div style={{ padding: '15px', backgroundColor: 'var(--cor-secundaria)', borderRadius: '6px' }}>
+                        {/* Filtros */}
+                        <div style={{ marginBottom: '15px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                          <div>
+                            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.875rem' }}>Ação:</label>
+                            <select
+                              value={historicoFiltros.acao}
+                              onChange={(e) => setHistoricoFiltros({ ...historicoFiltros, acao: e.target.value })}
+                              style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid var(--cor-borda)', fontSize: '0.875rem' }}
+                            >
+                              <option value="">Todas</option>
+                              <option value="criar">Criar</option>
+                              <option value="editar">Editar</option>
+                              <option value="deletar">Deletar</option>
+                              <option value="login">Login</option>
+                              <option value="logout">Logout</option>
+                              <option value="criar_usuario">Criar Usuário</option>
+                              <option value="deletar_usuario">Deletar Usuário</option>
+                              <option value="alterar_plano">Alterar Plano</option>
+                              <option value="alterar_permissao">Alterar Permissão</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.875rem' }}>Entidade:</label>
+                            <select
+                              value={historicoFiltros.entidade}
+                              onChange={(e) => setHistoricoFiltros({ ...historicoFiltros, entidade: e.target.value })}
+                              style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid var(--cor-borda)', fontSize: '0.875rem' }}
+                            >
+                              <option value="">Todas</option>
+                              <option value="item">Item</option>
+                              <option value="categoria">Categoria</option>
+                              <option value="usuario">Usuário</option>
+                              <option value="plano">Plano</option>
+                              <option value="sistema">Sistema</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.875rem' }}>Data Início:</label>
+                            <input
+                              type="date"
+                              value={historicoFiltros.dataInicio}
+                              onChange={(e) => setHistoricoFiltros({ ...historicoFiltros, dataInicio: e.target.value })}
+                              style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid var(--cor-borda)', fontSize: '0.875rem' }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.875rem' }}>Data Fim:</label>
+                            <input
+                              type="date"
+                              value={historicoFiltros.dataFim}
+                              onChange={(e) => setHistoricoFiltros({ ...historicoFiltros, dataFim: e.target.value })}
+                              style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid var(--cor-borda)', fontSize: '0.875rem' }}
+                            />
+                          </div>
+                          <div style={{ gridColumn: '1 / -1' }}>
+                            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.875rem' }}>Buscar:</label>
+                            <input
+                              type="text"
+                              placeholder="Buscar no histórico..."
+                              value={historicoFiltros.buscarTexto}
+                              onChange={(e) => setHistoricoFiltros({ ...historicoFiltros, buscarTexto: e.target.value })}
+                              style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid var(--cor-borda)', fontSize: '0.875rem' }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Tabela de histórico */}
+                        {historicoLoading ? (
+                          <div style={{ textAlign: 'center', padding: '20px' }}>Carregando histórico...</div>
+                        ) : historicoUsuario.length === 0 ? (
+                          <div style={{ textAlign: 'center', padding: '20px', color: 'var(--cor-texto-secundario)' }}>
+                            Nenhum registro de histórico encontrado
+                          </div>
+                        ) : (
+                          <>
+                            <div style={{ overflowX: 'auto', marginBottom: '15px' }}>
+                              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                                <thead>
+                                  <tr style={{ borderBottom: '2px solid var(--cor-borda)', backgroundColor: 'var(--cor-secundaria)' }}>
+                                    <th style={{ padding: '8px', textAlign: 'left' }}>Data/Hora</th>
+                                    <th style={{ padding: '8px', textAlign: 'left' }}>Ação</th>
+                                    <th style={{ padding: '8px', textAlign: 'left' }}>Entidade</th>
+                                    <th style={{ padding: '8px', textAlign: 'left' }}>Detalhes</th>
+                                    <th style={{ padding: '8px', textAlign: 'left' }}>IP</th>
+                                    <th style={{ padding: '8px', textAlign: 'left' }}>Ações</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {historicoUsuario.map((registro) => (
+                                    <tr key={registro.id} style={{ borderBottom: '1px solid var(--cor-borda)' }}>
+                                      <td style={{ padding: '8px' }}>
+                                        {new Date(registro.created_at).toLocaleString('pt-BR')}
+                                      </td>
+                                      <td style={{ padding: '8px' }}>
+                                        <span style={{
+                                          padding: '4px 8px',
+                                          borderRadius: '4px',
+                                          fontSize: '0.75rem',
+                                          backgroundColor: registro.acao === 'deletar' || registro.acao === 'deletar_usuario' ? '#dc3545' :
+                                                          registro.acao === 'criar' || registro.acao === 'criar_usuario' ? '#28a745' :
+                                                          registro.acao === 'editar' || registro.acao === 'alterar_plano' || registro.acao === 'alterar_permissao' ? '#ffc107' :
+                                                          '#0d6efd',
+                                          color: 'white'
+                                        }}>
+                                          {registro.acao}
+                                        </span>
+                                      </td>
+                                      <td style={{ padding: '8px' }}>{registro.entidade || '-'}</td>
+                                      <td style={{ padding: '8px', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {registro.detalhes || '-'}
+                                      </td>
+                                      <td style={{ padding: '8px', fontSize: '0.75rem', color: 'var(--cor-texto-secundario)' }}>
+                                        {registro.ip_address || '-'}
+                                      </td>
+                                      <td style={{ padding: '8px' }}>
+                                        <button
+                                          className="btn-icon"
+                                          onClick={() => setHistoricoRegistroSelecionado(registro)}
+                                          title="Ver detalhes"
+                                          style={{ fontSize: '0.875rem' }}
+                                        >
+                                          <FaEye />
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+
+                            {/* Paginação */}
+                            {historicoTotal > 50 && (
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '15px' }}>
+                                <div style={{ fontSize: '0.875rem', color: 'var(--cor-texto-secundario)' }}>
+                                  Mostrando {((historicoPagina - 1) * 50) + 1} - {Math.min(historicoPagina * 50, historicoTotal)} de {historicoTotal}
+                                </div>
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                  <button
+                                    className="btn-secondary"
+                                    onClick={() => setHistoricoPagina(p => Math.max(1, p - 1))}
+                                    disabled={historicoPagina === 1}
+                                    style={{ padding: '6px 12px', fontSize: '0.875rem' }}
+                                  >
+                                    Anterior
+                                  </button>
+                                  <button
+                                    className="btn-secondary"
+                                    onClick={() => setHistoricoPagina(p => p + 1)}
+                                    disabled={historicoPagina * 50 >= historicoTotal}
+                                    style={{ padding: '6px 12px', fontSize: '0.875rem' }}
+                                  >
+                                    Próxima
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
+            </div>
+          )}
+
+          {!usuarioSelecionado && showCriarUsuario && (
+            <div className="admin-usuario-detalhes">
+              <h3>Criar Novo Usuário</h3>
+              <FormularioCriarUsuario
+                onCancel={() => setShowCriarUsuario(false)}
+                onSubmit={handleCriarUsuario}
+                isGerenteOuSuper={isGerenteOuSuper()}
+                isSuperAdmin={isSuperAdmin()}
+              />
+            </div>
+          )}
+
+          {!usuarioSelecionado && showCriarAdmin && (
+            <div className="admin-usuario-detalhes">
+              <h3>Criar Novo Administrador</h3>
+              <FormularioCriarAdmin
+                onCancel={() => setShowCriarAdmin(false)}
+                onSubmit={handleCriarAdmin}
+              />
             </div>
           )}
         </div>
@@ -1578,6 +2565,22 @@ const EditarCategoriaModal = ({ isOpen, categoriaNome, onClose, onSave }: Editar
             setShowIconeModal(false);
           }}
         />
+      )}
+
+      {showCriarPlano && usuarioSelecionado && (
+        <Modal
+          isOpen={showCriarPlano}
+          onClose={() => setShowCriarPlano(false)}
+          title="Criar Novo Plano"
+        >
+          <FormularioCriarPlano
+            usuarioId={usuarioSelecionado}
+            onCancel={() => setShowCriarPlano(false)}
+            onSubmit={async (dados) => {
+              await handleCriarPlano(usuarioSelecionado, dados);
+            }}
+          />
+        </Modal>
       )}
     </>
   );

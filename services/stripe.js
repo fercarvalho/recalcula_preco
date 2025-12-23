@@ -286,6 +286,92 @@ async function criarSessaoCustomerPortal(customerId, returnUrl) {
     }
 }
 
+// Atualizar plano de uma subscription
+async function atualizarPlanoSubscription(subscriptionId, novoPriceId, aplicarImediatamente = false) {
+    try {
+        if (!stripe) {
+            throw new Error('Stripe não está configurado. Verifique STRIPE_SECRET_KEY no arquivo .env');
+        }
+
+        // Obter subscription atual
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        
+        if (!subscription || subscription.items.data.length === 0) {
+            throw new Error('Subscription não encontrada ou sem items');
+        }
+
+        const subscriptionItemId = subscription.items.data[0].id;
+
+        // Atualizar subscription
+        const updatedSubscription = await stripe.subscriptions.update(subscriptionId, {
+            items: [{
+                id: subscriptionItemId,
+                price: novoPriceId
+            }],
+            proration_behavior: aplicarImediatamente ? 'always_invoice' : 'create_prorations'
+        });
+
+        return updatedSubscription;
+    } catch (error) {
+        console.error('Erro ao atualizar plano da subscription:', error);
+        throw error;
+    }
+}
+
+// Criar novo price no Stripe
+async function criarPrice(nomeProduto, valor, tipo, periodo = null) {
+    try {
+        if (!stripe) {
+            throw new Error('Stripe não está configurado. Verifique STRIPE_SECRET_KEY no arquivo .env');
+        }
+
+        // Buscar ou criar produto
+        let produtoId = null;
+        const produtos = await stripe.products.list({
+            name: nomeProduto,
+            limit: 1
+        });
+
+        if (produtos.data.length > 0) {
+            produtoId = produtos.data[0].id;
+        } else {
+            const produto = await stripe.products.create({
+                name: nomeProduto,
+                description: `Plano ${nomeProduto} - Recalcula Preço`
+            });
+            produtoId = produto.id;
+        }
+
+        // Preparar dados do price
+        const priceData = {
+            product: produtoId,
+            unit_amount: Math.round(valor * 100), // Converter para centavos
+            currency: 'brl'
+        };
+
+        // Se for recorrente, adicionar recurring
+        if (tipo === 'recorrente') {
+            if (!periodo) {
+                throw new Error('Período é obrigatório para planos recorrentes');
+            }
+            priceData.recurring = {
+                interval: periodo === 'anual' ? 'year' : 'month'
+            };
+        }
+
+        // Criar price
+        const price = await stripe.prices.create(priceData);
+
+        return {
+            priceId: price.id,
+            produtoId: produtoId
+        };
+    } catch (error) {
+        console.error('Erro ao criar price no Stripe:', error);
+        throw error;
+    }
+}
+
 module.exports = {
     criarCheckoutAnual,
     criarCheckoutUnico,
@@ -293,6 +379,8 @@ module.exports = {
     obterAssinaturaStripe,
     cancelarAssinatura,
     criarSessaoCustomerPortal,
+    atualizarPlanoSubscription,
+    criarPrice,
     stripe,
 };
 

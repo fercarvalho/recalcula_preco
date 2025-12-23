@@ -5,7 +5,8 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const https = require('https');
 const db = require('./database');
-const { authenticateToken, requireAdmin, requirePayment, generateToken } = require('./middleware/auth');
+const { authenticateToken, requireAdmin, requireSuperAdmin, requireGerenteOuSuper, requirePayment, generateToken } = require('./middleware/auth');
+const { registrarAcao } = require('./middleware/logging');
 const { enviarEmailRecuperacao, enviarEmailRecuperacaoMultiplos, enviarEmailValidacao } = require('./services/email');
 const stripeService = require('./services/stripe');
 
@@ -360,6 +361,19 @@ app.post('/api/auth/login', async (req, res) => {
 
         const token = generateToken(usuario.id);
         
+        // Registrar login no histórico
+        try {
+            await registrarAcao({
+                usuarioId: usuario.id,
+                acao: 'login',
+                entidade: 'sistema',
+                detalhes: `Login realizado com sucesso`,
+                req
+            });
+        } catch (logError) {
+            console.error('Erro ao registrar login no histórico:', logError);
+        }
+        
         res.json({
             token,
             user: {
@@ -402,6 +416,24 @@ app.post('/api/auth/register', async (req, res) => {
         }
         
         const token = generateToken(usuario.id);
+        
+        // Registrar criação de usuário no histórico
+        try {
+            await registrarAcao({
+                usuarioId: usuario.id,
+                acao: 'criar_usuario',
+                entidade: 'usuario',
+                entidadeId: usuario.id,
+                dadosNovos: {
+                    username: usuario.username,
+                    email: usuario.email
+                },
+                detalhes: `Usuário "${usuario.username}" criado via registro`,
+                req
+            });
+        } catch (logError) {
+            console.error('Erro ao registrar criação de usuário no histórico:', logError);
+        }
         
         res.json({
             token,
@@ -3045,13 +3077,64 @@ app.get('/api/admin/usuarios/:id', authenticateToken, requireAdmin, async (req, 
 app.put('/api/admin/usuarios/:id', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
-        const { username, email, senha, is_admin, acesso_especial, acesso_temporario_duracao, acesso_temporario_nivel } = req.body;
+        const { username, email, senha, is_admin, admin_level, acesso_especial, acesso_temporario_duracao, acesso_temporario_nivel } = req.body;
+        
+        // Obter dados anteriores
+        const usuarioAnterior = await db.obterUsuarioPorId(parseInt(id));
         
         const usuario = await db.atualizarUsuario(parseInt(id), username, email, senha, is_admin);
+        
+        // Atualizar admin_level se fornecido
+        if (admin_level !== undefined) {
+            await db.atualizarAdminLevel(parseInt(id), admin_level);
+            usuario.admin_level = admin_level || null;
+        }
         
         // Atualizar acesso especial se fornecido
         if (acesso_especial !== undefined) {
             await db.atualizarAcessoEspecial(parseInt(id), acesso_especial, acesso_temporario_duracao, acesso_temporario_nivel);
+        }
+        
+        // Registrar atualização de usuário no histórico
+        try {
+            const mudancas = [];
+            if (username && username !== usuarioAnterior?.username) {
+                mudancas.push(`username: "${usuarioAnterior?.username}" → "${username}"`);
+            }
+            if (email && email !== usuarioAnterior?.email) {
+                mudancas.push(`email alterado`);
+            }
+            if (is_admin !== undefined && is_admin !== usuarioAnterior?.is_admin) {
+                mudancas.push(`is_admin: ${usuarioAnterior?.is_admin} → ${is_admin}`);
+            }
+            if (admin_level !== undefined && admin_level !== usuarioAnterior?.admin_level) {
+                mudancas.push(`admin_level: "${usuarioAnterior?.admin_level || 'null'}" → "${admin_level || 'null'}"`);
+            }
+            
+            if (mudancas.length > 0) {
+                await registrarAcao({
+                    usuarioId: req.userId,
+                    acao: admin_level !== undefined && admin_level !== usuarioAnterior?.admin_level ? 'alterar_permissao' : 'editar',
+                    entidade: 'usuario',
+                    entidadeId: parseInt(id),
+                    dadosAnteriores: usuarioAnterior ? {
+                        username: usuarioAnterior.username,
+                        email: usuarioAnterior.email,
+                        is_admin: usuarioAnterior.is_admin,
+                        admin_level: usuarioAnterior.admin_level
+                    } : null,
+                    dadosNovos: {
+                        username: usuario.username,
+                        email: usuario.email,
+                        is_admin: usuario.is_admin,
+                        admin_level: admin_level !== undefined ? admin_level : usuarioAnterior?.admin_level
+                    },
+                    detalhes: `Usuário "${usuario.username || usuarioAnterior?.username}" atualizado pelo admin ${req.user.username || req.userId}. Mudanças: ${mudancas.join(', ')}`,
+                    req
+                });
+            }
+        } catch (logError) {
+            console.error('Erro ao registrar atualização de usuário no histórico:', logError);
         }
         
         res.json(usuario);
@@ -3070,11 +3153,494 @@ app.delete('/api/admin/usuarios/:id', authenticateToken, requireAdmin, async (re
             return res.status(400).json({ error: 'Você não pode deletar sua própria conta' });
         }
         
+        // Obter dados do usuário antes de deletar
+        const usuarioParaDeletar = await db.obterUsuarioPorId(parseInt(id));
+        
         const usuario = await db.deletarUsuario(parseInt(id));
+        
+        // Registrar deleção de usuário no histórico
+        try {
+            await registrarAcao({
+                usuarioId: req.userId,
+                acao: 'deletar_usuario',
+                entidade: 'usuario',
+                entidadeId: parseInt(id),
+                dadosAnteriores: usuarioParaDeletar ? {
+                    id: usuarioParaDeletar.id,
+                    username: usuarioParaDeletar.username,
+                    email: usuarioParaDeletar.email,
+                    is_admin: usuarioParaDeletar.is_admin,
+                    admin_level: usuarioParaDeletar.admin_level
+                } : null,
+                detalhes: `Usuário "${usuario.username}" deletado pelo admin ${req.user.username || req.userId}`,
+                req
+            });
+        } catch (logError) {
+            console.error('Erro ao registrar deleção de usuário no histórico:', logError);
+        }
+        
         res.json({ message: `Usuário "${usuario.username}" deletado com sucesso`, usuario });
     } catch (error) {
         console.error('Erro ao deletar usuário:', error);
         res.status(500).json({ error: error.message || 'Erro ao deletar usuário' });
+    }
+});
+
+// Criar usuário (apenas admin)
+app.post('/api/admin/usuarios/criar', authenticateToken, requireGerenteOuSuper, async (req, res) => {
+    try {
+        const { username, email, senha, isAdmin, adminLevel, enviarEmailAtivacao } = req.body;
+        
+        if (!username || !email) {
+            return res.status(400).json({ error: 'Username e email são obrigatórios' });
+        }
+
+        // Validar que apenas Super Admin pode criar admins
+        if (isAdmin && req.adminLevel !== 'super_admin') {
+            return res.status(403).json({ error: 'Apenas Super Administradores podem criar outros administradores' });
+        }
+
+        const usuario = await db.criarUsuarioAdmin(
+            username,
+            email,
+            senha || null,
+            isAdmin || false,
+            adminLevel || null,
+            enviarEmailAtivacao || false
+        );
+
+        // Enviar email de ativação se solicitado
+        if (enviarEmailAtivacao && usuario.tokenAtivacao) {
+            try {
+                // TODO: Criar função de envio de email de ativação
+                // Por enquanto, usar email de validação
+                await enviarEmailValidacao(usuario.email, usuario.tokenAtivacao, usuario.username);
+            } catch (emailError) {
+                console.error('Erro ao enviar email de ativação:', emailError);
+                // Não falhar a criação se o email não for enviado
+            }
+        } else if (!enviarEmailAtivacao) {
+            // Enviar email de validação mesmo se não for ativação
+            try {
+                await enviarEmailValidacao(usuario.email, usuario.tokenValidacao, usuario.username);
+            } catch (emailError) {
+                console.error('Erro ao enviar email de validação:', emailError);
+            }
+        }
+
+        // Registrar criação de usuário no histórico
+        try {
+            await registrarAcao({
+                usuarioId: req.userId,
+                acao: 'criar_usuario',
+                entidade: 'usuario',
+                entidadeId: usuario.id,
+                dadosNovos: {
+                    username: usuario.username,
+                    email: usuario.email,
+                    is_admin: usuario.is_admin,
+                    admin_level: usuario.admin_level
+                },
+                detalhes: `Usuário "${usuario.username}" criado pelo admin ${req.user.username || req.userId}${usuario.is_admin ? ` como ${usuario.admin_level || 'admin'}` : ''}`,
+                req
+            });
+        } catch (logError) {
+            console.error('Erro ao registrar criação de usuário no histórico:', logError);
+        }
+        
+        res.json({
+            message: 'Usuário criado com sucesso',
+            usuario: {
+                id: usuario.id,
+                username: usuario.username,
+                email: usuario.email,
+                is_admin: usuario.is_admin,
+                admin_level: usuario.admin_level
+            }
+        });
+    } catch (error) {
+        console.error('Erro ao criar usuário:', error);
+        res.status(500).json({ error: error.message || 'Erro ao criar usuário' });
+    }
+});
+
+// Criar administrador (apenas Super Admin)
+app.post('/api/admin/usuarios/criar-admin', authenticateToken, requireSuperAdmin, async (req, res) => {
+    try {
+        const { username, email, senha, adminLevel } = req.body;
+        
+        if (!username || !email || !senha || !adminLevel) {
+            return res.status(400).json({ error: 'Username, email, senha e nível de admin são obrigatórios' });
+        }
+
+        if (!['super_admin', 'gerente', 'supervisor'].includes(adminLevel)) {
+            return res.status(400).json({ error: 'Nível de admin inválido. Use: super_admin, gerente ou supervisor' });
+        }
+
+        const usuario = await db.criarUsuarioAdmin(
+            username,
+            email,
+            senha,
+            true, // isAdmin sempre true
+            adminLevel,
+            false // não enviar email de ativação para admins
+        );
+
+        // Registrar criação de administrador no histórico
+        try {
+            await registrarAcao({
+                usuarioId: req.userId,
+                acao: 'criar_usuario',
+                entidade: 'usuario',
+                entidadeId: usuario.id,
+                dadosNovos: {
+                    username: usuario.username,
+                    email: usuario.email,
+                    is_admin: true,
+                    admin_level: adminLevel
+                },
+                detalhes: `Administrador "${usuario.username}" criado como ${adminLevel} pelo Super Admin ${req.user.username || req.userId}`,
+                req
+            });
+        } catch (logError) {
+            console.error('Erro ao registrar criação de administrador no histórico:', logError);
+        }
+        
+        res.json({
+            message: 'Administrador criado com sucesso',
+            usuario: {
+                id: usuario.id,
+                username: usuario.username,
+                email: usuario.email,
+                is_admin: usuario.is_admin,
+                admin_level: usuario.admin_level
+            }
+        });
+    } catch (error) {
+        console.error('Erro ao criar administrador:', error);
+        res.status(500).json({ error: error.message || 'Erro ao criar administrador' });
+    }
+});
+
+// Obter plano atual do usuário
+app.get('/api/admin/usuarios/:id/plano', authenticateToken, requireGerenteOuSuper, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const usuarioId = parseInt(id);
+
+        // Obter assinatura do usuário
+        const assinatura = await db.obterAssinatura(usuarioId);
+        
+        let plano = null;
+        if (assinatura && assinatura.plano_id) {
+            plano = await db.obterPlanoPorId(assinatura.plano_id);
+        }
+
+        res.json({
+            assinatura: assinatura || null,
+            plano: plano || null
+        });
+    } catch (error) {
+        console.error('Erro ao obter plano do usuário:', error);
+        res.status(500).json({ error: error.message || 'Erro ao obter plano do usuário' });
+    }
+});
+
+// Alterar plano do usuário
+app.post('/api/admin/usuarios/:id/plano/alterar', authenticateToken, requireGerenteOuSuper, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { planoId, stripePriceId } = req.body;
+        const usuarioId = parseInt(id);
+
+        if (!planoId && !stripePriceId) {
+            return res.status(400).json({ error: 'planoId ou stripePriceId é obrigatório' });
+        }
+
+        // Obter plano
+        let plano = null;
+        if (planoId) {
+            plano = await db.obterPlanoPorId(planoId);
+        } else if (stripePriceId) {
+            plano = await db.obterPlanoPorStripePriceId(stripePriceId);
+        }
+
+        if (!plano) {
+            return res.status(404).json({ error: 'Plano não encontrado' });
+        }
+
+        if (!stripeService.stripe) {
+            return res.status(500).json({ error: 'Stripe não está configurado' });
+        }
+
+        // Obter assinatura atual do usuário
+        const assinaturaAtual = await db.obterAssinatura(usuarioId);
+        const usuario = await db.obterUsuarioPorId(usuarioId);
+
+        if (assinaturaAtual && assinaturaAtual.stripe_subscription_id) {
+            // Atualizar subscription existente
+            const subscription = await stripeService.stripe.subscriptions.retrieve(assinaturaAtual.stripe_subscription_id);
+            
+            // Atualizar items da subscription
+            await stripeService.stripe.subscriptions.update(assinaturaAtual.stripe_subscription_id, {
+                items: [{
+                    id: subscription.items.data[0].id,
+                    price: plano.stripe_price_id
+                }],
+                metadata: {
+                    user_id: usuarioId.toString(),
+                    plano_id: plano.id.toString(),
+                    plano_tipo: plano.periodo || 'anual'
+                }
+            });
+
+            // Atualizar no banco
+            await db.criarOuAtualizarAssinatura(usuarioId, {
+                stripe_subscription_id: assinaturaAtual.stripe_subscription_id,
+                stripe_customer_id: assinaturaAtual.stripe_customer_id,
+                plano_tipo: plano.periodo || 'anual',
+                plano_id: plano.id,
+                status: assinaturaAtual.status,
+                current_period_start: assinaturaAtual.current_period_start,
+                current_period_end: assinaturaAtual.current_period_end,
+                cancel_at_period_end: assinaturaAtual.cancel_at_period_end || false
+            });
+        } else {
+            // Criar nova subscription
+            // Primeiro, criar ou obter customer no Stripe
+            let customerId = null;
+            if (usuario && usuario.email) {
+                // Verificar se já existe customer
+                const customers = await stripeService.stripe.customers.list({
+                    email: usuario.email,
+                    limit: 1
+                });
+
+                if (customers.data.length > 0) {
+                    customerId = customers.data[0].id;
+                } else {
+                    // Criar novo customer
+                    const customer = await stripeService.stripe.customers.create({
+                        email: usuario.email,
+                        metadata: {
+                            user_id: usuarioId.toString()
+                        }
+                    });
+                    customerId = customer.id;
+                }
+            }
+
+            if (!customerId) {
+                return res.status(400).json({ error: 'Não foi possível criar ou encontrar customer no Stripe' });
+            }
+
+            // Criar subscription
+            const subscription = await stripeService.stripe.subscriptions.create({
+                customer: customerId,
+                items: [{ price: plano.stripe_price_id }],
+                metadata: {
+                    user_id: usuarioId.toString(),
+                    plano_id: plano.id.toString(),
+                    plano_tipo: plano.periodo || 'anual'
+                }
+            });
+
+            // Salvar no banco
+            await db.criarOuAtualizarAssinatura(usuarioId, {
+                stripe_subscription_id: subscription.id,
+                stripe_customer_id: customerId,
+                plano_tipo: plano.periodo || 'anual',
+                plano_id: plano.id,
+                status: subscription.status,
+                current_period_start: new Date(subscription.current_period_start * 1000),
+                current_period_end: new Date(subscription.current_period_end * 1000),
+                cancel_at_period_end: subscription.cancel_at_period_end || false
+            });
+        }
+
+        // Registrar alteração de plano no histórico
+        try {
+            const planoAnterior = assinaturaAtual?.plano_id ? await db.obterPlanoPorId(assinaturaAtual.plano_id) : null;
+            await registrarAcao({
+                usuarioId: req.userId,
+                acao: 'alterar_plano',
+                entidade: 'plano',
+                entidadeId: plano.id,
+                dadosAnteriores: planoAnterior ? {
+                    plano_id: planoAnterior.id,
+                    plano_nome: planoAnterior.nome,
+                    plano_valor: planoAnterior.valor
+                } : null,
+                dadosNovos: {
+                    plano_id: plano.id,
+                    plano_nome: plano.nome,
+                    plano_valor: plano.valor,
+                    usuario_id: usuarioId
+                },
+                detalhes: `Plano do usuário ${usuarioId} alterado de "${planoAnterior?.nome || 'nenhum'}" para "${plano.nome}" pelo admin ${req.user.username || req.userId}`,
+                req
+            });
+        } catch (logError) {
+            console.error('Erro ao registrar alteração de plano no histórico:', logError);
+        }
+
+        res.json({
+            message: 'Plano alterado com sucesso',
+            plano: plano
+        });
+    } catch (error) {
+        console.error('Erro ao alterar plano do usuário:', error);
+        res.status(500).json({ error: error.message || 'Erro ao alterar plano do usuário' });
+    }
+});
+
+// Criar novo plano no Stripe e atribuir ao usuário
+app.post('/api/admin/usuarios/:id/plano/criar', authenticateToken, requireGerenteOuSuper, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { nome, tipo, valor, periodo, stripePriceId } = req.body;
+        const usuarioId = parseInt(id);
+
+        if (!nome || !tipo || valor === undefined) {
+            return res.status(400).json({ error: 'Nome, tipo e valor são obrigatórios' });
+        }
+
+        if (!stripeService.stripe) {
+            return res.status(500).json({ error: 'Stripe não está configurado' });
+        }
+
+        let finalStripePriceId = stripePriceId;
+
+        // Se não forneceu stripePriceId, criar no Stripe
+        if (!finalStripePriceId) {
+            // Primeiro, obter ou criar produto
+            const produtos = await stripeService.stripe.products.list({ limit: 1 });
+            let produtoId = null;
+
+            if (produtos.data.length > 0) {
+                produtoId = produtos.data[0].id;
+            } else {
+                const produto = await stripeService.stripe.products.create({
+                    name: 'Recalcula Preço',
+                    description: 'Planos de assinatura Recalcula Preço'
+                });
+                produtoId = produto.id;
+            }
+
+            // Criar price no Stripe
+            const priceData = {
+                product: produtoId,
+                unit_amount: Math.round(valor * 100), // Converter para centavos
+                currency: 'brl'
+            };
+
+            if (tipo === 'recorrente' && periodo) {
+                priceData.recurring = {
+                    interval: periodo === 'anual' ? 'year' : 'month'
+                };
+            }
+
+            const price = await stripeService.stripe.prices.create(priceData);
+            finalStripePriceId = price.id;
+        }
+
+        // Criar plano no banco
+        const planoData = {
+            nome,
+            tipo,
+            valor,
+            periodo: periodo || null,
+            stripe_price_id: finalStripePriceId,
+            ativo: true
+        };
+
+        const novoPlano = await db.criarPlano(planoData);
+
+        // Atribuir plano ao usuário (criar ou atualizar assinatura)
+        const usuario = await db.obterUsuarioPorId(usuarioId);
+        const assinaturaAtual = await db.obterAssinatura(usuarioId);
+
+        if (assinaturaAtual && assinaturaAtual.stripe_subscription_id) {
+            // Atualizar subscription existente
+            const subscription = await stripeService.stripe.subscriptions.retrieve(assinaturaAtual.stripe_subscription_id);
+            
+            await stripeService.stripe.subscriptions.update(assinaturaAtual.stripe_subscription_id, {
+                items: [{
+                    id: subscription.items.data[0].id,
+                    price: finalStripePriceId
+                }],
+                metadata: {
+                    user_id: usuarioId.toString(),
+                    plano_id: novoPlano.id.toString(),
+                    plano_tipo: periodo || 'anual'
+                }
+            });
+
+            await db.criarOuAtualizarAssinatura(usuarioId, {
+                stripe_subscription_id: assinaturaAtual.stripe_subscription_id,
+                stripe_customer_id: assinaturaAtual.stripe_customer_id,
+                plano_tipo: periodo || 'anual',
+                plano_id: novoPlano.id,
+                status: assinaturaAtual.status,
+                current_period_start: assinaturaAtual.current_period_start,
+                current_period_end: assinaturaAtual.current_period_end,
+                cancel_at_period_end: assinaturaAtual.cancel_at_period_end || false
+            });
+        } else {
+            // Criar nova subscription
+            let customerId = null;
+            if (usuario && usuario.email) {
+                const customers = await stripeService.stripe.customers.list({
+                    email: usuario.email,
+                    limit: 1
+                });
+
+                if (customers.data.length > 0) {
+                    customerId = customers.data[0].id;
+                } else {
+                    const customer = await stripeService.stripe.customers.create({
+                        email: usuario.email,
+                        metadata: {
+                            user_id: usuarioId.toString()
+                        }
+                    });
+                    customerId = customer.id;
+                }
+            }
+
+            if (!customerId) {
+                return res.status(400).json({ error: 'Não foi possível criar ou encontrar customer no Stripe' });
+            }
+
+            const subscription = await stripeService.stripe.subscriptions.create({
+                customer: customerId,
+                items: [{ price: finalStripePriceId }],
+                metadata: {
+                    user_id: usuarioId.toString(),
+                    plano_id: novoPlano.id.toString(),
+                    plano_tipo: periodo || 'anual'
+                }
+            });
+
+            await db.criarOuAtualizarAssinatura(usuarioId, {
+                stripe_subscription_id: subscription.id,
+                stripe_customer_id: customerId,
+                plano_tipo: periodo || 'anual',
+                plano_id: novoPlano.id,
+                status: subscription.status,
+                current_period_start: new Date(subscription.current_period_start * 1000),
+                current_period_end: new Date(subscription.current_period_end * 1000),
+                cancel_at_period_end: subscription.cancel_at_period_end || false
+            });
+        }
+
+        res.json({
+            message: 'Plano criado e atribuído com sucesso',
+            plano: novoPlano
+        });
+    } catch (error) {
+        console.error('Erro ao criar plano:', error);
+        res.status(500).json({ error: error.message || 'Erro ao criar plano' });
     }
 });
 
@@ -3169,6 +3735,191 @@ app.delete('/api/admin/usuarios/:usuarioId/categorias/:nome', authenticateToken,
     }
 });
 
+// ========== ROTAS DE HISTÓRICO DE USO ==========
+
+// Listar histórico com filtros
+app.get('/api/admin/historico', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const {
+            usuarioId,
+            acao,
+            entidade,
+            dataInicio,
+            dataFim,
+            nivelDetalhamento,
+            buscarTexto,
+            limite,
+            offset
+        } = req.query;
+
+        const filtros = {
+            usuarioId: usuarioId ? parseInt(usuarioId) : undefined,
+            acao,
+            entidade,
+            dataInicio: dataInicio ? new Date(dataInicio) : undefined,
+            dataFim: dataFim ? new Date(dataFim) : undefined,
+            nivelDetalhamento,
+            buscarTexto,
+            limite: limite ? parseInt(limite) : 100,
+            offset: offset ? parseInt(offset) : 0
+        };
+
+        const historico = await db.listarHistorico(filtros);
+        const total = await db.contarHistorico(filtros);
+
+        res.json({
+            historico,
+            total,
+            limite: filtros.limite,
+            offset: filtros.offset
+        });
+    } catch (error) {
+        console.error('Erro ao listar histórico:', error);
+        res.status(500).json({ error: error.message || 'Erro ao listar histórico' });
+    }
+});
+
+// Obter detalhes de uma ação específica
+app.get('/api/admin/historico/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const registro = await db.obterHistoricoPorId(parseInt(id));
+
+        if (!registro) {
+            return res.status(404).json({ error: 'Registro de histórico não encontrado' });
+        }
+
+        res.json(registro);
+    } catch (error) {
+        console.error('Erro ao obter histórico por ID:', error);
+        res.status(500).json({ error: error.message || 'Erro ao obter histórico' });
+    }
+});
+
+// Obter histórico de um usuário específico
+app.get('/api/admin/historico/usuario/:usuarioId', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { usuarioId } = req.params;
+        const {
+            acao,
+            entidade,
+            dataInicio,
+            dataFim,
+            limite,
+            offset
+        } = req.query;
+
+        const filtros = {
+            usuarioId: parseInt(usuarioId),
+            acao,
+            entidade,
+            dataInicio: dataInicio ? new Date(dataInicio) : undefined,
+            dataFim: dataFim ? new Date(dataFim) : undefined,
+            limite: limite ? parseInt(limite) : 100,
+            offset: offset ? parseInt(offset) : 0
+        };
+
+        const historico = await db.listarHistorico(filtros);
+        const total = await db.contarHistorico(filtros);
+
+        res.json({
+            historico,
+            total,
+            limite: filtros.limite,
+            offset: filtros.offset
+        });
+    } catch (error) {
+        console.error('Erro ao obter histórico do usuário:', error);
+        res.status(500).json({ error: error.message || 'Erro ao obter histórico do usuário' });
+    }
+});
+
+// Exportar histórico para CSV
+app.get('/api/admin/historico/exportar', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const {
+            usuarioId,
+            acao,
+            entidade,
+            dataInicio,
+            dataFim,
+            nivelDetalhamento,
+            buscarTexto
+        } = req.query;
+
+        const filtros = {
+            usuarioId: usuarioId ? parseInt(usuarioId) : undefined,
+            acao,
+            entidade,
+            dataInicio: dataInicio ? new Date(dataInicio) : undefined,
+            dataFim: dataFim ? new Date(dataFim) : undefined,
+            nivelDetalhamento,
+            buscarTexto,
+            limite: 10000, // Limite maior para exportação
+            offset: 0
+        };
+
+        const historico = await db.listarHistorico(filtros);
+
+        // Gerar CSV
+        const csvHeaders = 'Data/Hora,Usuário,Email,Ação,Entidade,ID Entidade,Detalhes,IP Address,Nível\n';
+        const csvRows = historico.map(reg => {
+            const data = new Date(reg.created_at).toLocaleString('pt-BR');
+            const usuario = reg.username || 'N/A';
+            const email = reg.email || 'N/A';
+            const acao = reg.acao || '';
+            const entidade = reg.entidade || '';
+            const entidadeId = reg.entidade_id || '';
+            const detalhes = (reg.detalhes || '').replace(/"/g, '""'); // Escapar aspas
+            const ip = reg.ip_address || '';
+            const nivel = reg.nivel_detalhamento || '';
+            
+            return `"${data}","${usuario}","${email}","${acao}","${entidade}","${entidadeId}","${detalhes}","${ip}","${nivel}"`;
+        }).join('\n');
+
+        const csv = csvHeaders + csvRows;
+
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="historico_${new Date().toISOString().split('T')[0]}.csv"`);
+        res.send('\ufeff' + csv); // BOM para Excel reconhecer UTF-8
+    } catch (error) {
+        console.error('Erro ao exportar histórico:', error);
+        res.status(500).json({ error: error.message || 'Erro ao exportar histórico' });
+    }
+});
+
+// Obter estatísticas de histórico
+app.get('/api/admin/historico/estatisticas', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { dataInicio, dataFim } = req.query;
+
+        const filtros = {
+            dataInicio: dataInicio ? new Date(dataInicio) : undefined,
+            dataFim: dataFim ? new Date(dataFim) : undefined
+        };
+
+        const estatisticas = await db.obterEstatisticasHistorico(filtros);
+        res.json(estatisticas);
+    } catch (error) {
+        console.error('Erro ao obter estatísticas de histórico:', error);
+        res.status(500).json({ error: error.message || 'Erro ao obter estatísticas' });
+    }
+});
+
+// Arquivar histórico antigo (apenas Super Admin)
+app.post('/api/admin/historico/arquivar', authenticateToken, requireSuperAdmin, async (req, res) => {
+    try {
+        const resultado = await db.arquivarHistorico();
+        res.json({
+            message: 'Histórico arquivado com sucesso',
+            ...resultado
+        });
+    } catch (error) {
+        console.error('Erro ao arquivar histórico:', error);
+        res.status(500).json({ error: error.message || 'Erro ao arquivar histórico' });
+    }
+});
+
 // ========== ROTAS PROTEGIDAS (COM MIDDLEWARE) ==========
 
 // Obter todos os itens
@@ -3241,6 +3992,26 @@ app.post('/api/itens', authenticateToken, requirePayment, async (req, res) => {
         console.log('[API] Chamando db.criarItem com:', { categoria, nome, valor, userId: req.userId });
         const item = await db.criarItem(categoria, nome, valor, req.userId);
         console.log('[API] Item criado com sucesso:', item);
+        
+        // Registrar criação de item no histórico
+        try {
+            await registrarAcao({
+                usuarioId: req.userId,
+                acao: 'criar',
+                entidade: 'item',
+                entidadeId: item.id,
+                dadosNovos: {
+                    nome: item.nome,
+                    valor: item.valor,
+                    categoria: item.categoria
+                },
+                detalhes: `Item "${item.nome}" criado na categoria "${item.categoria}"`,
+                req
+            });
+        } catch (logError) {
+            console.error('Erro ao registrar criação de item no histórico:', logError);
+        }
+        
         res.status(201).json(item);
     } catch (error) {
         console.error('========== ERRO AO CRIAR ITEM ==========');
@@ -3334,11 +4105,38 @@ app.put('/api/itens/:id', authenticateToken, requirePayment, async (req, res) =>
         }
         
         // Caso contrário, atualizar nome, valor e/ou categoria
+        // Obter dados anteriores para histórico
+        const itemAnterior = await db.obterItemPorId(id, req.userId);
+        
         console.log(`[SERVER] Chamando db.atualizarItem(${id}, "${nome}", ${valor}, "${categoria}")`);
         const item = await db.atualizarItem(id, nome, valor, categoria, req.userId);
         if (!item) {
             console.log(`[SERVER] Item não encontrado: ${id}`);
             return res.status(404).json({ error: 'Item não encontrado' });
+        }
+        
+        // Registrar edição de item no histórico
+        try {
+            await registrarAcao({
+                usuarioId: req.userId,
+                acao: 'editar',
+                entidade: 'item',
+                entidadeId: item.id,
+                dadosAnteriores: itemAnterior ? {
+                    nome: itemAnterior.nome,
+                    valor: itemAnterior.valor,
+                    categoria: itemAnterior.categoria
+                } : null,
+                dadosNovos: {
+                    nome: item.nome,
+                    valor: item.valor,
+                    categoria: item.categoria
+                },
+                detalhes: `Item "${item.nome}" editado na categoria "${item.categoria}"`,
+                req
+            });
+        } catch (logError) {
+            console.error('Erro ao registrar edição de item no histórico:', logError);
         }
         
         console.log(`[SERVER] Item atualizado com sucesso:`, item);
@@ -3375,10 +4173,32 @@ app.post('/api/itens/:id/backup', authenticateToken, requirePayment, async (req,
 app.delete('/api/itens/:id', authenticateToken, requirePayment, async (req, res) => {
     try {
         const { id } = req.params;
+        // Obter dados do item antes de deletar para histórico
+        const item = await db.obterItemPorId(id, req.userId);
+        
         const sucesso = await db.deletarItem(id, req.userId);
         
         if (!sucesso) {
             return res.status(404).json({ error: 'Item não encontrado' });
+        }
+        
+        // Registrar deleção de item no histórico
+        try {
+            await registrarAcao({
+                usuarioId: req.userId,
+                acao: 'deletar',
+                entidade: 'item',
+                entidadeId: parseInt(id),
+                dadosAnteriores: item ? {
+                    nome: item.nome,
+                    valor: item.valor,
+                    categoria: item.categoria
+                } : null,
+                detalhes: item ? `Item "${item.nome}" deletado da categoria "${item.categoria}"` : `Item ID ${id} deletado`,
+                req
+            });
+        } catch (logError) {
+            console.error('Erro ao registrar deleção de item no histórico:', logError);
         }
         
         res.json({ message: 'Item deletado com sucesso' });
@@ -3465,6 +4285,24 @@ app.post('/api/categorias', authenticateToken, requirePayment, async (req, res) 
         }
         
         const categoria = await db.criarCategoria(nome.trim(), icone || null, req.userId);
+        
+        // Registrar criação de categoria no histórico
+        try {
+            await registrarAcao({
+                usuarioId: req.userId,
+                acao: 'criar',
+                entidade: 'categoria',
+                dadosNovos: {
+                    nome: categoria,
+                    icone: icone || null
+                },
+                detalhes: `Categoria "${categoria}" criada`,
+                req
+            });
+        } catch (logError) {
+            console.error('Erro ao registrar criação de categoria no histórico:', logError);
+        }
+        
         res.status(201).json(categoria);
     } catch (error) {
         console.error('Erro ao criar categoria:', error);
@@ -3486,6 +4324,21 @@ app.put('/api/categorias/:nomeAntigo', authenticateToken, requirePayment, async 
         const sucesso = await db.renomearCategoria(categoriaNomeAntigo, nomeNovo.trim(), req.userId);
         if (!sucesso) {
             return res.status(404).json({ error: 'Categoria não encontrada' });
+        }
+        
+        // Registrar renomeação de categoria no histórico
+        try {
+            await registrarAcao({
+                usuarioId: req.userId,
+                acao: 'editar',
+                entidade: 'categoria',
+                dadosAnteriores: { nome: categoriaNomeAntigo },
+                dadosNovos: { nome: nomeNovo.trim() },
+                detalhes: `Categoria renomeada de "${categoriaNomeAntigo}" para "${nomeNovo.trim()}"`,
+                req
+            });
+        } catch (logError) {
+            console.error('Erro ao registrar renomeação de categoria no histórico:', logError);
         }
         
         res.json({ message: 'Categoria renomeada com sucesso' });
@@ -3541,6 +4394,20 @@ app.delete('/api/categorias/:nome', authenticateToken, requirePayment, async (re
         console.log(`Tentando deletar categoria: "${categoriaNome}"`);
         
         await db.deletarCategoria(categoriaNome, req.userId);
+        
+        // Registrar deleção de categoria no histórico
+        try {
+            await registrarAcao({
+                usuarioId: req.userId,
+                acao: 'deletar',
+                entidade: 'categoria',
+                dadosAnteriores: { nome: categoriaNome },
+                detalhes: `Categoria "${categoriaNome}" e seus itens deletados`,
+                req
+            });
+        } catch (logError) {
+            console.error('Erro ao registrar deleção de categoria no histórico:', logError);
+        }
         
         res.json({ message: 'Categoria e seus itens deletados com sucesso' });
     } catch (error) {
@@ -4421,7 +5288,15 @@ app.put('/api/admin/rodape/colunas/ordem', authenticateToken, requireAdmin, asyn
 app.get('/api/admin/rodape/:id', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
-        const link = await db.obterRodapeLinkPorId(parseInt(id));
+        const linkId = parseInt(id);
+        
+        // Validar se o ID é um número válido
+        if (isNaN(linkId)) {
+            console.error('ID inválido recebido:', id);
+            return res.status(400).json({ error: 'ID inválido' });
+        }
+        
+        const link = await db.obterRodapeLinkPorId(linkId);
         if (!link) {
             return res.status(404).json({ error: 'Link não encontrado' });
         }
@@ -4546,6 +5421,137 @@ app.delete('/api/admin/rodape/:id', authenticateToken, requireAdmin, async (req,
     } catch (error) {
         console.error('Erro ao deletar link do rodapé:', error);
         res.status(500).json({ error: 'Erro ao deletar link do rodapé' });
+    }
+});
+
+// ========== ROTAS DE CONFIGURAÇÕES DO RODAPÉ ==========
+
+// Obter configuração do rodapé (público)
+app.get('/api/rodape/configuracao/:chave', async (req, res) => {
+    try {
+        const { chave } = req.params;
+        const valor = await db.obterRodapeConfiguracao(chave);
+        // Retornar null se não encontrar, não 404, para facilitar o tratamento no frontend
+        res.json({ chave, valor: valor || null });
+    } catch (error) {
+        console.error('Erro ao obter configuração do rodapé:', error);
+        res.status(500).json({ error: 'Erro ao obter configuração do rodapé' });
+    }
+});
+
+// Atualizar configuração do rodapé (admin)
+app.put('/api/admin/rodape/configuracao/:chave', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { chave } = req.params;
+        const { valor } = req.body;
+        
+        if (valor === undefined || valor === null) {
+            return res.status(400).json({ error: 'O valor é obrigatório' });
+        }
+        
+        const configuracao = await db.atualizarRodapeConfiguracao(chave, String(valor));
+        res.json(configuracao);
+    } catch (error) {
+        console.error('Erro ao atualizar configuração do rodapé:', error);
+        res.status(500).json({ error: 'Erro ao atualizar configuração do rodapé' });
+    }
+});
+
+// ========== ROTAS DE LINKS DO FOOTER-BOTTOM ==========
+
+// Obter links do footer-bottom (público)
+app.get('/api/rodape/footer-links', async (req, res) => {
+    try {
+        const links = await db.obterRodapeFooterLinks();
+        res.json(links);
+    } catch (error) {
+        console.error('Erro ao obter links do footer-bottom:', error);
+        res.status(500).json({ error: 'Erro ao obter links do footer-bottom' });
+    }
+});
+
+// Obter links do footer-bottom (admin)
+app.get('/api/admin/rodape/footer-links', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const links = await db.obterRodapeFooterLinks();
+        res.json(links);
+    } catch (error) {
+        console.error('Erro ao obter links do footer-bottom:', error);
+        res.status(500).json({ error: 'Erro ao obter links do footer-bottom' });
+    }
+});
+
+// Criar link do footer-bottom (admin)
+app.post('/api/admin/rodape/footer-links', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { texto, link, ordem } = req.body;
+        
+        if (!texto || !texto.trim()) {
+            return res.status(400).json({ error: 'O texto é obrigatório' });
+        }
+        
+        const novoLink = await db.criarRodapeFooterLink(texto.trim(), link ? link.trim() : '', ordem);
+        res.json(novoLink);
+    } catch (error) {
+        console.error('Erro ao criar link do footer-bottom:', error);
+        res.status(500).json({ error: 'Erro ao criar link do footer-bottom' });
+    }
+});
+
+// Atualizar link do footer-bottom (admin)
+app.put('/api/admin/rodape/footer-links/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { texto, link } = req.body;
+        
+        if (!texto || !texto.trim()) {
+            return res.status(400).json({ error: 'O texto é obrigatório' });
+        }
+        
+        const linkAtualizado = await db.atualizarRodapeFooterLink(parseInt(id), texto.trim(), link ? link.trim() : '');
+        if (!linkAtualizado) {
+            return res.status(404).json({ error: 'Link não encontrado' });
+        }
+        res.json(linkAtualizado);
+    } catch (error) {
+        console.error('Erro ao atualizar link do footer-bottom:', error);
+        res.status(500).json({ error: 'Erro ao atualizar link do footer-bottom' });
+    }
+});
+
+// Deletar link do footer-bottom (admin)
+app.delete('/api/admin/rodape/footer-links/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const deletado = await db.deletarRodapeFooterLink(parseInt(id));
+        if (!deletado) {
+            return res.status(404).json({ error: 'Link não encontrado' });
+        }
+        res.json({ message: 'Link deletado com sucesso' });
+    } catch (error) {
+        console.error('Erro ao deletar link do footer-bottom:', error);
+        res.status(500).json({ error: 'Erro ao deletar link do footer-bottom' });
+    }
+});
+
+// Atualizar ordem dos links do footer-bottom (admin)
+app.put('/api/admin/rodape/footer-links/ordem', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { linkIds } = req.body;
+        
+        if (!Array.isArray(linkIds)) {
+            return res.status(400).json({ error: 'linkIds deve ser um array' });
+        }
+        
+        if (linkIds.length === 0) {
+            return res.status(400).json({ error: 'linkIds não pode estar vazio' });
+        }
+        
+        await db.atualizarOrdemRodapeFooterLinks(linkIds);
+        res.json({ message: 'Ordem dos links do footer-bottom atualizada com sucesso' });
+    } catch (error) {
+        console.error('Erro ao atualizar ordem dos links do footer-bottom:', error);
+        res.status(500).json({ error: 'Erro ao atualizar ordem dos links do footer-bottom' });
     }
 });
 
@@ -4833,6 +5839,41 @@ db.inicializar().then(() => {
     app.listen(PORT, () => {
         console.log(`Servidor rodando na porta ${PORT}`);
         console.log(`Acesse: http://localhost:${PORT}`);
+        
+        // Iniciar job de arquivamento automático de histórico
+        // Executa diariamente às 2h da manhã
+        const executarArquivamento = async () => {
+            try {
+                console.log('🔄 Iniciando arquivamento automático de histórico...');
+                const resultado = await db.arquivarHistorico();
+                console.log(`✅ Arquivamento concluído: ${resultado.detalhadosArquivados} detalhados, ${resultado.resumidosArquivados} resumidos`);
+            } catch (error) {
+                console.error('❌ Erro ao arquivar histórico automaticamente:', error);
+            }
+        };
+
+        // Executar imediatamente na inicialização (opcional)
+        // executarArquivamento();
+
+        // Agendar execução diária às 2h da manhã
+        const agora = new Date();
+        const proximaExecucao = new Date();
+        proximaExecucao.setHours(2, 0, 0, 0);
+        
+        // Se já passou das 2h hoje, agendar para amanhã
+        if (agora.getHours() >= 2) {
+            proximaExecucao.setDate(proximaExecucao.getDate() + 1);
+        }
+
+        const tempoAteProximaExecucao = proximaExecucao.getTime() - agora.getTime();
+        
+        console.log(`📅 Próximo arquivamento automático agendado para: ${proximaExecucao.toLocaleString('pt-BR')}`);
+
+        setTimeout(() => {
+            executarArquivamento();
+            // Executar a cada 24 horas
+            setInterval(executarArquivamento, 24 * 60 * 60 * 1000);
+        }, tempoAteProximaExecucao);
     });
 }).catch(error => {
     console.error('Erro ao inicializar banco de dados:', error);

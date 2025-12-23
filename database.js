@@ -743,6 +743,11 @@ async function inicializar() {
             await pool.query("ALTER TABLE usuarios ADD COLUMN acesso_temporario_nivel VARCHAR(20)");
         }
         
+        // Adicionar coluna admin_level se não existir (níveis: 'super_admin', 'gerente', 'supervisor')
+        if (!(await colunaExiste('usuarios', 'admin_level'))) {
+            await pool.query("ALTER TABLE usuarios ADD COLUMN admin_level VARCHAR(20) CHECK (admin_level IN ('super_admin', 'gerente', 'supervisor') OR admin_level IS NULL)");
+        }
+        
         // Adicionar colunas de dados pessoais se não existirem
         const colunasDadosPessoais = [
             { nome: 'nome', tipo: 'VARCHAR(255)' },
@@ -1096,6 +1101,80 @@ async function inicializar() {
             ON pagamentos_unicos(usuario_id)
         `);
         
+        // Criar tabela de histórico de uso
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS historico_uso (
+                id SERIAL PRIMARY KEY,
+                usuario_id INTEGER REFERENCES usuarios(id) ON DELETE CASCADE,
+                acao VARCHAR(100) NOT NULL,
+                entidade VARCHAR(100),
+                entidade_id INTEGER,
+                dados_anteriores JSONB,
+                dados_novos JSONB,
+                detalhes TEXT,
+                ip_address VARCHAR(45),
+                user_agent TEXT,
+                nivel_detalhamento VARCHAR(20) DEFAULT 'detalhado' CHECK (nivel_detalhamento IN ('detalhado', 'resumido', 'critico')),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        // Criar índices para performance
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_historico_usuario_id 
+            ON historico_uso(usuario_id)
+        `);
+        
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_historico_created_at 
+            ON historico_uso(created_at DESC)
+        `);
+        
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_historico_acao 
+            ON historico_uso(acao)
+        `);
+        
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_historico_entidade 
+            ON historico_uso(entidade)
+        `);
+        
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_historico_nivel_detalhamento 
+            ON historico_uso(nivel_detalhamento, created_at)
+        `);
+        
+        // Criar tabela de histórico arquivado (para registros antigos)
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS historico_uso_arquivado (
+                id SERIAL PRIMARY KEY,
+                usuario_id INTEGER,
+                acao VARCHAR(100) NOT NULL,
+                entidade VARCHAR(100),
+                entidade_id INTEGER,
+                dados_anteriores JSONB,
+                dados_novos JSONB,
+                detalhes TEXT,
+                ip_address VARCHAR(45),
+                user_agent TEXT,
+                nivel_detalhamento VARCHAR(20) DEFAULT 'resumido',
+                created_at TIMESTAMP,
+                arquivado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        // Criar índices para tabela arquivada
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_historico_arquivado_usuario_id 
+            ON historico_uso_arquivado(usuario_id)
+        `);
+        
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_historico_arquivado_created_at 
+            ON historico_uso_arquivado(created_at DESC)
+        `);
+        
         // Criar tabela de plataformas
         await pool.query(`
             CREATE TABLE IF NOT EXISTS plataformas (
@@ -1425,6 +1504,32 @@ async function inicializar() {
         
         // Inicializar links do rodapé padrão se não existir
         await inicializarRodapePadrao();
+        
+        // Criar tabela de configurações do rodapé
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS rodape_configuracoes (
+                id SERIAL PRIMARY KEY,
+                chave TEXT UNIQUE NOT NULL,
+                valor TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        // Criar tabela de links do footer-bottom
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS rodape_footer_links (
+                id SERIAL PRIMARY KEY,
+                texto TEXT NOT NULL,
+                link TEXT,
+                ordem INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        // Inicializar configurações padrão do rodapé
+        await inicializarRodapeConfiguracoesPadrao();
         
         // Criar tabela de relacionamento plano_beneficios (many-to-many)
         await pool.query(`
@@ -1937,7 +2042,7 @@ async function verificarCredenciais(identificador, senha) {
 async function obterUsuarioPorId(id) {
     try {
         const result = await pool.query(
-            'SELECT id, username, email, is_admin, tutorial_completed, email_validado, nome, sobrenome, telefone, cpf, nome_estabelecimento, cep_residencial, endereco_residencial, numero_residencial, complemento_residencial, cidade_residencial, estado_residencial, pais_residencial, cep_comercial, endereco_comercial, numero_comercial, complemento_comercial, cidade_comercial, estado_comercial, pais_comercial, foto_perfil, data_nascimento, genero, cardapio_publico, cardapio_compartilhar, feedback_beta_enviado, acesso_especial, acesso_temporario_duracao, acesso_temporario_expira_em, acesso_temporario_nivel FROM usuarios WHERE id = $1',
+            'SELECT id, username, email, is_admin, admin_level, tutorial_completed, email_validado, nome, sobrenome, telefone, cpf, nome_estabelecimento, cep_residencial, endereco_residencial, numero_residencial, complemento_residencial, cidade_residencial, estado_residencial, pais_residencial, cep_comercial, endereco_comercial, numero_comercial, complemento_comercial, cidade_comercial, estado_comercial, pais_comercial, foto_perfil, data_nascimento, genero, cardapio_publico, cardapio_compartilhar, feedback_beta_enviado, acesso_especial, acesso_temporario_duracao, acesso_temporario_expira_em, acesso_temporario_nivel FROM usuarios WHERE id = $1',
             [id]
         );
         
@@ -1951,6 +2056,7 @@ async function obterUsuarioPorId(id) {
             username: row.username,
             email: row.email,
             is_admin: row.is_admin || false,
+            admin_level: row.admin_level || null,
             tutorial_completed: row.tutorial_completed || false,
             email_validado: row.email_validado || false,
             nome: row.nome || null,
@@ -2040,7 +2146,7 @@ async function limparTutorialCompleto(usuarioId) {
 async function listarUsuarios() {
     try {
         const result = await pool.query(
-            'SELECT id, username, email, is_admin, created_at, acesso_especial, acesso_temporario_duracao, acesso_temporario_expira_em, acesso_temporario_nivel FROM usuarios ORDER BY created_at DESC'
+            'SELECT id, username, email, is_admin, admin_level, created_at, acesso_especial, acesso_temporario_duracao, acesso_temporario_expira_em, acesso_temporario_nivel FROM usuarios ORDER BY created_at DESC'
         );
         
         return result.rows.map(row => ({
@@ -2048,6 +2154,7 @@ async function listarUsuarios() {
             username: row.username,
             email: row.email,
             is_admin: row.is_admin || false,
+            admin_level: row.admin_level || null,
             created_at: row.created_at,
             acesso_especial: row.acesso_especial || null,
             acesso_temporario_duracao: row.acesso_temporario_duracao || null,
@@ -2101,6 +2208,19 @@ async function atualizarAcessoEspecial(usuarioId, acessoEspecial, duracaoDias, n
         return true;
     } catch (error) {
         console.error('Erro ao atualizar acesso especial:', error);
+        throw error;
+    }
+}
+
+async function atualizarAdminLevel(usuarioId, adminLevel) {
+    try {
+        await pool.query(
+            'UPDATE usuarios SET admin_level = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+            [adminLevel || null, usuarioId]
+        );
+        return true;
+    } catch (error) {
+        console.error('Erro ao atualizar admin_level:', error);
         throw error;
     }
 }
@@ -2581,6 +2701,96 @@ async function criarUsuario(username, email, senha) {
         };
     } catch (error) {
         console.error('Erro ao criar usuário:', error);
+        throw error;
+    }
+}
+
+// Criar usuário pelo admin (com opções de admin e email de ativação)
+async function criarUsuarioAdmin(username, email, senha, isAdmin, adminLevel, enviarEmailAtivacao) {
+    try {
+        // Verificar se o username já existe (case-insensitive)
+        const usuarioExistente = await pool.query(
+            'SELECT id FROM usuarios WHERE LOWER(username) = LOWER($1)',
+            [username.trim()]
+        );
+
+        if (usuarioExistente.rows.length > 0) {
+            throw new Error('Este nome de usuário já está em uso');
+        }
+
+        // Validar username
+        if (username.trim().length < 3) {
+            throw new Error('O nome de usuário deve ter pelo menos 3 caracteres');
+        }
+
+        // Validar que não tenha espaços ou acentos
+        const usernameRegex = /^[a-zA-Z0-9_-]+$/;
+        if (!usernameRegex.test(username.trim())) {
+            throw new Error('O nome de usuário não pode conter espaços ou acentos. Use apenas letras, números, underscore (_) ou hífen (-)');
+        }
+
+        // Validar email
+        if (!email || !email.trim()) {
+            throw new Error('O email é obrigatório');
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email.trim())) {
+            throw new Error('Email inválido');
+        }
+
+        // Se não enviar email de ativação, senha é obrigatória
+        if (!enviarEmailAtivacao && (!senha || senha.length < 6)) {
+            throw new Error('A senha é obrigatória e deve ter pelo menos 6 caracteres');
+        }
+
+        // Validar adminLevel se isAdmin for true
+        if (isAdmin && adminLevel && !['super_admin', 'gerente', 'supervisor'].includes(adminLevel)) {
+            throw new Error('Nível de admin inválido. Use: super_admin, gerente ou supervisor');
+        }
+
+        let senhaHash = null;
+        let tokenAtivacao = null;
+
+        if (enviarEmailAtivacao) {
+            // Gerar senha temporária aleatória
+            const crypto = require('crypto');
+            const senhaTemporaria = crypto.randomBytes(16).toString('hex');
+            senhaHash = await bcrypt.hash(senhaTemporaria, 10);
+            
+            // Criar token de ativação (diferente do token de validação de email)
+            tokenAtivacao = crypto.randomBytes(32).toString('hex');
+        } else {
+            // Criptografar senha fornecida
+            senhaHash = await bcrypt.hash(senha, 10);
+        }
+
+        // Preparar valores para inserção
+        const isAdminValue = isAdmin || false;
+        const adminLevelValue = (isAdmin && adminLevel) ? adminLevel : null;
+
+        // Criar usuário
+        const result = await pool.query(
+            'INSERT INTO usuarios (username, email, senha_hash, is_admin, admin_level, email_validado) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, username, email, is_admin, admin_level',
+            [username.trim(), email.trim().toLowerCase(), senhaHash, isAdminValue, adminLevelValue, !enviarEmailAtivacao] // email_validado = true se não enviar email de ativação
+        );
+
+        const novoUsuario = result.rows[0];
+        
+        // Criar token de validação de email (sempre criar, mesmo que email_validado seja true)
+        const tokenValidacao = await criarTokenValidacaoEmail(novoUsuario.id);
+
+        return {
+            id: novoUsuario.id,
+            username: novoUsuario.username,
+            email: novoUsuario.email,
+            is_admin: novoUsuario.is_admin || false,
+            admin_level: novoUsuario.admin_level || null,
+            tokenValidacao: tokenValidacao, // Token para validação de email
+            tokenAtivacao: tokenAtivacao // Token para ativação de conta (se enviarEmailAtivacao = true)
+        };
+    } catch (error) {
+        console.error('Erro ao criar usuário pelo admin:', error);
         throw error;
     }
 }
@@ -4972,6 +5182,61 @@ async function inicializarRodapePadrao() {
     }
 }
 
+// Inicializar configurações padrão do rodapé
+async function inicializarRodapeConfiguracoesPadrao() {
+    try {
+        // Verificar se já existem configurações
+        const countResult = await pool.query('SELECT COUNT(*) as count FROM rodape_configuracoes');
+        const count = parseInt(countResult.rows[0].count);
+        
+        if (count > 0) {
+            return; // Já existem configurações
+        }
+        
+        // Informações legais padrão
+        const informacoesLegais = `41.748.511 FERNANDO CARVALHO GOMES DOS SANTOS
+
+Rua das Humaitá, no 635 - Londrina, PR
+
+CEP: 86060-060
+
+CNPJ: 41.748.511/0001-73
+
+Este site e os produtos e serviços oferecidos neste site não são associados, afiliados, endossados ou patrocinados pelo Facebook, nem foram revisados, testados ou certificados pelo Facebook.`;
+        
+        await pool.query(
+            'INSERT INTO rodape_configuracoes (chave, valor) VALUES ($1, $2)',
+            ['informacoes_legais', informacoesLegais]
+        );
+        
+        // Texto do copyright padrão
+        await pool.query(
+            'INSERT INTO rodape_configuracoes (chave, valor) VALUES ($1, $2)',
+            ['copyright_texto', 'Recalcula Preço. Todos os direitos reservados.']
+        );
+        
+        console.log('Configurações padrão do rodapé inicializadas');
+        
+        // Inicializar links padrão do footer-bottom
+        const linksPadrao = [
+            { texto: 'Política de Privacidade', link: '#politica-privacidade', ordem: 1 },
+            { texto: 'Gerenciar Cookies', link: '', ordem: 2 }
+        ];
+        
+        for (const link of linksPadrao) {
+            await pool.query(
+                'INSERT INTO rodape_footer_links (texto, link, ordem) VALUES ($1, $2, $3)',
+                [link.texto, link.link || '', link.ordem]
+            );
+        }
+        
+        console.log(`${linksPadrao.length} links do footer-bottom padrão inicializados`);
+    } catch (error) {
+        console.error('Erro ao inicializar configurações padrão do rodapé:', error);
+        // Não lançar erro para não impedir a inicialização
+    }
+}
+
 // Obter todas as perguntas FAQ
 async function obterFAQ() {
     try {
@@ -5355,6 +5620,180 @@ async function atualizarOrdemColunasRodape(nomesColunas) {
         }
     } catch (error) {
         console.error('Erro ao atualizar ordem das colunas do rodapé:', error);
+        throw error;
+    }
+}
+
+// ========== FUNÇÕES DE CONFIGURAÇÕES DO RODAPÉ ==========
+
+// Obter configuração do rodapé por chave
+async function obterRodapeConfiguracao(chave) {
+    try {
+        // Verificar se a tabela existe
+        const tableExists = await pool.query(`
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name = 'rodape_configuracoes'
+            )
+        `);
+        
+        if (!tableExists.rows[0].exists) {
+            console.log('Tabela rodape_configuracoes não existe ainda, retornando null');
+            return null;
+        }
+        
+        const result = await pool.query('SELECT valor FROM rodape_configuracoes WHERE chave = $1', [chave]);
+        if (result.rows.length === 0) {
+            return null;
+        }
+        return result.rows[0].valor;
+    } catch (error) {
+        console.error('Erro ao obter configuração do rodapé:', error);
+        // Se a tabela não existir, retornar null em vez de lançar erro
+        if (error.message && error.message.includes('does not exist')) {
+            return null;
+        }
+        throw error;
+    }
+}
+
+// Atualizar configuração do rodapé
+async function atualizarRodapeConfiguracao(chave, valor) {
+    try {
+        const result = await pool.query(
+            'INSERT INTO rodape_configuracoes (chave, valor) VALUES ($1, $2) ON CONFLICT (chave) DO UPDATE SET valor = $2, updated_at = CURRENT_TIMESTAMP RETURNING *',
+            [chave, valor]
+        );
+        return result.rows[0];
+    } catch (error) {
+        console.error('Erro ao atualizar configuração do rodapé:', error);
+        throw error;
+    }
+}
+
+// ========== FUNÇÕES DE LINKS DO FOOTER-BOTTOM ==========
+
+// Obter todos os links do footer-bottom
+async function obterRodapeFooterLinks() {
+    try {
+        // Verificar se a tabela existe
+        const tableExists = await pool.query(`
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name = 'rodape_footer_links'
+            )
+        `);
+        
+        if (!tableExists.rows[0].exists) {
+            console.log('Tabela rodape_footer_links não existe ainda, retornando array vazio');
+            return [];
+        }
+        
+        const result = await pool.query(
+            'SELECT * FROM rodape_footer_links ORDER BY ordem ASC, id ASC'
+        );
+        return result.rows.map(row => ({
+            id: row.id,
+            texto: row.texto,
+            link: row.link || '',
+            ordem: row.ordem || 0,
+            created_at: row.created_at,
+            updated_at: row.updated_at
+        }));
+    } catch (error) {
+        console.error('Erro ao obter links do footer-bottom:', error);
+        // Se a tabela não existir, retornar array vazio em vez de lançar erro
+        if (error.message && error.message.includes('does not exist')) {
+            return [];
+        }
+        throw error;
+    }
+}
+
+// Criar link do footer-bottom
+async function criarRodapeFooterLink(texto, link, ordem) {
+    try {
+        const result = await pool.query(
+            'INSERT INTO rodape_footer_links (texto, link, ordem) VALUES ($1, $2, $3) RETURNING *',
+            [texto, link || '', ordem || 0]
+        );
+        const row = result.rows[0];
+        return {
+            id: row.id,
+            texto: row.texto,
+            link: row.link || '',
+            ordem: row.ordem || 0,
+            created_at: row.created_at,
+            updated_at: row.updated_at
+        };
+    } catch (error) {
+        console.error('Erro ao criar link do footer-bottom:', error);
+        throw error;
+    }
+}
+
+// Atualizar link do footer-bottom
+async function atualizarRodapeFooterLink(id, texto, link) {
+    try {
+        const result = await pool.query(
+            'UPDATE rodape_footer_links SET texto = $1, link = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 RETURNING *',
+            [texto, link || '', id]
+        );
+        if (result.rows.length === 0) {
+            return null;
+        }
+        const row = result.rows[0];
+        return {
+            id: row.id,
+            texto: row.texto,
+            link: row.link || '',
+            ordem: row.ordem || 0,
+            created_at: row.created_at,
+            updated_at: row.updated_at
+        };
+    } catch (error) {
+        console.error('Erro ao atualizar link do footer-bottom:', error);
+        throw error;
+    }
+}
+
+// Deletar link do footer-bottom
+async function deletarRodapeFooterLink(id) {
+    try {
+        const result = await pool.query('DELETE FROM rodape_footer_links WHERE id = $1', [id]);
+        return result.rowCount > 0;
+    } catch (error) {
+        console.error('Erro ao deletar link do footer-bottom:', error);
+        throw error;
+    }
+}
+
+// Atualizar ordem dos links do footer-bottom
+async function atualizarOrdemRodapeFooterLinks(linkIds) {
+    try {
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            
+            // Atualizar ordem de cada link
+            for (let i = 0; i < linkIds.length; i++) {
+                await client.query(
+                    'UPDATE rodape_footer_links SET ordem = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+                    [i, linkIds[i]]
+                );
+            }
+            
+            await client.query('COMMIT');
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
+    } catch (error) {
+        console.error('Erro ao atualizar ordem dos links do footer-bottom:', error);
         throw error;
     }
 }
@@ -8194,11 +8633,396 @@ async function deletarCookieCategoria(id) {
     return result.rows[0] || null;
 }
 
+// ========== FUNÇÕES DE HISTÓRICO DE USO ==========
+
+// Registrar ação no histórico
+async function registrarAcaoHistorico(dados) {
+    try {
+        const {
+            usuario_id,
+            acao,
+            entidade,
+            entidade_id,
+            dados_anteriores,
+            dados_novos,
+            detalhes,
+            ip_address,
+            user_agent,
+            nivel_detalhamento = 'detalhado'
+        } = dados;
+
+        const result = await pool.query(
+            `INSERT INTO historico_uso (
+                usuario_id, acao, entidade, entidade_id, dados_anteriores, dados_novos,
+                detalhes, ip_address, user_agent, nivel_detalhamento
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+            [
+                usuario_id,
+                acao,
+                entidade || null,
+                entidade_id || null,
+                dados_anteriores ? JSON.stringify(dados_anteriores) : null,
+                dados_novos ? JSON.stringify(dados_novos) : null,
+                detalhes || null,
+                ip_address || null,
+                user_agent || null,
+                nivel_detalhamento
+            ]
+        );
+
+        return result.rows[0];
+    } catch (error) {
+        console.error('Erro ao registrar ação no histórico:', error);
+        throw error;
+    }
+}
+
+// Listar histórico com filtros
+async function listarHistorico(filtros = {}) {
+    try {
+        const {
+            usuarioId,
+            acao,
+            entidade,
+            dataInicio,
+            dataFim,
+            nivelDetalhamento,
+            limite = 100,
+            offset = 0,
+            buscarTexto
+        } = filtros;
+
+        let query = 'SELECT h.*, u.username, u.email FROM historico_uso h LEFT JOIN usuarios u ON h.usuario_id = u.id WHERE 1=1';
+        const params = [];
+        let paramIndex = 1;
+
+        if (usuarioId) {
+            query += ` AND h.usuario_id = $${paramIndex++}`;
+            params.push(usuarioId);
+        }
+
+        if (acao) {
+            query += ` AND h.acao = $${paramIndex++}`;
+            params.push(acao);
+        }
+
+        if (entidade) {
+            query += ` AND h.entidade = $${paramIndex++}`;
+            params.push(entidade);
+        }
+
+        if (dataInicio) {
+            query += ` AND h.created_at >= $${paramIndex++}`;
+            params.push(dataInicio);
+        }
+
+        if (dataFim) {
+            query += ` AND h.created_at <= $${paramIndex++}`;
+            params.push(dataFim);
+        }
+
+        if (nivelDetalhamento) {
+            query += ` AND h.nivel_detalhamento = $${paramIndex++}`;
+            params.push(nivelDetalhamento);
+        }
+
+        if (buscarTexto) {
+            query += ` AND (h.detalhes ILIKE $${paramIndex} OR h.acao ILIKE $${paramIndex} OR h.entidade ILIKE $${paramIndex})`;
+            params.push(`%${buscarTexto}%`);
+            paramIndex++;
+        }
+
+        query += ` ORDER BY h.created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
+        params.push(limite, offset);
+
+        const result = await pool.query(query, params);
+
+        // Converter JSONB para objetos JavaScript
+        return result.rows.map(row => ({
+            ...row,
+            dados_anteriores: row.dados_anteriores ? (typeof row.dados_anteriores === 'string' ? JSON.parse(row.dados_anteriores) : row.dados_anteriores) : null,
+            dados_novos: row.dados_novos ? (typeof row.dados_novos === 'string' ? JSON.parse(row.dados_novos) : row.dados_novos) : null
+        }));
+    } catch (error) {
+        console.error('Erro ao listar histórico:', error);
+        throw error;
+    }
+}
+
+// Contar total de registros de histórico (para paginação)
+async function contarHistorico(filtros = {}) {
+    try {
+        const {
+            usuarioId,
+            acao,
+            entidade,
+            dataInicio,
+            dataFim,
+            nivelDetalhamento,
+            buscarTexto
+        } = filtros;
+
+        let query = 'SELECT COUNT(*) as total FROM historico_uso h WHERE 1=1';
+        const params = [];
+        let paramIndex = 1;
+
+        if (usuarioId) {
+            query += ` AND h.usuario_id = $${paramIndex++}`;
+            params.push(usuarioId);
+        }
+
+        if (acao) {
+            query += ` AND h.acao = $${paramIndex++}`;
+            params.push(acao);
+        }
+
+        if (entidade) {
+            query += ` AND h.entidade = $${paramIndex++}`;
+            params.push(entidade);
+        }
+
+        if (dataInicio) {
+            query += ` AND h.created_at >= $${paramIndex++}`;
+            params.push(dataInicio);
+        }
+
+        if (dataFim) {
+            query += ` AND h.created_at <= $${paramIndex++}`;
+            params.push(dataFim);
+        }
+
+        if (nivelDetalhamento) {
+            query += ` AND h.nivel_detalhamento = $${paramIndex++}`;
+            params.push(nivelDetalhamento);
+        }
+
+        if (buscarTexto) {
+            query += ` AND (h.detalhes ILIKE $${paramIndex} OR h.acao ILIKE $${paramIndex} OR h.entidade ILIKE $${paramIndex})`;
+            params.push(`%${buscarTexto}%`);
+        }
+
+        const result = await pool.query(query, params);
+        return parseInt(result.rows[0].total);
+    } catch (error) {
+        console.error('Erro ao contar histórico:', error);
+        throw error;
+    }
+}
+
+// Obter histórico por ID
+async function obterHistoricoPorId(id) {
+    try {
+        const result = await pool.query(
+            'SELECT h.*, u.username, u.email FROM historico_uso h LEFT JOIN usuarios u ON h.usuario_id = u.id WHERE h.id = $1',
+            [id]
+        );
+
+        if (result.rows.length === 0) {
+            return null;
+        }
+
+        const row = result.rows[0];
+        return {
+            ...row,
+            dados_anteriores: row.dados_anteriores ? (typeof row.dados_anteriores === 'string' ? JSON.parse(row.dados_anteriores) : row.dados_anteriores) : null,
+            dados_novos: row.dados_novos ? (typeof row.dados_novos === 'string' ? JSON.parse(row.dados_novos) : row.dados_novos) : null
+        };
+    } catch (error) {
+        console.error('Erro ao obter histórico por ID:', error);
+        throw error;
+    }
+}
+
+// Arquivar histórico antigo
+async function arquivarHistorico() {
+    try {
+        const agora = new Date();
+        const trintaDiasAtras = new Date(agora);
+        trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
+        
+        const umAnoAtras = new Date(agora);
+        umAnoAtras.setFullYear(umAnoAtras.getFullYear() - 1);
+
+        // 1. Arquivar registros detalhados com mais de 30 dias (exceto críticos)
+        const detalhadosAntigos = await pool.query(
+            `SELECT * FROM historico_uso 
+             WHERE nivel_detalhamento = 'detalhado' 
+             AND created_at < $1`,
+            [trintaDiasAtras]
+        );
+
+        if (detalhadosAntigos.rows.length > 0) {
+            // Inserir na tabela arquivada
+            for (const registro of detalhadosAntigos.rows) {
+                await pool.query(
+                    `INSERT INTO historico_uso_arquivado (
+                        usuario_id, acao, entidade, entidade_id, dados_anteriores, dados_novos,
+                        detalhes, ip_address, user_agent, nivel_detalhamento, created_at
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'resumido', $10)`,
+                    [
+                        registro.usuario_id,
+                        registro.acao,
+                        registro.entidade,
+                        registro.entidade_id,
+                        registro.dados_anteriores,
+                        registro.dados_novos,
+                        registro.detalhes,
+                        registro.ip_address,
+                        registro.user_agent,
+                        registro.created_at
+                    ]
+                );
+            }
+
+            // Deletar da tabela principal
+            await pool.query(
+                `DELETE FROM historico_uso 
+                 WHERE nivel_detalhamento = 'detalhado' 
+                 AND created_at < $1`,
+                [trintaDiasAtras]
+            );
+
+            console.log(`✅ Arquivados ${detalhadosAntigos.rows.length} registros detalhados com mais de 30 dias`);
+        }
+
+        // 2. Arquivar registros resumidos com mais de 1 ano (exceto críticos)
+        const resumidosAntigos = await pool.query(
+            `SELECT * FROM historico_uso 
+             WHERE nivel_detalhamento = 'resumido' 
+             AND created_at < $1`,
+            [umAnoAtras]
+        );
+
+        if (resumidosAntigos.rows.length > 0) {
+            // Inserir na tabela arquivada
+            for (const registro of resumidosAntigos.rows) {
+                await pool.query(
+                    `INSERT INTO historico_uso_arquivado (
+                        usuario_id, acao, entidade, entidade_id, dados_anteriores, dados_novos,
+                        detalhes, ip_address, user_agent, nivel_detalhamento, created_at
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+                    [
+                        registro.usuario_id,
+                        registro.acao,
+                        registro.entidade,
+                        registro.entidade_id,
+                        registro.dados_anteriores,
+                        registro.dados_novos,
+                        registro.detalhes,
+                        registro.ip_address,
+                        registro.user_agent,
+                        registro.nivel_detalhamento,
+                        registro.created_at
+                    ]
+                );
+            }
+
+            // Deletar da tabela principal
+            await pool.query(
+                `DELETE FROM historico_uso 
+                 WHERE nivel_detalhamento = 'resumido' 
+                 AND created_at < $1`,
+                [umAnoAtras]
+            );
+
+            console.log(`✅ Arquivados ${resumidosAntigos.rows.length} registros resumidos com mais de 1 ano`);
+        }
+
+        // Registros críticos permanecem na tabela principal (não são arquivados)
+
+        return {
+            detalhadosArquivados: detalhadosAntigos.rows.length,
+            resumidosArquivados: resumidosAntigos.rows.length
+        };
+    } catch (error) {
+        console.error('Erro ao arquivar histórico:', error);
+        throw error;
+    }
+}
+
+// Obter estatísticas de histórico
+async function obterEstatisticasHistorico(filtros = {}) {
+    try {
+        const { dataInicio, dataFim } = filtros;
+        
+        let whereClause = 'WHERE 1=1';
+        const params = [];
+        let paramIndex = 1;
+
+        if (dataInicio) {
+            whereClause += ` AND created_at >= $${paramIndex++}`;
+            params.push(dataInicio);
+        }
+
+        if (dataFim) {
+            whereClause += ` AND created_at <= $${paramIndex++}`;
+            params.push(dataFim);
+        }
+
+        // Total de ações
+        const totalAcoes = await pool.query(
+            `SELECT COUNT(*) as total FROM historico_uso ${whereClause}`,
+            params
+        );
+
+        // Ações por tipo
+        const acoesPorTipo = await pool.query(
+            `SELECT acao, COUNT(*) as total 
+             FROM historico_uso ${whereClause}
+             GROUP BY acao 
+             ORDER BY total DESC`,
+            params
+        );
+
+        // Ações por entidade
+        const acoesPorEntidade = await pool.query(
+            `SELECT entidade, COUNT(*) as total 
+             FROM historico_uso ${whereClause}
+             WHERE entidade IS NOT NULL
+             GROUP BY entidade 
+             ORDER BY total DESC`,
+            params
+        );
+
+        // Top usuários por atividade
+        const topUsuarios = await pool.query(
+            `SELECT u.id, u.username, u.email, COUNT(h.id) as total_acoes
+             FROM historico_uso h
+             LEFT JOIN usuarios u ON h.usuario_id = u.id
+             ${whereClause.replace('WHERE', 'WHERE h.')}
+             GROUP BY u.id, u.username, u.email
+             ORDER BY total_acoes DESC
+             LIMIT 10`,
+            params
+        );
+
+        // Ações nas últimas 24h
+        const ultimas24h = await pool.query(
+            `SELECT COUNT(*) as total 
+             FROM historico_uso 
+             WHERE created_at >= NOW() - INTERVAL '24 hours'`,
+            []
+        );
+
+        return {
+            totalAcoes: parseInt(totalAcoes.rows[0].total),
+            acoesPorTipo: acoesPorTipo.rows,
+            acoesPorEntidade: acoesPorEntidade.rows,
+            topUsuarios: topUsuarios.rows,
+            ultimas24h: parseInt(ultimas24h.rows[0].total)
+        };
+    } catch (error) {
+        console.error('Erro ao obter estatísticas de histórico:', error);
+        throw error;
+    }
+}
+
 module.exports = {
     inicializar,
     verificarCredenciais,
     obterUsuarioPorId,
     criarUsuario,
+    criarUsuarioAdmin,
     alterarLogin,
     alterarSenha,
     alterarEmail,
@@ -8206,6 +9030,7 @@ module.exports = {
     reiniciarSistema,
     listarUsuarios,
     atualizarUsuario,
+    atualizarAdminLevel,
     atualizarAcessoEspecial,
     deletarUsuario,
     obterTodosItens,
@@ -8294,6 +9119,15 @@ module.exports = {
     obterColunasRodape,
     atualizarOrdemRodapeLinks,
     atualizarOrdemColunasRodape,
+    // Funções de configurações do rodapé
+    obterRodapeConfiguracao,
+    atualizarRodapeConfiguracao,
+    // Funções de links do footer-bottom
+    obterRodapeFooterLinks,
+    criarRodapeFooterLink,
+    atualizarRodapeFooterLink,
+    deletarRodapeFooterLink,
+    atualizarOrdemRodapeFooterLinks,
     // Funções de ordem dos botões de gerenciamento
     obterOrdemGerenciamentos,
     atualizarOrdemGerenciamentos,
@@ -8347,6 +9181,13 @@ module.exports = {
     criarCookieCategoria,
     atualizarCookieCategoria,
     deletarCookieCategoria,
+    // Funções de histórico
+    registrarAcaoHistorico,
+    listarHistorico,
+    contarHistorico,
+    obterHistoricoPorId,
+    arquivarHistorico,
+    obterEstatisticasHistorico,
     fechar
 };
 

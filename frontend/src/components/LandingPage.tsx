@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaCheck, FaChevronDown, FaChevronUp, FaCalculator, FaRocket, FaWhatsapp, FaExclamationTriangle, FaShieldAlt, FaHeart } from 'react-icons/fa';
 import * as FaIcons from 'react-icons/fa';
 import RegistroModal from './RegistroModal';
 import ThemeToggle from './ThemeToggle';
 import CookieBanner, { CookieManageLink } from './CookieBanner';
+import ModalPoliticaPrivacidade from './ModalPoliticaPrivacidade';
+import ModalTermosUso from './ModalTermosUso';
 import { apiService } from '../services/api';
 import type { Funcao } from './GerenciamentoFuncoes';
 import type { Plano } from './GerenciamentoPlanos';
@@ -13,12 +15,17 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
   const [showRegistro, setShowRegistro] = useState(false);
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
   const [showCookieManageModal, setShowCookieManageModal] = useState(false);
+  const [showPoliticaModal, setShowPoliticaModal] = useState(false);
+  const [showTermosModal, setShowTermosModal] = useState(false);
   const [funcoes, setFuncoes] = useState<Funcao[]>([]);
   const [secoesMenuAtivas, setSecoesMenuAtivas] = useState<string[]>([]);
   const [sessoesAtivas, setSessoesAtivas] = useState<string[]>([]);
   const [planos, setPlanos] = useState<Plano[]>([]);
   const [faqs, setFaqs] = useState<Array<{ id: number; pergunta: string; resposta: string }>>([]);
   const [rodapeLinks, setRodapeLinks] = useState<Array<{ id: number; texto: string; link: string; coluna: string; ordem: number; eh_link: boolean }>>([]);
+  const [informacoesLegais, setInformacoesLegais] = useState<string>('');
+  const [copyrightTexto, setCopyrightTexto] = useState<string>('Recalcula Preço. Todos os direitos reservados.');
+  const [footerLinks, setFooterLinks] = useState<Array<{ id: number; texto: string; link: string; ordem: number }>>([]);
 
   const toggleFaq = (id: number) => {
     setFaqOpen(faqOpen === id ? null : id);
@@ -60,6 +67,9 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
     carregarPlanos();
     carregarFAQ();
     carregarRodapeLinks();
+    carregarInformacoesLegais();
+    carregarCopyright();
+    carregarFooterLinks();
     
     // Ouvir atualizações de configuração do menu
     const handleMenuConfigUpdate = () => {
@@ -86,6 +96,9 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
     // Ouvir atualizações de rodapé
     const handleRodapeUpdate = () => {
       carregarRodapeLinks();
+      carregarInformacoesLegais();
+      carregarCopyright();
+      carregarFooterLinks();
     };
     
     // Ouvir atualizações de funções
@@ -107,6 +120,9 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
       carregarPlanos();
       carregarFAQ();
       carregarRodapeLinks();
+      carregarInformacoesLegais();
+      carregarCopyright();
+      carregarFooterLinks();
       carregarFuncoes();
     };
     
@@ -269,6 +285,36 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
     } catch (error) {
       console.error('Erro ao carregar links do rodapé:', error);
       setRodapeLinks([]);
+    }
+  };
+
+  const carregarInformacoesLegais = async () => {
+    try {
+      const info = await apiService.obterRodapeConfiguracao('informacoes_legais');
+      setInformacoesLegais(info || '');
+    } catch (error) {
+      console.error('Erro ao carregar informações legais:', error);
+      setInformacoesLegais('');
+    }
+  };
+
+  const carregarCopyright = async () => {
+    try {
+      const copyright = await apiService.obterRodapeConfiguracao('copyright_texto');
+      setCopyrightTexto(copyright || 'Recalcula Preço. Todos os direitos reservados.');
+    } catch (error) {
+      console.error('Erro ao carregar copyright:', error);
+      setCopyrightTexto('Recalcula Preço. Todos os direitos reservados.');
+    }
+  };
+
+  const carregarFooterLinks = async () => {
+    try {
+      const links = await apiService.obterRodapeFooterLinks();
+      setFooterLinks(links);
+    } catch (error) {
+      console.error('Erro ao carregar links do footer:', error);
+      setFooterLinks([]);
     }
   };
 
@@ -994,19 +1040,87 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
               </>
             )}
           </div>
-          <div className="footer-bottom">
-            <p>&copy; 2026 Recalcula Preço. Todos os direitos reservados.</p>
-            <div className="footer-links-bottom">
-              <a href="#politica-privacidade" onClick={(e) => {
-                e.preventDefault();
-                const element = document.getElementById('politica-privacidade');
-                if (element) {
-                  element.scrollIntoView({ behavior: 'smooth' });
-                }
-              }}>Política de Privacidade</a>
-              <span className="footer-separator">|</span>
-              <CookieManageLink onManageClick={() => setShowCookieManageModal(true)} />
+          
+          {/* Seção Meio - Informações Legais */}
+          {informacoesLegais && (
+            <div className="footer-legal">
+              <div className="footer-legal-content">
+                <div className="footer-legal-info">
+                  {informacoesLegais.split('\n').map((linha, i) => (
+                    <p key={i}>{linha || '\u00A0'}</p>
+                  ))}
+                </div>
+              </div>
             </div>
+          )}
+          
+          {/* Seção Inferior - Copyright + Links */}
+          <div className="footer-bottom">
+            <p>
+              © {new Date().getFullYear()} {copyrightTexto}
+            </p>
+            {footerLinks.length > 0 && (
+              <div className="footer-links-bottom">
+                {footerLinks.map((link, index) => {
+                  const handleLinkClick = (e: React.MouseEvent) => {
+                    if (link.link && link.link.startsWith('#')) {
+                      e.preventDefault();
+                      const targetId = link.link.substring(1);
+                      
+                      // Verificar se é um link especial para abrir modais
+                      if (targetId === 'modal-politica-privacidade') {
+                        setShowPoliticaModal(true);
+                        return;
+                      }
+                      
+                      if (targetId === 'modal-gerenciar-cookies') {
+                        setShowCookieManageModal(true);
+                        return;
+                      }
+                      
+                      if (targetId === 'modal-termos-uso') {
+                        setShowTermosModal(true);
+                        return;
+                      }
+                      
+                      // Links normais para scroll (mantém compatibilidade com links antigos)
+                      if (targetId === 'politica-privacidade') {
+                        const element = document.getElementById('politica-privacidade');
+                        if (element) {
+                          element.scrollIntoView({ behavior: 'smooth' });
+                        }
+                      } else if (targetId === 'gerenciar-cookies' || link.texto.toLowerCase().includes('cookie')) {
+                        setShowCookieManageModal(true);
+                      } else if (targetId === 'termos-uso') {
+                        const element = document.getElementById('termos-uso');
+                        if (element) {
+                          element.scrollIntoView({ behavior: 'smooth' });
+                        }
+                      } else if (targetId) {
+                        document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth' });
+                      }
+                    } else if (!link.link && link.texto.toLowerCase().includes('cookie')) {
+                      // Fallback: se não tiver link mas mencionar cookie, abrir modal
+                      e.preventDefault();
+                      setShowCookieManageModal(true);
+                    }
+                  };
+
+                  return (
+                    <React.Fragment key={link.id}>
+                      {link.link ? (
+                        <a href={link.link} onClick={handleLinkClick}>
+                          {link.texto}
+                        </a>
+                      ) : (
+                        <span>{link.texto}</span>
+                      )}
+                      {index < footerLinks.length - 1 && <span className="footer-separator">|</span>}
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </footer>
@@ -1024,6 +1138,14 @@ const LandingPage = ({ onLoginClick }: { onLoginClick: () => void }) => {
       <CookieBanner 
         showManageModalExternal={showCookieManageModal}
         onManageModalClose={() => setShowCookieManageModal(false)}
+      />
+      <ModalPoliticaPrivacidade
+        isOpen={showPoliticaModal}
+        onClose={() => setShowPoliticaModal(false)}
+      />
+      <ModalTermosUso
+        isOpen={showTermosModal}
+        onClose={() => setShowTermosModal(false)}
       />
     </div>
   );

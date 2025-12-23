@@ -27,6 +27,7 @@ const authenticateToken = async (req, res, next) => {
             req.user = usuario;
             req.userId = usuario.id;
             req.isAdmin = usuario.is_admin || false;
+            req.adminLevel = usuario.admin_level || null;
             next();
         });
     } catch (error) {
@@ -35,10 +36,34 @@ const authenticateToken = async (req, res, next) => {
     }
 };
 
-// Middleware para verificar se é admin
+// Middleware para verificar se é admin (qualquer nível)
 const requireAdmin = (req, res, next) => {
-    if (!req.isAdmin) {
+    if (!req.isAdmin && !req.adminLevel) {
         return res.status(403).json({ error: 'Acesso negado. Apenas administradores podem acessar esta rota.' });
+    }
+    next();
+};
+
+// Middleware para verificar se é Super Admin
+const requireSuperAdmin = (req, res, next) => {
+    if (req.adminLevel !== 'super_admin') {
+        return res.status(403).json({ error: 'Acesso negado. Apenas Super Administradores podem acessar esta rota.' });
+    }
+    next();
+};
+
+// Middleware para verificar se é Gerente ou Super Admin
+const requireGerenteOuSuper = (req, res, next) => {
+    if (req.adminLevel !== 'super_admin' && req.adminLevel !== 'gerente') {
+        return res.status(403).json({ error: 'Acesso negado. Apenas Gerentes ou Super Administradores podem acessar esta rota.' });
+    }
+    next();
+};
+
+// Middleware para verificar se é Supervisor, Gerente ou Super Admin
+const requireSupervisorOuAcima = (req, res, next) => {
+    if (req.adminLevel !== 'super_admin' && req.adminLevel !== 'gerente' && req.adminLevel !== 'supervisor') {
+        return res.status(403).json({ error: 'Acesso negado. Apenas Supervisores, Gerentes ou Super Administradores podem acessar esta rota.' });
     }
     next();
 };
@@ -165,6 +190,9 @@ const generateToken = (userId) => {
 module.exports = {
     authenticateToken,
     requireAdmin,
+    requireSuperAdmin,
+    requireGerenteOuSuper,
+    requireSupervisorOuAcima,
     requirePayment,
     generateToken,
     JWT_SECRET
