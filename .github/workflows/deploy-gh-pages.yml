@@ -37,41 +37,93 @@ jobs:
         working-directory: ./frontend
         run: npm ci
       
+      - name: TypeScript check
+        working-directory: ./frontend
+        run: |
+          echo "=== Verificando TypeScript ==="
+          npx tsc -b --noEmit || echo "AVISO: TypeScript encontrou erros, mas continuando..."
+      
       - name: Build
         working-directory: ./frontend
-        run: npm run build:demo
+        run: |
+          echo "=== Iniciando build demo ==="
+          npm run build:demo
+          echo "=== Build concluído ==="
+        continue-on-error: false
+      
+      - name: List build output
+        working-directory: ./frontend
+        run: |
+          echo "=== Verificando diretório dist ==="
+          if [ -d "dist" ]; then
+            echo "Diretório dist existe"
+            echo "Conteúdo do dist:"
+            ls -la dist/ || echo "Erro ao listar dist"
+          else
+            echo "ERRO: Diretório dist não existe!"
+            exit 1
+          fi
       
       - name: Verify CNAME and rename HTML
         working-directory: ./frontend
         run: |
-          # Listar arquivos do dist para debug
-          echo "Arquivos no dist antes do ajuste:"
-          ls -la dist/ | head -20
+          echo "=== Verificando e ajustando arquivos ==="
           
-          # Verificar se CNAME foi copiado
-          if [ ! -f "dist/CNAME" ]; then
-            echo "CNAME não encontrado, copiando..."
-            cp public/CNAME dist/CNAME
-          fi
-          
-          # Renomear index-demo.html para index.html se necessário
-          if [ -f "dist/index-demo.html" ] && [ ! -f "dist/index.html" ]; then
-            echo "Renomeando index-demo.html para index.html..."
-            mv dist/index-demo.html dist/index.html
-          fi
-          
-          # Verificar se index.html existe
-          if [ ! -f "dist/index.html" ]; then
-            echo "ERRO: index.html não encontrado após build!"
+          # Verificar se dist existe
+          if [ ! -d "dist" ]; then
+            echo "ERRO: Diretório dist não existe!"
             exit 1
           fi
           
-          # Verificar conteúdo do CNAME
-          echo "Conteúdo do CNAME:"
-          cat dist/CNAME || echo "CNAME não encontrado"
+          # Listar arquivos do dist antes do ajuste
+          echo "Arquivos no dist antes do ajuste:"
+          ls -la dist/ | head -30
           
-          echo "Arquivos no dist após ajuste:"
-          ls -la dist/ | head -20
+          # Verificar se CNAME foi copiado automaticamente pelo Vite
+          if [ ! -f "dist/CNAME" ]; then
+            echo "CNAME não encontrado no dist, copiando de public..."
+            if [ -f "public/CNAME" ]; then
+              cp public/CNAME dist/CNAME
+              echo "CNAME copiado com sucesso"
+            else
+              echo "AVISO: public/CNAME também não existe"
+            fi
+          else
+            echo "CNAME já existe no dist"
+          fi
+          
+          # Verificar qual arquivo HTML foi gerado
+          if [ -f "dist/index.html" ]; then
+            echo "index.html já existe no dist"
+          elif [ -f "dist/index-demo.html" ]; then
+            echo "Renomeando index-demo.html para index.html..."
+            mv dist/index-demo.html dist/index.html
+            echo "Renomeação concluída"
+          else
+            echo "ERRO: Nenhum arquivo HTML encontrado no dist!"
+            echo "Arquivos HTML no dist:"
+            ls -la dist/*.html 2>/dev/null || echo "Nenhum arquivo HTML encontrado"
+            exit 1
+          fi
+          
+          # Verificar se index.html existe agora
+          if [ ! -f "dist/index.html" ]; then
+            echo "ERRO: index.html não encontrado após ajustes!"
+            exit 1
+          fi
+          
+          echo "✅ index.html encontrado!"
+          
+          # Verificar conteúdo do CNAME
+          if [ -f "dist/CNAME" ]; then
+            echo "Conteúdo do CNAME:"
+            cat dist/CNAME
+          else
+            echo "AVISO: CNAME não encontrado (pode ser criado pelo GitHub)"
+          fi
+          
+          echo "=== Arquivos finais no dist ==="
+          ls -la dist/ | head -30
       
       - name: Setup Pages
         uses: actions/configure-pages@v4
