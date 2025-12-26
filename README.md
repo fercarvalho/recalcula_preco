@@ -8,7 +8,7 @@ Este projeto é uma homenagem ao **Vira-Latas Hotdogs e Lanches**, lanchonete do
 
 **Feito com ❤️ por Fernando Carvalho**
 
-- 📧 Email: desenvolvimento@fercarvalho.com
+- 📧 Email: contato@fercarvalho.com
 - 📱 Instagram: [@cadeofer](https://instagram.com/cadeofer)
 
 ## ✨ Funcionalidades Principais
@@ -307,7 +307,7 @@ Este projeto está licenciado sob a **Licença MIT - Uso Educacional e Não Come
 - ❌ Criar produtos comerciais que sejam substancialmente similares
 
 **Para uso comercial deste código, entre em contato para licenciamento:**
-📧 Email: desenvolvimento@fercarvalho.com
+📧 Email: contato@fercarvalho.com
 
 Veja o arquivo [LICENSE](LICENSE) para os termos completos da licença.
 
