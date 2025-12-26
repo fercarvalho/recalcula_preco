@@ -195,7 +195,7 @@
 
 .btn-adicionar-linha svg {
   flex-shrink: 0;
-  color: var(--cor-primaria);
-  fill: var(--cor-primaria);
+  color: var(--cor-texto) !important;
+  fill: var(--cor-texto) !important;
 }
 
