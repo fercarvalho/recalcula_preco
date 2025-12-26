@@ -162,6 +162,8 @@
 .btn-primary svg,
 .btn-secondary svg {
   flex-shrink: 0;
+  color: var(--cor-texto) !important;
+  fill: var(--cor-texto) !important;
 }
 
 .btn-primary {

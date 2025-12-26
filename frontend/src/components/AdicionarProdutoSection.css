@@ -66,6 +66,8 @@
 .btn-adicionar-produto svg {
   font-size: 1.15em;
   flex-shrink: 0;
+  color: var(--cor-texto) !important;
+  fill: var(--cor-texto) !important;
 }
 
 .cardapio-section {

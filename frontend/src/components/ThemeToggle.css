@@ -16,6 +16,11 @@
   min-width: 40px;
 }
 
+.theme-toggle-header svg {
+  color: var(--cor-texto) !important;
+  fill: var(--cor-texto) !important;
+}
+
 .theme-toggle-header:hover {
   background: rgba(255, 255, 255, 0.3);
   transform: translateY(-2px);
