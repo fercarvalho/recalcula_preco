@@ -108,6 +108,11 @@
   color: var(--cor-texto);
 }
 
+.drag-handle svg {
+  color: var(--cor-texto) !important;
+  fill: var(--cor-texto) !important;
+}
+
 .drag-handle:hover {
   opacity: 1;
   background: rgba(255, 255, 255, 0.1);
@@ -142,6 +147,8 @@
 
 .categoria-header h3 svg {
   flex-shrink: 0;
+  color: var(--cor-texto) !important;
+  fill: var(--cor-texto) !important;
 }
 
 .btn-icone-categoria {
@@ -166,6 +173,8 @@
 
 .btn-icone-categoria svg {
   flex-shrink: 0;
+  color: var(--cor-texto) !important;
+  fill: var(--cor-texto) !important;
 }
 
 .btn-editar-categoria {
@@ -185,6 +194,8 @@
 
 .btn-editar-categoria svg {
   flex-shrink: 0;
+  color: var(--cor-texto) !important;
+  fill: var(--cor-texto) !important;
 }
 
 .btn-editar-categoria:hover {

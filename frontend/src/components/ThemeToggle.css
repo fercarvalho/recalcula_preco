@@ -58,6 +58,8 @@
 
 .theme-toggle-floating svg {
   font-size: 1.1rem;
+  color: var(--cor-texto) !important;
+  fill: var(--cor-texto) !important;
 }
 
 @media (max-width: 768px) {

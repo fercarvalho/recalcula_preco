@@ -169,9 +169,20 @@ svg {
 .modal-header * svg,
 .modal-header button svg,
 .modal-header .close-modal,
+.categoria-header svg,
+.categoria-header * svg,
+.categoria-header button svg,
+.categoria-header h3 svg,
+.categoria-header .drag-handle svg,
+.categoria-header .btn-icone-categoria svg,
+.categoria-header .btn-editar-categoria svg,
+.theme-toggle-floating svg,
+.theme-toggle-floating * svg,
 header[style*="background"] svg,
 [class*="btn-primary"] svg,
-[class*="btn-primary"] * svg {
+[class*="btn-primary"] * svg,
+[style*="background"][style*="var(--cor-primaria)"] svg,
+[style*="background"][style*="#FF6B35"] svg {
   color: var(--cor-texto) !important;
   fill: var(--cor-texto) !important;
 }
