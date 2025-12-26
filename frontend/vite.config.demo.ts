@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 // Configuração específica para build demo do GitHub Pages
 export default defineConfig({
   plugins: [react()],
-  base: '/recalculapreco/',
+  base: '/recalcula_preco/',
   build: {
     outDir: 'dist',
     rollupOptions: {
