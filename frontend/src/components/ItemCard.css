@@ -165,6 +165,8 @@
 .btn-edit svg,
 .btn-delete svg {
   flex-shrink: 0;
+  color: var(--cor-texto) !important;
+  fill: var(--cor-texto) !important;
 }
 
 .item-drag-handle svg {
