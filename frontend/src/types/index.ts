@@ -4,6 +4,7 @@ export interface Item {
   valor: number;
   valorNovo: number | null;
   valorBackup: number;
+  categoria: string;
   ordem: number;
 }
 

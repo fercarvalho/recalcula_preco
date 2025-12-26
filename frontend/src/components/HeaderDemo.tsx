@@ -9,7 +9,7 @@ interface HeaderDemoProps {
   onOpenAdminPanel?: () => void;
 }
 
-const HeaderDemo = ({ onReiniciarSistema, onReexibirTutorial, onOpenAdminPanel }: HeaderDemoProps) => {
+const HeaderDemo = ({ onReiniciarSistema: _onReiniciarSistema, onReexibirTutorial: _onReexibirTutorial, onOpenAdminPanel }: HeaderDemoProps) => {
   const handleLogout = () => {
     sessionStorage.clear();
     window.location.reload();

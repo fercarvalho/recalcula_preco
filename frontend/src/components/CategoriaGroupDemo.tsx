@@ -5,7 +5,7 @@ import { mostrarAlert, mostrarConfirm, mostrarPrompt } from '../utils/modals';
 import ItemCardDemo from './ItemCardDemo';
 import EditarItemModalDemo from './EditarItemModalDemo';
 import SelecionarIconeModal from './SelecionarIconeModal';
-import { FaGripVertical, FaChevronRight, FaChevronDown, FaPencilAlt, FaPlus, FaTrash, FaFolder } from 'react-icons/fa';
+import { FaChevronRight, FaChevronDown, FaPencilAlt, FaPlus, FaTrash, FaFolder } from 'react-icons/fa';
 import * as FaIcons from 'react-icons/fa';
 import './CategoriaGroup.css';
 

@@ -1,4 +1,3 @@
-import React from 'react';
 import { FaCalculator, FaRocket, FaPalette, FaChartLine } from 'react-icons/fa';
 import './LandingPage.css';
 

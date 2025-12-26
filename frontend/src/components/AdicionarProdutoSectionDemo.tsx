@@ -11,8 +11,8 @@ interface AdicionarProdutoSectionDemoProps {
 }
 
 const AdicionarProdutoSectionDemo = ({
-  categorias,
-  onItemAdded,
+  categorias: _categorias,
+  onItemAdded: _onItemAdded,
   onOpenPlataformas,
   onOpenPainelAdmin,
   onOpenAdicionarCategoria,

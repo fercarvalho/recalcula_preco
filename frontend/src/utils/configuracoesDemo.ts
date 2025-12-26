@@ -1,4 +1,4 @@
-import { sessionStorageService, type ConfiguracoesDemo } from '../services/sessionStorage';
+import type { ConfiguracoesDemo } from '../services/sessionStorage';
 
 export const aplicarConfiguracoesDemo = (config: ConfiguracoesDemo) => {
   const root = document.documentElement;

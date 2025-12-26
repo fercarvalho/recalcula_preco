@@ -1,4 +1,4 @@
-import type { Item, ItensPorCategoria, Categoria } from '../types';
+import type { Item, ItensPorCategoria } from '../types';
 
 export interface Plataforma {
   id: number;
@@ -103,7 +103,7 @@ export const sessionStorageService = {
     this.salvarItens(itens);
   },
 
-  atualizarValorNovo(id: number, valorNovo: number): void {
+  atualizarValorNovo(id: number, valorNovo: number | null): void {
     const itens = this.obterTodosItens();
     for (const categoria in itens) {
       const item = itens[categoria].find(i => i.id === id);
@@ -147,7 +147,7 @@ export const sessionStorageService = {
     return Object.keys(itens);
   },
 
-  criarCategoria(nome: string, icone?: string | null): void {
+  criarCategoria(nome: string, _icone?: string | null): void {
     const itens = this.obterTodosItens();
     if (!itens[nome]) {
       itens[nome] = [];

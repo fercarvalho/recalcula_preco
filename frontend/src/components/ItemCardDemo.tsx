@@ -87,7 +87,8 @@ const ItemCardDemo = ({ item, isSelected, onToggleSelect, onEdit, onDelete, onIt
       sessionStorageService.atualizarItem(item.id, { nome: nomeItem, valor: valorNumerico });
       
       if (item.valorNovo !== undefined && item.valorNovo !== null) {
-        sessionStorageService.atualizarValorNovo(item.id, null);
+        // Resetar valorNovo para null usando atualizarItem
+        sessionStorageService.atualizarItem(item.id, { valorNovo: null });
       }
       
       if (valorInputRef.current) {
