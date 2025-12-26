@@ -1221,6 +1221,8 @@
   font-size: 4rem;
   margin-bottom: 1rem;
   opacity: 0.9;
+  color: var(--cor-primaria);
+  transition: color 0.3s ease;
 }
 
 .cta-final-content h2 {

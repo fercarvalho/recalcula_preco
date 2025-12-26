@@ -151,3 +151,37 @@ select.form-input-dark {
   color: var(--cor-texto-secundario) !important;
   margin: 0;
 }
+
+/* Garantir que ícones SVG (react-icons) usem as cores do tema */
+svg {
+  fill: currentColor;
+  color: inherit;
+  transition: color 0.3s ease, fill 0.3s ease;
+}
+
+/* Ícones que não têm classe específica devem herdar a cor do texto do elemento pai */
+svg:not(.hero-icon):not(.beneficio-icon):not(.cta-icon):not([class*="icon"]) {
+  color: currentColor;
+}
+
+/* Garantir que ícones dentro de elementos com cor definida usem currentColor */
+.beneficio-icon svg,
+.hero-icon svg,
+.cta-icon svg {
+  fill: currentColor;
+  color: inherit;
+}
+
+/* Ícones dentro de textos devem herdar a cor do texto */
+p svg,
+span svg,
+strong svg,
+h1 svg,
+h2 svg,
+h3 svg,
+h4 svg,
+h5 svg,
+h6 svg {
+  color: currentColor;
+  fill: currentColor;
+}

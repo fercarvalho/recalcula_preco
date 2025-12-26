@@ -23,18 +23,21 @@
 .busca-icone-icon {
   position: absolute;
   left: 15px;
-  color: #666;
+  color: var(--cor-texto-secundario);
   font-size: 1.2em;
   pointer-events: none;
+  transition: color 0.3s ease;
 }
 
 .busca-icone-input {
   width: 100%;
   padding: 12px 15px 12px 45px;
-  border: 2px solid #ddd;
+  border: 2px solid var(--cor-borda);
   border-radius: 8px;
   font-size: 1em;
-  transition: border-color 0.3s;
+  background: var(--cor-input-fundo);
+  color: var(--cor-input-texto);
+  transition: border-color 0.3s ease, background-color 0.3s ease, color 0.3s ease;
 }
 
 .busca-icone-input:focus {
@@ -46,7 +49,7 @@
 .icones-sem-resultado {
   text-align: center;
   padding: 40px 20px;
-  color: #666;
+  color: var(--cor-texto-secundario);
   font-style: italic;
 }
 
@@ -65,25 +68,25 @@
   align-items: center;
   justify-content: center;
   padding: 15px;
-  border: 2px solid #e9ecef;
+  border: 2px solid var(--cor-borda);
   border-radius: 8px;
-  background: white;
+  background: var(--cor-card-fundo);
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
   gap: 8px;
   min-height: 100px;
 }
 
 .icone-option:hover {
   border-color: var(--cor-primaria);
-  background: #fff3f0;
+  background: var(--cor-hover);
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 8px var(--cor-sombra);
 }
 
 .icone-option.selected {
   border-color: var(--cor-primaria);
-  background: color-mix(in srgb, var(--cor-primaria) 10%, white);
+  background: color-mix(in srgb, var(--cor-primaria) 10%, var(--cor-card-fundo));
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--cor-primaria) 20%, transparent);
 }
 
@@ -99,10 +102,11 @@
 
 .icone-nome {
   font-size: 0.75em;
-  color: #666;
+  color: var(--cor-texto-secundario);
   text-align: center;
   word-break: break-word;
   max-width: 100%;
+  transition: color 0.3s ease;
 }
 
 .icone-option.selected .icone-nome {
