@@ -159,6 +159,31 @@ svg {
   transition: color 0.3s ease, fill 0.3s ease;
 }
 
+/* Ícones dentro de elementos com fundo laranja (cor primária) devem ser brancos para contraste */
+.btn-primary svg,
+.btn-primary button svg,
+.btn-primary * svg,
+.btn-toggle-multiplo.active svg,
+.btn-toggle-multiplo.active * svg,
+.modal-header svg,
+.modal-header * svg,
+.modal-header button svg,
+header[style*="background"] svg,
+[class*="btn-primary"] svg,
+[class*="btn-primary"] * svg {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+}
+
+/* Garantir que todos os elementos dentro do modal-header usem cor branca (incluindo ícones) */
+.modal-header svg,
+.modal-header * svg,
+.modal-header button svg,
+.modal-header .close-modal {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+}
+
 /* Ícones que não têm classe específica devem usar a cor primária (laranja) */
 svg:not(.hero-icon):not(.beneficio-icon):not(.cta-icon):not([class*="icon"]) {
   color: var(--cor-primaria);
@@ -173,7 +198,7 @@ svg:not(.hero-icon):not(.beneficio-icon):not(.cta-icon):not([class*="icon"]) {
   color: inherit;
 }
 
-/* Ícones dentro de textos devem usar a cor primária (laranja) */
+/* Ícones dentro de textos devem usar a cor primária (laranja), exceto se estiverem em fundo laranja */
 p svg,
 span svg,
 strong svg,
