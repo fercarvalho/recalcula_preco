@@ -159,9 +159,10 @@ svg {
   transition: color 0.3s ease, fill 0.3s ease;
 }
 
-/* Ícones que não têm classe específica devem herdar a cor do texto do elemento pai */
+/* Ícones que não têm classe específica devem usar a cor primária (laranja) */
 svg:not(.hero-icon):not(.beneficio-icon):not(.cta-icon):not([class*="icon"]) {
-  color: currentColor;
+  color: var(--cor-primaria);
+  fill: var(--cor-primaria);
 }
 
 /* Garantir que ícones dentro de elementos com cor definida usem currentColor */
@@ -172,7 +173,7 @@ svg:not(.hero-icon):not(.beneficio-icon):not(.cta-icon):not([class*="icon"]) {
   color: inherit;
 }
 
-/* Ícones dentro de textos devem herdar a cor do texto */
+/* Ícones dentro de textos devem usar a cor primária (laranja) */
 p svg,
 span svg,
 strong svg,
@@ -182,6 +183,6 @@ h3 svg,
 h4 svg,
 h5 svg,
 h6 svg {
-  color: currentColor;
-  fill: currentColor;
+  color: var(--cor-primaria);
+  fill: var(--cor-primaria);
 }
