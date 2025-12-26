@@ -159,7 +159,7 @@ svg {
   transition: color 0.3s ease, fill 0.3s ease;
 }
 
-/* Ícones dentro de elementos com fundo laranja (cor primária) devem ser brancos para contraste */
+/* Ícones dentro de elementos com fundo laranja (cor primária) devem usar a cor do texto do tema */
 .btn-primary svg,
 .btn-primary button svg,
 .btn-primary * svg,
@@ -168,20 +168,12 @@ svg {
 .modal-header svg,
 .modal-header * svg,
 .modal-header button svg,
+.modal-header .close-modal,
 header[style*="background"] svg,
 [class*="btn-primary"] svg,
 [class*="btn-primary"] * svg {
-  color: #ffffff !important;
-  fill: #ffffff !important;
-}
-
-/* Garantir que todos os elementos dentro do modal-header usem cor branca (incluindo ícones) */
-.modal-header svg,
-.modal-header * svg,
-.modal-header button svg,
-.modal-header .close-modal {
-  color: #ffffff !important;
-  fill: #ffffff !important;
+  color: var(--cor-texto) !important;
+  fill: var(--cor-texto) !important;
 }
 
 /* Ícones que não têm classe específica devem usar a cor primária (laranja) */
