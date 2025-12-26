@@ -28,19 +28,19 @@ const HeaderDemo = ({ onReiniciarSistema: _onReiniciarSistema, onReexibirTutoria
 
   // Ouvir atualizações de configuração
   useEffect(() => {
-    const handleConfigUpdate = () => {
-      const config = sessionStorageService.obterConfiguracoes();
-      if (config.logoUrl) {
+    const handleConfigUpdate = (e: CustomEvent) => {
+      const config = e.detail?.config || sessionStorageService.obterConfiguracoes();
+      if (config?.logoUrl) {
         setLogoSrc(config.logoUrl);
       } else {
         setLogoSrc('/logo_nova.png');
       }
     };
     
-    window.addEventListener('config-updated', handleConfigUpdate);
+    window.addEventListener('config-updated-demo', handleConfigUpdate as EventListener);
     
     return () => {
-      window.removeEventListener('config-updated', handleConfigUpdate);
+      window.removeEventListener('config-updated-demo', handleConfigUpdate as EventListener);
     };
   }, []);
 

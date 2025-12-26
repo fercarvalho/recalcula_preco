@@ -8,7 +8,7 @@
     <script>
       // Aplicar tema antes do React carregar para evitar flash
       (function() {
-        const savedTheme = sessionStorage.getItem('theme-preference');
+        const savedTheme = localStorage.getItem('theme-preference');
         if (savedTheme === 'light' || savedTheme === 'dark') {
           document.documentElement.setAttribute('data-theme', savedTheme);
         } else {
