@@ -198,7 +198,6 @@ function AppBasic() {
             }
           }}
           onReexibirTutorial={() => {}}
-          onOpenAdminPanel={() => setShowPainelAdmin(true)}
         />
         
         <div className="main-content">

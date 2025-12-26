@@ -6,10 +6,9 @@ import './Header.css';
 interface HeaderDemoProps {
   onReiniciarSistema: () => void;
   onReexibirTutorial: () => void;
-  onOpenAdminPanel?: () => void;
 }
 
-const HeaderDemo = ({ onReiniciarSistema: _onReiniciarSistema, onReexibirTutorial: _onReexibirTutorial, onOpenAdminPanel }: HeaderDemoProps) => {
+const HeaderDemo = ({ onReiniciarSistema: _onReiniciarSistema, onReexibirTutorial: _onReexibirTutorial }: HeaderDemoProps) => {
   const handleLogout = () => {
     sessionStorage.clear();
     window.location.reload();
@@ -72,24 +71,13 @@ const HeaderDemo = ({ onReiniciarSistema: _onReiniciarSistema, onReexibirTutoria
         <div className="header-user">
           <div className="header-actions">
             <ThemeToggle variant="header" />
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-              {onOpenAdminPanel && (
-                <button
-                  onClick={onOpenAdminPanel}
-                  className="btn-secondary"
-                  style={{ padding: '8px 16px' }}
-                >
-                  Personalizar
-                </button>
-              )}
-              <button
-                onClick={handleLogout}
-                className="btn-secondary"
-                style={{ padding: '8px 16px' }}
-              >
-                Sair
-              </button>
-            </div>
+            <button
+              onClick={handleLogout}
+              className="btn-secondary"
+              style={{ padding: '8px 16px' }}
+            >
+              Sair
+            </button>
           </div>
         </div>
       </div>
