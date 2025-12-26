@@ -10,6 +10,7 @@ interface LoginBasicProps {
 const SENHA_PADRAO = 'demo123'; // Senha padrão para demo
 
 const LoginBasic = ({ onLoginSuccess }: LoginBasicProps) => {
+  const [username, setUsername] = useState('');
   const [senha, setSenha] = useState('');
   const [showSenha, setShowSenha] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -17,8 +18,8 @@ const LoginBasic = ({ onLoginSuccess }: LoginBasicProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!senha.trim()) {
-      await mostrarAlert('Erro', 'Por favor, digite a senha.');
+    if (!username.trim() || !senha.trim()) {
+      await mostrarAlert('Erro', 'Por favor, preencha todos os campos.');
       return;
     }
 
@@ -58,7 +59,7 @@ const LoginBasic = ({ onLoginSuccess }: LoginBasicProps) => {
         }}>
           <strong>⚠️ Versão Demo</strong>
           <p style={{ margin: '8px 0 0 0' }}>
-            <strong>Senha padrão:</strong> <code style={{ background: 'rgba(0,0,0,0.3)', padding: '2px 6px', borderRadius: '4px' }}>{SENHA_PADRAO}</code>
+            <strong>Usuário:</strong> Qualquer valor | <strong>Senha:</strong> <code style={{ background: 'rgba(0,0,0,0.3)', padding: '2px 6px', borderRadius: '4px' }}>{SENHA_PADRAO}</code>
           </p>
           <p style={{ margin: '4px 0 0 0', fontSize: '12px', opacity: 0.9 }}>
             Todos os dados serão perdidos ao fechar o navegador.
@@ -66,6 +67,19 @@ const LoginBasic = ({ onLoginSuccess }: LoginBasicProps) => {
         </div>
 
         <form onSubmit={handleSubmit} className="login-form">
+          <div className="form-group">
+            <label htmlFor="username">Usuário ou Email:</label>
+            <input
+              id="username"
+              type="text"
+              className="form-input form-input-dark"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Digite seu usuário ou email"
+              autoFocus
+              disabled={loading}
+            />
+          </div>
           <div className="form-group">
             <label htmlFor="senha">Senha:</label>
             <div className="password-input-wrapper">
@@ -76,7 +90,6 @@ const LoginBasic = ({ onLoginSuccess }: LoginBasicProps) => {
                 value={senha}
                 onChange={(e) => setSenha(e.target.value)}
                 placeholder="Digite a senha padrão"
-                autoFocus
                 disabled={loading}
               />
               <button
