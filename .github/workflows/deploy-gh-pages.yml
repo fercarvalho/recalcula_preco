@@ -41,6 +41,38 @@ jobs:
         working-directory: ./frontend
         run: npm run build:demo
       
+      - name: Verify CNAME and rename HTML
+        working-directory: ./frontend
+        run: |
+          # Listar arquivos do dist para debug
+          echo "Arquivos no dist antes do ajuste:"
+          ls -la dist/ | head -20
+          
+          # Verificar se CNAME foi copiado
+          if [ ! -f "dist/CNAME" ]; then
+            echo "CNAME não encontrado, copiando..."
+            cp public/CNAME dist/CNAME
+          fi
+          
+          # Renomear index-demo.html para index.html se necessário
+          if [ -f "dist/index-demo.html" ] && [ ! -f "dist/index.html" ]; then
+            echo "Renomeando index-demo.html para index.html..."
+            mv dist/index-demo.html dist/index.html
+          fi
+          
+          # Verificar se index.html existe
+          if [ ! -f "dist/index.html" ]; then
+            echo "ERRO: index.html não encontrado após build!"
+            exit 1
+          fi
+          
+          # Verificar conteúdo do CNAME
+          echo "Conteúdo do CNAME:"
+          cat dist/CNAME || echo "CNAME não encontrado"
+          
+          echo "Arquivos no dist após ajuste:"
+          ls -la dist/ | head -20
+      
       - name: Setup Pages
         uses: actions/configure-pages@v4
       

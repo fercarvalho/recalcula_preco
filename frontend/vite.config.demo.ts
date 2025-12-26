@@ -10,9 +10,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     rollupOptions: {
-      input: {
-        main: './index-demo.html',
-      },
+      input: './index-demo.html', // Sem chave para gerar index.html
       output: {
         manualChunks: (id) => {
           // Separar node_modules em chunks específicos
