@@ -1,145 +1,173 @@
-import { FaCalculator, FaRocket, FaPalette, FaChartLine } from 'react-icons/fa';
+import { FaCalculator, FaRocket, FaPalette, FaChartLine, FaHeart } from 'react-icons/fa';
+import ThemeToggle from './ThemeToggle';
 import './LandingPage.css';
 
 const LandingPageBasic = ({ onStartClick }: { onStartClick: () => void }) => {
   return (
-    <div className="landing-page-basic" style={{
-      minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      background: 'var(--cor-fundo)',
-      color: 'var(--cor-texto)',
-    }}>
-      <header className="landing-header" style={{
-        padding: '60px 20px',
-        textAlign: 'center',
-        background: 'linear-gradient(135deg, var(--cor-primaria) 0%, rgba(255, 107, 53, 0.8) 100%)',
-      }}>
-        <div className="container" style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <img src="/logo_nova.png" alt="Logo" style={{ maxWidth: '200px', marginBottom: '20px' }} />
-          <h1 style={{ fontSize: '3rem', margin: '0 0 10px 0', color: '#fff' }}>Calculadora de Reajuste</h1>
-          <p style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.9)' }}>Ferramenta demo para calcular reajustes de preços</p>
+    <div className="landing-page">
+      {/* Header */}
+      <header className="landing-header">
+        <div className="landing-header-first-line">
+          <div className="landing-logo">
+            <img src="/logo_nova.png" alt="Logo" />
+            <span>Recalcula Preço</span>
+          </div>
+          <div className="landing-header-buttons">
+            <button onClick={onStartClick} className="btn-login-header">Começar Demo</button>
+          </div>
         </div>
+        <nav className="landing-nav">
+          <a href="#sobre" onClick={(e) => {
+            e.preventDefault();
+            document.getElementById('sobre')?.scrollIntoView({ behavior: 'smooth' });
+          }}>Sobre</a>
+          <a href="#funcionalidades" onClick={(e) => {
+            e.preventDefault();
+            document.getElementById('funcionalidades')?.scrollIntoView({ behavior: 'smooth' });
+          }}>Funcionalidades</a>
+        </nav>
       </header>
 
-      <section className="features" style={{
-        padding: '80px 20px',
-        flex: 1,
-      }}>
-        <div className="container" style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <h2 style={{ 
-            textAlign: 'center', 
-            fontSize: '2.5rem', 
-            marginBottom: '50px',
-            color: 'var(--cor-texto)',
-          }}>
-            Funcionalidades
-          </h2>
-          <div className="features-grid" style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-            gap: '30px',
-          }}>
-            <div className="feature-card" style={{
-              background: 'var(--cor-card-fundo)',
-              padding: '30px',
-              borderRadius: '12px',
-              textAlign: 'center',
-              border: '1px solid var(--cor-borda)',
-            }}>
-              <FaCalculator style={{ fontSize: '3rem', color: 'var(--cor-primaria)', marginBottom: '20px' }} />
-              <h3 style={{ margin: '0 0 15px 0', color: 'var(--cor-texto)' }}>Reajuste de Preços</h3>
-              <p style={{ margin: 0, color: 'var(--cor-texto-secundario)' }}>Reajuste por valor fixo ou percentual em múltiplos produtos</p>
+      {/* Hero Section */}
+      <section className="hero-section">
+        <div className="hero-content">
+          <div className="hero-text">
+            <h1 className="hero-title">
+              Reajuste seus preços de forma <span className="highlight">inteligente e rápida</span>
+            </h1>
+            <p className="hero-subtitle">
+              A ferramenta completa para restaurantes e lanchonetes gerenciarem seus cardápios e aplicarem reajustes de preços automaticamente, considerando as taxas das plataformas de delivery.
+            </p>
+            <div className="hero-cta">
+              <button onClick={onStartClick} className="btn-hero-primary">
+                Começar agora
+              </button>
+              <button onClick={onStartClick} className="btn-hero-secondary">
+                Ver demonstração
+              </button>
             </div>
-            <div className="feature-card" style={{
-              background: 'var(--cor-card-fundo)',
-              padding: '30px',
-              borderRadius: '12px',
-              textAlign: 'center',
-              border: '1px solid var(--cor-borda)',
-            }}>
-              <FaChartLine style={{ fontSize: '3rem', color: 'var(--cor-primaria)', marginBottom: '20px' }} />
-              <h3 style={{ margin: '0 0 15px 0', color: 'var(--cor-texto)' }}>Gestão de Produtos</h3>
-              <p style={{ margin: 0, color: 'var(--cor-texto-secundario)' }}>Organize produtos por categorias e gerencie seus preços</p>
-            </div>
-            <div className="feature-card" style={{
-              background: 'var(--cor-card-fundo)',
-              padding: '30px',
-              borderRadius: '12px',
-              textAlign: 'center',
-              border: '1px solid var(--cor-borda)',
-            }}>
-              <FaPalette style={{ fontSize: '3rem', color: 'var(--cor-primaria)', marginBottom: '20px' }} />
-              <h3 style={{ margin: '0 0 15px 0', color: 'var(--cor-texto)' }}>Personalização</h3>
-              <p style={{ margin: 0, color: 'var(--cor-texto-secundario)' }}>Customize as cores do sistema conforme sua preferência</p>
-            </div>
-            <div className="feature-card" style={{
-              background: 'var(--cor-card-fundo)',
-              padding: '30px',
-              borderRadius: '12px',
-              textAlign: 'center',
-              border: '1px solid var(--cor-borda)',
-            }}>
-              <FaRocket style={{ fontSize: '3rem', color: 'var(--cor-primaria)', marginBottom: '20px' }} />
-              <h3 style={{ margin: '0 0 15px 0', color: 'var(--cor-texto)' }}>Plataformas</h3>
-              <p style={{ margin: 0, color: 'var(--cor-texto-secundario)' }}>Calcule preços considerando taxas de plataformas de delivery</p>
+          </div>
+          <div className="hero-image">
+            <div className="hero-mockup">
+              <FaCalculator className="hero-icon" />
             </div>
           </div>
         </div>
       </section>
 
-      <section className="cta" style={{
-        padding: '80px 20px',
-        textAlign: 'center',
-        background: 'var(--cor-card-fundo)',
-      }}>
-        <div className="container" style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <h2 style={{ 
-            fontSize: '2.5rem', 
-            marginBottom: '20px',
-            color: 'var(--cor-texto)',
-          }}>
-            Comece a usar agora
-          </h2>
-          <p style={{ 
-            color: '#ffd966', 
-            marginBottom: '30px',
-            fontSize: '1.1rem',
-          }}>
-            ⚠️ Versão Demo - Todos os dados serão perdidos ao fechar o navegador
-          </p>
-          <button 
-            onClick={onStartClick} 
-            className="btn-primary"
-            style={{
-              padding: '15px 40px',
-              fontSize: '1.2rem',
-              borderRadius: '8px',
-              border: 'none',
-              background: 'var(--cor-primaria)',
-              color: '#fff',
-              cursor: 'pointer',
-              fontWeight: 'bold',
-            }}
-          >
-            Começar Demo
-          </button>
+      {/* Sobre Section */}
+      <section id="sobre" className="sobre-section">
+        <div className="container">
+          <h2 className="section-title">Por que criamos este sistema?</h2>
+          <div className="sobre-content">
+            <div className="sobre-text">
+              <p className="sobre-intro">
+                Prazer, me chamo <strong>Fernando Carvalho</strong> e a Recalcula Preço nasceu de uma necessidade real: 
+                a dificuldade de gerenciar preços em múltiplas plataformas de delivery.
+              </p>
+              <p>
+                Este sistema foi criado inicialmente para a <strong>lanchonete Vira-Latas</strong>, localizada em <strong>Tupã, interior de São Paulo</strong>, 
+                estabelecimento do meu pai. Ao observar as dificuldades que ele enfrentava no dia a dia, percebi um problema comum a muitos empreendedores do setor.
+              </p>
+              <p>
+                Cada plataforma de delivery cobra taxas diferentes e calcula percentuais de formas distintas. Isso torna extremamente difícil para o dono de restaurante 
+                ou lanchonete criar uma estratégia de preços harmoniosa, que funcione em todas as plataformas sem gerar prejuízo ou desequilíbrio financeiro.
+              </p>
+              <p>
+                Ao ver essa dor de perto, decidi criar uma solução que tornasse esse processo <strong>mais fácil, mais leve e mais prático</strong>. 
+                O sistema foi testado e validado na prática, comprovando que realmente resolve essa necessidade.
+              </p>
+              <p className="sobre-conclusao">
+                Este sistema foi feito com <strong>muito amor</strong> por mim, como uma homenagem aos meus pais. Através de trabalho duro, muito esforço e suor, 
+                eles conseguiram me criar e me tornar um ser humano funcional. <strong>Aos meus pais, muito obrigado.</strong>
+              </p>
+              <p className="sobre-conclusao-final">
+                E a você, espero que este sistema, assim como foi para eles, torne sua vida mais fácil. 
+                <br />
+                <strong style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  Um abraço! <FaHeart />
+                </strong>
+                <br />
+                <span className="sobre-assinatura" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  Te vejo do outro lado! <FaRocket />
+                </span>
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
-      <footer className="landing-footer" style={{
-        padding: '30px 20px',
-        textAlign: 'center',
-        borderTop: '1px solid var(--cor-borda)',
-        color: 'var(--cor-texto-secundario)',
-      }}>
-        <div className="container" style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <p style={{ margin: 0 }}>&copy; 2025 Calculadora de Reajuste. Versão Demo.</p>
+      {/* Funcionalidades Section */}
+      <section id="funcionalidades" className="funcionalidades-section">
+        <div className="container">
+          <h2 className="section-title">Funcionalidades</h2>
+          <div className="beneficios-grid">
+            <div className="beneficio-card">
+              <div className="beneficio-icon">
+                <FaCalculator />
+              </div>
+              <h3>Reajuste de Preços</h3>
+              <p>Reajuste por valor fixo ou percentual em múltiplos produtos de uma vez</p>
+            </div>
+            <div className="beneficio-card">
+              <div className="beneficio-icon">
+                <FaChartLine />
+              </div>
+              <h3>Gestão de Produtos</h3>
+              <p>Organize produtos por categorias e gerencie seus preços de forma eficiente</p>
+            </div>
+            <div className="beneficio-card">
+              <div className="beneficio-icon">
+                <FaPalette />
+              </div>
+              <h3>Personalização</h3>
+              <p>Customize as cores do sistema conforme sua preferência e identidade visual</p>
+            </div>
+            <div className="beneficio-card">
+              <div className="beneficio-icon">
+                <FaRocket />
+              </div>
+              <h3>Plataformas de Delivery</h3>
+              <p>Calcule preços considerando taxas de plataformas de delivery automaticamente</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Final Section */}
+      <section className="cta-final-section">
+        <div className="container">
+          <div className="cta-final-content">
+            <FaRocket className="cta-icon" />
+            <h2>Pronto para começar a reajustar seus preços?</h2>
+            <p style={{ marginBottom: '20px' }}>
+              ⚠️ <strong>Versão Demo</strong> - Todos os dados serão perdidos ao fechar o navegador
+            </p>
+            <button onClick={onStartClick} className="btn-cta-final">
+              Começar agora
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="landing-footer">
+        <div className="container">
+          <div className="footer-content">
+            <div className="footer-section">
+              <h4>Recalcula Preço</h4>
+              <p>Ferramenta demo para calcular reajustes de preços</p>
+            </div>
+          </div>
+          <div className="footer-bottom">
+            <p>&copy; 2025 Recalcula Preço. Versão Demo. Todos os direitos reservados.</p>
+          </div>
         </div>
       </footer>
+
+      <ThemeToggle variant="floating" />
     </div>
   );
 };
 
 export default LandingPageBasic;
-
