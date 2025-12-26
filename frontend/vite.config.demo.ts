@@ -2,9 +2,11 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // Configuração específica para build demo do GitHub Pages
+// Para domínio customizado, usar base: '/'
+// Para subdomínio do GitHub Pages, usar base: '/recalcula_preco/'
 export default defineConfig({
   plugins: [react()],
-  base: '/recalcula_preco/',
+  base: '/', // Domínio customizado demo.recalculapreco.com.br
   build: {
     outDir: 'dist',
     rollupOptions: {
