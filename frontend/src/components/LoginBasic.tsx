@@ -49,17 +49,23 @@ const LoginBasic = ({ onLoginSuccess }: LoginBasicProps) => {
         </div>
         
         <div className="demo-aviso" style={{
-          background: 'rgba(255, 193, 7, 0.15)',
-          border: '1px solid rgba(255, 193, 7, 0.4)',
+          background: 'var(--cor-alerta-fundo)',
+          border: '1px solid var(--cor-alerta-borda)',
           borderRadius: '8px',
           padding: '12px',
           marginBottom: '20px',
-          color: '#ffd966',
+          color: 'var(--cor-alerta-texto)',
           fontSize: '14px',
         }}>
           <strong>⚠️ Versão Demo</strong>
           <p style={{ margin: '8px 0 0 0' }}>
-            <strong>Usuário:</strong> Qualquer valor | <strong>Senha:</strong> <code style={{ background: 'rgba(0,0,0,0.3)', padding: '2px 6px', borderRadius: '4px' }}>{SENHA_PADRAO}</code>
+            <strong>Usuário:</strong> Qualquer valor | <strong>Senha:</strong> <code style={{ 
+              background: 'var(--cor-hover)', 
+              padding: '2px 6px', 
+              borderRadius: '4px',
+              color: 'var(--cor-alerta-texto)',
+              fontWeight: 'bold',
+            }}>{SENHA_PADRAO}</code>
           </p>
           <p style={{ margin: '4px 0 0 0', fontSize: '12px', opacity: 0.9 }}>
             Todos os dados serão perdidos ao fechar o navegador.
