@@ -134,12 +134,12 @@
   padding: 10px 20px;
   border: 2px solid var(--cor-primaria);
   border-radius: 8px;
-  background: white;
+  background: var(--cor-secundaria);
   color: var(--cor-primaria);
   cursor: pointer;
   font-size: 0.95em;
   font-weight: 600;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -148,9 +148,9 @@
 }
 
 .btn-toggle-multiplo:hover {
-  background: color-mix(in srgb, var(--cor-primaria) 10%, white);
+  background: var(--cor-hover);
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 8px var(--cor-sombra);
 }
 
 .btn-toggle-multiplo.active {
